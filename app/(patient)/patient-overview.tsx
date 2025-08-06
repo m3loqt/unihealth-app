@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Platform,
   Image,
   Linking,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import {
   ChevronLeft,
@@ -23,106 +25,104 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-
-// Sample patient data - in real app this would come from API
-const SAMPLE_PATIENTS = {
-  1: {
-    id: 1,
-    name: 'John Doe',
-    age: 32,
-    gender: 'Male',
-    medicalId: 'PAT-2024-001',
-    phone: '+1 (555) 123-4567',
-    email: 'john.doe@email.com',
-    address: '1234 Main St, San Francisco, CA 94102',
-    referredFrom: 'General Medicine',
-    notes: 'Follows low-sodium diet',
-    emergencyContact: {
-      name: 'Jane Doe',
-      relationship: 'Spouse',
-      phone: '+1 (555) 890-1234',
-    },
-    profileImage: 'https://randomuser.me/api/portraits/men/32.jpg',
-  },
-  2: {
-    id: 2,
-    name: 'Jane Smith',
-    age: 28,
-    gender: 'Female',
-    medicalId: 'PAT-2024-002',
-    phone: '+1 (555) 234-5678',
-    email: 'jane.smith@email.com',
-    address: '5678 Oak Ave, San Francisco, CA 94103',
-    referredFrom: 'Emergency Dept',
-    notes: 'Prefers video consultations',
-    emergencyContact: {
-      name: 'Robert Smith',
-      relationship: 'Father',
-      phone: '+1 (555) 345-6789',
-    },
-    profileImage: 'https://randomuser.me/api/portraits/women/44.jpg',
-  },
-};
-
-const ACTIVE_CONSULTATIONS = {
-  1: {
-    id: 'CONS-2024-001',
-    patientId: 1,
-    date: 'Dec 15, 2024',
-    time: '2:30 PM',
-    type: 'General Consultation',
-    status: 'In Progress',
-  },
-};
-
-const MEDICAL_HISTORY = {
-  1: [
-    {
-      id: 1,
-      date: 'Dec 10, 2024',
-      type: 'Annual Physical',
-      doctor: 'Dr. Sarah Johnson',
-      status: 'Completed',
-    },
-    {
-      id: 2,
-      date: 'Nov 15, 2024',
-      type: 'Follow-up',
-      doctor: 'Dr. Michael Chen',
-      status: 'Completed',
-    },
-    {
-      id: 3,
-      date: 'Oct 20, 2024',
-      type: 'Consultation',
-      doctor: 'Dr. Emily Davis',
-      status: 'Completed',
-    },
-  ],
-  2: [],
-};
+import { useAuth } from '../../src/hooks/auth/useAuth';
+import { databaseService, Patient, Appointment } from '../../src/services/database/firebase';
 
 export default function PatientOverviewScreen() {
   const { id } = useLocalSearchParams();
-  const patientId = parseInt(id as string) || 1;
-  
-  const patient = SAMPLE_PATIENTS[patientId as keyof typeof SAMPLE_PATIENTS] || SAMPLE_PATIENTS[1];
-  const activeConsultation = ACTIVE_CONSULTATIONS[patientId as keyof typeof ACTIVE_CONSULTATIONS];
-  const medicalHistory = MEDICAL_HISTORY[patientId as keyof typeof MEDICAL_HISTORY] || [];
+  const { user } = useAuth();
+  const [patientData, setPatientData] = useState<Patient | null>(null);
+  const [activeConsultations, setActiveConsultations] = useState<Appointment[]>([]);
+  const [medicalHistory, setMedicalHistory] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleEmergencyCall = () => {
-    Linking.openURL(`tel:${patient.emergencyContact.phone.replace(/[^+\d]/g, '')}`);
-  };
+  // Load patient data from Firebase
+  useEffect(() => {
+    if (id) {
+      loadPatientData();
+    }
+  }, [id]);
 
-  const handleActiveConsultationPress = () => {
-    if (activeConsultation) {
-      router.push(`/patient-consultation?patientId=${patientId}&consultationId=${activeConsultation.id}`);
+  const loadPatientData = async () => {
+    if (!id) return;
+    
+    try {
+      setLoading(true);
+      
+      // Load patient data and their appointments
+      const [patient, appointments] = await Promise.all([
+        databaseService.getPatientById(id as string),
+        databaseService.getAppointmentsByPatient(id as string)
+      ]);
+
+      if (patient) {
+        setPatientData(patient);
+        
+        // Filter active consultations (pending, confirmed)
+        const active = appointments.filter(apt => 
+          apt.status === 'pending' || apt.status === 'confirmed'
+        );
+        setActiveConsultations(active);
+
+        // Filter completed appointments for medical history
+        const completed = appointments.filter(apt => apt.status === 'completed');
+        setMedicalHistory(completed);
+      }
+    } catch (error) {
+      console.error('Error loading patient data:', error);
+      Alert.alert('Error', 'Failed to load patient data. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleMedicalHistoryPress = (historyItem: any) => {
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadPatientData();
+    setRefreshing(false);
+  };
+
+  const handleEmergencyCall = () => {
+    if (patientData?.emergencyContact?.phone) {
+      Linking.openURL(`tel:${patientData.emergencyContact.phone}`);
+    } else {
+      Alert.alert('No Emergency Contact', 'Emergency contact information is not available.');
+    }
+  };
+
+  const handleActiveConsultationPress = () => {
+    if (activeConsultations.length > 0) {
+      const consultation = activeConsultations[0];
+      router.push(`/patient-consultation?patientId=${patientData?.id}&consultationId=${consultation.id}`);
+    }
+  };
+
+  const handleMedicalHistoryPress = (historyItem: Appointment) => {
     router.push(`/visit-overview?id=${historyItem.id}`);
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading patient data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!patientData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Patient not found</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -141,17 +141,20 @@ export default function PatientOverviewScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 32 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Patient Details */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Patient Details</Text>
           <View style={styles.patientCard}>
             <View style={styles.patientHeader}>
-              <Image source={{ uri: patient.profileImage }} style={styles.patientImage} />
+              <Image source={{ uri: patientData.profileImage }} style={styles.patientImage} />
               <View style={styles.patientInfo}>
-                <Text style={styles.patientName}>{patient.name}</Text>
-                <Text style={styles.patientAge}>{patient.age} years old • {patient.gender}</Text>
-                <Text style={styles.patientId}>ID: {patient.medicalId}</Text>
+                <Text style={styles.patientName}>{patientData.name}</Text>
+                <Text style={styles.patientAge}>{patientData.age} years old • {patientData.gender}</Text>
+                <Text style={styles.patientId}>ID: {patientData.medicalId}</Text>
               </View>
             </View>
             
@@ -160,15 +163,15 @@ export default function PatientOverviewScreen() {
             <View style={styles.contactInfo}>
               <View style={styles.contactItem}>
                 <Phone size={16} color="#6B7280" />
-                <Text style={styles.contactText}>{patient.phone}</Text>
+                <Text style={styles.contactText}>{patientData.phone}</Text>
               </View>
               <View style={styles.contactItem}>
                 <Mail size={16} color="#6B7280" />
-                <Text style={styles.contactText}>{patient.email}</Text>
+                <Text style={styles.contactText}>{patientData.email}</Text>
               </View>
               <View style={styles.contactItem}>
                 <MapPin size={16} color="#6B7280" />
-                <Text style={styles.contactText}>{patient.address}</Text>
+                <Text style={styles.contactText}>{patientData.address}</Text>
               </View>
             </View>
             
@@ -177,11 +180,11 @@ export default function PatientOverviewScreen() {
             <View style={styles.medicalInfo}>
               <View style={styles.medicalRow}>
                 <Text style={styles.medicalLabel}>Referred from:</Text>
-                <Text style={styles.medicalValue}>{patient.referredFrom}</Text>
+                <Text style={styles.medicalValue}>{patientData.referredFrom}</Text>
               </View>
               <View style={styles.medicalRow}>
                 <Text style={styles.medicalLabel}>Notes:</Text>
-                <Text style={styles.medicalValue}>{patient.notes}</Text>
+                <Text style={styles.medicalValue}>{patientData.notes}</Text>
               </View>
             </View>
           </View>
@@ -194,7 +197,7 @@ export default function PatientOverviewScreen() {
             <View style={styles.emergencyLeft}>
               <View style={styles.emergencyAvatar}>
                 <Text style={styles.emergencyInitial}>
-                  {patient.emergencyContact.name
+                  {patientData.emergencyContact.name
                     .split(' ')
                     .map((n: string) => n[0])
                     .join('')
@@ -202,11 +205,11 @@ export default function PatientOverviewScreen() {
                 </Text>
               </View>
               <View style={styles.emergencyInfo}>
-                <Text style={styles.emergencyName}>{patient.emergencyContact.name}</Text>
+                <Text style={styles.emergencyName}>{patientData.emergencyContact.name}</Text>
                 <View style={styles.relationshipRow}>
-                  <Text style={styles.relationshipPill}>{patient.emergencyContact.relationship}</Text>
+                  <Text style={styles.relationshipPill}>{patientData.emergencyContact.relationship}</Text>
                 </View>
-                <Text style={styles.emergencyPhone}>{patient.emergencyContact.phone}</Text>
+                <Text style={styles.emergencyPhone}>{patientData.emergencyContact.phone}</Text>
               </View>
             </View>
             <TouchableOpacity style={styles.emergencyCallButton} onPress={handleEmergencyCall}>
@@ -219,18 +222,18 @@ export default function PatientOverviewScreen() {
         {/* Active Consultation */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Active Consultation</Text>
-          {activeConsultation ? (
+          {activeConsultations.length > 0 ? (
             <TouchableOpacity style={styles.consultationCard} onPress={handleActiveConsultationPress}>
               <View style={styles.consultationHeader}>
                 <View style={styles.consultationIcon}>
                   <FileText size={20} color="#1E40AF" />
                 </View>
                 <View style={styles.consultationInfo}>
-                  <Text style={styles.consultationType}>{activeConsultation.type}</Text>
+                  <Text style={styles.consultationType}>{activeConsultations[0].type}</Text>
                   <Text style={styles.consultationDate}>
-                    {activeConsultation.date} at {activeConsultation.time}
+                    {activeConsultations[0].date} at {activeConsultations[0].time}
                   </Text>
-                  <Text style={styles.consultationStatus}>{activeConsultation.status}</Text>
+                  <Text style={styles.consultationStatus}>{activeConsultations[0].status}</Text>
                 </View>
                 <ChevronRight size={20} color="#9CA3AF" />
               </View>
@@ -251,7 +254,7 @@ export default function PatientOverviewScreen() {
           <Text style={styles.sectionTitle}>Medical History</Text>
           {medicalHistory.length > 0 ? (
             <View style={styles.historyContainer}>
-              {medicalHistory.map((item: any) => (
+              {medicalHistory.map((item: Appointment) => (
                 <TouchableOpacity
                   key={item.id}
                   style={styles.historyCard}
@@ -594,6 +597,17 @@ const styles = StyleSheet.create({
   },
   historyStatusText: {
     fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  loadingText: {
+    fontSize: 18,
     fontFamily: 'Inter-Medium',
     color: '#6B7280',
   },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Dimensions,
   Alert,
   Share,
+  RefreshControl,
 } from 'react-native';
 import {
   ChevronLeft,
@@ -26,54 +27,50 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
+import { useAuth } from '../../src/hooks/auth/useAuth';
+import { databaseService, Certificate } from '../../src/services/database/firebase';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Static certificate document URL (using a sample medical certificate)
-const CERTIFICATE_DOCUMENT_URL = 'https://images.pexels.com/photos/4386467/pexels-photo-4386467.jpeg?auto=compress&cs=tinysrgb&w=800';
-
-// Sample certificate data - in real app this would come from API
-const SAMPLE_CERTIFICATES = {
-  1: {
-    id: 1,
-    type: 'Fit to Work Certificate',
-    doctor: 'Dr. Sarah Connor',
-    clinic: 'Occupational Health Center',
-    issuedDate: 'January 15, 2024',
-    issuedTime: '09:30 AM',
-    status: 'Valid',
-    validUntil: 'July 15, 2024',
-    documentUrl: CERTIFICATE_DOCUMENT_URL,
-    description: 'This certificate confirms that the individual is medically fit to perform regular work duties without restrictions.',
-    medicalFindings: 'No significant medical conditions found that would impair work performance.',
-    restrictions: 'None',
-    certificateNumber: 'FTW-2024-001234',
-  },
-  2: {
-    id: 2,
-    type: 'Medical Clearance',
-    doctor: 'Dr. John Garcia',
-    clinic: 'General Medicine Clinic',
-    issuedDate: 'January 5, 2024',
-    issuedTime: '02:15 PM',
-    status: 'Expired',
-    validUntil: 'January 5, 2025',
-    documentUrl: CERTIFICATE_DOCUMENT_URL,
-    description: 'Pre-employment medical clearance certificate.',
-    medicalFindings: 'Cleared for employment with regular health monitoring recommended.',
-    restrictions: 'Regular health check-ups recommended every 6 months.',
-    certificateNumber: 'MC-2024-005678',
-  },
-};
-
 export default function CertificateDetailsScreen() {
   const { id } = useLocalSearchParams();
+  const { user } = useAuth();
+  const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [showFullView, setShowFullView] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Get certificate data (in real app, this would be an API call)
-  const certificateId = Array.isArray(id) ? id[0] : id;
-  const certificate = SAMPLE_CERTIFICATES[Number(certificateId) as keyof typeof SAMPLE_CERTIFICATES] || SAMPLE_CERTIFICATES[1];
+  // Load certificate data from Firebase
+  useEffect(() => {
+    if (id) {
+      loadCertificateData();
+    }
+  }, [id]);
+
+  const loadCertificateData = async () => {
+    if (!id) return;
+    
+    try {
+      setLoading(true);
+      const certificateData = await databaseService.getCertificateById(id as string);
+      
+      if (certificateData) {
+        setCertificate(certificateData);
+      }
+    } catch (error) {
+      console.error('Error loading certificate data:', error);
+      Alert.alert('Error', 'Failed to load certificate data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadCertificateData();
+    setRefreshing(false);
+  };
 
   const getStatusColors = (status: string) => {
     switch (status) {
@@ -97,6 +94,28 @@ export default function CertificateDetailsScreen() {
         };
     }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading certificate...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!certificate) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Certificate not found</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const handleDownload = async () => {
     try {
@@ -159,6 +178,9 @@ export default function CertificateDetailsScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Certificate Info Card */}
         <View style={styles.infoCard}>
@@ -180,24 +202,28 @@ export default function CertificateDetailsScreen() {
           <View style={styles.detailsSection}>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Issued by:</Text>
-              <Text style={styles.detailValue}>{certificate.doctor}</Text>
+              <Text style={styles.detailValue}>{certificate.specialistId}</Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Clinic:</Text>
-              <Text style={styles.detailValue}>{certificate.clinic}</Text>
+              <Text style={styles.detailValue}>{certificate.clinicName || 'General Clinic'}</Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Issued Date:</Text>
-              <Text style={styles.detailValue}>{certificate.issuedDate}</Text>
+              <Text style={styles.detailValue}>
+                {new Date(certificate.issueDate).toLocaleDateString()}
+              </Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Issued Time:</Text>
-              <Text style={styles.detailValue}>{certificate.issuedTime}</Text>
+              <Text style={styles.detailValue}>{certificate.issueTime || 'N/A'}</Text>
             </View>
-            {certificate.validUntil && (
+            {certificate.expiryDate && (
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Valid Until:</Text>
-                <Text style={styles.detailValue}>{certificate.validUntil}</Text>
+                <Text style={styles.detailValue}>
+                  {new Date(certificate.expiryDate).toLocaleDateString()}
+                </Text>
               </View>
             )}
           </View>
@@ -238,7 +264,7 @@ export default function CertificateDetailsScreen() {
             activeOpacity={0.8}
           >
             <Image
-              source={{ uri: certificate.documentUrl }}
+              source={{ uri: certificate.documentUrl || 'https://via.placeholder.com/400x600?text=Certificate+Document' }}
               style={styles.documentImage}
               resizeMode="cover"
             />
@@ -579,5 +605,16 @@ const styles = StyleSheet.create({
   fullViewImage: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT - 100,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  loadingText: {
+    fontSize: 18,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
   },
 });
