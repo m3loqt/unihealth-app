@@ -24,6 +24,18 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "android": {
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.anonymous.boltexponativewind"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bf16bd24-aa46-4d2d-9eee-404f913543ea"
+      }
     }
   }
 }

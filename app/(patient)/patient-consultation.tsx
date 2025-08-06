@@ -23,9 +23,23 @@ import {
   FileText,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useVoiceToText } from '../../src/hooks/useVoiceToText';
 
 export default function PatientConsultationScreen() {
   const { patientId, consultationId } = useLocalSearchParams();
+
+  // Voice-to-text hook
+  const {
+    isRecording,
+    error: voiceError,
+    startRecording,
+    stopRecording,
+    transcript,
+    resetTranscript,
+  } = useVoiceToText();
+
+  // Voice availability - always true since we have fallbacks
+  const isVoiceAvailable = true;
 
   // Form state
   const [formData, setFormData] = useState<{
@@ -60,13 +74,15 @@ export default function PatientConsultationScreen() {
     certificates: [],
   });
 
-  // Voice-to-text state
-  const [recording, setRecording] = useState(false);
+  // Debug: Log form data changes
+  useEffect(() => {
+    console.log('Patient Consultation - Form data updated:', formData);
+  }, [formData]);
+
+  // UI state
   const [activeField, setActiveField] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
-  const [isVoiceAvailable, setIsVoiceAvailable] = useState(false);
-  const [voiceError, setVoiceError] = useState<string | null>(null);
-  const [recognition, setRecognition] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [showAddPrescription, setShowAddPrescription] = useState(false);
   const [showAddCertificate, setShowAddCertificate] = useState(false);
   const [newPrescription, setNewPrescription] = useState({
@@ -85,137 +101,40 @@ export default function PatientConsultationScreen() {
 
   // Animation for pulsing mic
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const isComponentMounted = useRef(true);
 
+  // Animation for loading dots
+  const dot1Anim = useRef(new Animated.Value(0)).current;
+  const dot2Anim = useRef(new Animated.Value(0)).current;
+  const dot3Anim = useRef(new Animated.Value(0)).current;
+
+  // Effect to handle transcript updates
   useEffect(() => {
-    isComponentMounted.current = true;
-    initializeVoice();
-    
-    return () => {
-      isComponentMounted.current = false;
-      cleanupVoice();
-    };
-  }, []);
-
-  const initializeVoice = async () => {
-    try {
-      if (Platform.OS === 'web') {
-        // Web Speech API implementation
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-          const recognitionInstance = new SpeechRecognition();
-          
-          recognitionInstance.continuous = false;
-          recognitionInstance.interimResults = false;
-          recognitionInstance.lang = 'en-US';
-          
-          recognitionInstance.onstart = () => {
-            console.log('Speech recognition started');
-            if (isComponentMounted.current) {
-              setRecording(true);
-            }
-          };
-          
-          recognitionInstance.onresult = (event) => {
-            console.log('Speech recognition result:', event.results);
-            if (!isComponentMounted.current) return;
-            
-            if (event.results.length > 0) {
-              const transcript = event.results[0][0].transcript;
-              if (activeField && transcript) {
-                setFormData((prev) => ({
-                  ...prev,
-                  [activeField]: prev[activeField] 
-                    ? `${prev[activeField]} ${transcript}` 
-                    : transcript,
-                }));
-                setHasChanges(true);
-              }
-            }
-            
-            setActiveField(null);
-            setRecording(false);
-            stopPulseAnimation();
-          };
-          
-          recognitionInstance.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
-            if (!isComponentMounted.current) return;
-            
-            setRecording(false);
-            stopPulseAnimation();
-            setActiveField(null);
-            
-            let errorMessage = 'Speech recognition error occurred.';
-            switch (event.error) {
-              case 'no-speech':
-                errorMessage = 'No speech detected. Please try again.';
-                break;
-              case 'network':
-                errorMessage = 'Network error occurred during speech recognition.';
-                break;
-              case 'not-allowed':
-                errorMessage = 'Microphone access denied. Please allow microphone access.';
-                break;
-              case 'service-not-allowed':
-                errorMessage = 'Speech recognition service not allowed.';
-                break;
-              default:
-                errorMessage = `Speech recognition error: ${event.error}`;
-            }
-            
-            setTimeout(() => {
-              if (isComponentMounted.current) {
-                Alert.alert('Voice Recognition Error', errorMessage);
-              }
-            }, 100);
-          };
-          
-          recognitionInstance.onend = () => {
-            console.log('Speech recognition ended');
-            if (isComponentMounted.current) {
-              setRecording(false);
-              stopPulseAnimation();
-            }
-          };
-          
-          setRecognition(recognitionInstance);
-          setIsVoiceAvailable(true);
-          setVoiceError(null);
-        } else {
-          setIsVoiceAvailable(false);
-          setVoiceError('Speech recognition not supported in this browser');
-        }
-      } else {
-        // For native platforms, we'll disable voice recognition for now
-        // since react-native-voice requires native modules
-        setIsVoiceAvailable(false);
-        setVoiceError('Voice recognition not available on this platform');
-      }
-    } catch (error) {
-      console.error('Voice initialization error:', error);
-      if (isComponentMounted.current) {
-        setVoiceError('Failed to initialize voice recognition');
-        setIsVoiceAvailable(false);
-      }
+    console.log('Transcript effect triggered - transcript:', transcript, 'activeField:', activeField);
+    if (transcript && activeField) {
+      console.log('Updating field:', activeField, 'with transcript:', transcript);
+      setFormData((prev) => {
+        const updated = {
+          ...prev,
+          [activeField]: transcript, // Replace the field content with current transcript
+        };
+        console.log('Form data updated:', updated[activeField as keyof typeof updated]);
+        return updated;
+      });
+      setHasChanges(true);
+      
+      // Clear activeField after updating the form
+      setTimeout(() => {
+        setActiveField(null);
+        setIsLoading(false);
+        stopPulseAnimation();
+        stopLoadingAnimation();
+      }, 500);
     }
-  };
-
-  const cleanupVoice = async () => {
-    try {
-      if (recording) {
-        if (Platform.OS === 'web' && recognition) {
-          recognition.stop();
-        }
-      }
-      setRecognition(null);
-    } catch (error) {
-      console.error('Voice cleanup error:', error);
-    }
-  };
+  }, [transcript, activeField]);
 
   // -- Microphone Press/Release --
-  const startRecording = async (fieldName: string) => {
+  const handleStartRecording = async (fieldName: string) => {
+    console.log('Starting recording for field:', fieldName);
     if (!isVoiceAvailable) {
       Alert.alert(
         'Voice Recognition Unavailable', 
@@ -224,48 +143,36 @@ export default function PatientConsultationScreen() {
       return;
     }
 
-    if (recording) {
+    if (isRecording) {
       await stopRecording();
       return;
     }
 
     try {
-      if (!isComponentMounted.current) return;
-      
       setActiveField(fieldName);
-      setRecording(true);
       startPulseAnimation();
-      
-      if (Platform.OS === 'web' && recognition) {
-        recognition.start();
-      }
-      
+      await startRecording();
     } catch (error) {
       console.error('Start recording error:', error);
-      
-      if (isComponentMounted.current) {
-        setRecording(false);
-        stopPulseAnimation();
-        setActiveField(null);
-        
-        Alert.alert('Error', 'Failed to start voice recording. Please try again.');
-      }
+      stopPulseAnimation();
+      setActiveField(null);
+      Alert.alert('Error', 'Failed to start voice recording. Please try again.');
     }
   };
 
-  const stopRecording = async () => {
+  const handleStopRecording = async () => {
     try {
-      if (Platform.OS === 'web' && recognition) {
-        recognition.stop();
-      }
+      await stopRecording();
+      // Start loading animation while waiting for transcript
+      setIsLoading(true);
+      startLoadingAnimation();
+      // activeField will be cleared in the transcript effect
     } catch (error) {
       console.error('Stop recording error:', error);
-    } finally {
-      if (isComponentMounted.current) {
-        setRecording(false);
-        stopPulseAnimation();
-        setActiveField(null);
-      }
+      stopPulseAnimation();
+      stopLoadingAnimation();
+      setIsLoading(false);
+      setActiveField(null);
     }
   };
 
@@ -304,8 +211,80 @@ export default function PatientConsultationScreen() {
     }
   };
 
+  // -- Loading Dots Animation --
+  const startLoadingAnimation = () => {
+    try {
+      // Reset all dots
+      dot1Anim.setValue(0);
+      dot2Anim.setValue(0);
+      dot3Anim.setValue(0);
+
+      // Animate dots in sequence
+      Animated.loop(
+        Animated.sequence([
+          // Dot 1
+          Animated.timing(dot1Anim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          // Dot 2
+          Animated.timing(dot2Anim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          // Dot 3
+          Animated.timing(dot3Anim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          // Reset all dots
+          Animated.parallel([
+            Animated.timing(dot1Anim, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(dot2Anim, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(dot3Anim, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]),
+          // Pause before next cycle
+          Animated.delay(200),
+        ])
+      ).start();
+    } catch (animError) {
+      console.error('Loading animation error:', animError);
+    }
+  };
+
+  const stopLoadingAnimation = () => {
+    try {
+      dot1Anim.stopAnimation();
+      dot2Anim.stopAnimation();
+      dot3Anim.stopAnimation();
+      
+      // Reset dots
+      dot1Anim.setValue(0);
+      dot2Anim.setValue(0);
+      dot3Anim.setValue(0);
+    } catch (animError) {
+      console.error('Stop loading animation error:', animError);
+    }
+  };
+
   // -- Input Change --
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field: string, value: string) => {
+    console.log('Manual input change:', field, value);
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -344,7 +323,7 @@ export default function PatientConsultationScreen() {
     setHasChanges(true);
   };
 
-  const handleRemovePrescription = (id) => {
+  const handleRemovePrescription = (id: number) => {
     Alert.alert(
       'Remove Prescription',
       'Are you sure you want to remove this prescription?',
@@ -398,7 +377,7 @@ export default function PatientConsultationScreen() {
     setHasChanges(true);
   };
 
-  const handleRemoveCertificate = (id) => {
+  const handleRemoveCertificate = (id: number) => {
     Alert.alert(
       'Remove Certificate',
       'Are you sure you want to remove this certificate?',
@@ -455,19 +434,20 @@ export default function PatientConsultationScreen() {
   };
 
   // --- FIELD RENDERING WITH MIC ---
-  const renderFieldWithSpeech = (label, field, multiline = false) => (
+  const renderFieldWithSpeech = (label: string, field: string, multiline = false) => (
     <View style={styles.fieldContainer}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <View style={styles.inputContainer}>
         <TextInput
           style={[styles.textInput, multiline && styles.multilineInput]}
-          value={formData[field] || ''}
+          value={(formData[field as keyof typeof formData] as string) || ''}
           onChangeText={(value) => handleInputChange(field, value)}
           multiline={multiline}
           numberOfLines={multiline ? 4 : 1}
           textAlignVertical={multiline ? 'top' : 'center'}
           placeholder={`Enter ${label.toLowerCase()}...`}
           placeholderTextColor="#9CA3AF"
+          key={`${field}-${formData[field as keyof typeof formData]}`} // Force re-render when value changes
         />
         <TouchableOpacity
           style={[
@@ -475,7 +455,14 @@ export default function PatientConsultationScreen() {
             activeField === field && styles.micButtonActive,
             !isVoiceAvailable && styles.micButtonDisabled,
           ]}
-          onPress={() => startRecording(field)}
+          onPress={() => {
+            console.log('Microphone pressed for field:', field);
+            if (activeField === field && isRecording) {
+              handleStopRecording();
+            } else {
+              handleStartRecording(field);
+            }
+          }}
           disabled={!isVoiceAvailable}
         >
           <Animated.View
@@ -502,10 +489,53 @@ export default function PatientConsultationScreen() {
           </Animated.View>
         </TouchableOpacity>
       </View>
-      {activeField === field && recording && (
+      {activeField === field && isRecording && (
         <Text style={styles.recordingIndicator}>
-          🎤 Listening... Tap microphone again to stop
+          🎤 Recording... Speak now! Tap microphone to stop
         </Text>
+      )}
+      {activeField === field && isLoading && (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Processing speech</Text>
+          <View style={styles.dotsContainer}>
+            <Animated.View
+              style={[
+                styles.dot,
+                {
+                  opacity: dot1Anim,
+                  transform: [{ scale: dot1Anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.5, 1]
+                  })}]
+                }
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.dot,
+                {
+                  opacity: dot2Anim,
+                  transform: [{ scale: dot2Anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.5, 1]
+                  })}]
+                }
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.dot,
+                {
+                  opacity: dot3Anim,
+                  transform: [{ scale: dot3Anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.5, 1]
+                  })}]
+                }
+              ]}
+            />
+          </View>
+        </View>
       )}
     </View>
   );
@@ -1218,6 +1248,29 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
+  },
+  // Loading Animation
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#1E40AF',
   },
 });
 
