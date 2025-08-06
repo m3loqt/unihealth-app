@@ -82,13 +82,13 @@ export default function SpecialistProfileScreen() {
       icon: Pill,
       title: 'Prescriptions',
       color: '#1E40AF',
-      onPress: () => router.push('/(specialist)/tabs/appointments'),
+      onPress: () => router.push('/(specialist)/tabs/prescriptions'),
     },
     {
       icon: FileText,
       title: 'Medical Certificates',
       color: '#1E40AF',
-      onPress: () => router.push('/(specialist)/tabs/patients'),
+      onPress: () => router.push('/(specialist)/tabs/certificates'),
     },
   ];
 
@@ -156,7 +156,7 @@ export default function SpecialistProfileScreen() {
               <Text style={styles.userName}>{fullName}</Text>
               <Text style={styles.userSpecialty}>{specialty}</Text>
               {/* License number directly under specialty */}
-              <Text style={styles.licenseNumber}>License No.: {licenseNumber}</Text>
+        
               <Text style={styles.experience}>{yearsOfExperience} experience</Text>
             </View>
           </View>
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 0,
+    marginBottom: 15,
   },
   profileHeader: {
     flexDirection: 'row',
