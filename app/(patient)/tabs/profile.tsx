@@ -24,7 +24,7 @@ import {
   BookOpen,
   CircleHelp as HelpCircle,
   Trash2,
-  Fingerprint
+  Fingerprint,
 } from 'lucide-react-native';
 import {
   checkBiometricSupport,
@@ -92,8 +92,6 @@ export default function ProfileScreen() {
     profileImg: defaultProfileData.profileImg,
   } : defaultProfileData;
 
-
-
   const {
     fullName,
     dob,
@@ -105,64 +103,42 @@ export default function ProfileScreen() {
     profileImg,
   } = profileData;
 
-  const calcAge = (dobStr: string): string | null => {
-    if (!dobStr || dobStr === 'Not provided') {
-      return null;
-    }
-    
+  const calcAge = (dobStr: string) => {
+    if (!dobStr || dobStr === 'Not provided') return null;
     try {
-      let dobDate: Date;
-      
-      // Check if the date is in DD/MM/YYYY format (e.g., "10/06/2003")
+      let dobDate;
       if (dobStr.includes('/')) {
         const parts = dobStr.split('/');
         if (parts.length === 3) {
           const day = parseInt(parts[0]);
-          const month = parseInt(parts[1]) - 1; // Month is 0-indexed
+          const month = parseInt(parts[1]) - 1;
           const year = parseInt(parts[2]);
-          
           if (day && month >= 0 && month <= 11 && year) {
             dobDate = new Date(year, month, day);
-          } else {
-            return null;
-          }
-        } else {
-          return null;
-        }
+          } else return null;
+        } else return null;
       } else {
-        // Try parsing as YYYY-MM-DD format (e.g., "1990-01-01")
         dobDate = new Date(dobStr);
       }
-      
-      if (isNaN(dobDate.getTime())) {
-        return null;
-      }
-      
+      if (isNaN(dobDate.getTime())) return null;
       const today = new Date();
       const diffMs = today.getTime() - dobDate.getTime();
       const ageDt = new Date(diffMs);
       const age = Math.abs(ageDt.getUTCFullYear() - 1970);
-      
       return `${age} years old`;
-    } catch (error) {
+    } catch {
       return null;
     }
   };
 
   const handleEmergencyCall = () => Linking.openURL(`tel:${emergency.phone}`);
 
-  // Check biometric status on component mount
-  React.useEffect(() => {
-    checkBiometricStatus();
-  }, []);
-
-  // Update biometric status when component mounts or user changes
+  React.useEffect(() => { checkBiometricStatus(); }, []);
   React.useEffect(() => {
     const updateBiometricStatus = async () => {
       const isAvailable = await isBiometricLoginAvailable();
       setBiometricCredentialsSaved(isAvailable);
     };
-    
     updateBiometricStatus();
   }, [user]);
 
@@ -171,13 +147,11 @@ export default function ProfileScreen() {
       const biometricSupport = await checkBiometricSupport();
       const savedCredentials = await getBiometricCredentials();
       const unavailableReason = await getBiometricUnavailableReason();
-
       setBiometricAvailable(biometricSupport.hasHardware);
       setBiometricEnrolled(biometricSupport.isEnrolled);
       setBiometricCredentialsSaved(savedCredentials !== null);
       setBiometricUnavailableReason(unavailableReason);
-    } catch (error) {
-      console.error('Error checking biometric status:', error);
+    } catch {
       setBiometricAvailable(false);
       setBiometricEnrolled(false);
       setBiometricCredentialsSaved(false);
@@ -186,84 +160,53 @@ export default function ProfileScreen() {
 
   const handleBiometricToggle = async () => {
     if (biometricCredentialsSaved) {
-      // Disable biometric login
       Alert.alert(
         'Disable Biometric Login',
         'Are you sure you want to disable biometric login? You will need to sign in with your password next time.',
         [
           { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Disable',
-            style: 'destructive',
-            onPress: handleBiometricDisable,
-          },
+          { text: 'Disable', style: 'destructive', onPress: handleBiometricDisable },
         ]
       );
     } else {
-      // Enable biometric login
       if (!biometricAvailable || !biometricEnrolled) {
         setShowBiometricModal(true);
         return;
       }
-      
-      // Check if biometric login is already set up
       const isAvailable = await isBiometricLoginAvailable();
       if (isAvailable) {
         setBiometricCredentialsSaved(true);
         Alert.alert('Success', 'Biometric login is already enabled!');
         return;
       }
-      
-      // Check biometric support and provide specific guidance
       const biometricSupport = await checkBiometricSupport();
       if (!biometricSupport.hasHardware) {
-        Alert.alert(
-          'Biometric Not Supported',
-          'Your device does not support biometric authentication (fingerprint or Face ID).',
-          [{ text: 'OK', style: 'default' }]
-        );
+        Alert.alert('Biometric Not Supported', 'Your device does not support biometric authentication (fingerprint or Face ID).', [{ text: 'OK', style: 'default' }]);
         return;
       }
-      
       if (!biometricSupport.isEnrolled) {
-        Alert.alert(
-          'Set Up Biometric Authentication',
-          'Please set up fingerprint or Face ID in your device settings first, then try again.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Open Settings',
-              onPress: () => {
-                // On iOS, we can't directly open Settings, but we can guide the user
-                Alert.alert(
-                  'Device Settings',
-                  'Go to Settings > Face ID & Passcode (or Touch ID & Passcode) and set up biometric authentication.',
-                  [{ text: 'OK', style: 'default' }]
-                );
-              },
+        Alert.alert('Set Up Biometric Authentication', 'Please set up fingerprint or Face ID in your device settings first, then try again.', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open Settings',
+            onPress: () => {
+              Alert.alert('Device Settings', 'Go to Settings > Face ID & Passcode (or Touch ID & Passcode) and set up biometric authentication.', [{ text: 'OK', style: 'default' }]);
             },
-          ]
-        );
+          },
+        ]);
         return;
       }
-      
-      // Inform user that biometric setup happens during login
       Alert.alert(
         'Enable Biometric Login',
         'To enable biometric login, please sign out and sign in again. You will be prompted to set up biometric authentication during the login process.',
         [
           { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Sign Out',
-            style: 'destructive',
-            onPress: handleLogout,
-          },
+          { text: 'Sign Out', style: 'destructive', onPress: handleLogout },
         ]
       );
     }
   };
 
-  // --- FIX: Async logic here ---
   const handleBiometricDisable = async () => {
     const success = await deleteBiometricCredentials();
     if (success) {
@@ -283,23 +226,13 @@ export default function ProfileScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            // First sign out
             await signOut();
-            
-            // Small delay to ensure logout completes
             setTimeout(() => {
-              // Show success message
               Alert.alert('Success', 'You have been logged out successfully.', [
-                {
-                  text: 'OK',
-                  onPress: () => {
-                    // Navigate to login screen and clear navigation stack
-                    router.replace('/');
-                  },
-                },
+                { text: 'OK', onPress: () => router.replace('/') },
               ]);
             }, 100);
-          } catch (error) {
+          } catch {
             Alert.alert('Error', 'Failed to logout. Please try again.');
           }
         },
@@ -341,9 +274,7 @@ export default function ProfileScreen() {
     },
   ];
 
-  const handleDeleteNotification = (id: number) => {
-          setNotifications(notifications.filter((n: any) => n.id !== id));
-  };
+  const handleDeleteNotification = (id: number) => setNotifications(notifications.filter((n) => n.id !== id));
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -390,7 +321,7 @@ export default function ProfileScreen() {
                   {biometricUnavailableReason}
                 </Text>
                 <Text style={styles.modalSubtext}>
-                  {biometricUnavailableReason.includes('not supported') 
+                  {biometricUnavailableReason.includes('not supported')
                     ? 'Your device does not have fingerprint or Face ID capabilities.'
                     : biometricUnavailableReason.includes('set up')
                     ? 'Please set up biometric authentication in your device settings first.'
@@ -456,25 +387,25 @@ export default function ProfileScreen() {
 
         {/* Emergency Contact */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Emergency Contact</Text>
+          <View style={styles.emergencyHeaderRow}>
+            <Text style={styles.sectionTitle}>Emergency Contact</Text>
+            <View style={styles.relationshipTagFixed}>
+              <Text style={styles.relationshipTagText}>{emergency.relationship}</Text>
+            </View>
+          </View>
           <View style={styles.emergencyCard}>
             <View style={styles.emergencyHeader}>
               <View style={styles.emergencyAvatar}>
                 <Text style={styles.emergencyInitial}>
                   {emergency.name
                     .split(' ')
-                    .map((n: string) => n[0])
+                    .map((n) => n[0])
                     .join('')
                     .toUpperCase()}
                 </Text>
               </View>
               <View style={styles.emergencyInfo}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-                  <Text style={styles.emergencyName}>{emergency.name}</Text>
-                  <View style={styles.relationshipTag}>
-                    <Text style={styles.relationshipTagText}>{emergency.relationship}</Text>
-                  </View>
-                </View>
+                <Text style={styles.emergencyName}>{emergency.name}</Text>
                 <Text style={styles.emergencyPhone}>{emergency.phone}</Text>
               </View>
             </View>
@@ -647,11 +578,94 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  // Emergency Header Row: for header + right-aligned relationship
+  emergencyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    position: 'relative',
+  },
+  relationshipTagFixed: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    backgroundColor: '#EFF6FF',
+    borderColor: LIGHT_BLUE,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    alignSelf: 'flex-end',
+    minWidth: 68,
+    alignItems: 'flex-end',
+  },
+  relationshipTagText: {
+    color: BLUE,
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+  },
+  emergencyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 0,
+    gap: 0,
+  },
+  emergencyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 6,
+
+  },
+  emergencyAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: BLUE,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+    marginRight: 7, // Less margin-right for more compact
+  },
+  emergencyInitial: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+  emergencyInfo: { flex: 1 },
+  emergencyName: {
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginTop: 20,
+  },
+  emergencyPhone: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginTop: 5,
+  },
+  emergencyCallButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: BLUE,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 20,
+    gap: 6,
+  },
+  emergencyCallText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+  },
   sectionTitle: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
-    marginBottom: 16,
+    marginBottom: 0,
   },
   menuContainer: { gap: 2, marginTop: 8 },
   menuItem: {
@@ -682,75 +696,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderRadius: 8,
     marginTop: 2,
-  },
-  // --- Emergency ---
-  emergencyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  emergencyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 10,
-  },
-  emergencyAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: BLUE,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  emergencyInitial: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-  emergencyInfo: { flex: 1 },
-  emergencyName: {
-    fontSize: 15,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-    marginBottom: 0,
-  },
-  emergencyPhone: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  relationshipTag: {
-    backgroundColor: '#EFF6FF',
-    borderColor: LIGHT_BLUE,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    marginLeft: 4,
-    alignSelf: 'flex-start',
-  },
-  relationshipTagText: {
-    color: BLUE,
-    fontFamily: 'Inter-Medium',
-    fontSize: 12,
-  },
-  emergencyCallButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: BLUE,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-  },
-  emergencyCallText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
   },
   // --- Notifications Dropdown ---
   notificationsDropdownBackdrop: {
@@ -884,3 +829,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
   },
 });
+ 

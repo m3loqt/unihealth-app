@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import { Link, router } from 'expo-router';
-import { Stethoscope, Eye, EyeOff, Mail, Lock, Fingerprint, User } from 'lucide-react-native';
+import { Stethoscope, Eye, EyeOff, Mail, Lock, Fingerprint, User, AlertCircle } from 'lucide-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../src/hooks/auth/useAuth';
 import { performBiometricLogin, isBiometricLoginAvailable, saveBiometricCredentials, checkBiometricSupport } from '../src/hooks/auth/useBiometricAuth';
@@ -33,6 +33,18 @@ export default function SignInScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [lastSuccessfulLogin, setLastSuccessfulLogin] = useState<{email: string, password: string, userProfile: any} | null>(null);
+
+  // --- New: Biometric Button Enable State ---
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+
+  // Check on mount and after welcome modal (i.e. after setup)
+  useEffect(() => {
+    const checkAvailability = async () => {
+      const available = await isBiometricLoginAvailable();
+      setIsBiometricEnabled(available);
+    };
+    checkAvailability();
+  }, [showWelcomeModal, showBiometricSetup]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -71,38 +83,33 @@ export default function SignInScreen() {
       const userProfile = await signIn(email, password);
 
       if (userProfile) {
-        console.log('Login successful:', userProfile);
         const targetRoute =
           userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
-        
+
         // Always offer biometric setup after successful login (unless already set up)
         const isBiometricAvailable = await isBiometricLoginAvailable();
         if (!isBiometricAvailable) {
-          // Offer to set up biometric login after successful login
           setLastSuccessfulLogin({ email, password, userProfile });
           setShowBiometricSetup(true);
         } else {
-          // Biometric already set up, proceed to app
           setNextRoute(targetRoute);
           setShowWelcomeModal(true);
         }
       } else {
-        console.log('Login failed: No user profile returned');
         setErrorMessage('Invalid email or password.');
       }
     } catch (error) {
-      let errorMessage = 'Invalid email or password.';
-
+      let errorMsg = 'Invalid email or password.';
       if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
         if (error.message.includes('user-not-found')) {
-          errorMessage = 'No account found with this email. Please sign up.';
+          errorMsg = 'No account found with this email. Please sign up.';
         } else if (error.message.includes('wrong-password')) {
-          errorMessage = 'Incorrect password. Please try again.';
+          errorMsg = 'Incorrect password. Please try again.';
         } else if (error.message.includes('too-many-requests')) {
-          errorMessage = 'Too many failed attempts. Please try again later.';
+          errorMsg = 'Too many failed attempts. Please try again later.';
         }
       }
-      setErrorMessage(errorMessage);
+      setErrorMessage(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -113,26 +120,21 @@ export default function SignInScreen() {
   };
 
   const handleBiometricLogin = async () => {
+    if (!isBiometricEnabled) return;
     try {
-      // Check if biometric login is available
       const isAvailable = await isBiometricLoginAvailable();
       if (!isAvailable) {
         setErrorMessage('Biometric login not available. Please sign in with email and password first.');
+        setIsBiometricEnabled(false);
         return;
       }
-
-      // Perform biometric authentication
       const credentials = await performBiometricLogin();
       if (!credentials) {
         setErrorMessage('Biometric authentication failed. Please try again or sign in with password.');
         return;
       }
-
-      // Sign in with retrieved credentials
       const userProfile = await signIn(credentials.email, credentials.password);
-      
       if (userProfile) {
-        console.log('Biometric login successful:', userProfile);
         const targetRoute = userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
         setNextRoute(targetRoute);
         setShowWelcomeModal(true);
@@ -140,7 +142,6 @@ export default function SignInScreen() {
         setErrorMessage('Biometric login failed. Please sign in with password.');
       }
     } catch (error) {
-      console.error('Biometric login error:', error);
       setErrorMessage('Biometric authentication failed. Please try again.');
     }
   };
@@ -152,11 +153,11 @@ export default function SignInScreen() {
 
   const handleSetupBiometric = async () => {
     if (!lastSuccessfulLogin) return;
-    
     try {
-      const targetRoute = lastSuccessfulLogin.userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
-      
-      // Check biometric support first
+      const targetRoute = lastSuccessfulLogin.userProfile.role === 'specialist'
+        ? '/(specialist)/tabs'
+        : '/(patient)/tabs';
+
       const biometricSupport = await checkBiometricSupport();
       if (!biometricSupport.hasHardware) {
         Alert.alert(
@@ -172,7 +173,6 @@ export default function SignInScreen() {
         );
         return;
       }
-      
       if (!biometricSupport.isEnrolled) {
         Alert.alert(
           'Set Up Biometric Authentication',
@@ -191,18 +191,17 @@ export default function SignInScreen() {
         );
         return;
       }
-      
       const success = await saveBiometricCredentials(
         lastSuccessfulLogin.email,
         lastSuccessfulLogin.password,
         targetRoute,
         lastSuccessfulLogin.userProfile.role
       );
-      
       if (success) {
         setShowBiometricSetup(false);
         setNextRoute(targetRoute);
         setShowWelcomeModal(true);
+        setIsBiometricEnabled(true); // Enable biometric button
       } else {
         Alert.alert(
           'Setup Failed',
@@ -217,7 +216,6 @@ export default function SignInScreen() {
         );
       }
     } catch (error) {
-      console.error('Error setting up biometric login:', error);
       Alert.alert(
         'Setup Failed',
         'Failed to set up biometric login. You can continue without biometric authentication.',
@@ -237,7 +235,6 @@ export default function SignInScreen() {
 
   const handleSkipBiometric = () => {
     if (!lastSuccessfulLogin) return;
-    
     const targetRoute = lastSuccessfulLogin.userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
     setShowBiometricSetup(false);
     setNextRoute(targetRoute);
@@ -246,7 +243,7 @@ export default function SignInScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Custom Welcome Modal */}
+      {/* Welcome Modal */}
       <Modal
         visible={showWelcomeModal}
         transparent
@@ -346,7 +343,7 @@ export default function SignInScreen() {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Enable Biometric Login</Text>
+              <Text style={styles.modalTitle}>Or use Biometric Login</Text>
               <Text style={styles.modalSubtitle}>
                 Sign in faster with fingerprint or Face ID
               </Text>
@@ -379,23 +376,6 @@ export default function SignInScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* Subtle "Change Role" Button */}
-      <View style={{ alignItems: 'center', marginTop: 12, marginBottom: -12 }}>
-        {!showRoleModal && (
-          <TouchableOpacity onPress={() => setShowRoleModal(true)}>
-            <Text style={{
-              color: '#2563EB',
-              fontSize: 13,
-              textDecorationLine: 'underline',
-              fontFamily: 'Inter-Medium',
-              opacity: 0.7
-            }}>
-              Not your role? Choose a different one
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -470,15 +450,30 @@ export default function SignInScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {/* Error Message */}
+              {/* Subtle Message Box */}
               {errorMessage ? (
-                <Text style={styles.errorMessage}>{errorMessage}</Text>
+                <View style={styles.subtleMessageBox}>
+                  <AlertCircle size={18} color="#6B7280" style={{ marginRight: 7, marginTop: 1 }} />
+                  <Text style={styles.subtleMessageText}>{errorMessage}</Text>
+                </View>
               ) : null}
 
               {/* Biometric Login */}
               <View style={styles.biometricContainer}>
-                <Text style={styles.biometricText}>Or use biometric login</Text>
-                <TouchableOpacity style={styles.biometricButton} onPress={handleBiometricLogin}>
+                <Text style={[
+                  styles.biometricHintText,
+                  !isBiometricEnabled && { color: '#D1D5DB' }
+                ]}>
+                  {isBiometricEnabled ? "Or use biometric login" : "Enable biometric login after sign in"}
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.biometricButton,
+                    !isBiometricEnabled && styles.biometricButtonDisabled,
+                  ]}
+                  onPress={handleBiometricLogin}
+                  disabled={!isBiometricEnabled}
+                >
                   <Fingerprint size={32} color="#1E40AF" strokeWidth={2} />
                 </TouchableOpacity>
               </View>
@@ -496,8 +491,10 @@ export default function SignInScreen() {
               {/* Terms and Privacy */}
               <Text style={styles.termsText}>
                 By signing in, you agree to our{' '}
-                <Text style={styles.linkText}>Terms</Text> and{' '}
-                <Text style={styles.linkText}>Privacy Policy</Text>
+                <TouchableOpacity onPress={() => router.push('/(shared)/terms-privacy')}>
+                  <Text style={styles.linkText}>Terms and Privacy Policy</Text>
+                </TouchableOpacity>{' '}
+                {/* <Text style={styles.linkText}>Privacy Policy</Text> */}
               </Text>
             </View>
           </View>
@@ -506,7 +503,6 @@ export default function SignInScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   keyboardAvoid: { flex: 1 },
@@ -577,22 +573,41 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     textAlign: 'center',
   },
-  errorMessage: {
-    color: '#EF4444',
-    backgroundColor: '#FEE2E2',
+
+  subtleMessageBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F3F4F6',  // Soft gray
     borderRadius: 8,
-    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     marginTop: 2,
     marginBottom: 18,
+    minHeight: 40,
+  },
+  subtleMessageText: {
+    color: '#4B5563',
     fontSize: 15,
     fontFamily: 'Inter-Medium',
-    textAlign: 'center',
+    flex: 1,
+    textAlign: 'left',
+    marginTop: 1,
   },
+
   biometricContainer: { alignItems: 'center', marginBottom: 32 },
   biometricText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
+    marginBottom: 16,
+  },
+  biometricHintText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    marginTop: 6,
     marginBottom: 16,
   },
   biometricButton: {
@@ -604,6 +619,9 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  biometricButtonDisabled: {
+    opacity: 0.35,
   },
   signUpContainer: {
     flexDirection: 'row',
@@ -628,7 +646,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   linkText: { color: '#1E40AF', fontFamily: 'Inter-Medium' },
-  // Modal Styles
+
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -711,7 +729,6 @@ const styles = StyleSheet.create({
   roleDescriptionSelected: {
     color: '#E5E7EB',
   },
-  // Welcome Modal Styles (UI-matched)
   welcomeModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.18)',
@@ -719,14 +736,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   welcomeModalCard: {
-     width: 320,
-     backgroundColor: '#F9FAFB',
-     borderRadius: 20,
-     borderWidth: 1.5,
-     borderColor: '#E5E7EB',   // <- subtle gray
-     paddingVertical: 36,
-     paddingHorizontal: 28,
-     alignItems: 'center',
+    width: 320,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    paddingVertical: 36,
+    paddingHorizontal: 28,
+    alignItems: 'center',
   },
   welcomeIconWrap: {
     marginBottom: 12,
@@ -752,7 +769,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
-  // Biometric Setup Modal Styles
   biometricSetupContainer: {
     alignItems: 'center',
     marginBottom: 24,
