@@ -1,85 +1,148 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  StyleSheet,
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Image,
-  Platform,
   StatusBar,
+  Platform,
+  Image,
   Alert,
-  StyleSheet,
+  RefreshControl,
 } from 'react-native';
 import {
-  Bell,
   ChevronRight,
-  Phone,
+  User,
   Mail,
+  Phone,
   MapPin,
-  LogOut,
-  Lock,
-  BookOpen,
-  CircleHelp as HelpCircle,
+  Calendar,
   FileText,
-  Pill,
+  Settings,
+  LogOut,
+  Edit,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
-
-// Static data for the specialist
-const specialistData = {
-  fullName: 'Dr. Sarah Johnson',
-  specialty: 'Cardiologist',
-  licenseNumber: 'MD-12345-CA',
-  yearsOfExperience: '15 years',
-  address: '456 Medical Plaza, Suite 200, San Francisco, CA',
-  contact: '+1 (555) 987-6543',
-  email: 'dr.sarah.johnson@hospital.com',
-  hospital: 'San Francisco General Hospital',
-  education: 'MD from Stanford University',
-  profileImg: 'https://randomuser.me/api/portraits/women/68.jpg',
-};
+import { databaseService } from '../../../src/services/database/firebase';
 
 export default function SpecialistProfileScreen() {
-  const [notifications] = useState(2);
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const [profileData, setProfileData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    specialization: '',
+    experience: '',
+    profileImage: '',
+    medicalLicenseNumber: '',
+    prcId: '',
+    prcExpiryDate: '',
+    professionalFee: '',
+    gender: '',
+    dateOfBirth: '',
+    civilStatus: '',
+    status: '',
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            // First sign out
-            await signOut();
-            
-            // Small delay to ensure logout completes
-            setTimeout(() => {
-              // Show success message
-              Alert.alert('Success', 'You have been logged out successfully.', [
-                {
-                  text: 'OK',
-                  onPress: () => {
-                    // Navigate to login screen and clear navigation stack
-                    router.replace('/');
-                  },
-                },
-              ]);
-            }, 100);
-          } catch (error) {
-            Alert.alert('Error', 'Failed to logout. Please try again.');
-          }
+  // Load profile data from Firebase
+  useEffect(() => {
+    if (user && user.uid) {
+      loadProfileData();
+    }
+  }, [user]);
+
+  const loadProfileData = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const specialistProfile = await databaseService.getSpecialistProfile(user.uid);
+      
+      if (specialistProfile) {
+        console.log('Specialist profile loaded:', specialistProfile);
+        setProfileData({
+          name: `${specialistProfile.firstName || ''} ${specialistProfile.lastName || ''}`.trim() || user.name || '',
+          email: specialistProfile.email || user.email || '',
+          phone: specialistProfile.contactNumber || '',
+          address: specialistProfile.address || '',
+          specialization: specialistProfile.specialty || '',
+          experience: specialistProfile.yearsOfExperience && specialistProfile.yearsOfExperience > 0 ? `${specialistProfile.yearsOfExperience} years` : '',
+          profileImage: specialistProfile.profileImageUrl || '',
+          medicalLicenseNumber: specialistProfile.medicalLicenseNumber || '',
+          prcId: specialistProfile.prcId || '',
+          prcExpiryDate: specialistProfile.prcExpiryDate || '',
+          professionalFee: specialistProfile.professionalFee ? `₱${specialistProfile.professionalFee}` : '',
+          gender: specialistProfile.gender || '',
+          dateOfBirth: specialistProfile.dateOfBirth || '',
+          civilStatus: specialistProfile.civilStatus || '',
+          status: specialistProfile.status || '',
+        });
+      } else {
+        // Use basic user data if no specialist profile exists
+        setProfileData({
+          name: user.name || '',
+          email: user.email || '',
+          phone: '',
+          address: '',
+          specialization: '',
+          experience: '',
+          profileImage: '',
+          medicalLicenseNumber: '',
+          prcId: '',
+          prcExpiryDate: '',
+          professionalFee: '',
+          gender: '',
+          dateOfBirth: '',
+          civilStatus: '',
+          status: '',
+        });
+      }
+    } catch (error) {
+      console.error('Error loading profile data:', error);
+      Alert.alert('Error', 'Failed to load profile data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadProfileData();
+    setRefreshing(false);
+  };
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+              router.replace('/');
+            } catch (error) {
+              console.error('Error signing out:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const quickActions = [
     {
-      icon: Pill,
+      icon: FileText,
       title: 'Prescriptions',
       color: '#1E40AF',
       onPress: () => router.push('/(specialist)/tabs/prescriptions'),
@@ -94,25 +157,25 @@ export default function SpecialistProfileScreen() {
 
   const settingsItems = [
     {
-      icon: Lock,
+      icon: Settings,
       title: 'Change Password',
       color: '#1E40AF',
       onPress: () => router.push('/(auth)/change-password'),
     },
     {
-      icon: Bell,
+      icon: Settings,
       title: 'Notification Preferences',
       color: '#1E40AF',
       onPress: () => Alert.alert('Notifications', 'Notification preferences would be configured here'),
     },
     {
-      icon: HelpCircle,
+      icon: Settings,
       title: 'Help & Support',
       color: '#1E40AF',
       onPress: () => router.push('/(shared)/help-support'),
     },
     {
-      icon: BookOpen,
+      icon: Settings,
       title: 'Terms & Privacy Policy',
       color: '#1E40AF',
       onPress: () => router.push('/(shared)/terms-privacy'),
@@ -120,17 +183,22 @@ export default function SpecialistProfileScreen() {
   ];
 
   const {
-    fullName,
-    specialty,
-    licenseNumber,
-    yearsOfExperience,
-    address,
-    contact,
+    name,
     email,
-    hospital,
-    education,
-    profileImg,
-  } = specialistData;
+    phone,
+    address,
+    specialization,
+    experience,
+    profileImage,
+    medicalLicenseNumber,
+    prcId,
+    prcExpiryDate,
+    professionalFee,
+    gender,
+    dateOfBirth,
+    civilStatus,
+    status,
+  } = profileData;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -138,32 +206,35 @@ export default function SpecialistProfileScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Header */}
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Profile</Text>
           <TouchableOpacity style={styles.bellButton}>
-            <Bell size={28} color="#1E40AF" />
-            {notifications > 0 && <View style={styles.notifDot} />}
+            <User size={28} color="#1E40AF" />
+            {/* {notifications > 0 && <View style={styles.notifDot} />} */}
           </TouchableOpacity>
         </View>
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
-            <Image source={{ uri: profileImg }} style={styles.profileImage} />
+            <Image source={{ uri: profileImage }} style={styles.profileImage} />
             <View style={styles.profileInfo}>
-              <Text style={styles.userName}>{fullName}</Text>
-              <Text style={styles.userSpecialty}>{specialty}</Text>
-              {/* License number directly under specialty */}
-        
-              <Text style={styles.experience}>{yearsOfExperience} experience</Text>
+              <Text style={styles.userName}>{name}</Text>
+                             <Text style={styles.userSpecialty}>{specialization}</Text>
+               {/* License number directly under specialty */}
+         
+               {experience && <Text style={styles.experience}>{experience} experience</Text>}
             </View>
           </View>
           <View style={styles.contactInfo}>
             <View style={styles.contactItem}>
               <Phone size={16} color="#6B7280" />
-              <Text style={styles.contactText}>{contact}</Text>
+              <Text style={styles.contactText}>{phone}</Text>
             </View>
             <View style={styles.contactItem}>
               <Mail size={16} color="#6B7280" />
@@ -176,22 +247,69 @@ export default function SpecialistProfileScreen() {
           </View>
         </View>
 
-        {/* Professional Info */}
+
+
+        {/* Professional Information */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Professional Information</Text>
           <View style={styles.infoList}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>License No.:</Text>
-              <Text style={styles.infoValue}>{licenseNumber}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Hospital:</Text>
-              <Text style={styles.infoValue}>{hospital}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Education:</Text>
-              <Text style={styles.infoValue}>{education}</Text>
-            </View>
+            {medicalLicenseNumber && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>License Number:</Text>
+                <Text style={styles.infoValue}>{medicalLicenseNumber}</Text>
+              </View>
+            )}
+            {prcId && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>PRC ID:</Text>
+                <Text style={styles.infoValue}>{prcId}</Text>
+              </View>
+            )}
+            {prcExpiryDate && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>PRC Expiry:</Text>
+                <Text style={styles.infoValue}>{new Date(prcExpiryDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+              </View>
+            )}
+            {professionalFee && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Professional Fee:</Text>
+                <Text style={styles.infoValue}>{professionalFee}</Text>
+              </View>
+            )}
+            {status && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Status:</Text>
+                <Text style={[styles.infoValue, { color: status === 'pending' ? '#F59E0B' : '#10B981' }]}>
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Personal Information */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Personal Information</Text>
+          <View style={styles.infoList}>
+            {gender && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Gender:</Text>
+                <Text style={styles.infoValue}>{gender.charAt(0).toUpperCase() + gender.slice(1)}</Text>
+              </View>
+            )}
+            {dateOfBirth && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Date of Birth:</Text>
+                <Text style={styles.infoValue}>{new Date(dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+              </View>
+            )}
+            {civilStatus && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Civil Status:</Text>
+                <Text style={styles.infoValue}>{civilStatus.charAt(0).toUpperCase() + civilStatus.slice(1)}</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -224,7 +342,7 @@ export default function SpecialistProfileScreen() {
                 <ChevronRight size={20} color="#1E40AF" />
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={styles.logoutItem} onPress={handleLogout}>
+            <TouchableOpacity style={styles.logoutItem} onPress={handleSignOut}>
               <View style={[styles.menuIcon, { backgroundColor: '#1E40AF17' }]}>
                 <LogOut size={20} color="#1E40AF" />
               </View>

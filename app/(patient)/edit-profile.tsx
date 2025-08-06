@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,22 +11,64 @@ import {
   Platform,
   Alert,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { ChevronLeft, User, Mail, Phone, MapPin, Camera } from 'lucide-react-native';
 import { router } from 'expo-router';
-
-// Static data structure - ready for dynamic implementation
-const initialProfileData = {
-  fullName: 'John Doe',
-  email: 'john.doe@email.com',
-  phone: '+1 (555) 123-4567',
-  address: '1234 Main St, San Francisco, CA 94102',
-  profileImage: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150',
-};
+import { useAuth } from '../../src/hooks/auth/useAuth';
+import { databaseService } from '../../src/services/database/firebase';
 
 export default function EditProfileScreen() {
-  const [profileData, setProfileData] = useState(initialProfileData);
+  const { user } = useAuth();
+  const [profileData, setProfileData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    profileImage: '',
+  });
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Load profile data from Firebase
+  useEffect(() => {
+    if (user && user.uid) {
+      loadProfileData();
+    }
+  }, [user]);
+
+  const loadProfileData = async () => {
+    if (!user) return;
+    
+    try {
+      setRefreshing(true);
+      const patientProfile = await databaseService.getPatientProfile(user.uid);
+      
+      if (patientProfile) {
+        setProfileData({
+          fullName: patientProfile.name || user.displayName || '',
+          email: patientProfile.email || user.email || '',
+          phone: patientProfile.phone || '',
+          address: patientProfile.address || '',
+          profileImage: patientProfile.profileImage || user.photoURL || '',
+        });
+      } else {
+        // Use basic user data if no patient profile exists
+        setProfileData({
+          fullName: user.displayName || '',
+          email: user.email || '',
+          phone: '',
+          address: '',
+          profileImage: user.photoURL || '',
+        });
+      }
+    } catch (error) {
+      console.error('Error loading profile data:', error);
+      Alert.alert('Error', 'Failed to load profile data. Please try again.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setProfileData(prev => ({
@@ -36,15 +78,33 @@ export default function EditProfileScreen() {
   };
 
   const handleSaveProfile = async () => {
+    if (!user) {
+      Alert.alert('Error', 'Please log in to update your profile.');
+      return;
+    }
+
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Update profile in Firebase
+      await databaseService.updatePatientProfile(user.uid, {
+        name: profileData.fullName,
+        email: profileData.email,
+        phone: profileData.phone,
+        address: profileData.address,
+        profileImage: profileData.profileImage,
+        lastUpdated: new Date().toISOString(),
+      });
+
       Alert.alert('Success', 'Profile updated successfully!', [
         { text: 'OK', onPress: () => router.back() }
       ]);
-    }, 1500);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChangePhoto = () => {
@@ -76,6 +136,9 @@ export default function EditProfileScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={loadProfileData} />
+        }
       >
         {/* Profile Photo Section */}
         <View style={styles.photoSection}>

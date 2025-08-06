@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,49 +8,59 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
+  Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { Pill, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
-
-// Static data for issued prescriptions
-const staticPrescriptions = [
-  {
-    id: '1',
-    medication: 'Atorvastatin',
-    dosage: '20mg',
-    frequency: 'Once daily',
-    instructions: 'Take with food',
-    prescribedDate: '2024-05-01',
-    duration: '30 days',
-    status: 'active',
-    remainingRefills: 2,
-  },
-  {
-    id: '2',
-    medication: 'Lisinopril',
-    dosage: '10mg',
-    frequency: 'Once daily',
-    instructions: '',
-    prescribedDate: '2024-04-10',
-    duration: '60 days',
-    status: 'completed',
-    remainingRefills: 0,
-  },
-];
+import { useAuth } from '../../../src/hooks/auth/useAuth';
+import { databaseService, Prescription } from '../../../src/services/database/firebase';
 
 export default function SpecialistPrescriptionsScreen() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  // In the future, replace staticPrescriptions with dynamic data from backend
-  const prescriptions = staticPrescriptions;
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Load prescriptions from Firebase
+  useEffect(() => {
+    if (user && user.uid) {
+      loadPrescriptions();
+    }
+  }, [user]);
+
+  const loadPrescriptions = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const specialistPrescriptions = await databaseService.getPrescriptionsBySpecialist(user.uid);
+      console.log('Loaded prescriptions:', specialistPrescriptions.length);
+      setPrescriptions(specialistPrescriptions);
+    } catch (error) {
+      console.error('Error loading prescriptions:', error);
+      Alert.alert('Error', 'Failed to load prescriptions. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadPrescriptions();
+    setRefreshing(false);
+  };
 
   const activePrescriptions = prescriptions.filter(p => p.status === 'active');
   const pastPrescriptions = prescriptions.filter(p => p.status === 'completed' || p.status === 'discontinued');
 
-  const filterPrescriptions = (list) =>
-    list.filter((item) => item.medication?.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filterPrescriptions = (list: Prescription[]) =>
+    list.filter((item: Prescription) => item.medication?.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const renderActivePrescription = (prescription) => (
+  const renderActivePrescription = (prescription: Prescription) => (
     <View key={prescription.id} style={styles.prescriptionCard}>
       <View style={styles.prescriptionHeader}>
         <View style={[styles.medicationIcon, { backgroundColor: '#1E3A8A15' }]}> 
@@ -87,7 +97,7 @@ export default function SpecialistPrescriptionsScreen() {
     </View>
   );
 
-  const renderPastPrescription = (prescription) => (
+  const renderPastPrescription = (prescription: Prescription) => (
     <View key={prescription.id} style={styles.prescriptionCard}>
       <View style={styles.prescriptionHeader}>
         <View style={[styles.medicationIcon, { backgroundColor: '#1E3A8A15' }]}> 
@@ -102,9 +112,8 @@ export default function SpecialistPrescriptionsScreen() {
             {prescription.instructions || 'No additional instructions'}
           </Text>
         </View>
-        <View style={styles.statusBadge}>
-          <CheckCircle size={14} color="#6B7280" />
-          <Text style={styles.statusText}>{prescription.status}</Text>
+        <View style={styles.prescriptionStatus}>
+          <CheckCircle size={20} color="#10B981" />
         </View>
       </View>
       <View style={styles.prescriptionMeta}>
@@ -115,35 +124,102 @@ export default function SpecialistPrescriptionsScreen() {
           </Text>
         </View>
         <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Duration:</Text>
+          <Text style={styles.metaLabel}>Status:</Text>
           <Text style={styles.metaValue}>
-            {prescription.duration || 'Duration not specified'}
+            {prescription.status === 'completed' ? 'Completed' : 'Discontinued'}
           </Text>
         </View>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Status:</Text>
-          <Text style={styles.metaValue}>{prescription.status}</Text>
-        </View>
       </View>
     </View>
   );
 
-  const renderEmptyState = (type) => (
+  const renderEmptyState = (type: string) => (
     <View style={styles.emptyState}>
-      <View style={styles.emptyIcon}>
-        <Pill size={48} color="#9CA3AF" />
-      </View>
-      <Text style={styles.emptyTitle}>
-        {'No prescriptions issued yet'}
+      <Pill size={48} color="#9CA3AF" />
+      <Text style={styles.emptyStateTitle}>
+        No {type.toLowerCase()} prescriptions
       </Text>
-      <Text style={styles.emptyDescription}>
-        {'Prescriptions you issue for patients will appear here.'}
+      <Text style={styles.emptyStateText}>
+        {type === 'Active' 
+          ? 'No active prescriptions found for your patients.'
+          : 'No past prescriptions found for your patients.'
+        }
       </Text>
     </View>
   );
 
-  let filteredActive = filterPrescriptions(activePrescriptions);
-  let filteredPast = filterPrescriptions(pastPrescriptions);
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1E40AF" />
+          <Text style={styles.loadingText}>Loading prescriptions...</Text>
+        </View>
+      );
+    }
+
+    if (activeTab === 'All') {
+      const allPrescriptions = filterPrescriptions(prescriptions);
+      return allPrescriptions.length > 0 ? (
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          <View style={styles.prescriptionsList}>
+            {allPrescriptions.map(renderActivePrescription)}
+          </View>
+        </ScrollView>
+      ) : (
+        renderEmptyState('All')
+      );
+    }
+
+    if (activeTab === 'Active') {
+      const filteredActive = filterPrescriptions(activePrescriptions);
+      return filteredActive.length > 0 ? (
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          <View style={styles.prescriptionsList}>
+            {filteredActive.map(renderActivePrescription)}
+          </View>
+        </ScrollView>
+      ) : (
+        renderEmptyState('Active')
+      );
+    }
+
+    if (activeTab === 'Past') {
+      const filteredPast = filterPrescriptions(pastPrescriptions);
+      return filteredPast.length > 0 ? (
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          <View style={styles.prescriptionsList}>
+            {filteredPast.map(renderPastPrescription)}
+          </View>
+        </ScrollView>
+      ) : (
+        renderEmptyState('Past')
+      );
+    }
+
+    return null;
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -178,39 +254,7 @@ export default function SpecialistPrescriptionsScreen() {
           ))}
         </ScrollView>
       </View>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 95 }}
-      >
-        <View style={styles.prescriptionsList}>
-          {activeTab === 'All' ? (
-            <>
-              {filteredActive.length === 0 && filteredPast.length === 0
-                ? renderEmptyState('All')
-                : (
-                  <>
-                    {filteredActive.length === 0
-                      ? renderEmptyState('Active')
-                      : filteredActive.map(renderActivePrescription)}
-                    {filteredPast.length === 0
-                      ? renderEmptyState('Past')
-                      : filteredPast.map(renderPastPrescription)}
-                  </>
-                )
-              }
-            </>
-          ) : activeTab === 'Active' ? (
-            filteredActive.length === 0
-              ? renderEmptyState('Active')
-              : filteredActive.map(renderActivePrescription)
-          ) : (
-            filteredPast.length === 0
-              ? renderEmptyState('Past')
-              : filteredPast.map(renderPastPrescription)
-          )}
-        </View>
-      </ScrollView>
+      {renderContent()}
     </SafeAreaView>
   );
 }
@@ -375,5 +419,32 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 64,
+    paddingHorizontal: 32,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginTop: 16,
+    textAlign: 'center',
   },
 });

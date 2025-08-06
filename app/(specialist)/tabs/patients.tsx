@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,63 +9,57 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import { Search, User } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { useAuth } from '../../../src/hooks/auth/useAuth';
+import { databaseService, Patient } from '../../../src/services/database/firebase';
 
 export default function SpecialistPatientsScreen() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const filters = ['All', 'Active', 'Completed'];
 
-  // Sample patients data
-  const allPatients = [
-    {
-      id: 1,
-      name: 'John Doe',
-      status: 'Active',
-      referredFrom: 'General Medicine',
-      lastVisit: 'Dec 10, 2024',
-      condition: 'Hypertension',
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      status: 'Active',
-      referredFrom: 'Emergency Dept',
-      lastVisit: 'Dec 8, 2024',
-      condition: 'Chest Pain',
-    },
-    {
-      id: 3,
-      name: 'Michael Chen',
-      status: 'Active',
-      referredFrom: 'Family Medicine',
-      lastVisit: 'Today',
-      condition: 'Follow-up',
-    },
-    {
-      id: 4,
-      name: 'Emily Rodriguez',
-      status: 'Completed',
-      referredFrom: 'Cardiology',
-      lastVisit: 'Nov 28, 2024',
-      condition: 'Post-surgery',
-    },
-    {
-      id: 5,
-      name: 'David Wilson',
-      status: 'Active',
-      referredFrom: 'Internal Medicine',
-      lastVisit: 'Dec 5, 2024',
-      condition: 'Diabetes',
-    },
-  ];
+  // Load patients from Firebase
+  useEffect(() => {
+    if (user && user.uid) {
+      loadPatients();
+    }
+  }, [user]);
 
-  const filteredPatients = allPatients.filter((patient) => {
+  const loadPatients = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const specialistPatients = await databaseService.getPatientsBySpecialist(user.uid);
+      console.log('Loaded patients:', specialistPatients.length);
+      setPatients(specialistPatients);
+    } catch (error) {
+      console.error('Error loading patients:', error);
+      Alert.alert('Error', 'Failed to load patients. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadPatients();
+    setRefreshing(false);
+  };
+
+  const filteredPatients = patients.filter((patient) => {
     const matchesSearch =
-      patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.referredFrom.toLowerCase().includes(searchQuery.toLowerCase());
+      patient.patientFirstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      patient.patientLastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      patient.referredFrom?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = activeFilter === 'All' || patient.status === activeFilter;
     return matchesSearch && matchesFilter;
   });
@@ -93,8 +87,15 @@ export default function SpecialistPatientsScreen() {
     }
   };
 
-  const renderPatientCard = (patient: any) => {
-    const statusColors = getStatusColor(patient.status);
+  const renderPatientCard = (patient: Patient) => {
+    const statusColors = getStatusColor(patient.status || 'Active');
+    const patientName = `${patient.patientFirstName || ''} ${patient.patientLastName || ''}`.trim();
+    const initials = patientName
+      .split(' ')
+      .map((n: string) => n[0])
+      .join('')
+      .toUpperCase();
+
     return (
       <TouchableOpacity
         key={patient.id}
@@ -105,16 +106,15 @@ export default function SpecialistPatientsScreen() {
         <View style={styles.patientHeader}>
           <View style={styles.patientAvatar}>
             <Text style={styles.patientInitial}>
-              {patient.name
-                .split(' ')
-                .map((n: string) => n[0])
-                .join('')}
+              {initials || 'P'}
             </Text>
           </View>
           <View style={styles.patientInfo}>
-            <Text style={styles.patientName}>{patient.name}</Text>
-            <Text style={styles.referredFrom}>Referred from {patient.referredFrom}</Text>
-            <Text style={styles.condition}>{patient.condition}</Text>
+            <Text style={styles.patientName}>{patientName || 'Unknown Patient'}</Text>
+            <Text style={styles.referredFrom}>
+              Referred from {patient.referredFrom || 'General Medicine'}
+            </Text>
+            <Text style={styles.condition}>{patient.specialty || 'General Consultation'}</Text>
           </View>
           <View style={styles.patientMeta}>
             <View
@@ -127,10 +127,12 @@ export default function SpecialistPatientsScreen() {
               ]}
             >
               <Text style={[styles.statusText, { color: statusColors.text }]}>
-                {patient.status}
+                {patient.status || 'Active'}
               </Text>
             </View>
-            <Text style={styles.lastVisit}>{patient.lastVisit === 'Today' ? 'Today' : `Last visit: ${patient.lastVisit}`}</Text>
+            <Text style={styles.lastVisit}>
+              {patient.lastVisit ? `Last visit: ${patient.lastVisit}` : 'No visits yet'}
+            </Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -200,9 +202,16 @@ export default function SpecialistPatientsScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         <View style={styles.patientsList}>
-          {filteredPatients.length > 0 ? (
+          {loading ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>Loading patients...</Text>
+            </View>
+          ) : filteredPatients.length > 0 ? (
             filteredPatients.map(renderPatientCard)
           ) : (
             <View style={styles.emptyState}>

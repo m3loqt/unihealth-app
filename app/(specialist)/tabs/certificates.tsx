@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,15 @@ import {
   Platform,
   Dimensions,
   Pressable,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import {
   FileText, Search, Download, Eye, ChevronDown, Check
 } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { useAuth } from '../../../src/hooks/auth/useAuth';
+import { databaseService, Certificate } from '../../../src/services/database/firebase';
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = (screenWidth - 64) / 2;
@@ -33,41 +37,52 @@ const SORT_OPTIONS = [
   { key: 'validUntil', label: 'Valid Until' },
 ];
 
-// Static data for issued certificates
-const staticCertificates = [
-  {
-    id: '1',
-    type: 'Medical Leave',
-    patientName: 'John Doe',
-    issueDate: '2024-05-10',
-    expiryDate: '2024-05-15',
-    status: 'Valid',
-  },
-  {
-    id: '2',
-    type: 'Fit to Work',
-    patientName: 'Jane Smith',
-    issueDate: '2024-04-01',
-    expiryDate: '2024-04-10',
-    status: 'Expired',
-  },
-];
-
 export default function SpecialistCertificatesScreen() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showSort, setShowSort] = useState(false);
   const [sortDropdownPos, setSortDropdownPos] = useState({ top: 0, right: 0 });
-  const sortBtnRef = useRef(null);
-  // In the future, replace staticCertificates with dynamic data from backend
-  const certificates = staticCertificates;
+  const sortBtnRef = useRef<any>(null);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Load certificates from Firebase
+  useEffect(() => {
+    if (user && user.uid) {
+      loadCertificates();
+    }
+  }, [user]);
+
+  const loadCertificates = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const specialistCertificates = await databaseService.getCertificatesBySpecialist(user.uid);
+      console.log('Loaded certificates:', specialistCertificates.length);
+      setCertificates(specialistCertificates);
+    } catch (error) {
+      console.error('Error loading certificates:', error);
+      Alert.alert('Error', 'Failed to load certificates. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadCertificates();
+    setRefreshing(false);
+  };
 
   const filteredCertificates = certificates
     .filter((cert) => {
       const matchesSearch =
         cert.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        cert.patientName.toLowerCase().includes(searchQuery.toLowerCase());
+        cert.patientId.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus =
         statusFilter === 'all' || cert.status.toLowerCase() === statusFilter;
       return matchesSearch && matchesStatus;
@@ -79,7 +94,7 @@ export default function SpecialistCertificatesScreen() {
         case 'type':
           return a.type.localeCompare(b.type);
         case 'patient':
-          return a.patientName.localeCompare(b.patientName);
+          return a.patientId.localeCompare(b.patientId);
         case 'validUntil':
           return new Date(b.expiryDate || '').getTime() - new Date(a.expiryDate || '').getTime();
         default:
@@ -87,7 +102,7 @@ export default function SpecialistCertificatesScreen() {
       }
     });
 
-  const getStatusColors = (status) => {
+  const getStatusColors = (status: string) => {
     switch (status) {
       case 'Valid':
         return {
@@ -154,7 +169,7 @@ export default function SpecialistCertificatesScreen() {
 
   const handleShowSort = () => {
     if (sortBtnRef.current) {
-      sortBtnRef.current.measureInWindow((x, y, w, h) => {
+      sortBtnRef.current.measureInWindow((x: number, y: number, w: number, h: number) => {
         setSortDropdownPos({
           top: y + h - 50,
           right: screenWidth - (x + w),
@@ -166,7 +181,7 @@ export default function SpecialistCertificatesScreen() {
     }
   };
 
-  const renderCertificateCard = (certificate) => {
+  const renderCertificateCard = (certificate: Certificate) => {
     const statusColors = getStatusColors(certificate.status);
     return (
       <View
@@ -206,7 +221,7 @@ export default function SpecialistCertificatesScreen() {
             {certificate.type}
           </Text>
           <Text style={styles.doctorName} numberOfLines={1}>
-            {certificate.patientName}
+            {certificate.patientId}
           </Text>
           <Text style={styles.issuedDate}>{certificate.issueDate}</Text>
           <View style={styles.gridActions}>
@@ -319,9 +334,20 @@ export default function SpecialistCertificatesScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 80 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         <View style={styles.certificatesList}>
-          {filteredCertificates.length === 0 ? renderEmptyState() : renderGrid()}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading certificates...</Text>
+            </View>
+          ) : filteredCertificates.length === 0 ? (
+            renderEmptyState()
+          ) : (
+            renderGrid()
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -604,6 +630,16 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
   },
   // Dropdown (improved)
   dropdownBackdrop: {
