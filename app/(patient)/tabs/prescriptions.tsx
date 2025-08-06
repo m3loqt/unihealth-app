@@ -167,19 +167,22 @@ export default function PrescriptionsScreen() {
 
   const renderEmptyState = (type: string) => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyStateText}>
+      <View style={styles.emptyIcon}>
+        <Pill size={48} color="#9CA3AF" />
+      </View>
+      <Text style={styles.emptyTitle}>
         {loading ? 'Loading prescriptions...' : type === 'All' ? 'No prescriptions found' : `No ${type.toLowerCase()} prescriptions found`}
       </Text>
-      {!loading && (
-        <Text style={styles.emptyStateSubtext}>
-          {type === 'Active' 
+      <Text style={styles.emptyDescription}>
+        {loading 
+          ? 'Please wait while we load your prescriptions...'
+          : type === 'Active' 
             ? 'Your active prescriptions will appear here once prescribed by your healthcare provider.'
             : type === 'Past'
             ? 'Your completed or discontinued prescriptions will appear here.'
             : 'Your prescriptions will appear here once prescribed by your healthcare provider.'
-          }
-        </Text>
-      )}
+        }
+      </Text>
     </View>
   );
 
@@ -199,7 +202,7 @@ export default function PrescriptionsScreen() {
         <Text style={styles.headerTitle}>Prescriptions</Text>
         <TouchableOpacity
           style={styles.profileButton}
-          onPress={() => router.push('/profile')}
+          onPress={() => router.push('/(patient)/tabs/profile')}
         >
           <User size={24} color="#6B7280" />
         </TouchableOpacity>
@@ -421,17 +424,24 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 48,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
+    paddingVertical: 64,
     paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

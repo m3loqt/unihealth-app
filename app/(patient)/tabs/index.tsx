@@ -144,7 +144,7 @@ export default function HomeScreen() {
       <Pill size={48} color="#9CA3AF" />
       <Text style={styles.emptyStateTitle}>No Active Prescriptions</Text>
       <Text style={styles.emptyStateDescription}>
-        You don't have any active prescriptions at the moment.
+        Yey! No any active prescriptions at the moment.
       </Text>
       <TouchableOpacity 
         style={styles.emptyStateButton}
@@ -167,7 +167,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.userName}>{user?.name ? getFirstName(user.name) : ''}</Text>
+            <Text style={styles.userName}>{user?.name || ''}</Text>
           </View>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.iconButton}>
