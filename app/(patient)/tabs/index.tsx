@@ -13,6 +13,7 @@ import {
   Modal,
   Pressable,
   Alert,
+  Share as RNShare,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -31,6 +32,11 @@ import {
 import QRCode from 'react-native-qrcode-svg';
 import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
+import ViewShot from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing'; // Added for more robust sharing
+
 import { useAuth } from '@/src/hooks/auth/useAuth';
 import { databaseService } from '@/src/services/database/firebase';
 import { Appointment, Prescription } from '@/src/services/database/firebase';
@@ -42,7 +48,6 @@ const CARD_GAP = 16;
 const HORIZONTAL_MARGIN = 24;
 const CARD_WIDTH = SCREEN_WIDTH - 2 * HORIZONTAL_MARGIN - CARD_GAP;
 
-// Health Tips data (unchanged)
 const healthTips = [
   {
     image:
@@ -71,10 +76,13 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const [activeTip, setActiveTip] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+  const qrCodeRef = useRef<any>(null);
+  const qrCodeViewShotRef = useRef<any>(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [activePrescriptions, setActivePrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [qrActionLoading, setQrActionLoading] = useState(false);
 
   // Load user data
   useEffect(() => {
@@ -85,24 +93,20 @@ export default function HomeScreen() {
 
   const loadDashboardData = async () => {
     if (!user) return;
-    
     try {
       setLoading(true);
-      
       // Load appointments
       const appointments = await databaseService.getAppointments(user.uid, user.role);
-      const upcoming = appointments.filter(appt => 
+      const upcoming = appointments.filter(appt =>
         appt.status === 'confirmed' || appt.status === 'pending'
-      ).slice(0, 3); // Show only first 3
+      ).slice(0, 3);
       setUpcomingAppointments(upcoming);
-      
       // Load prescriptions
       const prescriptions = await databaseService.getPrescriptions(user.uid);
-      const active = prescriptions.filter(prescription => 
+      const active = prescriptions.filter(prescription =>
         prescription.status === 'active'
-      ).slice(0, 3); // Show only first 3
+      ).slice(0, 3);
       setActivePrescriptions(active);
-      
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       Alert.alert('Error', 'Failed to load dashboard data');
@@ -119,8 +123,80 @@ export default function HomeScreen() {
 
   // QR Modal Actions
   const handleCloseQRModal = () => setShowQRModal(false);
-  const handleDownload = () => {};
-  const handleShare = () => {};
+
+  // --- Improved Download QR as Image ---
+  const handleDownload = async () => {
+    if (qrActionLoading) return;
+    try {
+      setQrActionLoading(true);
+
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please grant media library permissions to download the QR code.');
+        return;
+      }
+
+      // Wait for QR code to render
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Capture QR code as PNG image
+      const uri = await qrCodeViewShotRef.current.capture();
+
+      // Save to gallery (MediaLibrary)
+      const asset = await MediaLibrary.createAssetAsync(uri);
+      await MediaLibrary.createAlbumAsync('UniHealth', asset, false);
+
+      Alert.alert(
+        'Success!',
+        'QR Code has been saved as an image in your photo gallery.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error downloading QR code:', error);
+      Alert.alert('Error', 'Failed to download QR code. Please try again.');
+    } finally {
+      setQrActionLoading(false);
+    }
+  };
+
+  // --- Improved Share QR as Image ---
+  const handleShare = async () => {
+    if (qrActionLoading) return;
+    try {
+      setQrActionLoading(true);
+
+      // Wait for QR code to render
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Capture QR code as PNG image
+      const uri = await qrCodeViewShotRef.current.capture();
+
+      // Save image to cache directory with .png extension
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `patient-qr-${timestamp}.png`;
+      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+      await FileSystem.copyAsync({ from: uri, to: fileUri });
+
+      // Share using expo-sharing (preferred) if available
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'image/png',
+          dialogTitle: 'Share Patient QR Code',
+        });
+      } else {
+        // Fallback to RNShare
+        await RNShare.share({
+          url: Platform.OS === 'ios' ? fileUri : `file://${fileUri}`,
+          title: 'Patient QR Code',
+        });
+      }
+    } catch (error) {
+      console.error('Error sharing QR code:', error);
+      Alert.alert('Error', 'Failed to share QR code. Please try again.');
+    } finally {
+      setQrActionLoading(false);
+    }
+  };
 
   // Placeholder components
   const renderAppointmentPlaceholder = () => (
@@ -130,7 +206,7 @@ export default function HomeScreen() {
       <Text style={styles.emptyStateDescription}>
         You don't have any upcoming appointments scheduled.
       </Text>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.emptyStateButton}
         onPress={() => router.push('/book-visit')}
       >
@@ -146,7 +222,7 @@ export default function HomeScreen() {
       <Text style={styles.emptyStateDescription}>
         Yey! No any active prescriptions at the moment.
       </Text>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.emptyStateButton}
         onPress={() => router.push('/(patient)/tabs/prescriptions')}
       >
@@ -249,15 +325,14 @@ export default function HomeScreen() {
               <Text style={styles.quickActionText}>Generate {'\n'} QR Code</Text>
             </TouchableOpacity>
             <TouchableOpacity
-  style={styles.quickActionButton}
-  onPress={() => router.push('/(patient)/tabs/appointments?filter=completed')}
->
-  <FileText size={24} color="#1E40AF" />
-  <Text style={styles.quickActionText}>View Medical {'\n'} History</Text>
-</TouchableOpacity>
+              style={styles.quickActionButton}
+              onPress={() => router.push('/(patient)/tabs/appointments?filter=completed')}
+            >
+              <FileText size={24} color="#1E40AF" />
+              <Text style={styles.quickActionText}>View Medical {'\n'} History</Text>
+            </TouchableOpacity>
 
-
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.quickActionButton}
               onPress={() => router.push('/book-visit')}
             >
@@ -288,7 +363,7 @@ export default function HomeScreen() {
                   <View style={styles.appointmentHeader}>
                     <View style={styles.doctorAvatar}>
                       <Text style={styles.doctorInitial}>
-                        {appt.doctorFirstName && appt.doctorLastName 
+                        {appt.doctorFirstName && appt.doctorLastName
                           ? `${appt.doctorFirstName[0]}${appt.doctorLastName[0]}`
                           : 'DR'
                         }
@@ -296,7 +371,7 @@ export default function HomeScreen() {
                     </View>
                     <View style={styles.appointmentDetails}>
                       <Text style={styles.doctorName}>
-                        {appt.doctorFirstName && appt.doctorLastName 
+                        {appt.doctorFirstName && appt.doctorLastName
                           ? `Dr. ${appt.doctorFirstName} ${appt.doctorLastName}`
                           : appt.doctorId || 'Doctor'
                         }
@@ -397,14 +472,31 @@ export default function HomeScreen() {
               <View style={qrModalStyles.divider} />
               {/* QR Code */}
               <View style={qrModalStyles.qrContainer}>
-                <View style={qrModalStyles.qrCodeWrapper}>
-                  <QRCode
-                    value={user?.uid || 'user-id'}
-                    size={180}
-                    color="#1F2937"
-                    backgroundColor="#FFFFFF"
-                  />
-                </View>
+                <ViewShot
+                  ref={qrCodeViewShotRef}
+                  options={{
+                    format: 'png',
+                    quality: 1,
+                    width: 300,
+                    height: 300,
+                  }}
+                >
+                  <View style={qrModalStyles.qrCodeWrapper}>
+                    <QRCode
+                      ref={qrCodeRef}
+                      value={JSON.stringify({
+                        type: 'patient',
+                        id: user?.uid || 'user-id',
+                        name: user?.name || 'User',
+                        email: user?.email || 'N/A',
+                        timestamp: new Date().toISOString()
+                      })}
+                      size={180}
+                      color="#1F2937"
+                      backgroundColor="#FFFFFF"
+                    />
+                  </View>
+                </ViewShot>
                 <View style={qrModalStyles.patientInfo}>
                   <Text style={qrModalStyles.patientName}>
                     {user?.name || 'User'}
@@ -424,13 +516,25 @@ export default function HomeScreen() {
               </View>
               {/* Action Buttons */}
               <View style={qrModalStyles.actions}>
-                <TouchableOpacity style={qrModalStyles.secondaryButton} onPress={handleDownload}>
+                <TouchableOpacity
+                  style={[qrModalStyles.secondaryButton, qrActionLoading && qrModalStyles.disabledButton]}
+                  onPress={handleDownload}
+                  disabled={qrActionLoading}
+                >
                   <Download size={20} color="#374151" />
-                  <Text style={qrModalStyles.secondaryButtonText}>Download</Text>
+                  <Text style={qrModalStyles.secondaryButtonText}>
+                    {qrActionLoading ? 'Downloading...' : 'Download'}
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={qrModalStyles.primaryButton} onPress={handleShare}>
+                <TouchableOpacity
+                  style={[qrModalStyles.primaryButton, qrActionLoading && qrModalStyles.disabledButton]}
+                  onPress={handleShare}
+                  disabled={qrActionLoading}
+                >
                   <Share size={20} color="#FFFFFF" />
-                  <Text style={qrModalStyles.primaryButtonText}>Share</Text>
+                  <Text style={qrModalStyles.primaryButtonText}>
+                    {qrActionLoading ? 'Sharing...' : 'Share'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -764,5 +868,8 @@ const qrModalStyles = StyleSheet.create({
     gap: 7,
   },
   secondaryButtonText: { color: '#374151', fontSize: 15, fontFamily: 'Inter-SemiBold' },
+  disabledButton: {
+    opacity: 0.6,
+  },
 });
  
