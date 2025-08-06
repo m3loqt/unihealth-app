@@ -138,39 +138,48 @@ export const authService = {
       const user = userCredential.user;
       console.log('Firebase auth successful, UID:', user.uid);
       
-      // Get complete user profile from database
-      const completeProfile = await this.getCompleteUserProfile(user.uid);
-      
-      if (completeProfile) {
-        console.log('Complete profile found:', completeProfile.name);
-        return completeProfile;
-      }
-      
-      // Fallback: try to get basic user profile
-      console.log('Trying fallback user profile...');
-      const userRef = ref(database, `users/${user.uid}`);
-      const snapshot = await get(userRef);
-      
-      if (snapshot.exists()) {
-        const userData = snapshot.val() as UserNode;
-        console.log('Basic user data found:', userData);
-        
-        // Create UserProfile from database data
-        const userProfile: UserProfile = {
-          uid: user.uid,
-          email: userData.email,
-          role: userData.role,
-          name: `${userData.firstName} ${userData.lastName}`,
-          phone: userData.contactNumber || undefined,
-          address: userData.address || undefined,
-        };
-        
-        console.log('Created user profile:', userProfile.name);
-        return userProfile;
-      }
-      
-      console.log('No user data found in database');
-      return null;
+             // Get complete user profile from database
+       const completeProfile = await this.getCompleteUserProfile(user.uid);
+       
+       if (completeProfile) {
+         console.log('Complete profile found:', completeProfile.name);
+         return completeProfile;
+       }
+       
+       // If UID-based lookup fails, try email-based lookup
+       console.log('UID-based lookup failed, trying email-based lookup...');
+       const emailBasedUser = await this.findUserByEmail(user.email!);
+       
+       if (emailBasedUser) {
+         console.log('Found user by email with database UID:', emailBasedUser.databaseUid);
+         const { userData, databaseUid } = emailBasedUser;
+         
+         // Get additional patient data if this is a patient
+         let patientData = null;
+         if (userData.role === 'patient') {
+           patientData = await this.getPatientData(databaseUid);
+           console.log('Patient data:', patientData);
+         }
+         
+         const userProfile: UserProfile = {
+           uid: user.uid, // Use Firebase Auth UID
+           email: userData.email,
+           role: userData.role,
+           name: `${userData.firstName} ${userData.lastName}`,
+           phone: userData.contactNumber || undefined,
+           address: userData.address || undefined,
+           dateOfBirth: patientData?.dateOfBirth || undefined,
+           gender: patientData?.gender || undefined,
+           emergencyContact: patientData?.emergencyContact || undefined,
+         };
+         
+         console.log('Created user profile from email lookup:', userProfile.name);
+         return userProfile;
+       }
+       
+       console.log('No user data found in database for email:', user.email);
+       console.log('User exists in Firebase Auth but not in database nodes');
+       return null;
     } catch (error: any) {
       console.error('Sign in error:', error);
       throw new Error(error.message);
@@ -360,28 +369,92 @@ export const authService = {
   // Get complete user profile with all data (user + patient nodes)
   async getCompleteUserProfile(uid: string): Promise<UserProfile | null> {
     try {
-      const completeData = await this.getCompleteUserData(uid);
+      console.log('getCompleteUserProfile called with UID:', uid);
       
-      if (completeData) {
-        const { user, patient } = completeData;
+      // First try UID-based lookup
+      const userRef = ref(database, `users/${uid}`);
+      console.log('Checking users node at path:', `users/${uid}`);
+      const userSnapshot = await get(userRef);
+      
+      console.log('User snapshot exists:', userSnapshot.exists());
+      
+      if (userSnapshot.exists()) {
+        const userData = userSnapshot.val() as UserNode;
+        console.log('User data found:', userData);
+        
+        // Get additional patient data if this is a patient
+        let patientData = null;
+        if (userData.role === 'patient') {
+          patientData = await this.getPatientData(uid);
+          console.log('Patient data:', patientData);
+        }
         
         const userProfile: UserProfile = {
           uid: uid,
-          email: user.email,
-          role: user.role,
-          name: `${user.firstName} ${user.lastName}`,
-          phone: user.contactNumber || undefined,
-          address: user.address || undefined,
-          dateOfBirth: patient.dateOfBirth || undefined,
-          gender: patient.gender || undefined,
-          emergencyContact: patient.emergencyContact || undefined,
+          email: userData.email,
+          role: userData.role,
+          name: `${userData.firstName} ${userData.lastName}`,
+          phone: userData.contactNumber || undefined,
+          address: userData.address || undefined,
+          dateOfBirth: patientData?.dateOfBirth || undefined,
+          gender: patientData?.gender || undefined,
+          emergencyContact: patientData?.emergencyContact || undefined,
         };
         
+        console.log('Created complete user profile:', userProfile.name);
         return userProfile;
       }
+      
+      console.log('User not found in users node');
+      // If not found in users node, return null
       return null;
     } catch (error: any) {
       console.error('Get complete user profile error:', error);
+      return null;
+    }
+  },
+
+  // New method: Find user by email (for UID mismatch scenarios)
+  async findUserByEmail(email: string): Promise<{ userData: UserNode; databaseUid: string } | null> {
+    try {
+      console.log('Searching for user by email:', email);
+      
+      // Search in users node
+      const usersRef = ref(database, 'users');
+      const usersSnapshot = await get(usersRef);
+      
+      if (usersSnapshot.exists()) {
+        let foundUser = null;
+        usersSnapshot.forEach((childSnapshot) => {
+          const userData = childSnapshot.val() as UserNode;
+          if (userData.email === email && !foundUser) {
+            console.log('Found user in users node with database UID:', childSnapshot.key);
+            foundUser = { userData, databaseUid: childSnapshot.key! };
+          }
+        });
+        if (foundUser) return foundUser;
+      }
+      
+      // Search in doctors node
+      const doctorsRef = ref(database, 'doctors');
+      const doctorsSnapshot = await get(doctorsRef);
+      
+      if (doctorsSnapshot.exists()) {
+        let foundDoctor = null;
+        doctorsSnapshot.forEach((childSnapshot) => {
+          const doctorData = childSnapshot.val();
+          if (doctorData.email === email && !foundDoctor) {
+            console.log('Found user in doctors node with database UID:', childSnapshot.key);
+            foundDoctor = { userData: doctorData, databaseUid: childSnapshot.key! };
+          }
+        });
+        if (foundDoctor) return foundDoctor;
+      }
+      
+      console.log('User not found by email in any node');
+      return null;
+    } catch (error: any) {
+      console.error('Find user by email error:', error);
       return null;
     }
   }
