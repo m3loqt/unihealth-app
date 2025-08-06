@@ -11,6 +11,7 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '../src/hooks/auth/useAuth';
+import { initializeGoogleSpeechToText } from '../src/services/googleSpeechToText';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,6 +30,13 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  // Initialize Google Speech-to-Text service
+  useEffect(() => {
+    // TODO: Replace with your actual Google Cloud API key
+    // initializeGoogleSpeechToText('YOUR_GOOGLE_CLOUD_API_KEY');
+    console.log('Google Speech-to-Text service ready to initialize');
+  }, []);
 
   if (!fontsLoaded && !fontError) {
     return null;
