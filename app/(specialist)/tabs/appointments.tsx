@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   StatusBar,
   Platform,
   Modal,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import {
   Search,
@@ -25,63 +27,18 @@ import {
   Check as CheckMark,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useAuth } from '../../../src/hooks/auth/useAuth';
+import { databaseService, Appointment } from '../../../src/services/database/firebase';
 
 export default function SpecialistAppointmentsScreen() {
   const { filter } = useLocalSearchParams();
+  const { user } = useAuth();
   const filters = ['All', 'Pending', 'Confirmed', 'Completed', 'Declined'];
 
   // ---- DATA STATE ----
-  const [appointments, setAppointments] = useState([
-    {
-      id: 1,
-      patientName: 'John Doe',
-      date: 'Dec 15, 2024',
-      time: '2:30 PM',
-      type: 'General Consultation',
-      clinic: 'Medical Center',
-      address: '123 Health St, Room 205',
-      status: 'pending',
-      referredFrom: 'Dr. Michael Chen',
-      notes: 'Patient reports chest pain and shortness of breath.',
-    },
-    {
-      id: 2,
-      patientName: 'Jane Smith',
-      date: 'Dec 16, 2024',
-      time: '10:00 AM',
-      type: 'Follow-up',
-      clinic: 'Cardiology Center',
-      address: '456 Heart Ave, Suite 301',
-      status: 'confirmed',
-      referredFrom: 'Dr. Emily Davis',
-      notes: 'Post-surgery follow-up appointment.',
-    },
-    {
-      id: 3,
-      patientName: 'Michael Chen',
-      date: 'Dec 12, 2024',
-      time: '3:00 PM',
-      type: 'Consultation',
-      clinic: 'Family Health Center',
-      address: '789 Care Blvd, Room 102',
-      status: 'completed',
-      referredFrom: 'Dr. Sarah Johnson',
-      notes: 'Annual physical examination completed.',
-    },
-    {
-      id: 4,
-      patientName: 'Emily Rodriguez',
-      date: 'Dec 14, 2024',
-      time: '11:30 AM',
-      type: 'Emergency Consultation',
-      clinic: 'Emergency Department',
-      address: '321 Emergency Rd, Floor 2',
-      status: 'declined',
-      referredFrom: 'Dr. Robert Wilson',
-      notes: 'Urgent cardiac evaluation needed.',
-      declineReason: 'Patient needs different specialist',
-    },
-  ]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // ---- UI/STATE ----
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,13 +49,102 @@ export default function SpecialistAppointmentsScreen() {
   // Accept/Decline Modals
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   // Decline reason dropdown
   const [showReasonDropdown, setShowReasonDropdown] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [customReason, setCustomReason] = useState('');
 
+  // Load appointments from Firebase
+  useEffect(() => {
+    if (user && user.uid) {
+      loadAppointments();
+    }
+  }, [user]);
+
+  const loadAppointments = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      const specialistAppointments = await databaseService.getAppointmentsBySpecialist(user.uid);
+      console.log('Loaded appointments:', specialistAppointments.length);
+      setAppointments(specialistAppointments);
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+      Alert.alert('Error', 'Failed to load appointments. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadAppointments();
+    setRefreshing(false);
+  };
+
+  const handleAcceptAppointment = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setShowAcceptModal(true);
+  };
+
+  const confirmAccept = async () => {
+    if (!selectedAppointment || !selectedAppointment.id) return;
+    
+    try {
+      await databaseService.updateAppointmentStatus(selectedAppointment.id, 'confirmed');
+      Alert.alert('Success', 'Appointment accepted successfully!');
+      setShowAcceptModal(false);
+      setSelectedAppointment(null);
+      loadAppointments(); // Refresh the list
+    } catch (error) {
+      console.error('Error accepting appointment:', error);
+      Alert.alert('Error', 'Failed to accept appointment. Please try again.');
+    }
+  };
+
+  const handleDeclineAppointment = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setShowDeclineModal(true);
+  };
+
+  const submitDecline = async () => {
+    if (!selectedAppointment || !selectedAppointment.id) return;
+    
+    const finalReason = declineReason === 'Other' ? customReason : declineReason;
+    if (!finalReason.trim()) {
+      Alert.alert('Error', 'Please provide a reason for declining.');
+      return;
+    }
+
+    try {
+      await databaseService.updateAppointmentStatus(selectedAppointment.id, 'canceled', finalReason);
+      Alert.alert('Success', 'Appointment declined successfully!');
+      setShowDeclineModal(false);
+      setSelectedAppointment(null);
+      setDeclineReason('');
+      setCustomReason('');
+      loadAppointments(); // Refresh the list
+    } catch (error) {
+      console.error('Error declining appointment:', error);
+      Alert.alert('Error', 'Failed to decline appointment. Please try again.');
+    }
+  };
+
+  // ---- FILTER ----
+  const filteredAppointments = appointments.filter((appointment) => {
+    const patientName = `${appointment.patientFirstName} ${appointment.patientLastName}`;
+    const matchesSearch =
+      patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      appointment.type.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter =
+      activeFilter === 'All' || appointment.status === activeFilter.toLowerCase();
+    return matchesSearch && matchesFilter;
+  });
+
+  // ---- MODAL LOGIC ----
   const declineReasons = [
     'Schedule conflict',
     'Patient needs different specialist',
@@ -107,63 +153,6 @@ export default function SpecialistAppointmentsScreen() {
     'Clinic capacity full',
     'Other (specify)',
   ];
-
-  // ---- FILTER ----
-  const filteredAppointments = appointments.filter((appointment) => {
-    const matchesSearch =
-      appointment.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      appointment.type.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter =
-      activeFilter === 'All' || appointment.status === activeFilter.toLowerCase();
-    return matchesSearch && matchesFilter;
-  });
-
-  // ---- MODAL LOGIC ----
-  const handleAcceptAppointment = (appointment: any) => {
-    setSelectedAppointment(appointment);
-    setShowAcceptModal(true);
-  };
-
-  const confirmAccept = () => {
-    setAppointments((prev) =>
-      prev.map((apt) =>
-        apt.id === selectedAppointment.id
-          ? { ...apt, status: 'confirmed' }
-          : apt
-      )
-    );
-    setShowAcceptModal(false);
-    setSelectedAppointment(null);
-  };
-
-  const handleDeclineAppointment = (appointment: any) => {
-    setSelectedAppointment(appointment);
-    setDeclineReason('');
-    setCustomReason('');
-    setShowDeclineModal(true);
-    setShowReasonDropdown(false);
-  };
-
-  const submitDecline = () => {
-    if (!declineReason) return;
-    if (declineReason === 'Other (specify)' && !customReason.trim()) return;
-    setAppointments((prev) =>
-      prev.map((apt) =>
-        apt.id === selectedAppointment.id
-          ? {
-              ...apt,
-              status: 'declined',
-              declineReason:
-                declineReason === 'Other (specify)' ? customReason : declineReason,
-            }
-          : apt
-      )
-    );
-    setShowDeclineModal(false);
-    setSelectedAppointment(null);
-    setDeclineReason('');
-    setCustomReason('');
-  };
 
   // ---- CARD RENDER ----
   const getStatusIcon = (status: string) => {
@@ -181,8 +170,10 @@ export default function SpecialistAppointmentsScreen() {
     }
   };
 
-  const renderAppointmentCard = (appointment: any) => {
+  const renderAppointmentCard = (appointment: Appointment) => {
     const isPending = appointment.status === 'pending';
+    const patientName = `${appointment.patientFirstName} ${appointment.patientLastName}`;
+    const patientInitials = `${appointment.patientFirstName?.[0] || ''}${appointment.patientLastName?.[0] || ''}`;
 
     return (
       <View key={appointment.id} style={styles.appointmentCard}>
@@ -190,13 +181,13 @@ export default function SpecialistAppointmentsScreen() {
           <View style={styles.patientInfo}>
             <View style={styles.patientAvatar}>
               <Text style={styles.patientInitial}>
-                {appointment.patientName.split(' ').map((n: string) => n[0]).join('')}
+                {patientInitials}
               </Text>
             </View>
             <View style={styles.appointmentDetails}>
-              <Text style={styles.patientName}>{appointment.patientName}</Text>
+              <Text style={styles.patientName}>{patientName}</Text>
               <Text style={styles.appointmentType}>{appointment.type}</Text>
-              <Text style={styles.referredBy}>Referred by {appointment.referredFrom}</Text>
+              <Text style={styles.referredBy}>Referred by {appointment.specialty}</Text>
             </View>
           </View>
           <View style={styles.statusBadge}>
@@ -210,11 +201,11 @@ export default function SpecialistAppointmentsScreen() {
         <View style={styles.appointmentMeta}>
           <View style={styles.metaRow}>
             <Clock size={16} color="#6B7280" />
-            <Text style={styles.metaText}>{appointment.date} at {appointment.time}</Text>
+            <Text style={styles.metaText}>{appointment.appointmentDate} at {appointment.appointmentTime}</Text>
           </View>
           <View style={styles.metaRow}>
             <MapPin size={16} color="#6B7280" />
-            <Text style={styles.metaText}>{appointment.clinic}</Text>
+            <Text style={styles.metaText}>{appointment.clinicName}</Text>
           </View>
         </View>
 
@@ -225,10 +216,10 @@ export default function SpecialistAppointmentsScreen() {
           </View>
         )}
 
-        {appointment.status === 'declined' && appointment.declineReason && (
+        {appointment.status === 'canceled' && (
           <View style={styles.declineReasonSection}>
             <Text style={styles.declineReasonLabel}>Decline Reason:</Text>
-            <Text style={styles.declineReasonText}>{appointment.declineReason}</Text>
+            <Text style={styles.declineReasonText}>Appointment was declined</Text>
           </View>
         )}
 
@@ -273,7 +264,7 @@ export default function SpecialistAppointmentsScreen() {
               <Text style={styles.modalSubtitle}>
                 Are you sure you want to accept this appointment with{' '}
                 <Text style={{ fontWeight: 'bold', color: '#1E40AF' }}>
-                  {selectedAppointment.patientName}
+                  {selectedAppointment ? `${selectedAppointment.patientFirstName} ${selectedAppointment.patientLastName}` : ''}
                 </Text>
                 ?
               </Text>
@@ -313,7 +304,7 @@ export default function SpecialistAppointmentsScreen() {
             <Text style={styles.modalSubtitle}>
               Please select a reason for declining this appointment with{' '}
               <Text style={{ fontWeight: 'bold', color: '#EF4444' }}>
-                {selectedAppointment?.patientName}
+                {selectedAppointment ? `${selectedAppointment.patientFirstName} ${selectedAppointment.patientLastName}` : ''}
               </Text>
             </Text>
             {/* Dropdown */}
@@ -451,9 +442,16 @@ export default function SpecialistAppointmentsScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         <View style={styles.appointmentsList}>
-          {filteredAppointments.length > 0 ? (
+          {loading ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>Loading appointments...</Text>
+            </View>
+          ) : filteredAppointments.length > 0 ? (
             filteredAppointments.map(renderAppointmentCard)
           ) : (
             <View style={styles.emptyState}>

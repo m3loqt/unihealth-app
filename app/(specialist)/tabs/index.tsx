@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
   Image,
   StatusBar,
   Platform,
+  Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import {
   Bell,
@@ -24,87 +27,128 @@ import {
 import { router } from 'expo-router';
 import { getGreeting } from '../../../src/utils/greeting';
 import { getFirstName } from '../../../src/utils/string';
-
-const specialistData = {
-  name: 'Dr. Sarah Johnson',
-  profileImage: 'https://randomuser.me/api/portraits/women/68.jpg',
-};
-
-const dashboardMetrics = [
-  {
-    id: 1,
-    title: 'Total Patients',
-    value: '127',
-    change: '+12 this month',
-    icon: Users,
-    onPress: () => router.push('/(specialist)/tabs/patients'),
-  },
-  {
-    id: 2,
-    title: "Today's Appointments",
-    value: '8',
-    change: '3 pending',
-    icon: Calendar,
-    onPress: () => router.push('/(specialist)/tabs/appointments?filter=confirmed'),
-  },
-  {
-    id: 3,
-    title: 'Pending Requests',
-    value: '5',
-    change: 'Requires action',
-    icon: AlertCircle,
-    onPress: () => router.push('/(specialist)/tabs/appointments?filter=pending'),
-  },
-  {
-    id: 4,
-    title: 'Completed Today',
-    value: '12',
-    change: '+3 from yesterday',
-    icon: CheckCircle,
-    onPress: () => router.push('/(specialist)/tabs/appointments?filter=completed'),
-  },
-];
-
-const nextAppointments = [
-  {
-    id: 1,
-    patientName: 'John Doe',
-    time: '2:30 PM',
-    type: 'Follow-up',
-    status: 'confirmed',
-  },
-  {
-    id: 2,
-    patientName: 'Jane Smith',
-    time: '3:00 PM',
-    type: 'Consultation',
-    status: 'confirmed',
-  },
-];
-
-const newPatients = [
-  {
-    id: 1,
-    name: 'Michael Chen',
-    referredFrom: 'General Medicine',
-    addedDate: 'Today',
-  },
-  {
-    id: 2,
-    name: 'Emily Rodriguez',
-    referredFrom: 'Emergency Dept',
-    addedDate: 'Yesterday',
-  },
-  {
-    id: 3,
-    name: 'David Wilson',
-    referredFrom: 'Family Medicine',
-    addedDate: '2 days ago',
-  },
-];
+import { useAuth } from '../../../src/hooks/auth/useAuth';
+import { databaseService } from '../../../src/services/database/firebase';
 
 export default function SpecialistHomeScreen() {
-  const [notifications] = useState(3);
+  const { user } = useAuth();
+  const [dashboardData, setDashboardData] = useState({
+    totalPatients: 0,
+    todayAppointments: 0,
+    pendingRequests: 0,
+    completedToday: 0,
+  });
+  const [nextAppointments, setNextAppointments] = useState<any[]>([]);
+  const [newPatients, setNewPatients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Load dashboard data from Firebase
+  useEffect(() => {
+    if (user && user.uid) {
+      loadDashboardData();
+    }
+  }, [user]);
+
+  const loadDashboardData = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      
+      // Load all data in parallel
+      const [
+        patients,
+        appointments,
+        pendingAppointments,
+        completedAppointments
+      ] = await Promise.all([
+        databaseService.getPatientsBySpecialist(user.uid),
+        databaseService.getAppointmentsBySpecialist(user.uid),
+        databaseService.getAppointmentsBySpecialistAndStatus(user.uid, 'pending'),
+        databaseService.getAppointmentsBySpecialistAndStatus(user.uid, 'completed')
+      ]);
+
+      // Calculate today's appointments
+      const today = new Date().toDateString();
+      const todayAppointments = appointments.filter(apt => 
+        new Date(apt.appointmentDate).toDateString() === today
+      );
+
+      // Calculate completed today
+      const completedToday = completedAppointments.filter(apt => 
+        new Date(apt.appointmentDate).toDateString() === today
+      );
+
+      // Get next 3 appointments
+      const upcomingAppointments = appointments
+        .filter(apt => apt.status === 'confirmed')
+        .sort((a, b) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime())
+        .slice(0, 3);
+
+      // Get recent patients
+      const recentPatients = patients
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+        .slice(0, 3);
+
+      setDashboardData({
+        totalPatients: patients.length,
+        todayAppointments: todayAppointments.length,
+        pendingRequests: pendingAppointments.length,
+        completedToday: completedToday.length,
+      });
+
+      setNextAppointments(upcomingAppointments);
+      setNewPatients(recentPatients);
+
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      Alert.alert('Error', 'Failed to load dashboard data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadDashboardData();
+    setRefreshing(false);
+  };
+
+  const dashboardMetrics = [
+    {
+      id: 1,
+      title: 'Total Patients',
+      value: dashboardData.totalPatients.toString(),
+      change: '+12 this month',
+      icon: Users,
+      onPress: () => router.push('/(specialist)/tabs/patients'),
+    },
+    {
+      id: 2,
+      title: "Today's Appointments",
+      value: dashboardData.todayAppointments.toString(),
+      change: `${dashboardData.pendingRequests} pending`,
+      icon: Calendar,
+      onPress: () => router.push('/(specialist)/tabs/appointments?filter=confirmed'),
+    },
+    {
+      id: 3,
+      title: 'Pending Requests',
+      value: dashboardData.pendingRequests.toString(),
+      change: 'Requires action',
+      icon: AlertCircle,
+      onPress: () => router.push('/(specialist)/tabs/appointments?filter=pending'),
+    },
+    {
+      id: 4,
+      title: 'Completed Today',
+      value: dashboardData.completedToday.toString(),
+      change: '+3 from yesterday',
+      icon: CheckCircle,
+      onPress: () => router.push('/(specialist)/tabs/appointments?filter=completed'),
+    },
+  ];
 
   // Simulate navigation to QR scanner
   const handleScanQR = () => {
@@ -114,31 +158,40 @@ export default function SpecialistHomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: 90 }}
-        showsVerticalScrollIndicator={false}
-      >
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1E40AF" />
+          <Text style={styles.loadingText}>Loading dashboard...</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={{ paddingBottom: 90 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
         {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.userName}>{getFirstName(specialistData.name)}</Text>
+                         <Text style={styles.userName}>{getFirstName(user?.name || 'Specialist')}</Text>
           </View>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.iconButton}>
               <Bell size={24} color="#6B7280" />
-              {notifications > 0 && (
+              {/* {notifications > 0 && (
                 <View style={styles.notificationBadge}>
                   <Text style={styles.notificationText}>{notifications}</Text>
                 </View>
-              )}
+              )} */}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/(specialist)/tabs/profile')}>
-              <Image
-                source={{ uri: specialistData.profileImage }}
-                style={styles.profileImage}
-              />
+                             <Image
+                 source={{ uri: 'https://via.placeholder.com/36' }}
+                 style={styles.profileImage}
+               />
             </TouchableOpacity>
           </View>
         </View>
@@ -190,25 +243,39 @@ export default function SpecialistHomeScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.appointmentsContainer}>
-            {nextAppointments.map((appointment) => (
-              <TouchableOpacity key={appointment.id} style={styles.appointmentCard}>
-                <View style={styles.appointmentHeader}>
-                  <View style={styles.patientAvatar}>
-                    <Text style={styles.patientInitial}>
-                      {appointment.patientName.split(' ').map((n) => n[0]).join('')}
-                    </Text>
-                  </View>
-                  <View style={styles.appointmentDetails}>
-                    <Text style={styles.patientName}>{appointment.patientName}</Text>
-                    <Text style={styles.appointmentType}>{appointment.type}</Text>
-                  </View>
-                  <View style={styles.appointmentTime}>
-                    <Clock size={16} color="#6B7280" />
-                    <Text style={styles.timeText}>{appointment.time}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {nextAppointments.length > 0 ? (
+              nextAppointments.map((appointment) => {
+                const patientName = `${appointment.patientFirstName} ${appointment.patientLastName}`;
+                const patientInitials = `${appointment.patientFirstName?.[0] || ''}${appointment.patientLastName?.[0] || ''}`;
+                return (
+                  <TouchableOpacity key={appointment.id} style={styles.appointmentCard}>
+                    <View style={styles.appointmentHeader}>
+                      <View style={styles.patientAvatar}>
+                        <Text style={styles.patientInitial}>
+                          {patientInitials}
+                        </Text>
+                      </View>
+                      <View style={styles.appointmentDetails}>
+                        <Text style={styles.patientName}>{patientName}</Text>
+                        <Text style={styles.appointmentType}>{appointment.type}</Text>
+                      </View>
+                      <View style={styles.appointmentTime}>
+                        <Clock size={16} color="#6B7280" />
+                        <Text style={styles.timeText}>{appointment.appointmentTime}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <View style={styles.emptyState}>
+                <Calendar size={48} color="#9CA3AF" />
+                <Text style={styles.emptyStateTitle}>No upcoming appointments</Text>
+                <Text style={styles.emptyStateText}>
+                  You don't have any appointments scheduled for today.
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -221,27 +288,42 @@ export default function SpecialistHomeScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.patientsContainer}>
-            {newPatients.map((patient) => (
-              <TouchableOpacity key={patient.id} style={styles.patientCard}>
-                <View style={styles.patientHeader}>
-                  <View style={styles.patientAvatar}>
-                    <Text style={styles.patientInitial}>
-                      {patient.name.split(' ').map((n) => n[0]).join('')}
-                    </Text>
-                  </View>
-                  <View style={styles.patientDetails}>
-                    <Text style={styles.patientName}>{patient.name}</Text>
-                    <Text style={styles.referredFrom}>Referred from {patient.referredFrom}</Text>
-                  </View>
-                  <View style={styles.patientStatus}>
-                    <Text style={styles.addedDate}>{patient.addedDate}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {newPatients.length > 0 ? (
+              newPatients.map((patient) => {
+                const patientName = `${patient.patientFirstName} ${patient.patientLastName}`;
+                const patientInitials = `${patient.patientFirstName?.[0] || ''}${patient.patientLastName?.[0] || ''}`;
+                return (
+                  <TouchableOpacity key={patient.id} style={styles.patientCard}>
+                    <View style={styles.patientHeader}>
+                      <View style={styles.patientAvatar}>
+                        <Text style={styles.patientInitial}>
+                          {patientInitials}
+                        </Text>
+                      </View>
+                      <View style={styles.patientDetails}>
+                        <Text style={styles.patientName}>{patientName}</Text>
+                        <Text style={styles.referredFrom}>Referred from {patient.referredFrom}</Text>
+                      </View>
+                      <View style={styles.patientStatus}>
+                        <Text style={styles.addedDate}>{patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Recent'}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <View style={styles.emptyState}>
+                <Users size={48} color="#9CA3AF" />
+                <Text style={styles.emptyStateTitle}>No new patients</Text>
+                <Text style={styles.emptyStateText}>
+                  You haven't added any new patients recently.
+                </Text>
+              </View>
+            )}
           </View>
         </View>
-      </ScrollView>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -483,6 +565,40 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
     marginTop: 4,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 64,
+    paddingHorizontal: 32,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 32,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
  
