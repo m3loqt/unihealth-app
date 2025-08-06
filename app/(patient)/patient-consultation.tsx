@@ -24,9 +24,12 @@ import {
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useVoiceToText } from '../../src/hooks/useVoiceToText';
+import { useAuth } from '../../src/hooks/auth/useAuth';
+import { databaseService } from '../../src/services/database/firebase';
 
 export default function PatientConsultationScreen() {
   const { patientId, consultationId } = useLocalSearchParams();
+  const { user } = useAuth();
 
   // Voice-to-text hook
   const {
@@ -73,6 +76,42 @@ export default function PatientConsultationScreen() {
     prescriptions: [],
     certificates: [],
   });
+
+  // Load consultation data from Firebase
+  useEffect(() => {
+    if (consultationId) {
+      loadConsultationData();
+    }
+  }, [consultationId]);
+
+  const loadConsultationData = async () => {
+    if (!consultationId) return;
+    
+    try {
+      const consultation = await databaseService.getAppointmentById(consultationId as string);
+      if (consultation) {
+        setFormData({
+          diagnosis: consultation.diagnosis || '',
+          differentialDiagnosis: consultation.differentialDiagnosis || '',
+          reviewOfSymptoms: consultation.reviewOfSymptoms || '',
+          presentIllnessHistory: consultation.presentIllnessHistory || '',
+          subjective: consultation.soapNotes?.subjective || '',
+          objective: consultation.soapNotes?.objective || '',
+          assessment: consultation.soapNotes?.assessment || '',
+          plan: consultation.soapNotes?.plan || '',
+          labResults: consultation.labResults || '',
+          allergies: consultation.allergies || '',
+          medications: consultation.medications || '',
+          vitals: consultation.vitals || '',
+          prescriptions: consultation.prescriptions || [],
+          certificates: consultation.certificates || [],
+        });
+      }
+    } catch (error) {
+      console.error('Error loading consultation data:', error);
+      Alert.alert('Error', 'Failed to load consultation data. Please try again.');
+    }
+  };
 
   // Debug: Log form data changes
   useEffect(() => {
@@ -399,12 +438,48 @@ export default function PatientConsultationScreen() {
   };
 
   // --- SAVE & COMPLETE ---
-  const handleSaveChanges = () => {
-    Alert.alert('Success', 'Changes saved successfully!');
-    setHasChanges(false);
+  const handleSaveChanges = async () => {
+    if (!consultationId) {
+      Alert.alert('Error', 'No consultation ID found.');
+      return;
+    }
+
+    try {
+      // Save consultation data to Firebase
+      await databaseService.updateAppointment(consultationId as string, {
+        diagnosis: formData.diagnosis,
+        differentialDiagnosis: formData.differentialDiagnosis,
+        reviewOfSymptoms: formData.reviewOfSymptoms,
+        presentIllnessHistory: formData.presentIllnessHistory,
+        soapNotes: {
+          subjective: formData.subjective,
+          objective: formData.objective,
+          assessment: formData.assessment,
+          plan: formData.plan,
+        },
+        labResults: formData.labResults,
+        allergies: formData.allergies,
+        medications: formData.medications,
+        vitals: formData.vitals,
+        prescriptions: formData.prescriptions,
+        certificates: formData.certificates,
+        lastUpdated: new Date().toISOString(),
+      });
+
+      Alert.alert('Success', 'Changes saved successfully!');
+      setHasChanges(false);
+    } catch (error) {
+      console.error('Error saving consultation:', error);
+      Alert.alert('Error', 'Failed to save changes. Please try again.');
+    }
   };
 
-  const handleCompleteConsultation = () => {
+  const handleCompleteConsultation = async () => {
+    if (!consultationId) {
+      Alert.alert('Error', 'No consultation ID found.');
+      return;
+    }
+
     Alert.alert(
       'Complete Consultation',
       'Are you sure you want to complete this consultation? This action cannot be undone.',
@@ -413,20 +488,48 @@ export default function PatientConsultationScreen() {
         {
           text: 'Complete',
           style: 'default',
-          onPress: () => {
-            Alert.alert('Success', 'Consultation completed successfully!', [
-              {
-                text: 'OK',
-                onPress: () => {
-                  try {
-                    router.push('/(specialist)/tabs/patients?filter=completed');
-                  } catch (navError) {
-                    console.error('Navigation error:', navError);
-                    router.back();
+          onPress: async () => {
+            try {
+              // Complete consultation and save to Firebase
+              await databaseService.updateAppointment(consultationId as string, {
+                status: 'completed',
+                diagnosis: formData.diagnosis,
+                differentialDiagnosis: formData.differentialDiagnosis,
+                reviewOfSymptoms: formData.reviewOfSymptoms,
+                presentIllnessHistory: formData.presentIllnessHistory,
+                soapNotes: {
+                  subjective: formData.subjective,
+                  objective: formData.objective,
+                  assessment: formData.assessment,
+                  plan: formData.plan,
+                },
+                labResults: formData.labResults,
+                allergies: formData.allergies,
+                medications: formData.medications,
+                vitals: formData.vitals,
+                prescriptions: formData.prescriptions,
+                certificates: formData.certificates,
+                completedAt: new Date().toISOString(),
+                lastUpdated: new Date().toISOString(),
+              });
+
+              Alert.alert('Success', 'Consultation completed successfully!', [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    try {
+                      router.push('/(specialist)/tabs/patients?filter=completed');
+                    } catch (navError) {
+                      console.error('Navigation error:', navError);
+                      router.back();
+                    }
                   }
                 }
-              }
-            ]);
+              ]);
+            } catch (error) {
+              console.error('Error completing consultation:', error);
+              Alert.alert('Error', 'Failed to complete consultation. Please try again.');
+            }
           }
         }
       ]

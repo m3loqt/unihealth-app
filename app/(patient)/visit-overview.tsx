@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Dimensions,
   LayoutAnimation,
   UIManager,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import {
   Pill,
@@ -24,7 +26,9 @@ import {
   CheckCircle,
   XCircle,
 } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useAuth } from '../../src/hooks/auth/useAuth';
+import { databaseService, Appointment, Prescription, Certificate } from '../../src/services/database/firebase';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -32,145 +36,91 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const HORIZONTAL_MARGIN = 24;
 
-const doctorPhoto = 'https://randomuser.me/api/portraits/women/44.jpg';
-
-const consultationId = 'CONS-20240721-1201';
-const doctorName = 'Dr. Emily Davis';
-const clinic = 'Family Health Center';
-const date = 'Dec 10, 2024';
-const time = '3:00 PM';
-const address = '789 Care Blvd, Room 102';
-
-const clinicalSummary = {
-  diagnosis: 'Mild Hypertension, controlled',
-  differentialDiagnosis: 'Secondary Hypertension, White Coat Syndrome',
-  reviewOfSymptoms: 'No chest pain, shortness of breath, or palpitations. Mild headache noted.',
-  presentIllnessHistory: '52-year-old male presenting for routine follow-up. Reports intermittent mild headaches. No recent medication changes.',
-  soapNotes: {
-    subjective: 'Reports feeling well overall, mild fatigue.',
-    objective: 'BP: 138/86 mmHg, Pulse: 72 bpm, Temp: 36.6°C. Heart/lungs clear.',
-    assessment: 'Stable, controlled hypertension. No acute findings.',
-    plan: 'Continue current medication. Encourage dietary changes. Repeat labs in 3 months.',
-  },
-  labResults: 'CBC and Lipid Profile within normal limits. Fasting blood sugar slightly elevated.',
-  allergies: 'None',
-  medications: 'Lisinopril 10mg daily',
-  vitals: 'BP: 138/86 mmHg, Pulse: 72 bpm, Temp: 36.6°C',
-};
-
-const prescriptions = [
-  {
-    id: 1,
-    medication: 'Lisinopril',
-    dosage: '10mg',
-    frequency: 'Once daily',
-    remaining: '15 days',
-    color: '#1E3A8A',
-    description: 'Helps lower blood pressure.',
-    prescribedBy: 'Dr. Emily Davis',
-    prescribedDate: 'Dec 10, 2024',
-    nextRefill: 'Jan 4, 2025',
-  },
-];
-
-const certificates = [
-  {
-    id: 1,
-    type: 'Fit to Work',
-    doctor: 'Dr. Sarah Connor',
-    clinic: 'Occupational Health Center',
-    issuedDate: 'Jan 15, 2024',
-    issuedTime: '09:30 AM',
-    status: 'Valid',
-  },
-];
-
-function getCertStatusStyles(status: string) {
-  const mainBlue = '#1E3A8A';
-  if (status === 'Valid') {
-    return {
-      container: {
-        backgroundColor: '#EFF6FF',
-        borderColor: mainBlue,
-      },
-      icon: <CheckCircle size={17} color={mainBlue} style={{ marginRight: 4 }} />,
-      text: { color: mainBlue },
-      label: 'Valid',
-    };
-  }
-  return {
-    container: {
-      backgroundColor: '#FEF2F2',
-      borderColor: '#EF4444',
-    },
-    icon: <XCircle size={17} color="#EF4444" style={{ marginRight: 4 }} />,
-    text: { color: '#EF4444' },
-    label: 'Expired',
-  };
-}
-
-const clinicalSections = [
-  {
-    key: 'diagnosis',
-    label: 'Diagnosis',
-    fields: [
-      { label: 'Diagnosis', value: clinicalSummary.diagnosis },
-      { label: 'Differential Diagnosis', value: clinicalSummary.differentialDiagnosis },
-    ],
-  },
-  {
-    key: 'history',
-    label: 'History',
-    fields: [
-      { label: 'History of Present Illness', value: clinicalSummary.presentIllnessHistory },
-      { label: 'Review of Symptoms', value: clinicalSummary.reviewOfSymptoms },
-    ],
-  },
-  {
-    key: 'soapNotes',
-    label: 'SOAP Notes',
-    fields: [
-      { label: 'Subjective', value: clinicalSummary.soapNotes.subjective },
-      { label: 'Objective', value: clinicalSummary.soapNotes.objective },
-      { label: 'Assessment', value: clinicalSummary.soapNotes.assessment },
-      { label: 'Plan', value: clinicalSummary.soapNotes.plan },
-    ],
-  },
-  {
-    key: 'labResults',
-    label: 'Lab Results',
-    fields: [
-      { label: 'Lab Results', value: clinicalSummary.labResults },
-      { label: 'Allergies', value: clinicalSummary.allergies },
-      { label: 'Vitals', value: clinicalSummary.vitals },
-    ],
-  },
-  {
-    key: 'medications',
-    label: 'Medications',
-    fields: [
-      { label: 'Medications', value: clinicalSummary.medications },
-    ],
-  },
-];
-
 export default function VisitOverviewScreen() {
-  // All sections open by default, each can be toggled individually
-  const [openSections, setOpenSections] = useState({
-    diagnosis: true,
-    history: true,
-    soapNotes: true,
-    labResults: true,
-    medications: true,
+  const { id } = useLocalSearchParams();
+  const { user } = useAuth();
+  const [visitData, setVisitData] = useState<Appointment | null>(null);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
+    clinicalSummary: true,
+    prescriptions: true,
+    certificates: true,
   });
+
+  // Load visit data from Firebase
+  useEffect(() => {
+    if (id) {
+      loadVisitData();
+    }
+  }, [id]);
+
+  const loadVisitData = async () => {
+    if (!id) return;
+    
+    try {
+      setLoading(true);
+      
+      // Load appointment data
+      const appointment = await databaseService.getAppointmentById(id as string);
+      
+      if (appointment) {
+        setVisitData(appointment);
+        
+        // Load related prescriptions and certificates
+        const [visitPrescriptions, visitCertificates] = await Promise.all([
+          databaseService.getPrescriptionsByAppointment(id as string),
+          databaseService.getCertificatesByAppointment(id as string)
+        ]);
+        
+        setPrescriptions(visitPrescriptions);
+        setCertificates(visitCertificates);
+      }
+    } catch (error) {
+      console.error('Error loading visit data:', error);
+      Alert.alert('Error', 'Failed to load visit data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadVisitData();
+    setRefreshing(false);
+  };
 
   const toggleSection = (key: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpenSections((prev) => ({
+    setExpandedSections(prev => ({
       ...prev,
-      [key]: !prev[key as keyof typeof prev],
+      [key]: !prev[key],
     }));
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading visit data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!visitData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Visit not found</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -179,6 +129,9 @@ export default function VisitOverviewScreen() {
         style={styles.scrollView}
         contentContainerStyle={{ paddingBottom: 130 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* HEADER */}
         <View style={styles.header}>
@@ -193,30 +146,30 @@ export default function VisitOverviewScreen() {
           <Text style={styles.sectionTitle}>Consultation Details</Text>
           <View style={styles.cardBox}>
             <View style={styles.doctorRow}>
-              <Text style={styles.doctorName}>{doctorName}</Text>
-              <Image source={{ uri: doctorPhoto }} style={styles.doctorImage} resizeMode="cover" />
+              <Text style={styles.doctorName}>{visitData.doctorName}</Text>
+              <Image source={{ uri: visitData.doctorPhoto }} style={styles.doctorImage} resizeMode="cover" />
             </View>
             <View style={styles.consultDivider} />
             <View style={styles.consultDetailsTable}>
               <View style={styles.consultDetailsRow}>
                 <Text style={styles.consultLabel}>Consultation ID</Text>
-                <Text style={styles.consultValue}>{consultationId}</Text>
+                <Text style={styles.consultValue}>{visitData.consultationId}</Text>
               </View>
               <View style={styles.consultDetailsRow}>
                 <Text style={styles.consultLabel}>Clinic</Text>
-                <Text style={styles.consultValue}>{clinic}</Text>
+                <Text style={styles.consultValue}>{visitData.clinic}</Text>
               </View>
               <View style={styles.consultDetailsRow}>
                 <Text style={styles.consultLabel}>Date</Text>
-                <Text style={styles.consultValue}>{date}</Text>
+                <Text style={styles.consultValue}>{visitData.date}</Text>
               </View>
               <View style={styles.consultDetailsRow}>
                 <Text style={styles.consultLabel}>Time</Text>
-                <Text style={styles.consultValue}>{time}</Text>
+                <Text style={styles.consultValue}>{visitData.time}</Text>
               </View>
               <View style={styles.consultDetailsRowNoBorder}>
                 <Text style={styles.consultLabel}>Address</Text>
-                <Text style={styles.consultValue}>{address}</Text>
+                <Text style={styles.consultValue}>{visitData.address}</Text>
               </View>
             </View>
           </View>
@@ -226,45 +179,74 @@ export default function VisitOverviewScreen() {
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Clinical Summary</Text>
           <View style={styles.cardBoxClinical}>
-            {clinicalSections.map((section, idx) => (
-              <View key={section.key}>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  style={[
-                    styles.clinicalSectionHeader,
-                    openSections[section.key as keyof typeof openSections] && styles.clinicalSectionHeaderOpen,
-                    idx === 0 && { marginTop: 2 },
-                  ]}
-                  onPress={() => toggleSection(section.key)}
-                >
-                  <Text style={styles.clinicalSectionLabel}>{section.label}</Text>
-                  {openSections[section.key as keyof typeof openSections] ? (
-                    <ChevronDown size={23} color="#6B7280" />
-                  ) : (
-                    <ChevronRight size={23} color="#9CA3AF" />
-                  )}
-                </TouchableOpacity>
-                {openSections[section.key as keyof typeof openSections] && (
-                  <View style={styles.clinicalSectionBody}>
-                    {section.fields.map((field, i) => (
-                      <View
-                        key={field.label}
-                        style={[
-                          styles.clinicalFieldRow,
-                          i < section.fields.length - 1 && styles.clinicalFieldRowWithGap,
-                        ]}
-                      >
-                        <Text style={styles.clinicalFieldLabel}>{field.label}</Text>
-                        <Text style={styles.clinicalFieldValue}>{field.value}</Text>
-                      </View>
-                    ))}
+            {/* Clinical Summary fields will be loaded here from visitData */}
+            {/* For now, we'll show a placeholder or load dynamically */}
+            <View style={styles.clinicalSectionHeader} onPress={() => toggleSection('clinicalSummary')}>
+              <Text style={styles.clinicalSectionLabel}>Clinical Summary</Text>
+              {expandedSections['clinicalSummary'] ? (
+                <ChevronDown size={23} color="#6B7280" />
+              ) : (
+                <ChevronRight size={23} color="#9CA3AF" />
+              )}
+            </View>
+            {expandedSections['clinicalSummary'] && (
+              <View style={styles.clinicalSectionBody}>
+                {/* Placeholder for clinical summary fields */}
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Diagnosis:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.diagnosis}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Differential Diagnosis:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.differentialDiagnosis}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Review of Symptoms:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.reviewOfSymptoms}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Present Illness History:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.presentIllnessHistory}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>SOAP Notes:</Text>
+                  <View style={styles.soapNotesContainer}>
+                    <View style={styles.soapNotesSubRow}>
+                      <Text style={styles.soapNotesLabel}>Subjective:</Text>
+                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.subjective}</Text>
+                    </View>
+                    <View style={styles.soapNotesSubRow}>
+                      <Text style={styles.soapNotesLabel}>Objective:</Text>
+                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.objective}</Text>
+                    </View>
+                    <View style={styles.soapNotesSubRow}>
+                      <Text style={styles.soapNotesLabel}>Assessment:</Text>
+                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.assessment}</Text>
+                    </View>
+                    <View style={styles.soapNotesSubRow}>
+                      <Text style={styles.soapNotesLabel}>Plan:</Text>
+                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.plan}</Text>
+                    </View>
                   </View>
-                )}
-                {idx < clinicalSections.length - 1 && (
-                  <View style={styles.sectionDivider} />
-                )}
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Lab Results:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.labResults}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Allergies:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.allergies}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Vitals:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.vitals}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Medications:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.medications}</Text>
+                </View>
               </View>
-            ))}
+            )}
           </View>
         </View>
 
@@ -740,6 +722,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  soapNotesContainer: {
+    marginTop: 5,
+    paddingLeft: 10,
+  },
+  soapNotesSubRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+  },
+  soapNotesLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  soapNotesValue: {
+    fontSize: 14,
+    color: '#23272F',
+    fontFamily: 'Inter-Medium',
+    textAlign: 'right',
+  },
 
   // ------- BOTTOM BAR BUTTONS (VERTICAL, OUTLINED SECONDARY) --------
   buttonBarVertical: {
@@ -788,4 +801,28 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 });
+
+function getCertStatusStyles(status: string) {
+  const mainBlue = '#1E3A8A';
+  if (status === 'Valid') {
+    return {
+      container: {
+        backgroundColor: '#EFF6FF',
+        borderColor: mainBlue,
+      },
+      icon: <CheckCircle size={17} color={mainBlue} style={{ marginRight: 4 }} />,
+      text: { color: mainBlue },
+      label: 'Valid',
+    };
+  }
+  return {
+    container: {
+      backgroundColor: '#FEF2F2',
+      borderColor: '#EF4444',
+    },
+    icon: <XCircle size={17} color="#EF4444" style={{ marginRight: 4 }} />,
+    text: { color: '#EF4444' },
+    label: 'Expired',
+  };
+}
 

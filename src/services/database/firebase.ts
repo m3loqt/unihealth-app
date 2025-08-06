@@ -101,6 +101,17 @@ export interface Certificate {
   fileUrl?: string;
 }
 
+export interface Patient {
+  id?: string;
+  patientFirstName?: string;
+  patientLastName?: string;
+  referredFrom?: string;
+  status?: string;
+  lastVisit?: string;
+  createdAt?: string;
+  specialty?: string;
+}
+
 export const databaseService = {
   // Appointments
   async getAppointments(userId: string, role: 'patient' | 'specialist'): Promise<Appointment[]> {
@@ -229,6 +240,419 @@ export const databaseService = {
     }
   },
 
+  // Specialist-specific methods
+  async getPatientsBySpecialist(specialistId: string): Promise<any[]> {
+    try {
+      const appointmentsRef = ref(database, 'appointments');
+      const snapshot = await get(appointmentsRef);
+      
+      if (snapshot.exists()) {
+        const patients = new Map();
+        snapshot.forEach((childSnapshot) => {
+          const appointment = childSnapshot.val();
+          if (appointment.doctorId === specialistId) {
+            const patientKey = appointment.patientId;
+            if (!patients.has(patientKey)) {
+              patients.set(patientKey, {
+                id: patientKey,
+                patientFirstName: appointment.patientFirstName,
+                patientLastName: appointment.patientLastName,
+                referredFrom: appointment.specialty,
+                status: appointment.status,
+                lastVisit: appointment.appointmentDate,
+                createdAt: appointment.createdAt,
+              });
+            }
+          }
+        });
+        return Array.from(patients.values());
+      }
+      return [];
+    } catch (error) {
+      console.error('Get patients by specialist error:', error);
+      return [];
+    }
+  },
+
+  async getAppointmentsBySpecialist(specialistId: string): Promise<Appointment[]> {
+    try {
+      const appointmentsRef = ref(database, 'appointments');
+      const snapshot = await get(appointmentsRef);
+      
+      if (snapshot.exists()) {
+        const appointments: Appointment[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const appointment = childSnapshot.val();
+          if (appointment.doctorId === specialistId) {
+            appointments.push({
+              id: childSnapshot.key,
+              ...appointment
+            });
+          }
+        });
+        return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
+      }
+      return [];
+    } catch (error) {
+      console.error('Get appointments by specialist error:', error);
+      return [];
+    }
+  },
+
+  async getAppointmentsBySpecialistAndStatus(specialistId: string, status: string): Promise<Appointment[]> {
+    try {
+      const appointmentsRef = ref(database, 'appointments');
+      const snapshot = await get(appointmentsRef);
+      
+      if (snapshot.exists()) {
+        const appointments: Appointment[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const appointment = childSnapshot.val();
+          if (appointment.doctorId === specialistId && appointment.status === status) {
+            appointments.push({
+              id: childSnapshot.key,
+              ...appointment
+            });
+          }
+        });
+        return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
+      }
+      return [];
+    } catch (error) {
+      console.error('Get appointments by specialist and status error:', error);
+      return [];
+    }
+  },
+
+  async getPrescriptionsBySpecialist(specialistId: string): Promise<Prescription[]> {
+    try {
+      // Get prescriptions from patientMedicalHistory entries
+      const medicalHistoryRef = ref(database, 'patientMedicalHistory');
+      const snapshot = await get(medicalHistoryRef);
+      
+      if (snapshot.exists()) {
+        const prescriptions: Prescription[] = [];
+        
+        snapshot.forEach((patientSnapshot) => {
+          const patientHistory = patientSnapshot.val();
+          if (patientHistory.entries) {
+            Object.keys(patientHistory.entries).forEach((entryKey) => {
+              const entry = patientHistory.entries[entryKey];
+              // Check if this entry was created by the specialist
+              if (entry.provider && entry.provider.id === specialistId && entry.prescriptions) {
+                entry.prescriptions.forEach((prescription: any, index: number) => {
+                  prescriptions.push({
+                    id: `${entryKey}_prescription_${index}`,
+                    patientId: entry.patientId,
+                    specialistId: entry.provider.id,
+                    medication: prescription.medication,
+                    dosage: prescription.dosage,
+                    frequency: prescription.frequency,
+                    duration: 'Ongoing',
+                    instructions: 'As prescribed',
+                    prescribedDate: entry.consultationDate,
+                    status: 'active',
+                    remainingRefills: 3, // Default value
+                  });
+                });
+              }
+            });
+          }
+        });
+        
+        return prescriptions.sort((a, b) => new Date(b.prescribedDate).getTime() - new Date(a.prescribedDate).getTime());
+      }
+      return [];
+    } catch (error) {
+      console.error('Get prescriptions by specialist error:', error);
+      return [];
+    }
+  },
+
+  async getCertificatesBySpecialist(specialistId: string): Promise<Certificate[]> {
+    try {
+      // Get certificates from patientMedicalHistory entries (medical certificates would be entries with specific types)
+      const medicalHistoryRef = ref(database, 'patientMedicalHistory');
+      const snapshot = await get(medicalHistoryRef);
+      
+      if (snapshot.exists()) {
+        const certificates: Certificate[] = [];
+        
+        snapshot.forEach((patientSnapshot) => {
+          const patientHistory = patientSnapshot.val();
+          if (patientHistory.entries) {
+            Object.keys(patientHistory.entries).forEach((entryKey) => {
+              const entry = patientHistory.entries[entryKey];
+              // Check if this entry was created by the specialist and is a certificate type
+              if (entry.provider && entry.provider.id === specialistId && 
+                  (entry.type === 'Medical Certificate' || entry.type === 'Fit to Work' || entry.type === 'Medical Clearance')) {
+                certificates.push({
+                  id: entryKey,
+                  patientId: entry.patientId,
+                  specialistId: entry.provider.id,
+                  type: entry.type,
+                  issueDate: entry.consultationDate,
+                  status: 'active',
+                  description: entry.clinicalSummary || entry.treatmentPlan || 'Medical certificate issued',
+                });
+              }
+            });
+          }
+        });
+        
+        return certificates.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+      }
+      return [];
+    } catch (error) {
+      console.error('Get certificates by specialist error:', error);
+      return [];
+    }
+  },
+
+  async getSpecialistProfile(specialistId: string): Promise<any> {
+    try {
+      // First try doctors node (where specialist data is stored)
+      const specialistRef = ref(database, `doctors/${specialistId}`);
+      const specialistSnapshot = await get(specialistRef);
+      if (specialistSnapshot.exists()) {
+        return specialistSnapshot.val();
+      }
+      
+      // Fallback: try users node for backward compatibility
+      const userRef = ref(database, `users/${specialistId}`);
+      const snapshot = await get(userRef);
+      
+      if (snapshot.exists()) {
+        const userData = snapshot.val();
+        // Check if this user is a specialist
+        if (userData.role === 'specialist') {
+          return userData;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Get specialist profile error:', error);
+      return null;
+    }
+  },
+
+  async getPatientProfile(patientId: string): Promise<any> {
+    try {
+      // First try to get from patients node
+      const patientRef = ref(database, `patients/${patientId}`);
+      const patientSnapshot = await get(patientRef);
+      if (patientSnapshot.exists()) {
+        return { id: patientId, ...patientSnapshot.val() };
+      }
+      
+      // If not found in patients, try users node
+      const userRef = ref(database, `users/${patientId}`);
+      const userSnapshot = await get(userRef);
+      if (userSnapshot.exists()) {
+        return { id: patientId, ...userSnapshot.val() };
+      }
+      
+      // If not found in either, get from appointments data
+      const appointmentsRef = ref(database, 'appointments');
+      const appointmentsSnapshot = await get(appointmentsRef);
+      
+      if (appointmentsSnapshot.exists()) {
+        let patientData = null;
+        appointmentsSnapshot.forEach((childSnapshot) => {
+          const appointment = childSnapshot.val();
+          if (appointment.patientId === patientId && !patientData) {
+            patientData = {
+              id: patientId,
+              firstName: appointment.patientFirstName,
+              lastName: appointment.patientLastName,
+              email: appointment.bookedByUserId, // Using bookedByUserId as email
+            };
+          }
+        });
+        return patientData;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Get patient profile error:', error);
+      return null;
+    }
+  },
+
+  async updatePatientProfile(patientId: string, updates: any): Promise<void> {
+    try {
+      // Try to update in patients node first
+      const patientRef = ref(database, `patients/${patientId}`);
+      const patientSnapshot = await get(patientRef);
+      if (patientSnapshot.exists()) {
+        await update(patientRef, {
+          ...updates,
+          lastUpdated: new Date().toISOString(),
+        });
+        return;
+      }
+      
+      // If not found in patients, try users node
+      const userRef = ref(database, `users/${patientId}`);
+      const userSnapshot = await get(userRef);
+      if (userSnapshot.exists()) {
+        await update(userRef, {
+          ...updates,
+          lastUpdated: new Date().toISOString(),
+        });
+        return;
+      }
+      
+      throw new Error('Patient not found in database');
+    } catch (error) {
+      console.error('Update patient profile error:', error);
+      throw error;
+    }
+  },
+
+  async getPatientById(patientId: string): Promise<any> {
+    try {
+      // First try to get from patients node
+      const patientRef = ref(database, `patients/${patientId}`);
+      const patientSnapshot = await get(patientRef);
+      if (patientSnapshot.exists()) {
+        return { id: patientId, ...patientSnapshot.val() };
+      }
+      
+      // If not found in patients, try users node
+      const userRef = ref(database, `users/${patientId}`);
+      const userSnapshot = await get(userRef);
+      if (userSnapshot.exists()) {
+        return { id: patientId, ...userSnapshot.val() };
+      }
+      
+      // If not found in either, get from appointments data
+      const appointmentsRef = ref(database, 'appointments');
+      const snapshot = await get(appointmentsRef);
+      
+      if (snapshot.exists()) {
+        let patientData = null;
+        snapshot.forEach((childSnapshot) => {
+          const appointment = childSnapshot.val();
+          if (appointment.patientId === patientId && !patientData) {
+            patientData = {
+              id: patientId,
+              firstName: appointment.patientFirstName,
+              lastName: appointment.patientLastName,
+              email: appointment.bookedByUserId, // Using bookedByUserId as email
+            };
+          }
+        });
+        return patientData;
+      }
+      return null;
+    } catch (error) {
+      console.error('Get patient by ID error:', error);
+      return null;
+    }
+  },
+
+  async getAppointmentsByPatient(patientId: string): Promise<Appointment[]> {
+    try {
+      const appointmentsRef = ref(database, 'appointments');
+      const snapshot = await get(appointmentsRef);
+      
+      if (snapshot.exists()) {
+        const appointments: Appointment[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const appointment = childSnapshot.val();
+          if (appointment.patientId === patientId) {
+            appointments.push({
+              id: childSnapshot.key,
+              ...appointment
+            });
+          }
+        });
+        return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
+      }
+      return [];
+    } catch (error) {
+      console.error('Get appointments by patient error:', error);
+      return [];
+    }
+  },
+
+  async getPrescriptionsByAppointment(appointmentId: string): Promise<Prescription[]> {
+    try {
+      const prescriptionsRef = ref(database, 'prescriptions');
+      const snapshot = await get(prescriptionsRef);
+      
+      if (snapshot.exists()) {
+        const prescriptions: Prescription[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const prescription = childSnapshot.val();
+          if (prescription.appointmentId === appointmentId) {
+            prescriptions.push({
+              id: childSnapshot.key,
+              ...prescription
+            });
+          }
+        });
+        return prescriptions;
+      }
+      return [];
+    } catch (error) {
+      console.error('Get prescriptions by appointment error:', error);
+      return [];
+    }
+  },
+
+  async getCertificatesByAppointment(appointmentId: string): Promise<Certificate[]> {
+    try {
+      const certificatesRef = ref(database, 'certificates');
+      const snapshot = await get(certificatesRef);
+      
+      if (snapshot.exists()) {
+        const certificates: Certificate[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const certificate = childSnapshot.val();
+          if (certificate.appointmentId === appointmentId) {
+            certificates.push({
+              id: childSnapshot.key,
+              ...certificate
+            });
+          }
+        });
+        return certificates;
+      }
+      return [];
+    } catch (error) {
+      console.error('Get certificates by appointment error:', error);
+      return [];
+    }
+  },
+
+  async getCertificateById(certificateId: string): Promise<Certificate | null> {
+    try {
+      const certificateRef = ref(database, `certificates/${certificateId}`);
+      const snapshot = await get(certificateRef);
+      return snapshot.exists() ? { id: certificateId, ...snapshot.val() } : null;
+    } catch (error) {
+      console.error('Get certificate by ID error:', error);
+      return null;
+    }
+  },
+
+  async updateAppointmentStatus(id: string, status: string, reason?: string): Promise<void> {
+    try {
+      const appointmentRef = ref(database, `appointments/${id}`);
+      const updates: any = { status, lastUpdated: new Date().toISOString() };
+      if (reason) {
+        updates.declineReason = reason;
+      }
+      await update(appointmentRef, updates);
+    } catch (error) {
+      console.error('Update appointment status error:', error);
+      throw error;
+    }
+  },
+
   // Certificates
   async getCertificates(userId: string): Promise<Certificate[]> {
     try {
@@ -288,27 +712,23 @@ export const databaseService = {
       if (snapshot.exists()) {
         const medicalHistory: MedicalHistory[] = [];
         
-        snapshot.forEach((childSnapshot) => {
-          const historyData = childSnapshot.val();
-          // Filter medical history based on patientId
-          if (historyData.patientId === patientId) {
+        // Look for the specific patient's medical history
+        const patientHistory = snapshot.val()[patientId];
+        if (patientHistory && patientHistory.entries) {
+          Object.keys(patientHistory.entries).forEach((entryKey) => {
+            const entry = patientHistory.entries[entryKey];
             medicalHistory.push({
-              id: childSnapshot.key,
-              ...historyData
+              id: entryKey,
+              ...entry
             });
-          }
-        });
+          });
+        }
         
         return medicalHistory.sort((a, b) => new Date(b.consultationDate).getTime() - new Date(a.consultationDate).getTime());
       }
       return [];
     } catch (error) {
-      // Suppress Firebase indexing errors
-      if (error instanceof Error && error.message.includes('indexOn')) {
-        console.log('Firebase indexing not configured, using client-side filtering');
-      } else {
-        console.error('Get medical history error:', error);
-      }
+      console.error('Get medical history error:', error);
       return [];
     }
   },
