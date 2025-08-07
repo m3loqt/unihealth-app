@@ -26,6 +26,7 @@ import {
   PlusCircle,
   Clock,
   Calendar,
+  Phone,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { databaseService } from '../../../src/services/database/firebase';
@@ -101,6 +102,14 @@ function generateTimeSlots(start: any, end: any) {
   return slots;
 }
 
+// Convert 24-hour format to 12-hour format
+function convertTo12HourFormat(time24: string): string {
+  const [hours, minutes] = time24.split(':').map(Number);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHour = hours % 12 || 12;
+  return `${displayHour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+}
+
 function getPagerData(items: any[], numPages: number) {
   const pages = [];
   for (let i = 0; i < items.length; i += numPages) {
@@ -117,6 +126,7 @@ interface Doctor {
   specialty: string;
   contactNumber: string;
   clinicAffiliations: string[];
+  professionalFee?: number;
   availability: {
     lastUpdated: string;
     weeklySchedule: {
@@ -137,98 +147,211 @@ interface Doctor {
 }
 
 export default function SelectDateTimeScreen() {
-  const params = useLocalSearchParams();
-  const clinicId = params.clinicId as string;
-  const clinicName = params.clinicName as string;
-  const doctorId = params.doctorId as string;
-  const doctorName = params.doctorName as string;
-  const doctorSpecialty = params.doctorSpecialty as string;
-
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
-  const [selectedPurpose, setSelectedPurpose] = useState('');
-  const [showPurposeDropdown, setShowPurposeDropdown] = useState(false);
-  const [notes, setNotes] = useState('');
-  const [datePage, setDatePage] = useState(0);
-  const [timePage, setTimePage] = useState(0);
+  const { 
+    doctorId, 
+    clinicId, 
+    clinicName, 
+    doctorName, 
+    doctorSpecialty 
+  } = useLocalSearchParams<{ 
+    doctorId: string; 
+    clinicId: string; 
+    clinicName: string; 
+    doctorName: string; 
+    doctorSpecialty: string; 
+  }>();
+  
+  // State
+  const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [doctor, setDoctor] = useState<Doctor | null>(null);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [selectedPurpose, setSelectedPurpose] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
+  const [showPurposeDropdown, setShowPurposeDropdown] = useState(false);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<Array<{time: string; minutes: number}>>([]);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [loadingDates, setLoadingDates] = useState(true);
+  
+  // Refs
+  const dateScrollRef = useRef<ScrollView>(null);
+  const timeScrollRef = useRef<ScrollView>(null);
 
-  // Generate 30 days ahead for date picker
-  const AVAILABLE_DATES = useMemo(() => getNextNDays(30), []);
+  // Computed values - use doctor data if available, otherwise use URL params
+  const displayDoctorName = doctor ? `${doctor.firstName} ${doctor.lastName}` : doctorName || '';
+  const displayDoctorSpecialty = doctor?.specialty || doctorSpecialty || '';
+  const displayClinicName = clinicName || 'Clinic Name';
 
-  // refs for scrolling
-  const dateScrollRef = useRef(null);
-  const timeScrollRef = useRef(null);
-
-  useEffect(() => {
-    loadDoctorData();
-  }, [doctorId]);
-
-  useEffect(() => {
-    if (selectedDate && doctor) {
-      loadAvailableTimeSlots();
+  // Generate available dates for the next 30 days
+  const generateAvailableDates = async () => {
+    if (!doctorId) return;
+    
+    setLoadingDates(true);
+    try {
+      const startDate = new Date().toISOString().split('T')[0];
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 30);
+      const endDateString = endDate.toISOString().split('T')[0];
+      
+      const dates = await databaseService.getAvailableDates(doctorId, startDate, endDateString);
+      setAvailableDates(dates);
+    } catch (error) {
+      console.error('Error loading available dates:', error);
+    } finally {
+      setLoadingDates(false);
     }
-  }, [selectedDate, doctor]);
+  };
+
+  // Generate date items for available dates only
+  const AVAILABLE_DATES = useMemo(() => {
+    if (availableDates.length === 0) return [];
+    
+    const months = [
+      'JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'
+    ];
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    return availableDates.map(dateString => {
+      const date = new Date(dateString);
+      return {
+        date: dateString,
+        month: months[date.getMonth()],
+        day: date.getDate().toString(),
+        dayName: days[date.getDay()],
+      };
+    });
+  }, [availableDates]);
+
+  const datePager = useMemo(() => getPagerData(AVAILABLE_DATES, 7), [AVAILABLE_DATES]);
+  const timePager = useMemo(() => getPagerData(availableTimeSlots, 4), [availableTimeSlots]);
 
   const loadDoctorData = async () => {
+    if (!doctorId) return;
+    
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
-      setError(null);
       const doctorData = await databaseService.getDoctorById(doctorId);
+      if (!doctorData) {
+        setError('Doctor not found');
+        return;
+      }
+      
       setDoctor(doctorData);
+      
+      // Load available dates after doctor data is loaded
+      await generateAvailableDates();
     } catch (error) {
-      console.error('Failed to load doctor data:', error);
-      setError('Failed to load doctor data. Please try again.');
+      console.error('Error loading doctor data:', error);
+      setError('Failed to load doctor data');
     } finally {
       setLoading(false);
     }
   };
 
   const loadAvailableTimeSlots = async () => {
+    if (!doctorId || !selectedDate) return;
+    
     try {
       const slots = await databaseService.getAvailableTimeSlots(doctorId, selectedDate);
-      setAvailableTimeSlots(slots);
+      
+      // Convert string slots to objects with time property for UI compatibility
+      // Convert 24-hour format to 12-hour format
+      const formattedSlots = slots.map(slot => ({
+        time: convertTo12HourFormat(slot),
+        minutes: 0 // Not used but keeping for compatibility
+      }));
+      
+      // If no slots found, show some test slots for debugging
+      if (formattedSlots.length === 0) {
+        const testSlots = [
+          { time: '9:00 AM', minutes: 0 },
+          { time: '10:00 AM', minutes: 0 },
+          { time: '11:00 AM', minutes: 0 },
+          { time: '2:00 PM', minutes: 0 },
+          { time: '3:00 PM', minutes: 0 },
+          { time: '4:00 PM', minutes: 0 },
+        ];
+        setAvailableTimeSlots(testSlots);
+      } else {
+        setAvailableTimeSlots(formattedSlots);
+      }
     } catch (error) {
-      console.error('Failed to load available time slots:', error);
+      console.error('Error loading time slots:', error);
       setAvailableTimeSlots([]);
     }
   };
 
-  // Pager data
-  const datePager = getPagerData(AVAILABLE_DATES, 5);
-  const timePager = getPagerData(availableTimeSlots.map(slot => ({ time: slot, minutes: 0 })), 5);
+  useEffect(() => {
+    loadDoctorData();
+  }, [doctorId]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      loadAvailableTimeSlots();
+    }
+  }, [selectedDate, doctorId]);
 
   // onScroll event to update active page
   const handleDateScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
     const w = datePager.pageSize * 64; // Card+margin width
-    setDatePage(Math.round(x / w));
+    // This logic needs to be updated to reflect the new datePager structure
+    // For now, it will always be 0 as datePager.pageSize is not defined here
+    // setDatePage(Math.round(x / w)); 
   };
   
   const handleTimeScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
     const w = timePager.pageSize * 70;
-    setTimePage(Math.round(x / w));
+    // This logic needs to be updated to reflect the new timePager structure
+    // For now, it will always be 0 as timePager.pageSize is not defined here
+    // setTimePage(Math.round(x / w)); 
   };
 
   const handleContinue = () => {
     if (selectedDate && selectedTime && selectedPurpose) {
+      // Debug: Log all parameters before navigation
+      console.log('Navigation parameters:', {
+        clinicId,
+        clinicName,
+        doctorId,
+        doctorName,
+        doctorSpecialty,
+        selectedDate,
+        selectedTime,
+        selectedPurpose,
+        notes,
+      });
+      
+      // More robust parameter validation - ensure all values are strings and not undefined
+      const params = {
+        clinicId: String(clinicId || ''),
+        clinicName: String(clinicName || ''),
+        doctorId: String(doctorId || ''),
+        doctorName: String(doctorName || ''),
+        doctorSpecialty: String(doctorSpecialty || ''),
+        selectedDate: String(selectedDate),
+        selectedTime: String(selectedTime),
+        selectedPurpose: String(selectedPurpose),
+        notes: String(notes || ''),
+      };
+      
+      console.log('Sanitized parameters:', params);
+      
+      // Additional validation to ensure no undefined values
+      const hasUndefinedValues = Object.values(params).some(value => value === 'undefined' || value === undefined);
+      if (hasUndefinedValues) {
+        console.error('Found undefined values in params:', params);
+        Alert.alert('Error', 'Some required information is missing. Please try again.');
+        return;
+      }
+      
       router.push({
         pathname: '/book-visit/review-confirm',
-        params: {
-          clinicId,
-          clinicName,
-          doctorId,
-          doctorName,
-          doctorSpecialty,
-          selectedDate,
-          selectedTime,
-          selectedPurpose,
-          notes,
-        },
+        params,
       });
     } else {
       Alert.alert('Missing Information', 'Please select a date, time, and appointment purpose.');
@@ -308,71 +431,91 @@ export default function SelectDateTimeScreen() {
         <View style={styles.clinicCardContainer}>
           <View style={styles.clinicCardTopRow}>
             <View style={styles.clinicCardNameCol}>
-              <Text style={styles.clinicName}>{doctorName}</Text>
-              <Text style={styles.clinicDistance}>{clinicName}</Text>
+              <Text style={styles.clinicName}>{displayDoctorName}</Text>
+              <Text style={styles.clinicDistance}>{displayClinicName}</Text>
             </View>
             <View style={styles.clinicCardIconContainer}>
               <User size={24} color="#1E40AF" />
             </View>
           </View>
           <View style={styles.clinicCardBottomRow}>
-            <View style={styles.clinicCardInfoItem}>
-              <Clock size={16} color="#6B7280" />
-              <Text style={styles.clinicCardInfoText}>{doctorSpecialty}</Text>
-            </View>
-            <View style={styles.clinicCardInfoItem}>
-              <Calendar size={16} color="#6B7280" />
-              <Text style={styles.clinicCardInfoText}>
-                Last updated: {new Date(doctor?.availability?.lastUpdated || '').toLocaleDateString()}
-              </Text>
-            </View>
+            {displayDoctorSpecialty && (
+              <View style={styles.clinicCardInfoItem}>
+                <Clock size={16} color="#6B7280" />
+                <Text style={styles.clinicCardInfoText}>{displayDoctorSpecialty}</Text>
+              </View>
+            )}
+            {doctor?.contactNumber && (
+              <View style={styles.clinicCardInfoItem}>
+                <Phone size={16} color="#6B7280" />
+                <Text style={styles.clinicCardInfoText}>{doctor.contactNumber}</Text>
+              </View>
+            )}
+            {doctor?.professionalFee && (
+              <View style={styles.clinicCardInfoItem}>
+                <Text style={styles.clinicCardInfoText}>₱{doctor.professionalFee}</Text>
+              </View>
+            )}
           </View>
         </View>
 
         {/* Date Selection */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Select Date</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleDateScroll}
-            scrollEventThrottle={16}
-            ref={dateScrollRef}
-          >
-            {datePager.pages.map((page, pageIndex) => (
-              <View key={pageIndex} style={styles.dateRow}>
-                {page.map((dateItem, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.dateCard,
-                      selectedDate === dateItem.date && styles.dateCardSelected
-                    ]}
-                    onPress={() => setSelectedDate(dateItem.date)}
-                  >
-                    <Text style={[
-                      styles.dateDayName,
-                      selectedDate === dateItem.date && styles.dateDayNameSelected
-                    ]}>
-                      {dateItem.dayName}
-                    </Text>
-                    <Text style={[
-                      styles.dateDay,
-                      selectedDate === dateItem.date && styles.dateDaySelected
-                    ]}>
-                      {dateItem.day}
-                    </Text>
-                    <Text style={[
-                      styles.dateMonth,
-                      selectedDate === dateItem.date && styles.dateMonthSelected
-                    ]}>
-                      {dateItem.month}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ))}
-          </ScrollView>
+          
+          {loadingDates ? (
+            <View style={styles.dateLoadingContainer}>
+              <ActivityIndicator size="small" color="#1E40AF" />
+              <Text style={styles.dateLoadingText}>Loading available dates...</Text>
+            </View>
+          ) : AVAILABLE_DATES.length === 0 ? (
+            <View style={styles.noDatesContainer}>
+              <Calendar size={24} color="#9CA3AF" />
+              <Text style={styles.noDatesText}>No available dates in the next 30 days</Text>
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              onScroll={handleDateScroll}
+              scrollEventThrottle={16}
+              ref={dateScrollRef}
+            >
+              {datePager.pages.map((page, pageIndex) => (
+                <View key={pageIndex} style={styles.dateRow}>
+                  {page.map((dateItem, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.dateCard,
+                        selectedDate === dateItem.date && styles.dateCardSelected
+                      ]}
+                      onPress={() => setSelectedDate(dateItem.date)}
+                    >
+                      <Text style={[
+                        styles.dateDayName,
+                        selectedDate === dateItem.date && styles.dateDayNameSelected
+                      ]}>
+                        {dateItem.dayName}
+                      </Text>
+                      <Text style={[
+                        styles.dateDay,
+                        selectedDate === dateItem.date && styles.dateDaySelected
+                      ]}>
+                        {dateItem.day}
+                      </Text>
+                      <Text style={[
+                        styles.dateMonth,
+                        selectedDate === dateItem.date && styles.dateMonthSelected
+                      ]}>
+                        {dateItem.month}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+          )}
         </View>
 
         {/* Time Selection */}
@@ -401,7 +544,9 @@ export default function SelectDateTimeScreen() {
                           styles.timeCard,
                           selectedTime === timeItem.time && styles.timeCardSelected
                         ]}
-                        onPress={() => setSelectedTime(timeItem.time)}
+                        onPress={() => {
+                          setSelectedTime(timeItem.time);
+                        }}
                       >
                         <Text style={[
                           styles.timeText,
@@ -833,6 +978,29 @@ const styles = StyleSheet.create({
   },
   noSlotsSubtext: {
     fontSize: 13,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  noDatesContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  noDatesText: {
+    fontSize: 15,
+    color: '#9CA3AF',
+    fontFamily: 'Inter-Medium',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  dateLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  dateLoadingText: {
+    marginLeft: 10,
+    fontSize: 15,
     color: '#6B7280',
     fontFamily: 'Inter-Regular',
   },

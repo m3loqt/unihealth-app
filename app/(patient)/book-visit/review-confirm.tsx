@@ -23,11 +23,62 @@ const BLUE = '#2563EB';
 const LIGHT_BLUE = '#DBEAFE';
 
 export default function ReviewConfirmScreen() {
-  const { clinicData, selectedDate, selectedTime, selectedPurpose, notes } = useLocalSearchParams();
+  const { 
+    clinicId, 
+    clinicName, 
+    doctorId, 
+    doctorName, 
+    doctorSpecialty, 
+    selectedDate, 
+    selectedTime, 
+    selectedPurpose, 
+    notes 
+  } = useLocalSearchParams();
   const { user } = useAuth();
-  const clinic = JSON.parse(clinicData as string);
+  
+  // Create clinic object from individual parameters
+  const clinic = {
+    id: clinicId,
+    name: clinicName,
+    specialty: doctorSpecialty
+  };
+  
+  // State for clinic data
+  const [clinicData, setClinicData] = useState<any>(null);
+  const [loadingClinic, setLoadingClinic] = useState(true);
+  
+  // Helper function to safely get doctor name parts
+  const getDoctorNameParts = (name: string | string[] | undefined) => {
+    if (!name) return { firstName: 'Dr.', lastName: 'General' };
+    const nameStr = Array.isArray(name) ? name[0] : name;
+    const parts = nameStr.split(' ');
+    return {
+      firstName: parts[0] || 'Dr.',
+      lastName: parts.slice(1).join(' ') || 'General'
+    };
+  };
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
+
+  // Load clinic data to get address
+  React.useEffect(() => {
+    const loadClinicData = async () => {
+      if (clinicId) {
+        try {
+          const clinic = await databaseService.getClinicById(clinicId as string);
+          setClinicData(clinic);
+        } catch (error) {
+          console.error('Error loading clinic data:', error);
+        } finally {
+          setLoadingClinic(false);
+        }
+      } else {
+        setLoadingClinic(false);
+      }
+    };
+
+    loadClinicData();
+  }, [clinicId]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -48,18 +99,19 @@ export default function ReviewConfirmScreen() {
     setIsBooking(true);
     try {
       // Create appointment data matching your database structure
+      const doctorNameParts = getDoctorNameParts(doctorName);
       const appointmentData = {
         appointmentDate: selectedDate as string,
         appointmentTime: selectedTime as string,
         bookedByUserFirstName: user.name ? user.name.split(' ')[0] : '',
         bookedByUserId: user.uid,
         bookedByUserLastName: user.name ? user.name.split(' ').slice(1).join(' ') : '',
-        clinicId: `clin_${clinic.id}_id`,
-        clinicName: clinic.name,
+        clinicId: clinicId as string,
+        clinicName: clinicName as string,
         createdAt: new Date().toISOString(),
-        doctorFirstName: 'Dr. General', // Default doctor for now
-        doctorId: 'doc_general_001',
-        doctorLastName: 'Practitioner',
+        doctorFirstName: doctorNameParts.firstName,
+        doctorId: doctorId as string,
+        doctorLastName: doctorNameParts.lastName,
         lastUpdated: new Date().toISOString(),
         notes: (notes as string) || '',
         patientComplaint: [selectedPurpose as string],
@@ -67,7 +119,7 @@ export default function ReviewConfirmScreen() {
         patientId: user.uid,
         patientLastName: user.name ? user.name.split(' ').slice(1).join(' ') : '',
         sourceSystem: 'UniHealth_Patient_App',
-        specialty: selectedPurpose as string,
+        specialty: doctorSpecialty as string,
         status: 'pending' as const,
         type: 'general_consultation'
       };
@@ -143,14 +195,18 @@ export default function ReviewConfirmScreen() {
             </View>
             <View style={styles.clinicInfo}>
               <Text style={styles.clinicName}>{clinic.name}</Text>
-              <View style={styles.locationContainer}>
-                <MapPin size={14} color="#6B7280" />
-                <Text style={styles.locationText}>{clinic.address}</Text>
-              </View>
-              <View style={styles.hoursContainer}>
-                <Clock size={14} color="#6B7280" />
-                <Text style={styles.hoursText}>{clinic.operatingHours}</Text>
-              </View>
+              {clinicData?.address && (
+                <View style={styles.locationContainer}>
+                  <MapPin size={14} color="#6B7280" />
+                  <Text style={styles.locationText}>{clinicData.address}</Text>
+                </View>
+              )}
+              {clinicData?.operatingHours && (
+                <View style={styles.hoursContainer}>
+                  <Clock size={14} color="#6B7280" />
+                  <Text style={styles.hoursText}>{clinicData.operatingHours}</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -208,9 +264,8 @@ export default function ReviewConfirmScreen() {
           <View style={styles.infoList}>
             <Text style={styles.infoItem}>• Please arrive 15 minutes early for check-in</Text>
             <Text style={styles.infoItem}>• Bring a valid ID and insurance card (if applicable)</Text>
-            <Text style={styles.infoItem}>• The clinic will assign a healthcare provider upon confirmation</Text>
             <Text style={styles.infoItem}>• You can reschedule up to 24 hours before your appointment</Text>
-            <Text style={styles.infoItem}>• Cancellation fees may apply for late cancellations</Text>
+            {/* <Text style={styles.infoItem}>• Cancellation fees may apply for late cancellations</Text> */}
           </View>
         </View>
 
@@ -230,12 +285,12 @@ export default function ReviewConfirmScreen() {
               </View>
               <Text style={styles.stepText}>You'll receive a confirmation notification</Text>
             </View>
-            <View style={styles.stepItem}>
+            {/* <View style={styles.stepItem}>
               <View style={styles.stepNumber}>
                 <Text style={styles.stepNumberText}>3</Text>
               </View>
               <Text style={styles.stepText}>Healthcare provider will be assigned to your case</Text>
-            </View>
+            </View> */}
           </View>
         </View>
       </ScrollView>
