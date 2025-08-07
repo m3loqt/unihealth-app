@@ -179,13 +179,6 @@ export default function SelectDoctorScreen() {
                     <Phone size={16} color="#6B7280" />
                     <Text style={styles.detailText}>{doctor.contactNumber}</Text>
                   </View>
-                  
-                  <View style={styles.detailRow}>
-                    <Clock size={16} color="#6B7280" />
-                    <Text style={styles.detailText}>
-                      Last updated: {new Date(doctor.availability.lastUpdated).toLocaleDateString()}
-                    </Text>
-                  </View>
                 </View>
               </TouchableOpacity>
             ))}

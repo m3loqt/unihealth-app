@@ -55,6 +55,12 @@ export default function AppointmentsScreen() {
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistory | null>(null);
   const [loadingMedicalHistory, setLoadingMedicalHistory] = useState(false);
 
+  // --- Referral state ---
+  const [referrals, setReferrals] = useState<{[key: string]: any}>({});
+  const [loadingReferrals, setLoadingReferrals] = useState<{[key: string]: boolean}>({});
+  const [clinicData, setClinicData] = useState<{[key: string]: any}>({});
+  const [specialistData, setSpecialistData] = useState<{[key: string]: any}>({});
+
   useEffect(() => {
     if (filter && filters.includes(capitalize(filter as string))) {
       setActiveFilter(capitalize(filter as string));
@@ -76,6 +82,15 @@ export default function AppointmentsScreen() {
       }
     }, [user])
   );
+
+  // Load referrals for appointments that have relatedReferralId
+  useEffect(() => {
+    appointments.forEach(appointment => {
+      if (appointment.relatedReferralId && !referrals[appointment.relatedReferralId]) {
+        loadReferral(appointment.relatedReferralId);
+      }
+    });
+  }, [appointments]);
 
   const loadAppointments = async () => {
     if (!user) return;
@@ -116,6 +131,44 @@ export default function AppointmentsScreen() {
     }
   };
 
+  const loadReferral = async (referralId: string) => {
+    if (!referralId || referrals[referralId]) return;
+    
+    try {
+      setLoadingReferrals(prev => ({ ...prev, [referralId]: true }));
+      
+      const referral = await databaseService.getReferralById(referralId);
+      setReferrals(prev => ({ ...prev, [referralId]: referral }));
+      
+      // Load referring clinic data if referringClinicId exists
+      if (referral?.referringClinicId && !clinicData[referral.referringClinicId]) {
+        try {
+          const clinic = await databaseService.getClinicById(referral.referringClinicId);
+          setClinicData(prev => ({ ...prev, [referral.referringClinicId]: clinic }));
+        } catch (error) {
+          console.error('Error loading referring clinic data:', error);
+        }
+      }
+      
+      // Load specialist data if assignedSpecialistId exists
+      if (referral?.assignedSpecialistId && !specialistData[referral.assignedSpecialistId]) {
+        try {
+          console.log('Loading specialist data for ID:', referral.assignedSpecialistId);
+          const specialist = await databaseService.getDoctorById(referral.assignedSpecialistId);
+          console.log('Loaded specialist data:', specialist);
+          setSpecialistData(prev => ({ ...prev, [referral.assignedSpecialistId]: specialist }));
+        } catch (error) {
+          console.error('Error loading specialist data:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading referral:', error);
+      setReferrals(prev => ({ ...prev, [referralId]: null }));
+    } finally {
+      setLoadingReferrals(prev => ({ ...prev, [referralId]: false }));
+    }
+  };
+
   function capitalize(str: string) {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
@@ -133,6 +186,28 @@ export default function AppointmentsScreen() {
     );
   };
 
+  // Get referrals for appointments
+  const getReferralCards = () => {
+    const referralCards = [];
+    
+    appointments.forEach(appointment => {
+      if (appointment.relatedReferralId) {
+        const referral = referrals[appointment.relatedReferralId];
+        const isLoading = loadingReferrals[appointment.relatedReferralId];
+        
+        referralCards.push({
+          id: `referral-${appointment.relatedReferralId}`,
+          type: 'referral',
+          appointment,
+          referral,
+          loading: isLoading
+        });
+      }
+    });
+    
+    return referralCards;
+  };
+
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -147,6 +222,114 @@ export default function AppointmentsScreen() {
       default:
         return null;
     }
+  };
+
+  // === Referral Card ===
+  const renderReferralCard = (referralData: any) => {
+    const { appointment, referral, loading } = referralData;
+    
+    // Format date for display
+    const formatDisplayDate = (dateString: string) => {
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+      } catch (error) {
+        return 'Invalid date';
+      }
+    };
+
+    // Format time for display
+    const formatDisplayTime = (timeString: string) => {
+      try {
+        // Handle time strings that already have AM/PM
+        if (timeString.includes('AM') || timeString.includes('PM')) {
+          return timeString;
+        }
+        
+        const [hours, minutes] = timeString.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour % 12 || 12;
+        return `${displayHour}:${minutes} ${ampm}`;
+      } catch (error) {
+        return 'Invalid time';
+      }
+    };
+
+    return (
+      <View key={referralData.id} style={styles.referralCard}>
+        <View style={styles.referralCardHeader}>
+          <View style={styles.referralIconContainer}>
+            <Text style={styles.referralCardIcon}>📋</Text>
+          </View>
+                     <View style={styles.referralCardDetails}>
+             <Text style={styles.referralCardTitle}>Referral</Text>
+             <Text style={styles.referralCardSubtitle}>
+               {referral?.assignedSpecialistFirstName && referral?.assignedSpecialistLastName
+                 ? `${referral.assignedSpecialistFirstName} ${referral.assignedSpecialistLastName}`
+                 : 'Specialist'}
+             </Text>
+           </View>
+                     <View style={styles.referralStatusBadge}>
+             <Text style={styles.referralStatusText}>
+               {referral?.status === 'confirmed' ? 'Ready' :
+                referral?.status === 'pending' ? 'Pending' :
+                referral?.status === 'completed' ? 'Completed' :
+                referral?.status === 'canceled' ? 'Canceled' : 'Unknown'}
+             </Text>
+           </View>
+        </View>
+
+        <View style={styles.subtleDivider} />
+
+                 <View style={styles.referralCardDetails}>
+           {loading ? (
+             <Text style={styles.referralCardText}>Loading referral details...</Text>
+           ) : referral ? (
+             <>
+                               <View style={styles.keyValueRow}>
+                  <Text style={styles.label}>Reason:</Text>
+                  <Text style={styles.value}>
+                    {referral.initialReasonForReferral || 'Not specified'}
+                  </Text>
+                </View>
+                                 <View style={styles.keyValueRow}>
+                   <Text style={styles.label}>Clinic:</Text>
+                   <Text style={styles.value}>
+                     {referral.referringClinicName || 'Clinic not specified'}
+                   </Text>
+                 </View>
+                <View style={styles.keyValueRow}>
+                  <Text style={styles.label}>Date:</Text>
+                  <Text style={styles.value}>{formatDisplayDate(referral.appointmentDate)}</Text>
+                </View>
+                <View style={styles.keyValueRow}>
+                  <Text style={styles.label}>Time:</Text>
+                  <Text style={styles.value}>{formatDisplayTime(referral.appointmentTime)}</Text>
+                </View>
+             </>
+           ) : (
+             <Text style={styles.referralCardText}>Referral details not available</Text>
+           )}
+         </View>
+
+        <View style={styles.referralCardActions}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => {
+              setModalAppointment(appointment);
+              setShowModal(true);
+            }}
+          >
+            <Text style={styles.secondaryButtonText}>View Details</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   // === Appointment Card ===
@@ -231,6 +414,8 @@ export default function AppointmentsScreen() {
             </View>
           )}
         </View>
+
+        
 
         <View style={styles.appointmentActions}>
           {isCompleted ? (
@@ -346,16 +531,111 @@ export default function AppointmentsScreen() {
       </View>
     );
 
+    // Format time for display
+    const formatDisplayTime = (timeString: string) => {
+      try {
+        // Handle time strings that already have AM/PM
+        if (timeString.includes('AM') || timeString.includes('PM')) {
+          return timeString;
+        }
+        
+        const [hours, minutes] = timeString.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour % 12 || 12;
+        return `${displayHour}:${minutes} ${ampm}`;
+      } catch (error) {
+        return 'Invalid time';
+      }
+    };
+
+    // Check if this is a referral appointment
+    const isReferral = a.relatedReferralId && referrals[a.relatedReferralId];
+    const referral = isReferral ? referrals[a.relatedReferralId] : null;
+
     // Modal data using correct Appointment properties
-    const fields = [
+    const fields = isReferral ? [
+      // Referral-specific fields
+      { label: "Referring Clinic", value: referral?.referringClinicName || 'Not specified' },
+      { 
+        label: "Practice Location", 
+        value: (() => {
+          const clinicId = referral?.referringClinicId;
+          const clinic = clinicId ? clinicData[clinicId] : null;
+          return clinic?.address || 'Address not specified';
+        })()
+      },
+      { 
+        label: "Specialist", 
+        value: (referral?.assignedSpecialistFirstName && referral?.assignedSpecialistLastName
+          ? `${referral.assignedSpecialistFirstName} ${referral.assignedSpecialistLastName}`
+          : 'Specialist not specified')
+      },
+      { 
+        label: "Specialty", 
+        value: (() => {
+                       const specialistId = referral?.assignedSpecialistId;
+             const specialist = specialistId ? specialistData[specialistId] : null;
+             console.log('Specialist ID:', specialistId);
+             console.log('Specialist Data:', specialist?.specialty);
+             return specialist?.specialty || specialist?.specialization || 'Not specified';
+        })()
+      },
+      { 
+        label: "Date", 
+        value: (() => {
+          try {
+            const date = new Date(a.appointmentDate);
+            return date.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            });
+          } catch (error) {
+            return a.appointmentDate || 'Not specified';
+          }
+        })()
+      },
+      { label: "Time", value: formatDisplayTime(a.appointmentTime) || 'Not specified' },
+      { label: "Purpose", value: referral?.initialReasonForReferral || 'Not specified' },
+      { 
+        label: "Status", 
+        value: a.status === 'confirmed' ? 'Ready' :
+               a.status === 'pending' ? 'Pending' :
+               a.status === 'completed' ? 'Completed' :
+               a.status === 'canceled' ? 'Canceled' : 
+               capitalize(a.status || 'Unknown')
+      },
+    ] : [
+      // Regular appointment fields
       { label: "Clinic Name", value: a.clinicName || 'Not specified' },
-      { label: "Doctor", value: `${a.doctorFirstName || ''} ${a.doctorLastName || ''}`.trim() || 'Not specified' },
+      { 
+        label: "Doctor", 
+        value: `${a.doctorFirstName || ''} ${a.doctorLastName || ''}`.trim() || 'Not specified' 
+      },
       { label: "Specialty", value: a.specialty || 'General Practice' },
-      { label: "Date", value: a.appointmentDate || 'Not specified' },
-      { label: "Time", value: a.appointmentTime || 'Not specified' },
+      { 
+        label: "Date", 
+        value: (() => {
+          try {
+            const date = new Date(a.appointmentDate);
+            return date.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            });
+          } catch (error) {
+            return a.appointmentDate || 'Not specified';
+          }
+        })()
+      },
+      { label: "Time", value: formatDisplayTime(a.appointmentTime) || 'Not specified' },
       { label: "Purpose", value: a.patientComplaint?.join(', ') || 'Not specified' },
       ...(a.notes ? [{ label: "Additional Notes", value: a.notes }] : []),
-      { label: "Status", value: capitalize(a.status) },
+      { 
+        label: "Status", 
+        value: capitalize(a.status) 
+      },
     ];
 
     return (
@@ -558,25 +838,31 @@ export default function AppointmentsScreen() {
           />
         }
       >
-        <View style={styles.appointmentsList}>
-          {filteredAppointments.length > 0 ? (
-            filteredAppointments.map(renderAppointmentCard)
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>
-                {loading ? 'Loading appointments...' : `No ${activeFilter.toLowerCase()} appointments found`}
-              </Text>
-              {!loading && activeFilter === 'All' && (
-                <TouchableOpacity
-                  style={styles.addAppointmentButton}
-                  onPress={() => router.push('/book-visit')}
-                >
-                  <Text style={styles.addAppointmentButtonText}>Book Your First Appointment</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </View>
+                 <View style={styles.appointmentsList}>
+           {filteredAppointments.length > 0 || getReferralCards().length > 0 ? (
+             <>
+               {/* Render referral cards first */}
+               {getReferralCards().map(renderReferralCard)}
+               
+               {/* Render appointment cards */}
+               {filteredAppointments.map(renderAppointmentCard)}
+             </>
+           ) : (
+             <View style={styles.emptyState}>
+               <Text style={styles.emptyStateText}>
+                 {loading ? 'Loading appointments...' : `No ${activeFilter.toLowerCase()} appointments found`}
+               </Text>
+               {!loading && activeFilter === 'All' && (
+                 <TouchableOpacity
+                   style={styles.addAppointmentButton}
+                   onPress={() => router.push('/book-visit')}
+                 >
+                   <Text style={styles.addAppointmentButtonText}>Book Your First Appointment</Text>
+                 </TouchableOpacity>
+               )}
+             </View>
+           )}
+         </View>
       </ScrollView>
       {renderAppointmentModal()}
       {renderFeedbackModal()}
@@ -1008,12 +1294,159 @@ feedbackModalButton: {
   alignItems: 'center',
   justifyContent: 'center',
 },
-feedbackModalButtonText: {
-  color: '#fff',
-  fontSize: 16,
-  fontFamily: 'Inter-SemiBold',
-  letterSpacing: 0.2,
-},
+  feedbackModalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    letterSpacing: 0.2,
+  },
+
+  // Referral Section Styles
+  referralSection: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  referralHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  referralIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  referralTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#166534',
+  },
+  referralText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#166534',
+    lineHeight: 16,
+    marginBottom: 8,
+  },
+  referralStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  referralStatusLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#166534',
+  },
+  referralStatusValue: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+  },
+  referralStatusConfirmed: {
+    color: '#059669',
+  },
+  referralStatusPending: {
+    color: '#D97706',
+  },
+  referralStatusCompleted: {
+    color: '#059669',
+  },
+  referralStatusCanceled: {
+    color: '#DC2626',
+  },
+  referralDoctor: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#166534',
+    marginTop: 4,
+  },
+  referralDate: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#166534',
+    marginTop: 2,
+  },
+  referralClinic: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#166534',
+    marginTop: 2,
+  },
+  referralNotes: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#166534',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+
+  // Referral Card Styles
+  referralCard: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    marginBottom: 16,
+  },
+  referralCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  referralIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#BBF7D0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  referralCardIcon: {
+    fontSize: 18,
+  },
+  referralCardDetails: {
+    flex: 1,
+  },
+  referralCardTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#166534',
+  },
+  referralCardSubtitle: {
+    fontSize: 14,
+    color: '#059669',
+    marginTop: 2,
+  },
+  referralStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#059669',
+    backgroundColor: '#D1FAE5',
+  },
+  referralStatusText: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    color: '#059669',
+  },
+  referralCardText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#166534',
+    lineHeight: 20,
+  },
+  referralCardActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
 
 });
 

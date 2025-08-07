@@ -229,6 +229,37 @@ export const databaseService = {
   },
 
   // Clinics
+  // Helper method to check if clinic has generalist doctors
+  async hasGeneralistDoctors(clinicId: string): Promise<boolean> {
+    try {
+      const doctorsRef = ref(database, 'doctors');
+      const snapshot = await get(doctorsRef);
+      
+      if (snapshot.exists()) {
+        let hasGeneralist = false;
+        snapshot.forEach((childSnapshot) => {
+          const doctorData = childSnapshot.val();
+          // Check if doctor is affiliated with the clinic and is a generalist
+          // Check both clinic ID and clinic name for affiliation
+          if (doctorData.clinicAffiliations && 
+              (doctorData.clinicAffiliations.includes(clinicId) ||
+               doctorData.clinicAffiliations.some((affiliation: string) => 
+                 affiliation.toLowerCase().includes(clinicId.toLowerCase()) ||
+                 clinicId.toLowerCase().includes(affiliation.toLowerCase())
+               )) &&
+              doctorData.isGeneralist === true) {
+            hasGeneralist = true;
+          }
+        });
+        return hasGeneralist;
+      }
+      return false;
+    } catch (error) {
+      console.error('Check generalist doctors error:', error);
+      return false;
+    }
+  },
+
   async getClinics(): Promise<Clinic[]> {
     try {
       const clinicsRef = ref(database, 'clinics');
@@ -236,15 +267,32 @@ export const databaseService = {
       
       if (snapshot.exists()) {
         const clinics: Clinic[] = [];
+        const clinicPromises = [];
+        
+        // First, collect all clinics with valid addresses
+        const validClinics: { id: string; data: any }[] = [];
         snapshot.forEach((childSnapshot) => {
           const clinicData = childSnapshot.val();
-          if (clinicData.isActive) {
-            clinics.push({
+          // Only include active clinics with valid addresses
+          if (clinicData.isActive && this.hasValidAddress(clinicData)) {
+            validClinics.push({
               id: childSnapshot.key!,
-              ...clinicData
+              data: clinicData
             });
           }
         });
+
+        // Check each valid clinic for generalist doctors
+        for (const clinic of validClinics) {
+          const hasGeneralist = await this.hasGeneralistDoctors(clinic.id);
+          if (hasGeneralist) {
+            clinics.push({
+              id: clinic.id,
+              ...clinic.data
+            });
+          }
+        }
+        
         return clinics;
       }
       return [];
@@ -254,6 +302,27 @@ export const databaseService = {
     }
   },
 
+  // Helper method to check if clinic has a valid address
+  hasValidAddress(clinicData: any): boolean {
+    // Check if address field exists and is not empty
+    const hasAddress = clinicData.address && 
+                      typeof clinicData.address === 'string' && 
+                      clinicData.address.trim().length > 0;
+    
+    // Check if city field exists and is not empty
+    const hasCity = clinicData.city && 
+                   typeof clinicData.city === 'string' && 
+                   clinicData.city.trim().length > 0;
+    
+    // Check if province field exists and is not empty
+    const hasProvince = clinicData.province && 
+                       typeof clinicData.province === 'string' && 
+                       clinicData.province.trim().length > 0;
+    
+    // Return true only if all address components are present and valid
+    return hasAddress && hasCity && hasProvince;
+  },
+
   async getClinicById(clinicId: string): Promise<Clinic | null> {
     try {
       const clinicRef = ref(database, `clinics/${clinicId}`);
@@ -261,7 +330,8 @@ export const databaseService = {
       
       if (snapshot.exists()) {
         const clinicData = snapshot.val();
-        if (clinicData.isActive) {
+        // Only return active clinics with valid addresses
+        if (clinicData.isActive && this.hasValidAddress(clinicData)) {
           return {
             id: snapshot.key!,
             ...clinicData
@@ -275,6 +345,40 @@ export const databaseService = {
     }
   },
 
+  // Helper method to check if doctor has valid availability data
+  hasValidAvailability(doctorData: any): boolean {
+    // Check if doctor has availability data
+    if (!doctorData.availability) {
+      return false;
+    }
+
+    const availability = doctorData.availability;
+    
+    // Check if there's at least one day with enabled schedule and time slots
+    const weeklySchedule = availability.weeklySchedule;
+    if (weeklySchedule) {
+      for (const day in weeklySchedule) {
+        const daySchedule = weeklySchedule[day];
+        if (daySchedule?.enabled && daySchedule?.timeSlots && daySchedule.timeSlots.length > 0) {
+          return true;
+        }
+      }
+    }
+
+    // Check if there are specific dates with time slots
+    const specificDates = availability.specificDates;
+    if (specificDates) {
+      for (const date in specificDates) {
+        const dateSchedule = specificDates[date];
+        if (dateSchedule?.timeSlots && dateSchedule.timeSlots.length > 0) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  },
+
   async getDoctorsByClinic(clinicId: string): Promise<Doctor[]> {
     try {
       const doctorsRef = ref(database, 'doctors');
@@ -284,12 +388,27 @@ export const databaseService = {
         const doctors: Doctor[] = [];
         snapshot.forEach((childSnapshot) => {
           const doctorData = childSnapshot.val();
-          // Check if doctor is affiliated with the selected clinic
-          if (doctorData.clinicAffiliations && doctorData.clinicAffiliations.includes(clinicId)) {
-            doctors.push({
+          // Check if doctor is affiliated with the selected clinic and is a generalist
+          // Check both clinic ID and clinic name for affiliation
+          if (doctorData.clinicAffiliations && 
+              (doctorData.clinicAffiliations.includes(clinicId) ||
+               doctorData.clinicAffiliations.some((affiliation: string) => 
+                 affiliation.toLowerCase().includes(clinicId.toLowerCase()) ||
+                 clinicId.toLowerCase().includes(affiliation.toLowerCase())
+               )) &&
+              doctorData.isGeneralist === true &&
+              this.hasValidAvailability(doctorData)) {
+            // Ensure doctor has proper availability data
+            const doctorWithDefaults = {
               id: childSnapshot.key!,
-              ...doctorData
-            });
+              ...doctorData,
+              availability: doctorData.availability || {
+                lastUpdated: new Date().toISOString(),
+                weeklySchedule: {},
+                specificDates: {}
+              }
+            };
+            doctors.push(doctorWithDefaults);
           }
         });
         return doctors;
@@ -308,15 +427,95 @@ export const databaseService = {
       
       if (snapshot.exists()) {
         const doctorData = snapshot.val();
-        return {
-          id: snapshot.key!,
-          ...doctorData
-        };
+        // Only return doctor if they have valid availability data
+        if (this.hasValidAvailability(doctorData)) {
+          // Ensure doctor has proper availability data
+          const doctorWithDefaults = {
+            id: snapshot.key!,
+            ...doctorData,
+            availability: doctorData.availability || {
+              lastUpdated: new Date().toISOString(),
+              weeklySchedule: {},
+              specificDates: {}
+            }
+          };
+          return doctorWithDefaults;
+        }
       }
       return null;
     } catch (error) {
       console.error('Get doctor by ID error:', error);
       throw new Error('Failed to load doctor from database');
+    }
+  },
+
+  // Helper method to generate 1-hour time slots from start time to end time
+  generateTimeSlots(startTime: string, endTime: string): string[] {
+    const slots: string[] = [];
+    
+    console.log(`Generating time slots from ${startTime} to ${endTime}`);
+    
+    // Parse start and end times (assuming format "HH:MM" or "HH:MM:SS")
+    const start = new Date(`2000-01-01T${startTime}`);
+    const end = new Date(`2000-01-01T${endTime}`);
+    
+    console.log('Parsed start time:', start);
+    console.log('Parsed end time:', end);
+    
+    // Generate 1-hour slots
+    let current = new Date(start);
+    while (current < end) {
+      const timeString = current.toTimeString().slice(0, 5); // Format as "HH:MM"
+      slots.push(timeString);
+      console.log(`Added slot: ${timeString}`);
+      
+      // Add 1 hour
+      current.setHours(current.getHours() + 1);
+    }
+    
+    console.log('Generated slots:', slots);
+    return slots;
+  },
+
+  // Helper method to get available dates for a doctor
+  async getAvailableDates(doctorId: string, startDate: string, endDate: string): Promise<string[]> {
+    try {
+      const doctor = await this.getDoctorById(doctorId);
+      if (!doctor) return [];
+
+      const availableDates: string[] = [];
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      // Iterate through each date in the range
+      for (let current = new Date(start); current <= end; current.setDate(current.getDate() + 1)) {
+        const dateString = current.toISOString().split('T')[0];
+        const dayOfWeek = current.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+        
+        // Check if doctor has availability for this date
+        const weeklySchedule = doctor.availability?.weeklySchedule?.[dayOfWeek];
+        const specificDate = doctor.availability?.specificDates?.[dateString];
+        
+        // Check specific date first (overrides weekly schedule)
+        if (specificDate?.timeSlots && specificDate.timeSlots.length > 0) {
+          // Check if there are any available time slots for this specific date
+          const availableSlots = await this.getAvailableTimeSlots(doctorId, dateString);
+          if (availableSlots.length > 0) {
+            availableDates.push(dateString);
+          }
+        } else if (weeklySchedule?.enabled && weeklySchedule?.timeSlots && weeklySchedule.timeSlots.length > 0) {
+          // Check if there are any available time slots for this day of week
+          const availableSlots = await this.getAvailableTimeSlots(doctorId, dateString);
+          if (availableSlots.length > 0) {
+            availableDates.push(dateString);
+          }
+        }
+      }
+      
+      return availableDates;
+    } catch (error) {
+      console.error('Get available dates error:', error);
+      return [];
     }
   },
 
@@ -329,18 +528,42 @@ export const databaseService = {
       const weeklySchedule = doctor.availability?.weeklySchedule?.[dayOfWeek];
       const specificDate = doctor.availability?.specificDates?.[date];
 
+      console.log('Checking availability for date:', date);
+      console.log('Day of week:', dayOfWeek);
+      console.log('Weekly schedule:', weeklySchedule);
+      console.log('Specific date:', specificDate);
+
       let availableSlots: string[] = [];
 
       // Check specific date first (overrides weekly schedule)
       if (specificDate?.timeSlots) {
-        availableSlots = specificDate.timeSlots.map(slot => slot.startTime);
+        console.log('Using specific date time slots:', specificDate.timeSlots);
+        // Generate 1-hour slots for each time slot range
+        specificDate.timeSlots.forEach(slot => {
+          const slots = this.generateTimeSlots(slot.startTime, slot.endTime);
+          console.log(`Generated slots for ${slot.startTime}-${slot.endTime}:`, slots);
+          availableSlots.push(...slots);
+        });
       } else if (weeklySchedule?.enabled && weeklySchedule?.timeSlots) {
-        availableSlots = weeklySchedule.timeSlots.map(slot => slot.startTime);
+        console.log('Using weekly schedule time slots:', weeklySchedule.timeSlots);
+        // Generate 1-hour slots for each time slot range
+        weeklySchedule.timeSlots.forEach(slot => {
+          const slots = this.generateTimeSlots(slot.startTime, slot.endTime);
+          console.log(`Generated slots for ${slot.startTime}-${slot.endTime}:`, slots);
+          availableSlots.push(...slots);
+        });
       }
+
+      console.log('All available slots before filtering:', availableSlots);
 
       // Filter out already booked slots
       const bookedSlots = await this.getBookedTimeSlots(doctorId, date);
-      return availableSlots.filter(slot => !bookedSlots.includes(slot));
+      console.log('Booked slots:', bookedSlots);
+      
+      const finalSlots = availableSlots.filter(slot => !bookedSlots.includes(slot));
+      console.log('Final available slots:', finalSlots);
+      
+      return finalSlots;
     } catch (error) {
       console.error('Get available time slots error:', error);
       throw new Error('Failed to load available time slots');
