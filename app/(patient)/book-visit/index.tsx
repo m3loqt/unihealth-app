@@ -249,11 +249,6 @@ export default function BookVisitScreen() {
                       <Phone size={16} color="#6B7280" />
                       <Text style={styles.detailText}>{clinic.phone}</Text>
                     </View>
-                    
-                    <View style={styles.detailRow}>
-                      <Mail size={16} color="#6B7280" />
-                      <Text style={styles.detailText}>{clinic.email}</Text>
-                    </View>
                   </View>
                 </TouchableOpacity>
               );

@@ -128,7 +128,8 @@ export default function SpecialistProfileScreen() {
         } else {
           // It's a clinic ID, fetch the clinic data
           const clinicData = await databaseService.getDocument(`clinics/${clinicId}`);
-          if (clinicData && clinicData.name) {
+          // Only include clinics with valid addresses
+          if (clinicData && clinicData.name && hasValidAddress(clinicData)) {
             names.push(clinicData.name);
           }
         }
@@ -138,6 +139,27 @@ export default function SpecialistProfileScreen() {
       console.error('Error fetching clinic names:', error);
       setClinicNames([]);
     }
+  };
+
+  // Helper function to check if clinic has a valid address
+  const hasValidAddress = (clinicData: any): boolean => {
+    // Check if address field exists and is not empty
+    const hasAddress = clinicData.address && 
+                      typeof clinicData.address === 'string' && 
+                      clinicData.address.trim().length > 0;
+    
+    // Check if city field exists and is not empty
+    const hasCity = clinicData.city && 
+                   typeof clinicData.city === 'string' && 
+                   clinicData.city.trim().length > 0;
+    
+    // Check if province field exists and is not empty
+    const hasProvince = clinicData.province && 
+                       typeof clinicData.province === 'string' && 
+                       clinicData.province.trim().length > 0;
+    
+    // Return true only if all address components are present and valid
+    return hasAddress && hasCity && hasProvince;
   };
 
   const loadProfileData = async () => {

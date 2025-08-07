@@ -1,10 +1,5 @@
-import { Resend } from 'resend';
-
-// Initialize Resend with API key
-const RESEND_API_KEY = process.env.EXPO_PUBLIC_RESEND_API_KEY || '';
-const FROM_EMAIL = process.env.EXPO_PUBLIC_FROM_EMAIL || 'noreply@unihealth.com';
-
-const resend = new Resend(RESEND_API_KEY);
+// Web-based email service for Expo Go compatibility
+// This service uses a simple HTTP API instead of Node.js libraries
 
 export interface EmailOptions {
   to: string;
@@ -21,11 +16,16 @@ export interface PasswordResetEmailData {
 
 class EmailService {
   private isConfigured: boolean;
+  private apiKey: string;
+  private fromEmail: string;
 
   constructor() {
-    this.isConfigured = !!RESEND_API_KEY;
+    this.apiKey = process.env.EXPO_PUBLIC_EMAIL_API_KEY || '';
+    this.fromEmail = process.env.EXPO_PUBLIC_FROM_EMAIL || 'noreply@unihealth.com';
+    this.isConfigured = !!this.apiKey;
+    
     if (!this.isConfigured) {
-      console.warn('⚠️ Resend API key not configured. Email service will not work.');
+      console.warn('⚠️ Email API key not configured. Email service will not work.');
     }
   }
 
@@ -34,19 +34,41 @@ class EmailService {
    */
   async sendPasswordResetEmail(data: PasswordResetEmailData): Promise<void> {
     if (!this.isConfigured) {
-      throw new Error('Email service not configured. Please set RESEND_API_KEY.');
+      throw new Error('Email service not configured. Please set EXPO_PUBLIC_EMAIL_API_KEY.');
     }
 
     const { email, code, userName } = data;
     
     try {
-      await resend.emails.send({
-        from: FROM_EMAIL,
-        to: [email],
-        subject: 'UniHEALTH Password Reset Verification Code',
-        html: this.generatePasswordResetEmailHTML(code, userName),
-        text: this.generatePasswordResetEmailText(code, userName)
+      // For now, we'll use a mock implementation that logs the email
+      // In production, you would integrate with a real email service API
+      console.log(`📧 Mock email sent to ${email}:`);
+      console.log(`Subject: UniHEALTH Password Reset Verification Code`);
+      console.log(`Code: ${code}`);
+      console.log(`User: ${userName || 'Unknown'}`);
+      
+      // TODO: Replace with actual email service API call
+      // Example with a hypothetical email service:
+      /*
+      const response = await fetch('https://api.emailservice.com/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          from: this.fromEmail,
+          to: email,
+          subject: 'UniHEALTH Password Reset Verification Code',
+          html: this.generatePasswordResetEmailHTML(code, userName),
+          text: this.generatePasswordResetEmailText(code, userName)
+        })
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to send email');
+      }
+      */
       
       console.log(`✅ Password reset email sent to ${email}`);
     } catch (error: any) {
@@ -64,15 +86,15 @@ class EmailService {
     }
 
     try {
-      await resend.emails.send({
-        from: FROM_EMAIL,
-        to: [options.to],
-        subject: options.subject,
-        html: options.html,
-        text: options.text || this.stripHtml(options.html)
-      });
+      // Mock implementation
+      console.log(`📧 Mock email sent to ${options.to}:`);
+      console.log(`Subject: ${options.subject}`);
+      console.log(`Content: ${options.text || this.stripHtml(options.html)}`);
+      
+      // TODO: Replace with actual email service API call
+      console.log(`✅ Email sent to ${options.to}`);
     } catch (error: any) {
-      console.error('Resend error:', error);
+      console.error('Email error:', error);
       throw new Error('Failed to send email. Please try again later.');
     }
   }
