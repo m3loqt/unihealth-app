@@ -11,12 +11,16 @@ import {
   ScrollView,
   Modal,
   Alert,
+  Pressable,
+  Dimensions,
 } from 'react-native';
 import { Link, router } from 'expo-router';
-import { Stethoscope, Eye, EyeOff, Mail, Lock, Fingerprint, User, AlertCircle } from 'lucide-react-native';
+import { Stethoscope, Eye, EyeOff, Mail, Lock, Fingerprint, User, AlertCircle, X, CheckCircle } from 'lucide-react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../src/hooks/auth/useAuth';
 import { performBiometricLogin, isBiometricLoginAvailable, saveBiometricCredentials, checkBiometricSupport } from '../src/hooks/auth/useBiometricAuth';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function SignInScreen() {
   const { signIn } = useAuth();
@@ -99,17 +103,8 @@ export default function SignInScreen() {
         setErrorMessage('Invalid email or password.');
       }
     } catch (error) {
-      let errorMsg = 'Invalid email or password.';
-      if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
-        if (error.message.includes('user-not-found')) {
-          errorMsg = 'No account found with this email. Please sign up.';
-        } else if (error.message.includes('wrong-password')) {
-          errorMsg = 'Incorrect password. Please try again.';
-        } else if (error.message.includes('too-many-requests')) {
-          errorMsg = 'Too many failed attempts. Please try again later.';
-        }
-      }
-      setErrorMessage(errorMsg);
+      console.error('Sign in error:', error);
+      setErrorMessage('An error occurred during sign in. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -120,26 +115,20 @@ export default function SignInScreen() {
   };
 
   const handleBiometricLogin = async () => {
-    if (!isBiometricEnabled) return;
     try {
-      const isAvailable = await isBiometricLoginAvailable();
-      if (!isAvailable) {
-        setErrorMessage('Biometric login not available. Please sign in with email and password first.');
-        setIsBiometricEnabled(false);
-        return;
-      }
       const credentials = await performBiometricLogin();
-      if (!credentials) {
-        setErrorMessage('Biometric authentication failed. Please try again or sign in with password.');
-        return;
-      }
-      const userProfile = await signIn(credentials.email, credentials.password);
-      if (userProfile) {
-        const targetRoute = userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
-        setNextRoute(targetRoute);
-        setShowWelcomeModal(true);
+      if (credentials) {
+        // Sign in with the retrieved credentials
+        const userProfile = await signIn(credentials.email, credentials.password);
+        if (userProfile) {
+          const targetRoute = userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
+          setNextRoute(targetRoute);
+          setShowWelcomeModal(true);
+        } else {
+          setErrorMessage('Biometric login failed. Please sign in with password.');
+        }
       } else {
-        setErrorMessage('Biometric login failed. Please sign in with password.');
+        setErrorMessage('Biometric authentication failed. Please try again.');
       }
     } catch (error) {
       setErrorMessage('Biometric authentication failed. Please try again.');
@@ -147,6 +136,11 @@ export default function SignInScreen() {
   };
 
   const handleProceedFromWelcome = () => {
+    setShowWelcomeModal(false);
+    router.push(nextRoute as any);
+  };
+
+  const handleCloseWelcomeModal = () => {
     setShowWelcomeModal(false);
     router.push(nextRoute as any);
   };
@@ -241,28 +235,65 @@ export default function SignInScreen() {
     setShowWelcomeModal(true);
   };
 
+  const getUserDisplayName = () => {
+    if (lastSuccessfulLogin?.userProfile?.name) {
+      return lastSuccessfulLogin.userProfile.name;
+    }
+    if (lastSuccessfulLogin?.userProfile?.firstName && lastSuccessfulLogin?.userProfile?.lastName) {
+      return `${lastSuccessfulLogin.userProfile.firstName} ${lastSuccessfulLogin.userProfile.lastName}`;
+    }
+    return lastSuccessfulLogin?.userProfile?.email || 'User';
+  };
+
+  const getUserRole = () => {
+    const role = lastSuccessfulLogin?.userProfile?.role || selectedRole;
+    return role === 'specialist' ? 'Healthcare Specialist' : 'Patient';
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Welcome Modal */}
+      {/* Success Login Modal */}
       <Modal
         visible={showWelcomeModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {}}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCloseWelcomeModal}
       >
-        <TouchableOpacity
-          style={styles.welcomeModalOverlay}
-          activeOpacity={1}
-          onPress={handleProceedFromWelcome}
-        >
-          <View style={styles.welcomeModalCard}>
-            <View style={styles.welcomeIconWrap}>
-              <MaterialCommunityIcons name="hand-wave" size={54} color="#1E40AF" />
+        <Pressable style={welcomeModalStyles.backdrop} onPress={handleCloseWelcomeModal}>
+          <View style={welcomeModalStyles.backdropOverlay} />
+        </Pressable>
+        <View style={welcomeModalStyles.modalContainer}>
+          <SafeAreaView style={welcomeModalStyles.safeArea}>
+            <View style={welcomeModalStyles.modalContent}>
+              {/* Success Content */}
+              <View style={welcomeModalStyles.successContent}>
+                {/* Success Icon */}
+                <View style={welcomeModalStyles.successIcon}>
+                  <CheckCircle size={48} color="#1E40AF" />
+                </View>
+                
+                {/* Success Message */}
+                <Text style={welcomeModalStyles.successTitle}>
+                  Signin success!
+                </Text>
+                
+                <Text style={welcomeModalStyles.successSubtitle}>
+                  Click continue to proceed
+                </Text>
+              </View>
+              
+              {/* Action Button */}
+              <View style={welcomeModalStyles.actions}>
+                <TouchableOpacity
+                  style={welcomeModalStyles.primaryButton}
+                  onPress={handleProceedFromWelcome}
+                >
+                  <Text style={welcomeModalStyles.primaryButtonText}>Continue</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <Text style={styles.welcomeBigText}>Welcome Back!</Text>
-            <Text style={styles.welcomeSubtleText}>Click anywhere to proceed</Text>
-          </View>
-        </TouchableOpacity>
+          </SafeAreaView>
+        </View>
       </Modal>
 
       {/* Role Selection Modal */}
@@ -661,7 +692,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 24,
-    alignItems: 'center',
+    alignItems: 'stretch',
   },
   modalTitle: {
     fontSize: 20,
@@ -814,5 +845,113 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 14,
     fontFamily: 'Inter-Medium',
+  },
+});
+
+const welcomeModalStyles = StyleSheet.create({
+  backdrop: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1,
+  },
+  backdropOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)' 
+  },
+  modalContainer: {
+    flex: 1, justifyContent: 'flex-end', zIndex: 2,
+  },
+  safeArea: { 
+    width: '100%',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    alignItems: 'stretch',
+    minHeight: SCREEN_HEIGHT * 0.35,
+  },
+  header: {
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start', 
+    marginBottom: 16,
+  },
+  headerLeft: { 
+    flex: 1 
+  },
+  headerTitle: {
+    fontSize: 18, 
+    fontFamily: 'Inter-Bold', 
+    color: '#1F2937', 
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 13, 
+    fontFamily: 'Inter-Regular', 
+    color: '#6B7280',
+  },
+  closeButton: {
+    width: 36, 
+    height: 36, 
+    borderRadius: 18, 
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    borderWidth: 1, 
+    borderColor: '#E5E7EB', 
+    marginLeft: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginBottom: 20,
+  },
+  successContent: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  successIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  successTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  successSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  actions: { 
+    flexDirection: 'row', 
+    gap: 12,
+    marginTop: 32,
+  },
+  primaryButton: {
+    flex: 1,
+    backgroundColor: '#1E40AF',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  primaryButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 16, 
+    fontFamily: 'Inter-SemiBold' 
   },
 });
