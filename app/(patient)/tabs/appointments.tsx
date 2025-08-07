@@ -427,12 +427,15 @@ export default function AppointmentsScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Appointments</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.addButton}>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={() => router.push('/(patient)/book-visit')}
+          >
             <Plus size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.profileButton}
-            onPress={() => router.push('/profile')}
+            onPress={() => router.push('/(patient)/tabs/profile')}
           >
             <User size={24} color="#6B7280" />
           </TouchableOpacity>

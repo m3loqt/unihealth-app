@@ -1,0 +1,5559 @@
+{
+  "activity-logs": {
+    "-OWdZBBOUy2r_JGnjmdE": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1754117751577,
+      "details": {
+        "newStatus": "verified",
+        "notes": "assd"
+      },
+      "id": "-OWdZBBOUy2r_JGnjmdE",
+      "targetId": "doc_sd_hvhvh_1753925240265",
+      "targetType": "doctor",
+      "updatedAt": 1754117751577,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OWd_5avjydSqKaQjxul": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1754117990843,
+      "details": {
+        "newStatus": "verified",
+        "notes": "sdasda"
+      },
+      "id": "-OWd_5avjydSqKaQjxul",
+      "targetId": "doc_sd_hvhvh_1753925240265",
+      "targetType": "doctor",
+      "updatedAt": 1754117990843,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OWdmRss2h-0D0bbxZS0": {
+      "action": "Doctor verified",
+      "category": "verification",
+      "createdAt": 1754121489222,
+      "details": {
+        "doctorName": "Dr. Maria Santos",
+        "specialty": "Cardiology"
+      },
+      "id": "-OWdmRss2h-0D0bbxZS0",
+      "targetId": "-OWdmRghMBoK5EXbYi9B",
+      "targetType": "doctor",
+      "updatedAt": 1754121489222,
+      "userEmail": "admin@unihealth.com",
+      "userId": "admin-1"
+    },
+    "-OWdmRuByHqAEerF5Q4R": {
+      "action": "New feedback received",
+      "category": "feedback",
+      "createdAt": 1754121489306,
+      "details": {
+        "patientName": "Juan Carlos",
+        "rating": 5
+      },
+      "id": "-OWdmRuByHqAEerF5Q4R",
+      "targetId": "feedback-id",
+      "targetType": "feedback",
+      "updatedAt": 1754121489306,
+      "userEmail": "admin@unihealth.com",
+      "userId": "admin-1"
+    },
+    "-OWdmRv3GN0FsNbfFx28": {
+      "action": "Doctor profile updated",
+      "category": "profile",
+      "createdAt": 1754121489362,
+      "details": {
+        "changes": [
+          "bio",
+          "specialty"
+        ],
+        "doctorName": "Dr. Ana Rodriguez"
+      },
+      "id": "-OWdmRv3GN0FsNbfFx28",
+      "targetId": "-OWdmRlCY5Lks26SMIvo",
+      "targetType": "doctor",
+      "updatedAt": 1754121489362,
+      "userEmail": "admin@unihealth.com",
+      "userId": "admin-1"
+    },
+    "-OWnYpbe38n9HDB5JmOR": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1754285431397,
+      "details": {
+        "newStatus": "verified",
+        "notes": "Done checking credentials"
+      },
+      "id": "-OWnYpbe38n9HDB5JmOR",
+      "targetId": "doc_april_rosales_1754120757549",
+      "targetType": "doctor",
+      "updatedAt": 1754285431397,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OWvph-D5XFXkZuSPIIH": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1754424332395,
+      "details": {
+        "newStatus": "verified",
+        "notes": "None"
+      },
+      "id": "-OWvph-D5XFXkZuSPIIH",
+      "targetId": "doc_mel angelo_cortes_1754423091760",
+      "targetType": "doctor",
+      "updatedAt": 1754424332395,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    }
+  },
+  "admin-users": {
+    "X6TEqRNDUKSud1T10B8fZyfywKG3": {
+      "lastLoginAt": 1754500481677
+    },
+    "iz746J2IFaRNt1ybvRfLzHQxmjl2": {
+      "lastLoginAt": 1754287371319
+    }
+  },
+  "appointments": {
+    "-OWnKKpwiH-GXhBm64RW": {
+      "appointmentDate": "2025-08-05",
+      "appointmentTime": "08:30 AM",
+      "bookedByUserFirstName": "Mel",
+      "bookedByUserId": "m63VwObQtkfWiEidSo0RbcHLgOh1",
+      "bookedByUserLastName": "Angelo Cortes",
+      "clinicId": "clin_1_id",
+      "clinicName": "Central Family Health Clinic",
+      "createdAt": "2025-08-04T04:27:11.166Z",
+      "doctorFirstName": "Dr. General",
+      "doctorId": "doc_general_001",
+      "doctorLastName": "Practitioner",
+      "lastUpdated": "2025-08-04T04:27:11.166Z",
+      "notes": "",
+      "patientComplaint": [
+        "General Consultation"
+      ],
+      "patientFirstName": "Mel",
+      "patientId": "m63VwObQtkfWiEidSo0RbcHLgOh1",
+      "patientLastName": "Angelo Cortes",
+      "sourceSystem": "UniHealth_Patient_App",
+      "specialty": "General Consultation",
+      "status": "pending",
+      "type": "general_consultation"
+    },
+    "-OWniAi1JFxVAcNHeLrq": {
+      "appointmentDate": "2025-08-06",
+      "appointmentTime": "08:30 AM",
+      "bookedByUserFirstName": "Ira",
+      "bookedByUserId": "Bm6vQQCeeLhsl3htVUAnqIvKLqy1",
+      "bookedByUserLastName": "Pongasi",
+      "clinicId": "clin_1_id",
+      "clinicName": "Central Family Health Clinic",
+      "createdAt": "2025-08-04T06:15:43.285Z",
+      "doctorFirstName": "Dr. General",
+      "doctorId": "doc_general_001",
+      "doctorLastName": "Practitioner",
+      "lastUpdated": "2025-08-04T06:15:43.285Z",
+      "notes": "",
+      "patientComplaint": [
+        "General Consultation"
+      ],
+      "patientFirstName": "Ira",
+      "patientId": "Bm6vQQCeeLhsl3htVUAnqIvKLqy1",
+      "patientLastName": "Pongasi",
+      "sourceSystem": "UniHealth_Patient_App",
+      "specialty": "General Consultation",
+      "status": "pending",
+      "type": "general_consultation"
+    },
+    "-OWphurpD4ki5dlCMKO5_1754504116875_kkeavwvtz": {
+      "appointmentType": "walk_in",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "createdAt": "2025-08-06T18:15:16.875Z",
+      "createdBy": {
+        "email": "labo1@gmail.com",
+        "uid": "iINCwSPoPQcziURQmjTvyLBU2tw2"
+      },
+      "department": "Laboratory",
+      "id": "-OWphurpD4ki5dlCMKO5_1754504116875_kkeavwvtz",
+      "notes": "Walk-in appointment created via QR scan",
+      "patientId": "-OWphurpD4ki5dlCMKO5",
+      "patientName": "Aliya Penera",
+      "scheduledDate": "2025-08-06T18:15:16.875Z",
+      "service": {
+        "category": "laboratoryTests",
+        "id": "-OWpz9OAFVlfr4A-jm3K",
+        "name": "TSH"
+      },
+      "status": "scheduled"
+    },
+    "-OWpncdeU5MqVgscacNw": {
+      "appointmentDate": "2025-08-04",
+      "appointmentTime": "09:00 AM",
+      "clinicId": "-OWdmRcZYay1D6dv5bty",
+      "clinicName": "Metro Cebu Hospital",
+      "createdAt": "2025-08-04, 11:58 PM",
+      "doctor": "Dr. Dan Ken Penera",
+      "lastUpdated": "2025-08-04, 11:58 PM",
+      "patient": {
+        "address": "sdada",
+        "bloodType": "",
+        "complaints": [
+          "test"
+        ],
+        "contactNumber": "09991212313",
+        "dateOfBirth": "2025-08-04",
+        "email": "joshuabongz7@gmail.com",
+        "emergencyContact": {
+          "name": "test",
+          "phone": "09121312313",
+          "relation": "Child"
+        },
+        "firstName": "Joshua",
+        "lastName": "Bonghanoy"
+      },
+      "status": "Pending",
+      "type": "General Consultation"
+    },
+    "-OWqQt_txIr3Yv2G8FFC": {
+      "appointmentDate": "2025-08-05",
+      "appointmentTime": "09:00 AM",
+      "clinicId": "-OWdmRcZYay1D6dv5bty",
+      "clinicName": "Metro Cebu Hospital",
+      "createdAt": "2025-08-04, 02:54 AM",
+      "doctor": "Dr. Dan Ken Penera",
+      "lastUpdated": "2025-08-04, 02:54 AM",
+      "patient": {
+        "address": "ss",
+        "bloodType": "",
+        "complaints": [
+          "test"
+        ],
+        "contactNumber": "09991212313",
+        "dateOfBirth": "2000-12-31",
+        "email": "joshuabongz7@gmail.com",
+        "emergencyContact": {
+          "name": "test",
+          "phone": "09123123213",
+          "relation": "dsds"
+        },
+        "firstName": "Joshua",
+        "lastName": "Bonghanoy"
+      },
+      "serviceFee": "",
+      "status": "Pending",
+      "type": "General Consultation"
+    },
+    "-OWqf1iPtB0JNspPS3Th": {
+      "appointmentDate": "2025-08-05",
+      "appointmentTime": "09:00 AM",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-04, 04:00 AM",
+      "doctor": "Dr. Galigao Aliya",
+      "lastUpdated": "2025-08-04, 04:00 AM",
+      "patient": {
+        "address": "test",
+        "bloodType": "",
+        "complaints": [
+          "sss"
+        ],
+        "contactNumber": "09991212313",
+        "dateOfBirth": "2025-07-31",
+        "email": "joshuabongz7@gmail.com",
+        "emergencyContact": {
+          "name": "try232",
+          "phone": "09232323232",
+          "relation": "test"
+        },
+        "firstName": "Joshua",
+        "lastName": "Bonghanoy"
+      },
+      "serviceFee": {
+        "fee": "500",
+        "name": "General Consultation"
+      },
+      "status": "Pending",
+      "type": "General Consultation"
+    },
+    "-OWqi3TReBrXhQgMUCE_": {
+      "appointmentDate": "2025-08-12",
+      "appointmentTime": "09:00 AM",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-04, 04:14 AM",
+      "doctor": "Dr. Galigao Aliya",
+      "lastUpdated": "2025-08-04, 04:14 AM",
+      "patient": {
+        "address": "sss",
+        "bloodType": "",
+        "complaints": [
+          "ss"
+        ],
+        "contactNumber": "09991212313",
+        "dateOfBirth": "2000-12-22",
+        "email": "joshuabongz7@gmail.com",
+        "emergencyContact": {
+          "name": "ss",
+          "phone": "09213123213",
+          "relation": "sss"
+        },
+        "firstName": "Joshua",
+        "lastName": "Bonghanoy"
+      },
+      "serviceFee": {
+        "fee": "300",
+        "name": "Follow-up Consultation"
+      },
+      "status": "Pending",
+      "type": "General Consultation"
+    },
+    "-OWs8G5vbKW1K0vKdZUJ": {
+      "appointmentDate": "2025-08-05",
+      "appointmentTime": "10:00 AM",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-05, 10:52 AM",
+      "doctor": "Dr. Galigao Aliya",
+      "lastUpdated": "2025-08-05, 10:52 AM",
+      "patient": {
+        "address": "test",
+        "bloodType": "",
+        "complaints": [
+          "Fever"
+        ],
+        "contactNumber": "09991212313",
+        "dateOfBirth": "2000-12-01",
+        "email": "joshuabongz7@gmail.com",
+        "emergencyContact": {
+          "name": "Test",
+          "phone": "09213132123",
+          "relation": "test"
+        },
+        "firstName": "Joshua",
+        "lastName": "Bonghanoy"
+      },
+      "serviceFee": {
+        "fee": "500",
+        "name": "General Consultation"
+      },
+      "status": "Pending",
+      "type": "General Consultation"
+    },
+    "-OWv94v173Esc_NgbuBC": {
+      "appointmentDate": "2025-08-06",
+      "appointmentTime": "09:00 AM",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-05, 12:55 AM",
+      "doctor": "Dr. Galigao Aliya",
+      "lastUpdated": "2025-08-05, 12:55 AM",
+      "patient": {
+        "address": "test",
+        "bloodType": "",
+        "complaints": [
+          "fever"
+        ],
+        "contactNumber": "09991212313",
+        "dateOfBirth": "2000-12-07",
+        "email": "joshuabongz7@gmail.com",
+        "emergencyContact": {
+          "name": "Test",
+          "phone": "09231321231",
+          "relation": "test"
+        },
+        "firstName": "Joshua",
+        "lastName": "Bonghanoy"
+      },
+      "serviceFee": {
+        "fee": "500",
+        "name": "General Consultation"
+      },
+      "status": "Pending",
+      "type": "General Consultation"
+    },
+    "-OWvIJA0mNFa707sdTPg": {
+      "appointmentDate": "2025-08-06",
+      "appointmentTime": "9:00 AM",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-05, 01:35 AM",
+      "doctor": "Dr. Galigao Aliya",
+      "lastUpdated": "2025-08-05, 01:35 AM",
+      "patient": {
+        "address": "test",
+        "bloodType": "",
+        "complaints": [
+          "fever"
+        ],
+        "contactNumber": "09991212313",
+        "dateOfBirth": "2000-01-01",
+        "email": "joshuabongz7@gmail.com",
+        "emergencyContact": {
+          "name": "test",
+          "phone": "09123132123",
+          "relation": "test"
+        },
+        "firstName": "Joshua",
+        "lastName": "Bonghanoy"
+      },
+      "serviceFee": {
+        "fee": "300",
+        "name": "Follow-up Consultation"
+      },
+      "status": "Completed",
+      "type": "General Consultation"
+    },
+    "1753721295639_pat_sofia_garcia_id": {
+      "appointmentType": "walk_in",
+      "clinicId": "clin_cebu_central_id",
+      "createdAt": "2025-07-28T16:48:15.639Z",
+      "createdBy": {
+        "email": "mobile2@test.com",
+        "uid": "kDNxDSXM6CMsVwT9SnmBkrAidmc2"
+      },
+      "department": "Laboratory",
+      "id": "1753721295639_pat_sofia_garcia_id",
+      "notes": "Walk-in appointment created via QR scan",
+      "patientId": "pat_sofia_garcia_id",
+      "patientName": "Sofia Garcia",
+      "scheduledDate": "2025-07-28T16:48:15.639Z",
+      "service": {
+        "category": "laboratoryTests",
+        "id": "lab_test_cbc_001",
+        "name": "Complete Blood Count"
+      },
+      "status": "scheduled"
+    },
+    "1753883053791_pat_sofia_garcia_id": {
+      "appointmentType": "walk_in",
+      "clinicId": "clin_cebu_central_id",
+      "createdAt": "2025-07-30T13:44:13.791Z",
+      "createdBy": {
+        "email": "mobile2@test.com",
+        "uid": "kDNxDSXM6CMsVwT9SnmBkrAidmc2"
+      },
+      "department": "Laboratory",
+      "id": "1753883053791_pat_sofia_garcia_id",
+      "notes": "Walk-in appointment created via QR scan",
+      "patientId": "pat_sofia_garcia_id",
+      "patientName": "Sofia Garcia",
+      "scheduledDate": "2025-07-30T13:44:13.791Z",
+      "service": {
+        "category": "laboratoryTests",
+        "id": "lab_test_cbc_001",
+        "name": "Complete Blood Count"
+      },
+      "status": "scheduled"
+    },
+    "1754321755639_-OVpoIFY3QroprNaRJjz": {
+      "appointmentType": "walk_in",
+      "clinicId": "-OWdmRD3EI9WyRHzIdi3",
+      "createdAt": "2025-08-04T15:35:55.639Z",
+      "createdBy": {
+        "email": "ag@gmail.com",
+        "uid": "WPibpcIPZsQvxl60qcKZBMUokLn1"
+      },
+      "department": "doctor",
+      "id": "1754321755639_-OVpoIFY3QroprNaRJjz",
+      "notes": "Walk-in appointment created via QR scan",
+      "patientId": "-OVpoIFY3QroprNaRJjz",
+      "patientName": "Maria Santos",
+      "scheduledDate": "2025-08-04T15:35:55.639Z",
+      "service": {
+        "category": "consultationTypes",
+        "id": "med_service_general_consult_001",
+        "name": "General Consultation"
+      },
+      "status": "scheduled"
+    },
+    "1754323793419_-OWpq1LlOtAVzbbPeIW7": {
+      "appointmentType": "walk_in",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "createdAt": "2025-08-04T16:09:53.419Z",
+      "createdBy": {
+        "email": "gg@gmail.com",
+        "uid": "esGHYBaZJaSuDaq29BNeEEU0E5h1"
+      },
+      "department": "doctor",
+      "id": "1754323793419_-OWpq1LlOtAVzbbPeIW7",
+      "notes": "Walk-in appointment created via QR scan",
+      "patientId": "-OWpq1LlOtAVzbbPeIW7",
+      "patientName": "Desiree Cendana",
+      "scheduledDate": "2025-08-04T16:09:53.419Z",
+      "service": {
+        "category": "consultationTypes",
+        "id": "med_service_er_consult_001",
+        "name": "Emergency Room Consultation"
+      },
+      "status": "scheduled"
+    },
+    "1754324821438_-OWphurpD4ki5dlCMKO5": {
+      "appointmentType": "walk_in",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "createdAt": "2025-08-04T16:27:01.438Z",
+      "createdBy": {
+        "email": "gg@gmail.com",
+        "uid": "esGHYBaZJaSuDaq29BNeEEU0E5h1"
+      },
+      "department": "doctor",
+      "id": "1754324821438_-OWphurpD4ki5dlCMKO5",
+      "notes": "Walk-in appointment created via QR scan",
+      "patientId": "-OWphurpD4ki5dlCMKO5",
+      "patientName": "Aliya Penera",
+      "scheduledDate": "2025-08-04T16:27:01.438Z",
+      "service": {
+        "category": "consultationTypes",
+        "id": "med_service_general_consult_001",
+        "name": "General Consultation"
+      },
+      "status": "scheduled"
+    },
+    "appt_david_emergency_001_id": {
+      "appointmentDate": "2025-07-23",
+      "appointmentTime": "16:15:00",
+      "bookedByUserFirstName": "Nurse John",
+      "bookedByUserId": "staff_er_nurse_jd_uid",
+      "bookedByUserLastName": "Doe",
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-07-23T16:15:00Z",
+      "doctorFirstName": "Dr. Sarah",
+      "doctorId": "doc_sarah_kim_uid",
+      "doctorLastName": "Kim",
+      "lastUpdated": "2025-07-23T16:30:00Z",
+      "notes": "Emergency walk-in, patient in severe distress.",
+      "patientComplaint": [
+        "Sudden severe abdominal pain"
+      ],
+      "patientFirstName": "David",
+      "patientId": "pat_david_lim_id",
+      "patientLastName": "Lim",
+      "relatedReferralId": "ref_david_abd_001_id",
+      "sourceSystem": "UniHealth_Clinic_Staff_Module",
+      "specialty": "Emergency Medicine",
+      "status": "completed",
+      "type": "emergency_assessment"
+    },
+    "appt_lab_sofia_001_id": {
+      "appointmentDate": "2025-07-27",
+      "appointmentTime": "08:00:00",
+      "bookedByUserFirstName": "Sofia",
+      "bookedByUserId": "pat_sofia_garcia_uid",
+      "bookedByUserLastName": "Garcia",
+      "clinicId": "clin_cebu_central_id",
+      "clinicName": "UniHealth Central Clinic",
+      "createdAt": "2025-07-24T09:00:00Z",
+      "labTestId": "lab_test_cbc_001",
+      "labTestName": "Complete Blood Count",
+      "lastUpdated": "2025-07-24T09:00:00Z",
+      "notes": "Fasting required.",
+      "patientFirstName": "Sofia",
+      "patientId": "pat_sofia_garcia_id",
+      "patientLastName": "Garcia",
+      "sourceSystem": "UniHealth_Patient_App",
+      "status": "scheduled",
+      "type": "lab_booking"
+    },
+    "appt_maria_general_001_id": {
+      "appointmentDate": "2025-07-28",
+      "appointmentTime": "09:30:00",
+      "bookedByUserFirstName": "Maria",
+      "bookedByUserId": "pat_maria_santos_uid",
+      "bookedByUserLastName": "Santos",
+      "clinicId": "clin_lahug_uhc_id",
+      "clinicName": "Lahug Urban Health Center",
+      "createdAt": "2025-07-23T16:20:00Z",
+      "doctorFirstName": "Dr. Jose",
+      "doctorId": "doc_jose_reyes_uid",
+      "doctorLastName": "Reyes",
+      "lastUpdated": "2025-07-28T10:15:00Z",
+      "notes": "First time visit.",
+      "patientComplaint": [
+        "General check-up",
+        "persistent fatigue"
+      ],
+      "patientFirstName": "Maria",
+      "patientId": "pat_maria_santos_id",
+      "patientLastName": "Santos",
+      "relatedReferralId": "ref_maria_thyroid_001_id",
+      "sourceSystem": "UniHealth_Patient_App",
+      "specialty": "General Practice",
+      "status": "completed",
+      "type": "general_consultation"
+    },
+    "appt_sofia_followup_001_id": {
+      "appointmentDate": "2025-07-26",
+      "appointmentTime": "11:00:00",
+      "bookedByUserFirstName": "Sofia",
+      "bookedByUserId": "pat_sofia_garcia_uid",
+      "bookedByUserLastName": "Garcia",
+      "clinicId": "clin_perpetual_succour_id",
+      "clinicName": "Perpetual Succour Hospital",
+      "createdAt": "2025-07-23T16:35:00Z",
+      "doctorFirstName": "Dr. Jose",
+      "doctorId": "doc_jose_reyes_uid",
+      "doctorLastName": "Reyes",
+      "lastUpdated": "2025-07-23T16:35:00Z",
+      "notes": "Follow-up for ongoing cough, last seen 2025-07-15.",
+      "patientComplaint": [
+        "Persistent cough after previous cold"
+      ],
+      "patientFirstName": "Sofia",
+      "patientId": "pat_sofia_garcia_id",
+      "patientLastName": "Garcia",
+      "sourceSystem": "UniHealth_Patient_App",
+      "specialty": "General Practice",
+      "status": "confirmed",
+      "type": "general_consultation"
+    },
+    "clin_cebu_central_id_1753636682997": {
+      "appointmentDate": "2025-07-27",
+      "appointmentTime": "01:18:02",
+      "bookedByUserFirstName": "Mobile",
+      "bookedByUserId": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+      "bookedByUserLastName": "Department Test",
+      "clinicId": "clin_cebu_central_id",
+      "clinicName": "clin_cebu_central_id",
+      "createdAt": "2025-07-27T17:18:02.997Z",
+      "lastUpdated": "2025-07-27T17:18:02.997Z",
+      "notes": "Appointment created via QR scan by Laboratory department",
+      "patientFirstName": "Sofia",
+      "patientId": "pat_sofia_garcia_id",
+      "patientLastName": "Garcia",
+      "sourceSystem": "UniHealth_Clinic_Staff_Module",
+      "specialty": "Laboratory",
+      "status": "scheduled",
+      "type": "walk_in"
+    },
+    "clin_cebu_central_id_1753636879827": {
+      "appointmentDate": "2025-07-27",
+      "appointmentTime": "01:21:19",
+      "bookedByUserFirstName": "Mobile",
+      "bookedByUserId": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+      "bookedByUserLastName": "Department Test",
+      "clinicId": "clin_cebu_central_id",
+      "clinicName": "clin_cebu_central_id",
+      "createdAt": "2025-07-27T17:21:19.827Z",
+      "lastUpdated": "2025-07-27T17:21:19.827Z",
+      "notes": "Appointment created via QR scan by Laboratory department",
+      "patientFirstName": "Sofia",
+      "patientId": "pat_sofia_garcia_id",
+      "patientLastName": "Garcia",
+      "sourceSystem": "OdysSys Clinic Management System",
+      "specialty": "Laboratory",
+      "status": "scheduled",
+      "type": "walk_in"
+    }
+  },
+  "clin_cebu_central_id": {
+    "departments": {
+      "Laboratory": {
+        "usageHistory": {
+          "-OWH7p-lRSooCWv43UgX": {
+            "clinicId": "clin_cebu_central_id",
+            "department": "Laboratory",
+            "firstName": "Sofia",
+            "itemId": "inv_med_paracetamol_001",
+            "itemName": "Unknown Item",
+            "lastName": "Garcia",
+            "patientId": "pat_sofia_garcia_id",
+            "quantity": 5,
+            "timestamp": "2025-07-28T17:45:02.821Z",
+            "type": "medicines"
+          },
+          "-OWHBLtMwVXHJVhVMjx8": {
+            "clinicId": "clin_cebu_central_id",
+            "department": "Laboratory",
+            "firstName": "Sofia",
+            "itemId": "inv_med_paracetamol_001",
+            "itemName": "Unknown Item",
+            "lastName": "Garcia",
+            "patientId": "pat_sofia_garcia_id",
+            "quantity": 5,
+            "timestamp": "2025-07-28T18:00:27.305Z",
+            "type": "medicines"
+          },
+          "-OWHCSw5HPPqLLj2DfzE": {
+            "clinicId": "clin_cebu_central_id",
+            "department": "Laboratory",
+            "firstName": "Sofia",
+            "itemId": "inv_med_paracetamol_001",
+            "itemName": "Unknown Item",
+            "lastName": "Garcia",
+            "patientId": "pat_sofia_garcia_id",
+            "quantity": 10,
+            "timestamp": "2025-07-28T18:05:18.298Z",
+            "type": "medicines"
+          },
+          "-OWHFAJOrbgEntmTbPeV": {
+            "clinicId": "clin_cebu_central_id",
+            "department": "Laboratory",
+            "firstName": "Sofia",
+            "itemId": "inv_med_paracetamol_001",
+            "itemName": "Unknown Item",
+            "lastName": "Garcia",
+            "patientId": "pat_sofia_garcia_id",
+            "quantity": 30,
+            "timestamp": "2025-07-28T18:17:08.452Z",
+            "type": "medicines"
+          }
+        }
+      }
+    },
+    "patients": {
+      "pat_sofia_garcia_id": {
+        "accessibleDepartments": [
+          "Laboratory"
+        ],
+        "bloodType": "O+",
+        "clinic": "clin_cebu_central_id",
+        "createdAt": "2025-06-10T14:00:00Z",
+        "currentClinic": "clin_cebu_central_id",
+        "currentCondition": "",
+        "currentDepartment": "Laboratory",
+        "dateOfBirth": "1997-09-01",
+        "emergencyContact": {
+          "name": "Maria Garcia",
+          "phone": "+639081234567",
+          "relationship": "Mother"
+        },
+        "firstName": "Sofia",
+        "gender": "Female",
+        "hasVisitedClinic": true,
+        "id": "pat_sofia_garcia_id",
+        "lastModified": "2025-07-28T18:17:08.562Z",
+        "lastName": "Garcia",
+        "lastUpdated": "2025-07-23T16:35:00Z",
+        "medUse": [
+          {
+            "id": "inv_med_paracetamol_001",
+            "name": "Unknown Item",
+            "offline": false,
+            "quantity": 10,
+            "retailPrice": 0,
+            "shortDesc": "",
+            "standardDesc": "",
+            "timestamp": "2025-07-28T18:05:18.475Z"
+          },
+          {
+            "id": "inv_med_paracetamol_001",
+            "name": "Unknown Item",
+            "offline": false,
+            "quantity": 30,
+            "retailPrice": 0,
+            "shortDesc": "",
+            "standardDesc": "",
+            "timestamp": "2025-07-28T18:17:08.561Z"
+          }
+        ],
+        "medicalConditions": [
+          "Common Cold (previous)"
+        ],
+        "modifiedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+        "patientId": "pat_sofia_garcia_id",
+        "qrData": "pat_sofia_garcia_id",
+        "todaysAppointment": {
+          "appointmentType": "walk_in",
+          "clinicId": "clin_cebu_central_id",
+          "createdAt": "2025-07-28T16:48:15.639Z",
+          "createdBy": {
+            "email": "mobile2@test.com",
+            "uid": "kDNxDSXM6CMsVwT9SnmBkrAidmc2"
+          },
+          "department": "Laboratory",
+          "id": "1753721295639_pat_sofia_garcia_id",
+          "notes": "Walk-in appointment created via QR scan",
+          "patientId": "pat_sofia_garcia_id",
+          "patientName": "Sofia Garcia",
+          "scheduledDate": "2025-07-28T16:48:15.639Z",
+          "service": {
+            "category": "laboratoryTests",
+            "id": "lab_test_cbc_001",
+            "name": "Complete Blood Count"
+          },
+          "status": "scheduled"
+        },
+        "userId": "pat_sofia_garcia_uid",
+        "visitHistory": {
+          "currentAdmission": {
+            "admissionDate": "2025-07-28T16:48:15.639Z",
+            "attendingStaff": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+            "attendingStaffName": "mobile2@test.com",
+            "department": "Laboratory",
+            "lastUpdated": "2025-07-28T16:48:15.639Z"
+          },
+          "departmentsVisited": [
+            "Laboratory"
+          ],
+          "firstVisit": "2025-07-24T09:00:00Z",
+          "lastVisit": "2025-07-28T16:48:15.639Z",
+          "patientNumber": "1753721295639_pat_sofia_garcia_id",
+          "recentAppointment": {
+            "appointmentType": "walk_in",
+            "clinicId": "clin_cebu_central_id",
+            "createdAt": "2025-07-28T16:48:15.639Z",
+            "createdBy": {
+              "email": "mobile2@test.com",
+              "uid": "kDNxDSXM6CMsVwT9SnmBkrAidmc2"
+            },
+            "department": "Laboratory",
+            "id": "1753721295639_pat_sofia_garcia_id",
+            "notes": "Walk-in appointment created via QR scan",
+            "patientId": "pat_sofia_garcia_id",
+            "patientName": "Sofia Garcia",
+            "scheduledDate": "2025-07-28T16:48:15.639Z",
+            "service": {
+              "category": "laboratoryTests",
+              "id": "lab_test_cbc_001",
+              "name": "Complete Blood Count"
+            },
+            "status": "scheduled"
+          },
+          "registeredBy": {
+            "email": "mobile2@test.com",
+            "uid": "kDNxDSXM6CMsVwT9SnmBkrAidmc2"
+          },
+          "servicesUsed": [
+            "Complete Blood Count"
+          ],
+          "status": "active",
+          "visitCount": 4
+        },
+        "visitInfo": {
+          "currentAdmission": {
+            "admissionDate": "2025-07-27T15:17:45.448Z",
+            "attendingStaff": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+            "attendingStaffName": "Mobile Department Test",
+            "department": "Laboratory",
+            "lastUpdated": "2025-07-28T15:47:56.871Z",
+            "scanHistory": [
+              {
+                "action": "scan_and_register",
+                "department": "Emergency Room",
+                "purpose": "Patient Registration - First Visit",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-27T15:17:45.448Z"
+              },
+              {
+                "action": "scan_existing_patient",
+                "department": "Emergency Room",
+                "purpose": "Follow-up Visit - Patient Care",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-27T15:26:12.005Z"
+              },
+              {
+                "action": "scan_existing_patient",
+                "department": "Emergency Room",
+                "purpose": "Follow-up Visit - Patient Care",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-27T15:48:02.280Z"
+              },
+              {
+                "action": "scan_existing_patient",
+                "department": "Emergency Room",
+                "purpose": "Follow-up Visit - Patient Care",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-27T15:56:47.723Z"
+              },
+              {
+                "action": "scan_existing_patient",
+                "department": "Emergency Room",
+                "purpose": "Follow-up Visit - Patient Care",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-27T16:14:09.095Z"
+              },
+              {
+                "action": "scan_existing_patient",
+                "department": "Emergency Room",
+                "purpose": "Follow-up Visit - Patient Care",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-27T17:08:05.482Z"
+              },
+              {
+                "action": "scan_existing_patient",
+                "department": "Laboratory",
+                "purpose": "Follow-up Visit - Patient Care",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-27T17:10:30.461Z"
+              },
+              {
+                "action": "scan_existing_patient",
+                "department": "Laboratory",
+                "purpose": "Follow-up Visit - Patient Care",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-27T17:17:35.779Z"
+              },
+              {
+                "action": "scan_existing_patient",
+                "department": "Laboratory",
+                "purpose": "Follow-up Visit - Patient Care",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-27T17:21:11.829Z"
+              },
+              {
+                "action": "scan_existing_patient",
+                "department": "Laboratory",
+                "purpose": "Follow-up Visit - Patient Care",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-27T17:21:36.691Z"
+              },
+              {
+                "action": "scan_existing_patient",
+                "department": "Laboratory",
+                "purpose": "Follow-up Visit - Patient Care",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-27T18:22:28.327Z"
+              },
+              {
+                "action": "scan_existing_patient",
+                "department": "Laboratory",
+                "purpose": "Follow-up Visit - Patient Care",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-28T15:27:33.413Z"
+              },
+              {
+                "action": "scan_existing_patient",
+                "department": "Laboratory",
+                "purpose": "Follow-up Visit - Patient Care",
+                "scannedBy": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+                "scannedByName": "Mobile Department Test",
+                "timestamp": "2025-07-28T15:47:56.871Z"
+              }
+            ]
+          },
+          "firstVisit": "2025-07-27T15:17:45.448Z",
+          "lastVisit": "2025-07-28T15:47:56.871Z",
+          "patientNumber": "CEB-2025-465448",
+          "registeredBy": {
+            "department": "Emergency Room",
+            "registrationDate": "2025-07-27T15:17:45.448Z",
+            "staffId": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+            "staffName": "Mobile Department Test"
+          },
+          "status": "active",
+          "visitCount": 13
+        }
+      }
+    }
+  },
+  "clinicBilling": {
+    "-OWtv-VW9WKC83C2oU78": {
+      "amount": 50,
+      "billedItems": [
+        {
+          "itemId": "2AFOxWqWCbmQC7MhEOrs",
+          "itemName": "Paracetamol",
+          "itemType": "medicine",
+          "pricePerUnit": 5,
+          "quantity": 10,
+          "timestamp": "2025-08-04T16:10:21.843Z",
+          "totalPrice": 50
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-08-05T11:09:28.449Z",
+      "paidDate": "2025-08-05T16:23:23.497Z",
+      "patientFullName": "Desiree Cendana",
+      "patientId": "-OWpq1LlOtAVzbbPeIW7",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-05T11:09:28.449Z"
+    },
+    "-OWuK2iExPgQFZ-9CLEv": {
+      "amount": 850,
+      "billedItems": [
+        {
+          "itemId": "2AFOxWqWCbmQC7MhEOrs",
+          "itemName": "Paracetamol",
+          "itemType": "medicine",
+          "pricePerUnit": 5,
+          "quantity": 20,
+          "timestamp": "2025-08-04T16:05:46.254Z",
+          "totalPrice": 100
+        },
+        {
+          "itemId": "fPI5LKhrWbO0LG5M1nNk",
+          "itemName": "Syringe 5ml",
+          "itemType": "medicine",
+          "pricePerUnit": 5,
+          "quantity": 50,
+          "timestamp": "2025-08-04T17:42:31.475Z",
+          "totalPrice": 250
+        },
+        {
+          "itemId": "-OWpzP3bWvg36K7PBopg",
+          "itemName": "Medical Service",
+          "itemType": "service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "timestamp": "2025-08-04T19:16:13.696Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-08-05T13:03:17.405Z",
+      "paidDate": "2025-08-05T19:16:55.493Z",
+      "patientFullName": "Aliya Penera",
+      "patientId": "-OWphurpD4ki5dlCMKO5",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-05T13:03:17.405Z"
+    },
+    "-OWveeP0TyFDScEEByXZ": {
+      "amount": 50,
+      "billedItems": [
+        {
+          "itemId": "2AFOxWqWCbmQC7MhEOrs",
+          "itemName": "Paracetamol",
+          "itemType": "medicine",
+          "pricePerUnit": 5,
+          "quantity": 10,
+          "timestamp": "2025-08-04T16:10:21.843Z",
+          "totalPrice": 50
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-08-05T19:17:18.309Z",
+      "paidDate": "2025-08-05T19:17:21.376Z",
+      "patientFullName": "Desiree Cendana",
+      "patientId": "-OWpq1LlOtAVzbbPeIW7",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-05T19:17:18.309Z"
+    },
+    "-OX-CzhJEiYKZ6Qkd3LD": {
+      "amount": 1850,
+      "billedItems": [
+        {
+          "itemId": "2AFOxWqWCbmQC7MhEOrs",
+          "itemName": "Paracetamol",
+          "itemType": "medicine",
+          "pricePerUnit": 5,
+          "quantity": 20,
+          "timestamp": "2025-08-04T16:05:46.254Z",
+          "totalPrice": 100
+        },
+        {
+          "itemId": "fPI5LKhrWbO0LG5M1nNk",
+          "itemName": "Syringe 5ml",
+          "itemType": "medicine",
+          "pricePerUnit": 5,
+          "quantity": 50,
+          "timestamp": "2025-08-04T17:42:31.475Z",
+          "totalPrice": 250
+        },
+        {
+          "itemId": "-OWpzP3bWvg36K7PBopg",
+          "itemName": "Medical Service",
+          "itemType": "service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "timestamp": "2025-08-04T19:16:13.696Z",
+          "totalPrice": 500
+        },
+        {
+          "itemId": "-OWpz9OAFVlfr4A-jm3K",
+          "itemName": "Medical Service",
+          "itemType": "service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "timestamp": "2025-08-05T16:48:54.939Z",
+          "totalPrice": 500
+        },
+        {
+          "itemId": "-OWpz2wubm2-FZRaF-gu",
+          "itemName": "Medical Service",
+          "itemType": "service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "timestamp": "2025-08-05T17:07:42.103Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-08-06T16:30:09.133Z",
+      "patientFullName": "Aliya Penera",
+      "patientId": "-OWphurpD4ki5dlCMKO5",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "unpaid",
+      "transactionDate": "2025-08-06T16:30:09.133Z"
+    },
+    "bill_david_001_id": {
+      "amount": 3500,
+      "billedItems": [
+        {
+          "itemId": "med_service_er_consult_001",
+          "itemName": "Emergency Consultation Fee",
+          "itemType": "service",
+          "pricePerUnit": 1500,
+          "quantity": 1
+        },
+        {
+          "itemId": "inv_med_paracetamol_001",
+          "itemName": "Paracetamol",
+          "itemType": "medicine",
+          "pricePerUnit": 7.5,
+          "quantity": 2
+        },
+        {
+          "itemId": "inv_sup_gloves_001",
+          "itemName": "Gloves",
+          "itemType": "supply",
+          "pricePerUnit": 1.5,
+          "quantity": 5
+        },
+        {
+          "itemId": "lab_test_cbc_001",
+          "itemName": "CBC Test",
+          "itemType": "lab_test",
+          "pricePerUnit": 200,
+          "quantity": 1
+        },
+        {
+          "itemId": "img_test_ct_abdomen_001",
+          "itemName": "CT Abdomen",
+          "itemType": "imaging_test",
+          "pricePerUnit": 1700,
+          "quantity": 1
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-07-23T17:00:00Z",
+      "patientFirstName": "David",
+      "patientId": "pat_david_lim_id",
+      "patientLastName": "Lim",
+      "processedByUserFirstName": "Gay",
+      "processedByUserId": "staff_billing_gt_uid",
+      "processedByUserLastName": "Tambok",
+      "relatedAppointmentId": "appt_david_emergency_001_id",
+      "status": "unpaid",
+      "transactionDate": "2025-07-23T17:00:00Z"
+    },
+    "bill_maria_001_id": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "itemId": "med_service_general_consult_001",
+          "itemName": "General Consultation Fee",
+          "itemType": "service",
+          "pricePerUnit": 500,
+          "quantity": 1
+        }
+      ],
+      "clinicId": "clin_lahug_uhc_id",
+      "clinicName": "Lahug Urban Health Center",
+      "createdAt": "2025-07-28T10:30:00Z",
+      "patientFirstName": "Maria",
+      "patientId": "pat_maria_santos_id",
+      "patientLastName": "Santos",
+      "processedByUserFirstName": "Gay",
+      "processedByUserId": "staff_billing_gt_uid",
+      "processedByUserLastName": "Tambok",
+      "relatedAppointmentId": "appt_maria_general_001_id",
+      "status": "paid",
+      "transactionDate": "2025-07-28T10:30:00Z"
+    },
+    "bill_sofia_001_id": {
+      "amount": 650,
+      "billedItems": [
+        {
+          "itemId": "med_service_general_consult_001",
+          "itemName": "General Consultation Fee",
+          "itemType": "service",
+          "pricePerUnit": 500,
+          "quantity": 1
+        },
+        {
+          "itemId": "inv_med_lozenges_001",
+          "itemName": "Lozenges",
+          "itemType": "medicine",
+          "pricePerUnit": 150,
+          "quantity": 1
+        }
+      ],
+      "clinicId": "clin_perpetual_succour_id",
+      "clinicName": "Perpetual Succour Hospital",
+      "createdAt": "2025-07-15T15:00:00Z",
+      "patientFirstName": "Sofia",
+      "patientId": "pat_sofia_garcia_id",
+      "patientLastName": "Garcia",
+      "processedByUserFirstName": "Gay",
+      "processedByUserId": "staff_billing_gt_uid",
+      "processedByUserLastName": "Tambok",
+      "relatedAppointmentId": "appt_sofia_followup_001_id",
+      "status": "paid",
+      "transactionDate": "2025-07-15T15:00:00Z"
+    }
+  },
+  "clinicDepartments": {
+    "Admin": {
+      "defaultPermissions": {
+        "accessInventory": true,
+        "accessInventoryHistory": true,
+        "accessOverallInventory": true,
+        "accessPatients": true,
+        "accessSettings": true
+      },
+      "description": "Clinic-wide administrative functions"
+    },
+    "Billing": {
+      "defaultPermissions": {
+        "accessBilling": true,
+        "accessInventory": false,
+        "accessInventoryHistory": false,
+        "accessOverallInventory": false,
+        "accessPatients": false,
+        "accessSettings": false
+      },
+      "description": "Financial and billing management"
+    },
+    "ER": {
+      "defaultPermissions": {
+        "accessInventory": true,
+        "accessInventoryHistory": true,
+        "accessOverallInventory": false,
+        "accessPatients": true,
+        "accessSettings": false
+      },
+      "description": "Emergency Room operations"
+    },
+    "Laboratory": {
+      "defaultPermissions": {
+        "accessInventory": false,
+        "accessInventoryHistory": false,
+        "accessOverallInventory": false,
+        "accessPatients": true,
+        "accessSettings": false
+      },
+      "description": "Laboratory services for diagnostic tests"
+    },
+    "Pharmacy": {
+      "defaultPermissions": {
+        "accessInventory": true,
+        "accessInventoryHistory": true,
+        "accessOverallInventory": false,
+        "accessPatients": false,
+        "accessSettings": false
+      },
+      "description": "Medicine dispensing and inventory"
+    }
+  },
+  "clinicInventoryStock": {
+    "-OWdmRcZYay1D6dv5bty": {
+      "2AFOxWqWCbmQC7MhEOrs": {
+        "deparmentStock": {
+          "department": "Laboratory",
+          "quantity": 35,
+          "reason": "Stock ",
+          "timestamp": "8/7/2025, 12:58:31 AM",
+          "transferredBy": "Neww DB"
+        },
+        "lastUpdated": "2025-08-04T15:53:55.600Z",
+        "quantity": 35,
+        "status": "Good"
+      }
+    },
+    "-OWpoI_htd_vh8Kbimjn": {
+      "fPI5LKhrWbO0LG5M1nNk": {
+        "departmentStock": {
+          "doctor": {
+            "quantity": 5
+          }
+        },
+        "lastUpdated": "2025-08-04T17:40:35.631Z",
+        "quantity": 5,
+        "status": "Good"
+      }
+    }
+  },
+  "clinicInventoryTransactions": {
+    "-OWzxrDZj5UpkEarMpOp": {
+      "adminProcessed": true,
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "destinationDepartment": "Pharmacy",
+      "itemId": "pBkZlDGEn0MkmUrw3jyy",
+      "itemName": "Biogesic",
+      "processedByUserDepartment": "Admin",
+      "processedByUserFirstName": "admin",
+      "processedByUserId": "EDjKJWlRgoQ72upWsxhs6qZ3G5w1",
+      "processedByUserLastName": "admin",
+      "quantityChanged": 50,
+      "reason": "Ana xymmer",
+      "timestamp": "2025-08-06T15:19:40.198Z",
+      "transactionType": "stock_in"
+    },
+    "-OWzy4xZVqJoLSJnqRlQ": {
+      "adminProcessed": true,
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "destinationDepartment": "Pharmacy",
+      "itemId": "2AFOxWqWCbmQC7MhEOrs",
+      "itemName": "Paracetamol",
+      "processedByUserDepartment": "Admin",
+      "processedByUserFirstName": "admin",
+      "processedByUserId": "EDjKJWlRgoQ72upWsxhs6qZ3G5w1",
+      "processedByUserLastName": "admin",
+      "quantityChanged": 49,
+      "reason": "test",
+      "timestamp": "2025-08-06T15:20:40.505Z",
+      "transactionType": "stock_in"
+    },
+    "-OWzy9-MN-_iiBGhvAXP": {
+      "adminProcessed": true,
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "destinationDepartment": "Pharmacy",
+      "itemId": "2AFOxWqWCbmQC7MhEOrs",
+      "itemName": "Paracetamol",
+      "processedByUserDepartment": "Admin",
+      "processedByUserFirstName": "admin",
+      "processedByUserId": "EDjKJWlRgoQ72upWsxhs6qZ3G5w1",
+      "processedByUserLastName": "admin",
+      "quantityChanged": 6,
+      "reason": "Stock replenishment",
+      "timestamp": "2025-08-06T15:20:57.193Z",
+      "transactionType": "stock_in"
+    }
+  },
+  "clinicLabRequests": {
+    "-OWpl9E7lhoiIRcQy5W8": {
+      "addressLine": "Osmeña Blvd, Capitol Site, Cebu City, 6000 Cebu, Philippines",
+      "bloodType": "A-",
+      "clinic": "Cebu Doctors' University Hospital",
+      "clinicId": "clin_cebu_doctors_id",
+      "confirmedAt": "2025-08-04T18:44:29.924Z",
+      "contactNumber": "09991212313",
+      "createdAt": {
+        "date": "2025-08-04",
+        "time": "11:47 PM"
+      },
+      "dateOfBirth": "2000-12-11",
+      "description": "Measures red blood cells, white blood cells, and platelets.",
+      "email": "joshuabongz7@gmail.com",
+      "emergencyContact": {
+        "name": "test",
+        "phone": "09212312313",
+        "relation": "Parent"
+      },
+      "estimatedTime": "8:00AM - 9:00AM",
+      "firstName": "Joshua",
+      "labTestId": "lab_test_cbc_001",
+      "labTestName": "Complete Blood Count",
+      "lastName": "Bonghanoy",
+      "notes": "",
+      "patientName": "Joshua Bonghanoy",
+      "referDoctor": "Dr. Bongs Josh",
+      "slotNumber": "1",
+      "status": "Confirmed",
+      "type": "hospital",
+      "userId": ""
+    },
+    "-OWq0vQ7q-8S8GBXD2gl": {
+      "addressLine": "Urgello",
+      "bloodType": "A+",
+      "clinic": "SWU Clinic",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "contactNumber": "09991212313",
+      "createdAt": {
+        "date": "2025-08-04",
+        "time": "12:57 AM"
+      },
+      "dateOfBirth": "2000-12-07",
+      "description": "Thyroid Stimulating Hormone test.",
+      "email": "joshuabongz7@gmail.com",
+      "emergencyContact": {
+        "name": "test",
+        "phone": "09212312312",
+        "relation": "Parent"
+      },
+      "estimatedTime": "8:00AM - 9:00AM",
+      "firstName": "Joshua",
+      "labTestId": "-OWpz9OAFVlfr4A-jm3K",
+      "labTestName": "TSH",
+      "lastName": "Bonghanoy",
+      "notes": "",
+      "patientName": "Joshua Bonghanoy",
+      "referDoctor": "",
+      "serviceFee": "500",
+      "slotNumber": "1",
+      "status": "Pending",
+      "type": "Primary Clinic",
+      "userId": "HaC6ywZvlSS1e4u9AA5cImXlosq1"
+    },
+    "-OWvAn_pg1rAqsST0-6C": {
+      "addressLine": "Urgello",
+      "bloodType": "A-",
+      "clinic": "SWU Clinic",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "contactNumber": "09991212313",
+      "createdAt": {
+        "date": "2025-08-06",
+        "time": "01:02 AM"
+      },
+      "dateOfBirth": "2000-12-11",
+      "description": "Measures red blood cells, white blood cells, and platelets.",
+      "email": "joshuabongz7@gmail.com",
+      "emergencyContact": {
+        "name": "",
+        "phone": "",
+        "relation": ""
+      },
+      "estimatedTime": "8:00AM - 9:00AM",
+      "firstName": "Joshua",
+      "labTestId": "-OWpz2wubm2-FZRaF-gu",
+      "labTestName": "CBC",
+      "lastName": "Bonghanoy",
+      "notes": "",
+      "patientId": "-OWpl9E7lhoiIRcQy5W8",
+      "patientName": "Joshua Bonghanoy",
+      "referDoctor": "Galigao Aliya",
+      "serviceFee": "500",
+      "slotNumber": "1",
+      "status": "Completed",
+      "type": "Primary Clinic",
+      "userId": "esGHYBaZJaSuDaq29BNeEEU0E5h1"
+    },
+    "lab_req_david_001_id": {
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-07-23T16:55:00Z",
+      "labTestId": "lab_test_cbc_001",
+      "labTestName": "Complete Blood Count",
+      "notes": "Urgent, for acute abdominal pain.",
+      "patientFirstName": "David",
+      "patientId": "pat_david_lim_id",
+      "patientLastName": "Lim",
+      "requestDate": "2025-07-23",
+      "requestTime": "16:55:00",
+      "requestedByUserFirstName": "Dr. Maria",
+      "requestedByUserId": "doc_maria_cala_uid",
+      "requestedByUserLastName": "Cala",
+      "status": "pending"
+    },
+    "lab_req_maria_001_id": {
+      "clinicId": "clin_lahug_uhc_id",
+      "clinicName": "Lahug Urban Health Center",
+      "createdAt": "2025-07-28T09:45:00Z",
+      "labTestId": "lab_test_tsh_001",
+      "labTestName": "TSH (Thyroid Stimulating Hormone)",
+      "patientFirstName": "Maria",
+      "patientId": "pat_maria_santos_id",
+      "patientLastName": "Santos",
+      "performedByUserFirstName": "Madaya",
+      "performedByUserId": "staff_lab_mj_uid",
+      "performedByUserLastName": "Jetch",
+      "requestDate": "2025-07-28",
+      "requestTime": "09:45:00",
+      "requestedByUserFirstName": "Dr. Jose",
+      "requestedByUserId": "doc_jose_reyes_uid",
+      "requestedByUserLastName": "Reyes",
+      "resultReportUrl": "https://yourcloudstorage.com/lab_reports/maria_santos_tsh_20250728.pdf",
+      "resultTimestamp": "2025-07-30T14:00:00Z",
+      "results": {
+        "notes": "Slightly elevated, consistent with subclinical hypothyroidism.",
+        "referenceRange": "0.4 - 4.0 mIU/L",
+        "value": "6.2 mIU/L"
+      },
+      "status": "completed"
+    },
+    "lab_req_sofia_001_id": {
+      "clinicId": "clin_cebu_central_id",
+      "clinicName": "UniHealth Central Clinic",
+      "createdAt": "2025-07-24T09:00:00Z",
+      "labTestId": "lab_test_cbc_001",
+      "labTestName": "Complete Blood Count",
+      "notes": "Routine check-up.",
+      "patientFirstName": "Sofia",
+      "patientId": "pat_sofia_garcia_id",
+      "patientLastName": "Garcia",
+      "requestDate": "2025-07-27",
+      "requestTime": "08:00:00",
+      "requestedByUserFirstName": "Dr. Jose",
+      "requestedByUserId": "doc_jose_reyes_uid",
+      "requestedByUserLastName": "Reyes",
+      "status": "scheduled"
+    }
+  },
+  "clinics": {
+    "-OWdmRcZYay1D6dv5bty": {
+      "address": "456 Lahug Avenue",
+      "city": "Cebu City",
+      "createdAt": 1754121488178,
+      "email": "contact@metrocebu.com",
+      "id": "-OWdmRcZYay1D6dv5bty",
+      "isActive": true,
+      "name": "Metro Cebu Hospital",
+      "phone": "+63 32 234 5678",
+      "province": "Cebu",
+      "type": "hospital",
+      "updatedAt": 1754121488178,
+      "zipCode": "6000"
+    },
+    "-OWdmReUie0pXtC_bjyL": {
+      "address": "789 IT Park",
+      "city": "Cebu City",
+      "createdAt": 1754121488301,
+      "email": "info@skincareclinic.com",
+      "id": "-OWdmReUie0pXtC_bjyL",
+      "isActive": true,
+      "name": "Skin Care Clinic",
+      "phone": "+63 32 345 6789",
+      "province": "Cebu",
+      "type": "private_clinic",
+      "updatedAt": 1754121488301,
+      "zipCode": "6000"
+    },
+    "-OWpoI_htd_vh8Kbimjn": {
+      "addressLine": "Urgello",
+      "contactNumber": "09991591653",
+      "isActive": true,
+      "name": "SWU Clinic",
+      "type": "Primary Clinic"
+    },
+    "-OX-N1sktzbUhHaFxJwe": {
+      "address": "678 Pepito, National Highway",
+      "city": "Worldy",
+      "createdAt": 1754500443488,
+      "createdBy": "system",
+      "email": "worldy.hospital@gmail.com",
+      "id": "-OX-N1sktzbUhHaFxJwe",
+      "isActive": true,
+      "name": "Worldy",
+      "phone": "09994196419",
+      "province": "Negros",
+      "type": "hospital",
+      "updatedAt": 1754500443488,
+      "zipCode": "6780"
+    },
+    "-OX-SbJApVY0328MEKbS": {
+      "address": "hgbjhbjb",
+      "city": "bjhbhb",
+      "createdAt": 1754501903389,
+      "createdBy": "system",
+      "email": "bjhbjhb@gmail.com",
+      "id": "-OX-SbJApVY0328MEKbS",
+      "isActive": true,
+      "name": "ambo",
+      "phone": "09159452600",
+      "province": "jbjhbj",
+      "type": "hospital",
+      "updatedAt": 1754501903389,
+      "zipCode": "6001"
+    },
+    "-OX-UIMSJEaN7jXWxbtw": {
+      "address": "asbdjbsjd",
+      "city": "jshdbjhbs",
+      "createdAt": 1754502345958,
+      "createdBy": "system",
+      "email": "bhjbjh123@gmail.com",
+      "id": "-OX-UIMSJEaN7jXWxbtw",
+      "isActive": true,
+      "name": "Lammm",
+      "phone": "09159452600",
+      "province": "jhbjhbjh",
+      "type": "hospital",
+      "updatedAt": 1754502345958,
+      "zipCode": "6001"
+    },
+    "-OX-YC1sLBdLWFvDtI_t": {
+      "address": "bkjbkjb",
+      "city": "bkjbkjb",
+      "createdAt": 1754503368618,
+      "createdBy": "system",
+      "email": "kjbkjbk@gmail.com",
+      "id": "-OX-YC1sLBdLWFvDtI_t",
+      "isActive": true,
+      "name": "sasda",
+      "phone": "09120340812",
+      "province": "kbkjb",
+      "type": "hospital",
+      "updatedAt": 1754503368618,
+      "zipCode": "kjbk"
+    },
+    "clin_cebu_central_id": {
+      "addressLine": "Ayala Center Cebu, Archbishop Reyes Ave, Cebu City",
+      "contactNumber": "+63324123456",
+      "isActive": true,
+      "name": "UniHealth Central Clinic",
+      "type": "multi_specialty_clinic"
+    },
+    "clin_cebu_doctors_id": {
+      "addressLine": "Osmeña Blvd, Capitol Site, Cebu City, 6000 Cebu, Philippines",
+      "contactNumber": "+63322537500",
+      "isActive": true,
+      "name": "Cebu Doctors' University Hospital",
+      "type": "hospital"
+    },
+    "clin_lahug_uhc_id": {
+      "addressLine": "Salinas Drive, Lahug, Cebu City, 6000 Cebu, Philippines",
+      "contactNumber": "+63322312345",
+      "isActive": true,
+      "name": "Lahug Urban Health Center",
+      "type": "community_clinic"
+    },
+    "clin_perpetual_succour_id": {
+      "addressLine": "Gorordo Ave, Cebu City, 6000 Cebu, Philippines",
+      "contactNumber": "+63322338620",
+      "isActive": true,
+      "name": "Perpetual Succour Hospital",
+      "type": "hospital"
+    }
+  },
+  "departments": {
+    "Admin": {
+      "permissions": {
+        "accessBilling": true,
+        "accessInventory": true,
+        "accessInventoryHistory": true,
+        "accessOverallInventory": true,
+        "accessPatients": true,
+        "accessSettings": true
+      }
+    },
+    "Department of Managers": {
+      "permissions": {
+        "accessBilling": true,
+        "accessInventory": true,
+        "accessInventoryHistory": true,
+        "accessOverallInventory": true,
+        "accessPatients": true,
+        "accessSettings": true
+      }
+    },
+    "Laboratory": {
+      "localSupplies": {
+        "2AFOxWqWCbmQC7MhEOrs": {
+          "brand": "Biogesic",
+          "createdAt": "2025-08-04T14:37:42.990Z",
+          "defaultCostPrice": 2.5,
+          "defaultDosage": "500mg",
+          "defaultRetailPrice": 5,
+          "genericName": "Paracetamol",
+          "itemCategory": "Tablets and Capsules",
+          "itemGroup": "Medicine",
+          "itemKey": "2AFOxWqWCbmQC7MhEOrs",
+          "itemName": "Paracetamol",
+          "quantity": 10,
+          "refKey": "-OWdmRcZYay1D6dv5bty",
+          "specifications": "Used for fever and pain",
+          "timestamp": "8/6/2025, 1:49:36 AM",
+          "unitOfMeasure": {
+            "bigUnit": "Box",
+            "conversionFactor": 10,
+            "smallUnit": "Tablet"
+          }
+        },
+        "fPI5LKhrWbO0LG5M1nNk": {
+          "createdAt": "2025-08-04T17:39:40.493Z",
+          "defaultCostPrice": 3.5,
+          "defaultRetailPrice": 5,
+          "itemCategory": "Syringes",
+          "itemGroup": "Supply",
+          "itemKey": "fPI5LKhrWbO0LG5M1nNk",
+          "itemName": "Syringe 5ml",
+          "quantity": 10,
+          "refKey": "-OWpoI_htd_vh8Kbimjn",
+          "specifications": "Sterile",
+          "timestamp": "8/6/2025, 1:49:36 AM"
+        }
+      },
+      "permissions": {
+        "accessBilling": false,
+        "accessInventory": false,
+        "accessInventoryHistory": false,
+        "accessOverallInventory": false,
+        "accessPatients": true,
+        "accessSettings": false
+      }
+    },
+    "Radtech": {
+      "permissions": {
+        "accessBilling": false,
+        "accessInventory": false,
+        "accessInventoryHistory": false,
+        "accessLaboratory": true,
+        "accessOverallInventory": false,
+        "accessPatients": true,
+        "accessSettings": false
+      }
+    }
+  },
+  "doctors": {
+    "-OWdmRghMBoK5EXbYi9B": {
+      "bio": "Experienced cardiologist specializing in interventional procedures.",
+      "civilStatus": "married",
+      "createdAt": 1754121488443,
+      "dateOfBirth": "1985-03-15",
+      "email": "maria.santos@email.com",
+      "firstName": "Maria",
+      "gender": "female",
+      "id": "-OWdmRghMBoK5EXbYi9B",
+      "isActive": true,
+      "lastName": "Santos",
+      "middleName": "Cruz",
+      "phone": "+63 917 123 4567",
+      "prcExpiry": "2025-12-31",
+      "prcId": "PRC-123456",
+      "specialty": "Cardiology",
+      "status": "verified",
+      "subSpecialty": "Interventional Cardiology",
+      "updatedAt": 1754121488443,
+      "yearsOfExperience": 10
+    },
+    "-OWdmRj1tZ2T1931f0z3": {
+      "bio": "Dedicated pediatrician with focus on child development.",
+      "civilStatus": "single",
+      "createdAt": 1754121488592,
+      "dateOfBirth": "1980-07-22",
+      "email": "juan.delacruz@email.com",
+      "firstName": "Juan",
+      "gender": "male",
+      "id": "-OWdmRj1tZ2T1931f0z3",
+      "isActive": true,
+      "lastName": "Dela Cruz",
+      "phone": "+63 917 234 5678",
+      "prcExpiry": "2024-06-30",
+      "prcId": "PRC-234567",
+      "specialty": "Pediatrics",
+      "status": "pending",
+      "updatedAt": 1754121488592,
+      "yearsOfExperience": 8
+    },
+    "-OWdmRlCY5Lks26SMIvo": {
+      "bio": "Dermatologist specializing in cosmetic and medical dermatology.",
+      "civilStatus": "married",
+      "createdAt": 1754121488731,
+      "dateOfBirth": "1988-11-10",
+      "email": "ana.rodriguez@email.com",
+      "firstName": "Ana",
+      "gender": "female",
+      "id": "-OWdmRlCY5Lks26SMIvo",
+      "isActive": true,
+      "lastName": "Rodriguez",
+      "phone": "+63 917 345 6789",
+      "prcExpiry": "2025-09-15",
+      "prcId": "PRC-345678",
+      "specialty": "Dermatology",
+      "status": "verified",
+      "updatedAt": 1754121488731,
+      "yearsOfExperience": 6
+    },
+    "-OWpY588czbgp8OkzeNo": {
+      "clinicAffiliations": [
+        "Metro Cebu Hospital"
+      ],
+      "contactNumber": "+639915916532",
+      "firstName": "Dan Ken",
+      "fullName": "Dr. Dan Ken Penera",
+      "isGeneralist": true,
+      "isSpecialist": false,
+      "lastName": "Penera",
+      "specialty": "Generalist",
+      "userId": "COtpZ1JpcDP6hjyMnUuM9jloDuY2"
+    },
+    "-OWp_CixcKeMaiI3-WjI": {
+      "clinicAffiliations": [
+        "-OWdmRD3EI9WyRHzIdi3"
+      ],
+      "contactNumber": "09991591653",
+      "firstName": "Aliya",
+      "fullName": "Dr. Aliya Galigao",
+      "isGeneralist": true,
+      "lastName": "Galigao"
+    },
+    "-OWp_qlReYkVbcTRj_ap": {
+      "availability": {
+        "lastUpdated": "2025-08-04T18:05:25.573Z",
+        "specificDates": {
+          "2025-08-08": {
+            "timeSlots": [
+              {
+                "endTime": "17:00",
+                "startTime": "09:00"
+              }
+            ]
+          }
+        },
+        "weeklySchedule": {
+          "friday": {
+            "enabled": false
+          },
+          "monday": {
+            "enabled": true,
+            "timeSlots": [
+              {
+                "endTime": "17:00",
+                "startTime": "09:00"
+              }
+            ]
+          },
+          "saturday": {
+            "enabled": false
+          },
+          "sunday": {
+            "enabled": false
+          },
+          "thursday": {
+            "enabled": false
+          },
+          "tuesday": {
+            "enabled": true,
+            "timeSlots": [
+              {
+                "endTime": "17:00",
+                "startTime": "09:00"
+              }
+            ]
+          },
+          "wednesday": {
+            "enabled": false
+          }
+        }
+      },
+      "clinicAffiliations": [
+        "-OWdmRD3EI9WyRHzIdi3"
+      ],
+      "contactNumber": "0991591653",
+      "firstName": "Bongs",
+      "fullName": "Dr. Bongs Josh",
+      "lastName": "Josh",
+      "specialty": "Generalist"
+    },
+    "-OWpoVTQs0h8UF5ewtbt": {
+      "availability": {
+        "lastUpdated": "2025-08-05T16:35:24.927Z",
+        "weeklySchedule": {
+          "friday": {
+            "enabled": true,
+            "timeSlots": [
+              {
+                "endTime": "17:00",
+                "startTime": "09:00"
+              }
+            ]
+          },
+          "monday": {
+            "enabled": true,
+            "timeSlots": [
+              {
+                "endTime": "17:00",
+                "startTime": "09:00"
+              }
+            ]
+          },
+          "saturday": {
+            "enabled": false
+          },
+          "sunday": {
+            "enabled": false
+          },
+          "thursday": {
+            "enabled": true,
+            "timeSlots": [
+              {
+                "endTime": "12:00",
+                "startTime": "09:00"
+              }
+            ]
+          },
+          "tuesday": {
+            "enabled": true,
+            "timeSlots": [
+              {
+                "endTime": "17:00",
+                "startTime": "09:00"
+              }
+            ]
+          },
+          "wednesday": {
+            "enabled": true,
+            "timeSlots": [
+              {
+                "endTime": "17:00",
+                "startTime": "09:00"
+              }
+            ]
+          }
+        }
+      },
+      "clinicAffiliations": [
+        "-OWpoI_htd_vh8Kbimjn"
+      ],
+      "contactNumber": "09991591653",
+      "firstName": "Galigao",
+      "fullName": "Dr. Galigao Aliya",
+      "lastName": "Aliya",
+      "professionalFees": {
+        "consultationFee": 500,
+        "followUpFee": 300
+      },
+      "specialty": "Generalist"
+    },
+    "-OWvPHeqdQ9Gnre-49J8": {
+      "clinicAffiliations": [
+        "-OWpoI_htd_vh8Kbimjn"
+      ],
+      "contactNumber": "09991591653",
+      "firstName": "Jetchyy",
+      "fullName": "Dr. Jetchyy Merald",
+      "lastName": "Merald",
+      "prcId": "099915963",
+      "professionalFees": {
+        "consultationFee": 500,
+        "followUpFee": 300
+      },
+      "specialty": "Generalist"
+    },
+    "-OWyCTe5MH1ZNT-EOBw0": {
+      "clinicAffiliations": [
+        "-OWpoI_htd_vh8Kbimjn"
+      ],
+      "contactNumber": "09991591653",
+      "firstName": "Dwight",
+      "fullName": "Dr. Dwight Carl",
+      "lastName": "Carl",
+      "prcId": "222",
+      "specialty": "Generalist"
+    },
+    "-OX-GFmhUU5IXLjMnOlT": {
+      "address": "Universe Millkyway",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "clin_perpetual_succour_id"
+      ],
+      "contactNumber": "09159452699",
+      "createdAt": "2025-08-06T16:44:24.699Z",
+      "dateOfBirth": "2002-04-06",
+      "email": "universe@gmail.com",
+      "firstName": "Hello",
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-06T16:44:24.699Z",
+      "lastName": "World",
+      "lastUpdated": "2025-08-06T16:44:24.699Z",
+      "medicalLicenseNumber": "ML-120980293",
+      "prcExpiryDate": "2030-04-01",
+      "prcId": "PRC-380247",
+      "professionalFee": 3300,
+      "profileImageUrl": "",
+      "specialty": "Neurology",
+      "status": "pending",
+      "userId": "-OX-GFmhUU5IXLjMnOlT",
+      "verificationNotes": "",
+      "yearsOfExperience": 0
+    },
+    "-OX-NB0dc0yg_A2o2wCD": {
+      "address": "Universe, Milkyway Galaxy",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "-OX-N1sktzbUhHaFxJwe"
+      ],
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-06T17:14:39.765Z",
+      "dateOfBirth": "2002-04-06",
+      "email": "maria.senora@gmail.com",
+      "firstName": "Maria",
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-06T17:14:39.765Z",
+      "lastName": "Senora",
+      "lastUpdated": "2025-08-06T17:14:39.765Z",
+      "medicalLicenseNumber": "ML-120980293",
+      "prcExpiryDate": "2030-04-06",
+      "prcId": "PRC-380247",
+      "professionalFee": 900,
+      "profileImageUrl": "",
+      "specialty": "Family Medicine",
+      "status": "pending",
+      "userId": "-OX-NB0dc0yg_A2o2wCD",
+      "verificationNotes": "",
+      "yearsOfExperience": 0
+    },
+    "-OX-Sj7DkkmeKFH9XBbP": {
+      "address": "hghjjhvdsfsdff",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "-OX-SbJApVY0328MEKbS"
+      ],
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-06T17:38:54.410Z",
+      "dateOfBirth": "2002-04-06",
+      "email": "vhjvjhv@gmail.com",
+      "firstName": "jsavjhv",
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-06T17:38:54.410Z",
+      "lastName": "vjhjhvj",
+      "lastUpdated": "2025-08-06T17:38:54.410Z",
+      "medicalLicenseNumber": "ML-120980293",
+      "prcExpiryDate": "2030-04-06",
+      "prcId": "PRC-380247",
+      "professionalFee": 900,
+      "profileImageUrl": "",
+      "specialty": "Dermatology",
+      "status": "pending",
+      "userId": "-OX-Sj7DkkmeKFH9XBbP",
+      "verificationNotes": "",
+      "yearsOfExperience": 0
+    },
+    "-OX-UYbzOBOfHsOPUNwI": {
+      "address": "habawjhdbbsadjabsdj",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "-OX-UIMSJEaN7jXWxbtw"
+      ],
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-06T17:46:51.605Z",
+      "dateOfBirth": "2002-04-06",
+      "email": "vjhvh@gmail.com",
+      "firstName": "vjhvjhvjhv",
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-06T17:46:51.605Z",
+      "lastName": "jhvjhvjhv",
+      "lastUpdated": "2025-08-06T17:46:51.605Z",
+      "medicalLicenseNumber": "ML-120980293",
+      "prcExpiryDate": "2030-04-06",
+      "prcId": "PRC-123",
+      "professionalFee": 600,
+      "profileImageUrl": "",
+      "specialty": "Obstetrics and Gynecology",
+      "status": "pending",
+      "userId": "-OX-UYbzOBOfHsOPUNwI",
+      "verificationNotes": "",
+      "yearsOfExperience": 0
+    },
+    "-OX-YR-Df-5_XBRpuLYf": {
+      "address": "hjgjhjhgjhgjh",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "-OX-YC1sLBdLWFvDtI_t"
+      ],
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-06T18:03:49.070Z",
+      "dateOfBirth": "2002-04-06",
+      "email": "ouoioui@gmail.com",
+      "firstName": "uiui",
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-06T18:03:49.070Z",
+      "lastName": "uiuiuoiuo",
+      "lastUpdated": "2025-08-06T18:03:49.070Z",
+      "medicalLicenseNumber": "ML-120980293",
+      "prcExpiryDate": "2030-04-06",
+      "prcId": "PRC-380247",
+      "professionalFee": 1000,
+      "profileImageUrl": "",
+      "specialty": "Oncology",
+      "status": "pending",
+      "userId": "-OX-YR-Df-5_XBRpuLYf",
+      "verificationNotes": "",
+      "yearsOfExperience": 0
+    },
+    "-OX-rlXRi7fM8rDruVCV": {
+      "address": "jajsbdkjbaksjb",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "-OX-N1sktzbUhHaFxJwe"
+      ],
+      "contactNumber": "09091241444",
+      "createdAt": "2025-08-06T19:32:39.888Z",
+      "dateOfBirth": "1990-04-07",
+      "email": "mel.cortes@gmail.com",
+      "firstName": "Mel Angelo",
+      "gender": "male",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-06T19:32:39.888Z",
+      "lastName": "Cortes",
+      "lastUpdated": "2025-08-06T19:32:39.888Z",
+      "medicalLicenseNumber": "ML-120980293",
+      "prcExpiryDate": "2030-07-08",
+      "prcId": "PRC-380247",
+      "professionalFee": 2000,
+      "profileImageUrl": "",
+      "specialty": "Dermatology",
+      "status": "pending",
+      "userId": "-OX-rlXRi7fM8rDruVCV",
+      "verificationNotes": "",
+      "yearsOfExperience": 0
+    },
+    "-OX0W7ERZenvpd6_LNpy": {
+      "address": "123 Medical Center, Metro Manila, Philippines",
+      "civilStatus": "married",
+      "clinicAffiliations": [
+        "-OWdmRcZYay1D6dv5bty"
+      ],
+      "contactNumber": "+639123456789",
+      "createdAt": "2025-08-06T22:33:20.417Z",
+      "dateOfBirth": "1985-03-15",
+      "email": "john.doe@example.com",
+      "firstName": "John",
+      "gender": "male",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-06T22:33:20.417Z",
+      "lastName": "Doe",
+      "lastUpdated": "2025-08-06T22:33:20.417Z",
+      "medicalLicenseNumber": "MD123456789",
+      "prcExpiryDate": "2025-12-31",
+      "prcId": "PRC123456",
+      "professionalFee": 2500,
+      "profileImageUrl": "",
+      "specialty": "Cardiology",
+      "status": "pending",
+      "userId": "-OX0W7ERZenvpd6_LNpy",
+      "verificationNotes": "",
+      "yearsOfExperience": 0
+    },
+    "-OX0W7dE_PaFYKuWrJfb": {
+      "address": "456 Children's Hospital, Quezon City, Philippines",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "-OWdmReUie0pXtC_bjyL"
+      ],
+      "contactNumber": "+639987654321",
+      "createdAt": "2025-08-06T22:33:21.717Z",
+      "dateOfBirth": "1990-07-22",
+      "email": "jane.smith@example.com",
+      "firstName": "Jane",
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-06T22:33:21.717Z",
+      "lastName": "Smith",
+      "lastUpdated": "2025-08-06T22:33:21.717Z",
+      "medicalLicenseNumber": "MD789012345",
+      "prcExpiryDate": "2026-06-30",
+      "prcId": "PRC789012",
+      "professionalFee": 2000,
+      "profileImageUrl": "",
+      "specialty": "Pediatrics",
+      "status": "pending",
+      "userId": "-OX0W7dE_PaFYKuWrJfb",
+      "verificationNotes": "",
+      "yearsOfExperience": 0
+    },
+    "-OX0W7rOMSFPpkRVVJbP": {
+      "address": "kajbdkjbakdjbakjbdk",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "clin_cebu_doctors_id"
+      ],
+      "contactNumber": "639987651234",
+      "createdAt": "2025-08-06T22:33:23.351Z",
+      "dateOfBirth": "29317",
+      "email": "lesgowork@gmail.com",
+      "firstName": "Lesgo",
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-06T22:33:23.351Z",
+      "lastName": "Work",
+      "lastUpdated": "2025-08-06T22:33:23.351Z",
+      "medicalLicenseNumber": "MD39847",
+      "prcExpiryDate": "51388",
+      "prcId": "PRC0182739",
+      "professionalFee": 1000,
+      "profileImageUrl": "",
+      "specialty": "Cardiology",
+      "status": "pending",
+      "userId": "-OX0W7rOMSFPpkRVVJbP",
+      "verificationNotes": "",
+      "yearsOfExperience": 0
+    },
+    "-OX0W862l2seMbOxjZQ4": {
+      "address": "aaaaaaaaaaaaaaaaaaaaaaa",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "-OX-UIMSJEaN7jXWxbtw"
+      ],
+      "contactNumber": "639087651004",
+      "createdAt": "2025-08-06T22:33:24.297Z",
+      "dateOfBirth": "29317",
+      "email": "lesgggg@gmail.com",
+      "firstName": "Lesgggg",
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-06T22:33:24.297Z",
+      "lastName": "Work",
+      "lastUpdated": "2025-08-06T22:33:24.297Z",
+      "medicalLicenseNumber": "MD39847",
+      "prcExpiryDate": "51388",
+      "prcId": "PRC0182739",
+      "professionalFee": 1000,
+      "profileImageUrl": "",
+      "specialty": "Pediatrics",
+      "status": "pending",
+      "userId": "-OX0W862l2seMbOxjZQ4",
+      "verificationNotes": "",
+      "yearsOfExperience": 0
+    },
+    "SxqcH36yF6hRxs9eZScmTSd6pez1": {
+      "address": "kajsbdkjsdk",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "-OX-N1sktzbUhHaFxJwe"
+      ],
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-06T20:54:06.986Z",
+      "dateOfBirth": "2002-04-06",
+      "email": "wanwan@gmail.com",
+      "firstName": "Hello",
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-06T20:54:06.986Z",
+      "lastName": "Wan",
+      "lastUpdated": "2025-08-06T20:54:06.986Z",
+      "medicalLicenseNumber": "ML-120980293",
+      "prcExpiryDate": "2030-04-06",
+      "prcId": "PRC-380247",
+      "professionalFee": 1000,
+      "profileImageUrl": "",
+      "specialty": "Dermatology",
+      "status": "pending",
+      "userId": "SxqcH36yF6hRxs9eZScmTSd6pez1",
+      "verificationNotes": "",
+      "yearsOfExperience": 0
+    },
+    "doc_kajbdkjb_bkjbkj_1754423220762": {
+      "address": "asjbskdjbasdjkbaksd",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "clin_lahug_uhc_id"
+      ],
+      "contactNumber": "09879687687",
+      "createdAt": "2025-08-05T19:47:00.762Z",
+      "dateOfBirth": "2006-07-06",
+      "email": "bkk@gmail.com",
+      "firstName": "kajbdkjb",
+      "gender": "male",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-05T19:47:00.762Z",
+      "lastName": "bkjbkj",
+      "lastUpdated": "2025-08-05T19:47:00.762Z",
+      "medicalLicenseNumber": "ML-0299",
+      "prcExpiryDate": "2029-04-04",
+      "prcId": "PRC-02370",
+      "professionalFee": 2000,
+      "profileImageUrl": "",
+      "specialty": "Dermatology",
+      "status": "pending",
+      "userId": "doc_kajbdkjb_bkjbkj_1754423220762",
+      "verificationNotes": "",
+      "yearsOfExperience": 0
+    },
+    "doc_mel angelo_cortes_1754423091760": {
+      "address": "Cortes Street, Cebu City",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "clin_perpetual_succour_id"
+      ],
+      "contactNumber": "0999999999",
+      "createdAt": "2025-08-05T19:44:51.760Z",
+      "dateOfBirth": "2000-01-01",
+      "email": "mees.cortes.swu@phinmaed.com",
+      "firstName": "Mel Angelo",
+      "gender": "male",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-08-05T19:44:51.760Z",
+      "lastName": "Cortes",
+      "lastUpdated": "2025-08-05T19:44:51.760Z",
+      "medicalLicenseNumber": "ML-179",
+      "prcExpiryDate": "2221-01-01",
+      "prcId": "PRC-179",
+      "professionalFee": 300,
+      "profileImageUrl": "",
+      "specialty": "Obstetrics and Gynecology",
+      "status": "verified",
+      "updatedAt": 1754424332277,
+      "userId": "doc_mel angelo_cortes_1754423091760",
+      "verificationDate": 1754424332242,
+      "verificationNotes": "",
+      "verifiedBy": "superadmin@unihealth.ph",
+      "yearsOfExperience": 0
+    },
+    "doc_sd_hvhvh_1753925240265": {
+      "address": "sas,jjhjha",
+      "civilStatus": "single",
+      "clinicAffiliations": [
+        "clin_cebu_doctors_id"
+      ],
+      "contactNumber": "0923834787",
+      "createdAt": "2025-07-31T01:27:20.265Z",
+      "dateOfBirth": "2002-04-06",
+      "email": "sjbdkjksjd2@email.com",
+      "firstName": "sd",
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-07-31T01:27:20.265Z",
+      "lastName": "hvhvh",
+      "lastUpdated": "2025-07-31T01:27:20.265Z",
+      "medicalLicenseNumber": "ML-123",
+      "prcExpiryDate": "2222-04-06",
+      "prcId": "PRC-123",
+      "professionalFee": 600,
+      "profileImageUrl": "",
+      "specialty": "Pediatrics",
+      "status": "pending",
+      "updatedAt": 1754117990769,
+      "userId": "doc_sd_hvhvh_1753925240265",
+      "verificationDate": 1754117990750,
+      "verificationNotes": "",
+      "verifiedBy": "superadmin@unihealth.ph",
+      "yearsOfExperience": 0
+    }
+  },
+  "feedback": {
+    "-OWdmRnsEKl9o8bwJux2": {
+      "appointmentDate": "2024-01-20",
+      "clinicId": "-OWdmRD3EI9WyRHzIdi3",
+      "comment": "Excellent service! Dr. Santos was very thorough and explained everything clearly. The clinic staff was also very accommodating.",
+      "createdAt": 1754121488902,
+      "doctorId": "-OWdmRghMBoK5EXbYi9B",
+      "id": "-OWdmRnsEKl9o8bwJux2",
+      "isAnonymous": false,
+      "patientEmail": "juan.carlos@email.com",
+      "patientName": "Juan Carlos",
+      "rating": 5,
+      "status": "reviewed",
+      "tags": [
+        "professional",
+        "thorough",
+        "excellent"
+      ],
+      "treatmentType": "Consultation",
+      "updatedAt": 1754121488902
+    },
+    "-OWdmRq2r5Lty_qBBMOi": {
+      "appointmentDate": "2024-01-19",
+      "clinicId": "-OWdmRcZYay1D6dv5bty",
+      "comment": "Good doctor, my child felt comfortable during the consultation. However, the waiting time was quite long.",
+      "createdAt": 1754121489041,
+      "doctorId": "-OWdmRj1tZ2T1931f0z3",
+      "id": "-OWdmRq2r5Lty_qBBMOi",
+      "isAnonymous": false,
+      "patientEmail": "maria.lopez@email.com",
+      "patientName": "Maria Lopez",
+      "rating": 4,
+      "status": "pending",
+      "tags": [
+        "good",
+        "comfortable",
+        "long wait"
+      ],
+      "treatmentType": "Pediatric Checkup",
+      "updatedAt": 1754121489041
+    },
+    "-OWdmRqsWm1Bg6gPnT5v": {
+      "appointmentDate": "2024-01-18",
+      "clinicId": "-OWdmReUie0pXtC_bjyL",
+      "comment": "Amazing results! Dr. Rodriguez solved my skin problem that I've had for years. Highly recommend!",
+      "createdAt": 1754121489094,
+      "doctorId": "-OWdmRlCY5Lks26SMIvo",
+      "id": "-OWdmRqsWm1Bg6gPnT5v",
+      "isAnonymous": false,
+      "patientEmail": "robert.chen@email.com",
+      "patientName": "Robert Chen",
+      "rating": 5,
+      "status": "reviewed",
+      "tags": [
+        "amazing",
+        "effective",
+        "recommended"
+      ],
+      "treatmentType": "Dermatology Treatment",
+      "updatedAt": 1754121489094
+    },
+    "-OWv_oaF3RWD8iCvpO_L": {
+      "appointmentDate": "2025-08-06",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "clinicName": "SWU Clinic",
+      "comment": "test",
+      "createdAt": 1754420170150,
+      "doctorId": "-OWpoVTQs0h8UF5ewtbt",
+      "doctorName": "Dr. Galigao Aliya",
+      "id": "-OWv_oaF3RWD8iCvpO_L",
+      "isAnonymous": false,
+      "patientEmail": "joshuabongz7@gmail.com",
+      "patientName": "Joshua Bonghanoy",
+      "rating": 5,
+      "status": "pending",
+      "tags": [
+        "professional"
+      ],
+      "treatmentType": "General Consultation"
+    },
+    "-OX-L75bqWxgT-CscX8Q": {
+      "appointmentDate": "2025-08-06",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "clinicName": "SWU Clinic",
+      "comment": "test",
+      "createdAt": 1754499942335,
+      "doctorId": "-OWpoVTQs0h8UF5ewtbt",
+      "doctorName": "Dr. Galigao Aliya",
+      "id": "-OX-L75bqWxgT-CscX8Q",
+      "isAnonymous": false,
+      "patientEmail": "joshuabongz7@gmail.com",
+      "patientName": "Joshua Bonghanoy",
+      "rating": 5,
+      "status": "pending",
+      "tags": [
+        "professional",
+        "thorough",
+        "excellent",
+        "punctual",
+        "caring"
+      ],
+      "treatmentType": "General Consultation"
+    },
+    "-OX-Lgtq2krm2TNPcuys": {
+      "appointmentDate": "2025-08-06",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "clinicName": "SWU Clinic",
+      "comment": "test",
+      "createdAt": 1754500093070,
+      "doctorId": "-OWpoVTQs0h8UF5ewtbt",
+      "doctorName": "Dr. Galigao Aliya",
+      "id": "-OX-Lgtq2krm2TNPcuys",
+      "isAnonymous": false,
+      "patientEmail": "joshuabongz7@gmail.com",
+      "patientName": "Joshua Bonghanoy",
+      "rating": 5,
+      "tags": [
+        "knowledgeable"
+      ],
+      "treatmentType": "General Consultation"
+    },
+    "fb_maria_001_id": {
+      "appointmentDate": "2025-07-31",
+      "appointmentTime": "09:30:00",
+      "appointmentType": "specialist_referral",
+      "clinicAppointmentId": "appt_maria_general_001_id",
+      "clinicId": "clin_perpetual_succour_id",
+      "clinicName": "Perpetual Succour Hospital",
+      "comments": "Dr. Cala was very thorough and compassionate. She explained everything clearly. Felt much better about my condition after the visit.",
+      "patientFirstName": "Maria",
+      "patientId": "pat_maria_santos_id",
+      "patientLastName": "Santos",
+      "practiceLocationName": "Perpetual Succour Hospital",
+      "providerFirstName": "Dr. Maria",
+      "providerId": "doc_maria_cala_uid",
+      "providerLastName": "Cala",
+      "rating": 5,
+      "referralId": "ref_maria_thyroid_001_id",
+      "sentiment": "positive",
+      "status": "pending",
+      "submittedBy": {
+        "role": "patient",
+        "userId": "pat_maria_santos_uid"
+      },
+      "timestamp": "2025-07-31T11:00:00Z"
+    },
+    "fb_sofia_001_id": {
+      "appointmentDate": "2025-07-15",
+      "appointmentTime": "14:00:00",
+      "appointmentType": "clinic",
+      "clinicAppointmentId": "appt_sofia_followup_001_id",
+      "clinicId": "clin_perpetual_succour_id",
+      "clinicName": "Perpetual Succour Hospital",
+      "comments": "Quick check-up for a cold. Dr. Reyes was attentive and the clinic staff were friendly.",
+      "patientFirstName": "Sofia",
+      "patientId": "pat_sofia_garcia_id",
+      "patientLastName": "Garcia",
+      "practiceLocationName": "Perpetual Succour Hospital (Outpatient Clinic)",
+      "providerFirstName": "Dr. Jose",
+      "providerId": "doc_jose_reyes_uid",
+      "providerLastName": "Reyes",
+      "rating": 4,
+      "sentiment": "positive",
+      "status": "pending",
+      "submittedBy": {
+        "role": "patient",
+        "userId": "pat_sofia_garcia_uid"
+      },
+      "timestamp": "2025-07-15T15:00:00Z"
+    },
+    "fb_sofia_002_id": {
+      "appointmentDate": "2025-07-26",
+      "appointmentTime": "11:00:00",
+      "appointmentType": "clinic",
+      "clinicAppointmentId": "appt_sofia_followup_001_id",
+      "clinicId": "clin_perpetual_succour_id",
+      "clinicName": "Perpetual Succour Hospital",
+      "comments": "Dr. Reyes followed up on my cough and prescribed new meds. Feeling much better now. The booking process was smooth.",
+      "patientFirstName": "Sofia",
+      "patientId": "pat_sofia_garcia_id",
+      "patientLastName": "Garcia",
+      "practiceLocationName": "Perpetual Succour Hospital (Outpatient Clinic)",
+      "providerFirstName": "Dr. Jose",
+      "providerId": "doc_jose_reyes_uid",
+      "providerLastName": "Reyes",
+      "rating": 5,
+      "sentiment": "positive",
+      "status": "pending",
+      "submittedBy": {
+        "role": "patient",
+        "userId": "pat_sofia_garcia_uid"
+      },
+      "timestamp": "2025-07-26T12:00:00Z"
+    }
+  },
+  "inventoryItems": {
+    "2AFOxWqWCbmQC7MhEOrs": {
+      "brand": "Biogesic",
+      "createdAt": "2025-08-04T14:37:42.990Z",
+      "defaultCostPrice": 2.5,
+      "defaultDosage": "500mg",
+      "defaultRetailPrice": 5,
+      "genericName": "Paracetamol",
+      "itemCategory": "Tablets and Capsules",
+      "itemGroup": "Medicine",
+      "itemName": "Paracetamol",
+      "specifications": "Used for fever and pain",
+      "unitOfMeasure": {
+        "bigUnit": "Box",
+        "conversionFactor": 10,
+        "smallUnit": "Tablet"
+      }
+    },
+    "fPI5LKhrWbO0LG5M1nNk": {
+      "createdAt": "2025-08-04T17:39:40.493Z",
+      "defaultCostPrice": 3.5,
+      "defaultRetailPrice": 5,
+      "itemCategory": "Syringes",
+      "itemGroup": "Supply",
+      "itemName": "Syringe 5ml",
+      "specifications": "Sterile"
+    },
+    "pBkZlDGEn0MkmUrw3jyy": {
+      "brand": "Branded",
+      "createdAt": "2025-08-06T06:47:25.645Z",
+      "defaultCostPrice": 10,
+      "defaultDosage": "200mg",
+      "defaultRetailPrice": 15,
+      "genericName": "Biogesic",
+      "itemCategory": "Tablets and Capsules",
+      "itemGroup": "Medicine",
+      "itemName": "Biogesic",
+      "specifications": "Tablets",
+      "supplierName": "SWU Pharmacy",
+      "unitOfMeasure": {
+        "bigUnit": "box",
+        "conversionFactor": 10,
+        "smallUnit": "tablet"
+      }
+    }
+  },
+  "inventoryTransactions": {
+    "-OWHBLuiZCIjHkUtfp9r": {
+      "clinicId": "clin_cebu_central_id",
+      "itemId": "inv_med_paracetamol_001",
+      "itemName": "Unknown Item",
+      "processedByUserFirstName": "Unknown",
+      "processedByUserId": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+      "processedByUserLastName": "User",
+      "quantityChanged": -5,
+      "reason": "Patient care (Sofia Garcia)",
+      "relatedPatientId": "pat_sofia_garcia_id",
+      "sourceDepartment": "Laboratory",
+      "timestamp": "2025-07-28T18:00:27.394Z",
+      "transactionType": "usage"
+    },
+    "-OWHCSxHiTaAVnNW2ztc": {
+      "clinicId": "clin_cebu_central_id",
+      "itemId": "inv_med_paracetamol_001",
+      "itemName": "Unknown Item",
+      "processedByUserFirstName": "Unknown",
+      "processedByUserId": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+      "processedByUserLastName": "User",
+      "quantityChanged": -10,
+      "reason": "Patient care (Sofia Garcia)",
+      "relatedPatientId": "pat_sofia_garcia_id",
+      "sourceDepartment": "Laboratory",
+      "timestamp": "2025-07-28T18:05:18.373Z",
+      "transactionType": "usage"
+    },
+    "-OWHFAKGErnYPjSqboDO": {
+      "clinicId": "clin_cebu_central_id",
+      "itemId": "inv_med_paracetamol_001",
+      "itemName": "Unknown Item",
+      "processedByUserFirstName": "Unknown",
+      "processedByUserId": "kDNxDSXM6CMsVwT9SnmBkrAidmc2",
+      "processedByUserLastName": "User",
+      "quantityChanged": -30,
+      "reason": "Patient care (Sofia Garcia)",
+      "relatedPatientId": "pat_sofia_garcia_id",
+      "sourceDepartment": "Laboratory",
+      "timestamp": "2025-07-28T18:17:08.509Z",
+      "transactionType": "usage"
+    },
+    "-OWppEBKY_kr7k2rYo_A": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "itemId": "2AFOxWqWCbmQC7MhEOrs",
+      "itemName": "Paracetamol",
+      "processedByUserFirstName": "Galigao",
+      "processedByUserId": "esGHYBaZJaSuDaq29BNeEEU0E5h1",
+      "processedByUserLastName": "Aliya",
+      "quantityChanged": -20,
+      "reason": "Patient care (Aliya Penera)",
+      "relatedPatientId": "-OWphurpD4ki5dlCMKO5",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-08-04T16:05:46.254Z",
+      "transactionType": "usage"
+    },
+    "-OWpqH_v93YBbaWgE38I": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "itemId": "2AFOxWqWCbmQC7MhEOrs",
+      "itemName": "Paracetamol",
+      "processedByUserFirstName": "Galigao",
+      "processedByUserId": "esGHYBaZJaSuDaq29BNeEEU0E5h1",
+      "processedByUserLastName": "Aliya",
+      "quantityChanged": -10,
+      "reason": "Patient care (Desiree Cendana)",
+      "relatedPatientId": "-OWpq1LlOtAVzbbPeIW7",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-08-04T16:10:21.843Z",
+      "transactionType": "usage"
+    },
+    "-OWqANbhdSR5KcF9CnGI": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "itemId": "fPI5LKhrWbO0LG5M1nNk",
+      "itemName": "Syringe 5ml",
+      "processedByUserFirstName": "Galigao",
+      "processedByUserId": "esGHYBaZJaSuDaq29BNeEEU0E5h1",
+      "processedByUserLastName": "Aliya",
+      "quantityChanged": -50,
+      "reason": "Patient care (Aliya Penera)",
+      "relatedPatientId": "-OWphurpD4ki5dlCMKO5",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-08-04T17:42:31.475Z",
+      "transactionType": "usage"
+    },
+    "-OWvQET3CHmCctUWFSAi": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "itemId": "fPI5LKhrWbO0LG5M1nNk",
+      "itemName": "Syringe 5ml",
+      "processedByUserFirstName": "Neww",
+      "processedByUserId": "w84CMoMmD6blHGptFIlbatElT4K2",
+      "processedByUserLastName": "DB",
+      "quantityChanged": -10,
+      "reason": "Transfer to Laboratory: Test NI"
+    },
+    "-OWvR5NdmVwEyhXZc_rU": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "itemId": "2AFOxWqWCbmQC7MhEOrs",
+      "itemName": "Paracetamol",
+      "processedByUserFirstName": "Neww",
+      "processedByUserId": "w84CMoMmD6blHGptFIlbatElT4K2",
+      "processedByUserLastName": "DB",
+      "quantityChanged": -10,
+      "reason": "Transfer to Laboratory: tryy NIss"
+    },
+    "-OWvS3-Aj3QRFsdzW_jL": {
+      "itemId": "2AFOxWqWCbmQC7MhEOrs",
+      "itemName": "Paracetamol",
+      "processedByUserFirstName": "Neww",
+      "processedByUserId": "w84CMoMmD6blHGptFIlbatElT4K2",
+      "processedByUserLastName": "DB",
+      "quantityChanged": -10,
+      "reason": "Transfer to Laboratory: sss",
+      "sourceDepartment": "Laboratory",
+      "timestamp": "8/6/2025, 2:09:32 AM"
+    },
+    "-OWzyVKFGiGlxIofC3bJ": {
+      "adminProcessed": true,
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "destinationDepartment": "Pharmacy",
+      "itemId": "pBkZlDGEn0MkmUrw3jyy",
+      "itemName": "Biogesic",
+      "processedByUserDepartment": "Admin",
+      "processedByUserFirstName": "admin",
+      "processedByUserId": "EDjKJWlRgoQ72upWsxhs6qZ3G5w1",
+      "processedByUserLastName": "admin",
+      "quantityChanged": 50,
+      "reason": "walang",
+      "timestamp": "2025-08-06T15:22:28.642Z",
+      "transactionType": "stock_in"
+    },
+    "-OX-4xOnImJ7_5B2V2eZ": {
+      "itemId": "pBkZlDGEn0MkmUrw3jyy",
+      "itemName": "Biogesic",
+      "processedByUserFirstName": "Neww",
+      "processedByUserId": "w84CMoMmD6blHGptFIlbatElT4K2",
+      "processedByUserLastName": "DB",
+      "quantityChanged": -50,
+      "reason": "Transfer to Laboratory: YAWAA",
+      "sourceDepartment": "Laboratory",
+      "timestamp": "8/6/2025, 11:54:27 PM"
+    },
+    "-OX-K2htd1AOPyqeGUgo": {
+      "destinationDepartment": "Laboratory",
+      "itemId": "2AFOxWqWCbmQC7MhEOrs",
+      "itemName": "Paracetamol",
+      "processedByUserFirstName": "Neww",
+      "processedByUserId": "w84CMoMmD6blHGptFIlbatElT4K2",
+      "processedByUserLastName": "DB",
+      "quantityChanged": -10,
+      "reason": "Transfer to Laboratory: Stock ",
+      "timestamp": "8/7/2025, 12:58:31 AM",
+      "transactionType": "stock-in"
+    },
+    "-OX01iDtuzLzM4AHkKMT": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "itemId": "fPI5LKhrWbO0LG5M1nNk",
+      "itemName": "Syringe 5ml",
+      "processedByUserFirstName": "Galigao",
+      "processedByUserId": "esGHYBaZJaSuDaq29BNeEEU0E5h1",
+      "processedByUserLastName": "Aliya",
+      "quantityChanged": -3,
+      "reason": "Patient care (Aliya Penera)",
+      "relatedPatientId": "-OWphurpD4ki5dlCMKO5",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-08-06T20:20:30.666Z",
+      "transactionType": "usage"
+    },
+    "-OX03iWqIGpgZcTe3f5J": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "itemId": "fPI5LKhrWbO0LG5M1nNk",
+      "itemName": "Syringe 5ml",
+      "processedByUserFirstName": "Galigao",
+      "processedByUserId": "esGHYBaZJaSuDaq29BNeEEU0E5h1",
+      "processedByUserLastName": "Aliya",
+      "quantityChanged": -3,
+      "reason": "Patient care (Aliya Penera)",
+      "relatedPatientId": "-OWphurpD4ki5dlCMKO5",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-08-06T20:29:16.175Z",
+      "transactionType": "usage"
+    },
+    "-OX047GUPdTu1c5kITfA": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "itemId": "fPI5LKhrWbO0LG5M1nNk",
+      "itemName": "Syringe 5ml",
+      "processedByUserFirstName": "Galigao",
+      "processedByUserId": "esGHYBaZJaSuDaq29BNeEEU0E5h1",
+      "processedByUserLastName": "Aliya",
+      "quantityChanged": -2,
+      "reason": "Patient care (Aliya Penera)",
+      "relatedPatientId": "-OWphurpD4ki5dlCMKO5",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-08-06T20:31:01.623Z",
+      "transactionType": "usage"
+    },
+    "-OX07WTNC55ekt-G0F5G": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "itemId": "fPI5LKhrWbO0LG5M1nNk",
+      "itemName": "Syringe 5ml",
+      "processedByUserFirstName": "Galigao",
+      "processedByUserId": "esGHYBaZJaSuDaq29BNeEEU0E5h1",
+      "processedByUserLastName": "Aliya",
+      "quantityChanged": -5,
+      "reason": "Patient care (Aliya Penera)",
+      "relatedPatientId": "-OWphurpD4ki5dlCMKO5",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-08-06T20:45:51.268Z",
+      "transactionType": "usage"
+    },
+    "inv_tx_001_stock_in": {
+      "clinicId": "clin_cebu_central_id",
+      "destinationDepartment": "Pharmacy",
+      "itemId": "inv_med_paracetamol_001",
+      "itemName": "Paracetamol",
+      "processedByUserFirstName": "Madaya",
+      "processedByUserId": "staff_lab_mj_uid",
+      "processedByUserLastName": "Jetch",
+      "quantityChanged": 50,
+      "reason": "Initial stock",
+      "timestamp": "2025-07-24T10:00:00Z",
+      "transactionType": "stock_in"
+    },
+    "inv_tx_002_usage": {
+      "clinicId": "clin_cebu_doctors_id",
+      "itemId": "inv_sup_gloves_001",
+      "itemName": "Gloves",
+      "processedByUserFirstName": "Nurse John",
+      "processedByUserId": "staff_er_nurse_jd_uid",
+      "processedByUserLastName": "Doe",
+      "quantityChanged": -5,
+      "reason": "Patient care (David Lim)",
+      "relatedPatientId": "pat_david_lim_id",
+      "sourceDepartment": "ER",
+      "timestamp": "2025-07-23T16:30:00Z",
+      "transactionType": "usage"
+    },
+    "inv_tx_003_transfer": {
+      "clinicId": "clin_cebu_doctors_id",
+      "destinationClinicId": "clin_perpetual_succour_id",
+      "destinationDepartment": "Outpatient",
+      "itemId": "inv_eq_bp_monitor_001",
+      "itemName": "Blood Pressure Monitor",
+      "processedByUserFirstName": "Madaya",
+      "processedByUserId": "staff_lab_mj_uid",
+      "processedByUserLastName": "Jetch",
+      "quantityChanged": -1,
+      "reason": "Equipment transfer for new clinic wing",
+      "sourceDepartment": "Admin",
+      "timestamp": "2025-07-24T11:00:00Z",
+      "transactionType": "transfer_out"
+    }
+  },
+  "medicalServices": {
+    "consultationTypes": {
+      "med_service_er_consult_001": {
+        "description": "Initial assessment and treatment in the ER.",
+        "name": "Emergency Room Consultation"
+      },
+      "med_service_general_consult_001": {
+        "description": "Standard consultation with a general practitioner.",
+        "name": "General Consultation"
+      },
+      "med_service_specialist_consult_001": {
+        "description": "Consultation with a medical specialist.",
+        "name": "Specialist Consultation"
+      }
+    },
+    "imagingTests": {
+      "img_test_chest_xray_001": {
+        "description": "Radiographic image of the chest.",
+        "name": "Chest X-Ray"
+      },
+      "img_test_ct_abdomen_001": {
+        "description": "Computed Tomography scan of the abdomen.",
+        "name": "CT Abdomen"
+      }
+    },
+    "laboratoryTests": {
+      "-OWpz2wubm2-FZRaF-gu": {
+        "description": "Measures red blood cells, white blood cells, and platelets.",
+        "name": "CBC",
+        "serviceFee": "500"
+      },
+      "-OWpz9OAFVlfr4A-jm3K": {
+        "description": "Thyroid Stimulating Hormone test.",
+        "name": "TSH",
+        "serviceFee": "500"
+      },
+      "-OWpzP3bWvg36K7PBopg": {
+        "description": "Analysis of urine for diagnostic purposes.",
+        "name": "Urinalysis",
+        "serviceFee": "500"
+      }
+    },
+    "specialties": {
+      "specialty_001": {
+        "description": "Description",
+        "name": "Cardiology"
+      },
+      "specialty_002": {
+        "description": "Description",
+        "name": "Pediatrics"
+      }
+    }
+  },
+  "medicalServicesTransactions": {
+    "-OWqVoy3sG3Shj3n3Eh3": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "createdAt": "2025-08-04T19:16:13.696Z",
+      "department": "Laboratory",
+      "patientId": "-OWphurpD4ki5dlCMKO5",
+      "patientName": "Aliya Penera",
+      "patientNotes": "Skibidi ",
+      "requestedBy": "iINCwSPoPQcziURQmjTvyLBU2tw2",
+      "requestedByName": "Unknown User",
+      "resultStatus": "pending",
+      "sampleStatus": "pending",
+      "serviceCategory": "laboratoryTests",
+      "serviceId": "-OWpzP3bWvg36K7PBopg",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-08-04T19:16:41.800Z",
+      "urgentFlag": false
+    },
+    "-OWv7gudLZgV411X4L9y": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "createdAt": "2025-08-05T16:48:54.939Z",
+      "department": "Laboratory",
+      "patientId": "-OWphurpD4ki5dlCMKO5",
+      "patientName": "Aliya Penera",
+      "patientNotes": "Skibidi burger",
+      "requestedBy": "iINCwSPoPQcziURQmjTvyLBU2tw2",
+      "requestedByName": "Unknown User",
+      "resultStatus": "pending",
+      "sampleStatus": "pending",
+      "serviceCategory": "laboratoryTests",
+      "serviceId": "-OWpz9OAFVlfr4A-jm3K",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-08-05T16:55:35.633Z",
+      "urgentFlag": false
+    },
+    "-OWvC-87JwW3zwy7vQsM": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "createdAt": "2025-08-05T17:07:42.103Z",
+      "department": "Laboratory",
+      "patientId": "-OWphurpD4ki5dlCMKO5",
+      "patientName": "Aliya Penera",
+      "patientNotes": "Hatdog",
+      "requestedBy": "iINCwSPoPQcziURQmjTvyLBU2tw2",
+      "requestedByName": "Unknown User",
+      "resultStatus": "pending",
+      "sampleStatus": "pending",
+      "serviceCategory": "laboratoryTests",
+      "serviceId": "-OWpz2wubm2-FZRaF-gu",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-08-05T17:29:00.432Z",
+      "urgentFlag": false
+    },
+    "-OX-_r0H05arzMIQUUk3": {
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "createdAt": "2025-08-06T18:14:24.094Z",
+      "department": "Laboratory",
+      "patientId": "-OWphurpD4ki5dlCMKO5",
+      "patientName": "Aliya Penera",
+      "patientNotes": "Test 1\n",
+      "requestedBy": "iINCwSPoPQcziURQmjTvyLBU2tw2",
+      "requestedByName": "Unknown User",
+      "resultStatus": "pending",
+      "sampleStatus": "pending",
+      "serviceCategory": "laboratoryTests",
+      "serviceId": "-OWpz2wubm2-FZRaF-gu",
+      "status": "in-progress",
+      "transactionType": "service_request",
+      "updatedAt": "2025-08-06T18:15:26.029Z",
+      "urgentFlag": false
+    }
+  },
+  "password-reset-tokens": {
+    "mdt7pdi5-k7c05qgoy3k": {
+      "createdAt": 1754076240797,
+      "email": "test@unihealth.ph",
+      "expiresAt": 1754076420797,
+      "token": "mdt7pdi5-k7c05qgoy3k",
+      "used": false
+    }
+  },
+  "patientMedicalHistory": {
+    "pat_david_lim_id": {
+      "entries": {
+        "mhe_david_er_001": {
+          "clinicalSummary": "Patient presented with severe right lower quadrant abdominal pain. Alert and oriented. Referred to ER Physician for immediate evaluation.",
+          "consultationDate": "2025-07-23",
+          "consultationTime": "16:15:00",
+          "createdAt": "2025-07-23T16:20:00Z",
+          "followUpInstructions": "N/A",
+          "lastUpdated": "2025-07-23T16:20:00Z",
+          "patientId": "pat_david_lim_id",
+          "practiceLocation": {
+            "clinicId": "clin_cebu_doctors_id",
+            "roomOrUnit": "Emergency Room Triage"
+          },
+          "provider": {
+            "firstName": "Nurse John",
+            "id": "staff_er_nurse_jd_uid",
+            "lastName": "Doe",
+            "providerType": "clinic_staff",
+            "sourceSystem": "UniHealth_ER_Module"
+          },
+          "relatedAppointment": {
+            "id": "appt_david_emergency_001_id",
+            "type": "clinicAppointment"
+          },
+          "treatmentPlan": "Immediate physician consult.",
+          "type": "Emergency Assessment"
+        },
+        "mhe_david_spec_001": {
+          "clinicalSummary": "Patient referred for acute abdominal pain. Physical exam highly suspicious for acute appendicitis. Ordered STAT CT Abdomen and surgical consult.",
+          "consultationDate": "2025-07-23",
+          "consultationTime": "16:00:00",
+          "createdAt": "2025-07-23T16:50:00Z",
+          "diagnosis": [
+            {
+              "code": "K35.80",
+              "description": "Acute appendicitis, unspecified"
+            }
+          ],
+          "followUpInstructions": "Await CT results and surgical team evaluation.",
+          "lastUpdated": "2025-07-23T16:50:00Z",
+          "patientId": "pat_david_lim_id",
+          "practiceLocation": {
+            "clinicId": "clin_cebu_doctors_id",
+            "roomOrUnit": "Emergency Room, Dr. Cala's cubicle"
+          },
+          "prescriptions": [
+            {
+              "dosage": "1L",
+              "frequency": "Stat",
+              "medication": "IV Fluids (NSS)"
+            },
+            {
+              "dosage": "50mg IV",
+              "frequency": "Stat",
+              "medication": "Pain Meds (Tramadol)"
+            }
+          ],
+          "provider": {
+            "firstName": "Dr. Maria",
+            "id": "doc_maria_cala_uid",
+            "lastName": "Cala",
+            "providerType": "specialist",
+            "sourceSystem": "UniHealth_Specialist_Module"
+          },
+          "relatedAppointment": {
+            "id": "ref_david_abd_001_id",
+            "type": "referral"
+          },
+          "treatmentPlan": "STAT CT Abdomen. Surgical consult. NPO.",
+          "type": "Specialist Consultation"
+        }
+      }
+    },
+    "pat_maria_santos_id": {
+      "entries": {
+        "mhe_maria_gen_001": {
+          "clinicalSummary": "Patient presents with persistent fatigue. Initial labs ordered. Referred to Internal Medicine specialist for further evaluation of potential thyroid issue.",
+          "consultationDate": "2025-07-28",
+          "consultationTime": "09:30:00",
+          "createdAt": "2025-07-28T10:10:00Z",
+          "diagnosis": [
+            {
+              "code": "R53.82",
+              "description": "Chronic fatigue, unspecified"
+            }
+          ],
+          "followUpInstructions": "Follow up with specialist appointment. If no specialist appointment within a week, contact clinic.",
+          "labResultsSummary": [
+            {
+              "notes": "Awaiting results",
+              "test": "TSH",
+              "value": "Pending"
+            }
+          ],
+          "lastUpdated": "2025-07-28T10:10:00Z",
+          "patientId": "pat_maria_santos_id",
+          "practiceLocation": {
+            "clinicId": "clin_lahug_uhc_id",
+            "roomOrUnit": "Consultation Room 3"
+          },
+          "provider": {
+            "firstName": "Dr. Jose",
+            "id": "doc_jose_reyes_uid",
+            "lastName": "Reyes",
+            "providerType": "generalist",
+            "sourceSystem": "UniHealth_Generalist_Module"
+          },
+          "relatedAppointment": {
+            "id": "appt_maria_general_001_id",
+            "type": "clinicAppointment"
+          },
+          "treatmentPlan": "Referral to specialist.",
+          "type": "General Consultation"
+        },
+        "mhe_maria_spec_001": {
+          "clinicalSummary": "Patient referred for fatigue, initial TSH slightly elevated. Reviewed full thyroid panel results. Clinical exam negative for significant findings. Suspect subclinical hypothyroidism. Initiated Levothyroxine and advised follow-up.",
+          "consultationDate": "2025-07-31",
+          "consultationTime": "09:30:00",
+          "createdAt": "2025-07-31T10:45:00Z",
+          "diagnosis": [
+            {
+              "code": "E02",
+              "description": "Subclinical hypothyroidism due to iodine deficiency"
+            }
+          ],
+          "followUpInstructions": "Schedule follow-up appointment with Dr. Cala in 6 weeks. Continue to monitor symptoms.",
+          "labResultsSummary": [
+            {
+              "notes": "Slightly elevated",
+              "test": "TSH",
+              "value": "6.2 mIU/L"
+            },
+            {
+              "notes": "Normal",
+              "test": "Free T4",
+              "value": "1.1 ng/dL"
+            }
+          ],
+          "lastUpdated": "2025-07-31T10:45:00Z",
+          "patientId": "pat_maria_santos_id",
+          "practiceLocation": {
+            "clinicId": "clin_perpetual_succour_id",
+            "roomOrUnit": "IM Clinic, Suite 305"
+          },
+          "prescriptions": [
+            {
+              "dosage": "25mcg",
+              "frequency": "Once daily",
+              "medication": "Levothyroxine"
+            }
+          ],
+          "provider": {
+            "firstName": "Dr. Maria",
+            "id": "doc_maria_cala_uid",
+            "lastName": "Cala",
+            "providerType": "specialist",
+            "sourceSystem": "UniHealth_Specialist_Module"
+          },
+          "relatedAppointment": {
+            "id": "ref_maria_thyroid_001_id",
+            "type": "referral"
+          },
+          "treatmentPlan": "Initiate Levothyroxine. Re-evaluate thyroid function in 6 weeks.",
+          "type": "Specialist Consultation"
+        }
+      }
+    },
+    "pat_sofia_garcia_id": {
+      "entries": {
+        "mhe_sofia_gen_001": {
+          "clinicalSummary": "Patient seen for common cold symptoms: cough, runny nose, sore throat. Advised symptomatic treatment and return if symptoms worsen.",
+          "consultationDate": "2025-07-15",
+          "consultationTime": "14:00:00",
+          "createdAt": "2025-07-15T14:40:00Z",
+          "diagnosis": [
+            {
+              "code": "J00",
+              "description": "Acute nasopharyngitis [common cold]"
+            }
+          ],
+          "followUpInstructions": "Return if symptoms worsen or persist beyond 5-7 days.",
+          "lastUpdated": "2025-07-15T14:40:00Z",
+          "patientId": "pat_sofia_garcia_id",
+          "practiceLocation": {
+            "clinicId": "clin_perpetual_succour_id",
+            "roomOrUnit": "Outpatient Clinic A"
+          },
+          "prescriptions": [
+            {
+              "dosage": "1 tablet",
+              "frequency": "TID as needed",
+              "medication": "Lozenges"
+            }
+          ],
+          "provider": {
+            "firstName": "Dr. Jose",
+            "id": "doc_jose_reyes_uid",
+            "lastName": "Reyes",
+            "providerType": "generalist",
+            "sourceSystem": "UniHealth_Generalist_Module"
+          },
+          "relatedAppointment": {
+            "id": "appt_sofia_followup_001_id",
+            "type": "clinicAppointment"
+          },
+          "treatmentPlan": "Symptomatic relief. Rest and fluids.",
+          "type": "General Consultation"
+        },
+        "mhe_sofia_gen_002": {
+          "clinicalSummary": "Patient for follow-up regarding persistent cough after previous cold. No fever, lungs clear. Advised cough suppressant and re-evaluation if no improvement.",
+          "consultationDate": "2025-07-26",
+          "consultationTime": "11:00:00",
+          "createdAt": "2025-07-26T11:45:00Z",
+          "diagnosis": [
+            {
+              "code": "R05",
+              "description": "Cough"
+            }
+          ],
+          "followUpInstructions": "Return in 1 week if cough persists.",
+          "lastUpdated": "2025-07-26T11:45:00Z",
+          "patientId": "pat_sofia_garcia_id",
+          "practiceLocation": {
+            "clinicId": "clin_perpetual_succour_id",
+            "roomOrUnit": "Outpatient Clinic A"
+          },
+          "prescriptions": [
+            {
+              "dosage": "10mg",
+              "frequency": "TID as needed",
+              "medication": "Dextromethorphan"
+            }
+          ],
+          "provider": {
+            "firstName": "Dr. Jose",
+            "id": "doc_jose_reyes_uid",
+            "lastName": "Reyes",
+            "providerType": "generalist",
+            "sourceSystem": "UniHealth_Generalist_Module"
+          },
+          "relatedAppointment": {
+            "id": "appt_sofia_followup_001_id",
+            "type": "clinicAppointment"
+          },
+          "treatmentPlan": "Symptomatic cough management.",
+          "type": "General Consultation - Follow-up"
+        }
+      }
+    }
+  },
+  "patientPrescription": {
+    "-OWphurpD4ki5dlCMKO5": {
+      "prescription_1754502229866_m6k8ax1xr": {
+        "clinicId": "-OWpoI_htd_vh8Kbimjn",
+        "createdAt": "2025-08-06T17:43:49.866Z",
+        "createdBy": "esGHYBaZJaSuDaq29BNeEEU0E5h1",
+        "createdByFirstName": "Galigao",
+        "createdByFullName": "Galigao Aliya",
+        "createdByLastName": "Aliya",
+        "department": "doctor",
+        "dosage": "Brainrot",
+        "instructions": "",
+        "name": "Skibdi",
+        "patientId": "-OWphurpD4ki5dlCMKO5",
+        "prescriptionId": "prescription_1754502229866_m6k8ax1xr",
+        "timestamp": "2025-08-06T17:43:49.866Z"
+      }
+    }
+  },
+  "patients": {
+    "-OWphurpD4ki5dlCMKO5": {
+      "address": "Sa balay ni batman",
+      "allergies": [
+        "Hatdog"
+      ],
+      "bloodType": "AB",
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "contactNumber": "",
+      "createdAt": "",
+      "dateOfBirth": "2003-06-03",
+      "emergencyContact": {
+        "name": "Dan Ken",
+        "phone": "09991591653",
+        "relation": "Husband"
+      },
+      "firstName": "Aliya",
+      "gender": "Male",
+      "lastName": "Penera",
+      "lastUpdated": "2025-08-05T18:48:25.549Z",
+      "medicalConditions": {
+        "0": "Grr pow",
+        "currentCondition": "Grr pow",
+        "primaryDiagnosis": "Skibdurds"
+      },
+      "middleName": "",
+      "primaryClinic": "-OWpoI_htd_vh8Kbimjn",
+      "status": "Active"
+    },
+    "-OWpl9E7lhoiIRcQy5W8": {
+      "addressLine": "Osmeña Blvd, Capitol Site, Cebu City, 6000 Cebu, Philippines",
+      "bloodType": "A-",
+      "clinic": "Cebu Doctors' University Hospital",
+      "clinicId": "clin_cebu_doctors_id",
+      "confirmedAt": "2025-08-04T18:44:29.924Z",
+      "contactNumber": "09991212313",
+      "createdAt": {
+        "date": "2025-08-04",
+        "time": "11:47 PM"
+      },
+      "dateOfBirth": "2000-12-11",
+      "description": "Measures red blood cells, white blood cells, and platelets.",
+      "email": "joshuabongz7@gmail.com",
+      "emergencyContact": {
+        "name": "test",
+        "phone": "09212312313",
+        "relation": "Parent"
+      },
+      "estimatedTime": "8:00AM - 9:00AM",
+      "firstName": "Joshua",
+      "labId": "-OWpl9E7lhoiIRcQy5W8",
+      "labTestId": "lab_test_cbc_001",
+      "labTestName": "Complete Blood Count",
+      "lastName": "Bonghanoy",
+      "notes": "",
+      "patientName": "Joshua Bonghanoy",
+      "referDoctor": "Dr. Bongs Josh",
+      "slotNumber": "1",
+      "status": "Confirmed",
+      "type": "hospital",
+      "userId": ""
+    },
+    "-OWpq1LlOtAVzbbPeIW7": {
+      "allergies": [
+        "Bogo nga studyante"
+      ],
+      "bloodType": "B+",
+      "contactNumber": "0999151963",
+      "createdAt": "2025-08-04T16:09:16.325Z",
+      "dateOfBirth": "2003-06-03",
+      "emergencyContact": {
+        "name": "Rj",
+        "phone": "09991591653",
+        "relationship": "Husband"
+      },
+      "firstName": "Desiree",
+      "gender": "Female",
+      "lastName": "Cendana",
+      "lastUpdated": "2025-08-04T16:09:16.325Z",
+      "medicalConditions": [
+        "None"
+      ]
+    },
+    "-OWvM6vkDgNqQjOFXTfn": {
+      "address": "Lagtang",
+      "allergies": [
+        "Shrimp"
+      ],
+      "bloodType": "B+",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-05T17:51:55.951Z",
+      "dateOfBirth": "2003-06-03",
+      "emergencyContact": {
+        "name": "Jetch",
+        "phone": "09991591643",
+        "relationship": "secret"
+      },
+      "firstName": "Christine",
+      "gender": "Female",
+      "lastName": "Ighot",
+      "lastUpdated": "2025-08-05T17:51:55.951Z",
+      "medicalConditions": [
+        "Oa"
+      ]
+    },
+    "-OX-aZfWI0hGEDtFyqLZ": {
+      "address": "Please Work Street, Haha City",
+      "createdAt": "2025-08-06T18:17:30.868Z",
+      "dateOfBirth": "2002-04-06",
+      "educationalAttainment": "masters-degree",
+      "emergencyContact": {
+        "name": "Galaxy Milkyway",
+        "phone": "09159452600",
+        "relationship": "friend"
+      },
+      "firstName": "Please",
+      "gender": "female",
+      "isActive": true,
+      "lastName": "Haha",
+      "lastUpdated": "2025-08-06T18:17:30.868Z",
+      "middleName": "Work",
+      "userId": "-OX-aZfWI0hGEDtFyqLZ"
+    },
+    "0sKaa7pcy0VrFWjZNbCPvgbDmSs1": {
+      "createdAt": "2025-08-04T03:17:35.591Z",
+      "dateOfBirth": "04/06/2002",
+      "emergencyContact": {
+        "name": "Hatdog",
+        "phone": "09925125004",
+        "relationship": "Spouse"
+      },
+      "firstName": "Nana",
+      "gender": "Female",
+      "lastName": "Banana",
+      "lastUpdated": "2025-08-04T03:17:35.591Z",
+      "userId": "0sKaa7pcy0VrFWjZNbCPvgbDmSs1"
+    },
+    "Bm6vQQCeeLhsl3htVUAnqIvKLqy1": {
+      "createdAt": "2025-08-04T06:06:41.068Z",
+      "dateOfBirth": "11/12/90",
+      "emergencyContact": {
+        "name": "Ijajsjs Hshsh",
+        "phone": "64856494",
+        "relationship": "Spouse"
+      },
+      "firstName": "Ira",
+      "gender": "Female",
+      "lastName": "Pongasi",
+      "lastUpdated": "2025-08-04T06:06:41.068Z",
+      "userId": "Bm6vQQCeeLhsl3htVUAnqIvKLqy1"
+    },
+    "m63VwObQtkfWiEidSo0RbcHLgOh1": {
+      "createdAt": "2025-08-02T03:19:54.503Z",
+      "dateOfBirth": "10/06/2003",
+      "emergencyContact": {
+        "name": "Marielle Mae Dalimocon",
+        "phone": "09475711827",
+        "relationship": "Spouse"
+      },
+      "firstName": "Mel Angelo",
+      "gender": "Male",
+      "lastName": "Cortes",
+      "lastUpdated": "2025-08-02T03:19:54.503Z",
+      "userId": "m63VwObQtkfWiEidSo0RbcHLgOh1"
+    },
+    "pat_april_marie_id": {
+      "createdAt": "2025-08-01T20:47:44.139Z",
+      "dateOfBirth": "04/06/2002",
+      "emergencyContact": {
+        "name": "Gian Mathew Gutang",
+        "phone": "09925125004",
+        "relationship": "Friend"
+      },
+      "firstName": "April",
+      "gender": "Female",
+      "lastName": "Marie",
+      "lastUpdated": "2025-08-01T20:47:44.139Z",
+      "userId": "uvIYw9rMdqZdq7SsfeM5xmoqB463"
+    },
+    "pat_david_lim_id": {
+      "allergies": [
+        "Penicillin"
+      ],
+      "bloodType": "B+",
+      "createdAt": "2025-07-23T16:00:00Z",
+      "dateOfBirth": "1995-05-20",
+      "emergencyContact": {
+        "name": "Stella Lim",
+        "phone": "+639209988776",
+        "relationship": "Sister"
+      },
+      "firstName": "David",
+      "gender": "Male",
+      "lastName": "Lim",
+      "lastUpdated": "2025-07-23T16:05:00Z",
+      "userId": "pat_david_lim_uid"
+    },
+    "pat_sofia_garcia_id": {
+      "bloodType": "O+",
+      "createdAt": "2025-06-10T14:00:00Z",
+      "dateOfBirth": "1997-09-01",
+      "emergencyContact": {
+        "name": "Maria Garcia",
+        "phone": "+639081234567",
+        "relationship": "Mother"
+      },
+      "firstName": "Sofia",
+      "gender": "Female",
+      "lastName": "Garcia",
+      "lastUpdated": "2025-07-23T16:35:00Z",
+      "medicalConditions": [
+        "Common Cold (previous)"
+      ],
+      "userId": "pat_sofia_garcia_uid"
+    },
+    "pgney6p630UQ7C0IKh2UxBXbWJt2": {
+      "createdAt": "2025-08-01T20:57:29.624Z",
+      "dateOfBirth": "12/09/2003",
+      "emergencyContact": {
+        "name": "April Marie Rosales",
+        "phone": "09159452600",
+        "relationship": "Friend"
+      },
+      "firstName": "Gian Mathew",
+      "gender": "Male",
+      "lastName": "Gutang",
+      "lastUpdated": "2025-08-01T20:57:29.624Z",
+      "userId": "pgney6p630UQ7C0IKh2UxBXbWJt2"
+    },
+    "vz7Yz6az5hOz3srCPXLwZrIC3d83": {
+      "createdAt": "2025-08-01T21:14:27.620Z",
+      "dateOfBirth": "09/78/7888",
+      "emergencyContact": {
+        "name": "sdada",
+        "phone": "0928398495",
+        "relationship": "Spouse"
+      },
+      "firstName": "ajsbjhbs",
+      "gender": "Female",
+      "lastName": "bjbjb",
+      "lastUpdated": "2025-08-01T21:14:27.620Z",
+      "userId": "vz7Yz6az5hOz3srCPXLwZrIC3d83"
+    }
+  },
+  "referrals": {
+    "-OX-CneHwNVU1xxiJ8PX": {
+      "appointmentDate": "2025-08-07",
+      "appointmentTime": "9:00 AM",
+      "assignedSpecialistFirstName": "Ana",
+      "assignedSpecialistId": "-OWdmRlCY5Lks26SMIvo",
+      "assignedSpecialistLastName": "Rodriguez",
+      "clinicAppointmentId": "appt_-OWphurpD4ki5dlCMKO5_1754497761410_id",
+      "generalistNotes": "Specialist appointment scheduled through admin panel",
+      "initialReasonForReferral": "Dermatology Consultation",
+      "lastUpdated": "2025-08-06T16:29:21.410Z",
+      "patientArrivalConfirmed": false,
+      "patientFirstName": "Aliya",
+      "patientId": "-OWphurpD4ki5dlCMKO5",
+      "patientLastName": "Penera",
+      "practiceLocation": {
+        "clinicId": "admin_scheduled",
+        "roomOrUnit": "Specialist Clinic"
+      },
+      "referralTimestamp": "2025-08-06T16:29:21.410Z",
+      "referringClinicId": "admin_panel",
+      "referringClinicName": "Admin Panel",
+      "referringGeneralistFirstName": "Admin",
+      "referringGeneralistId": "admin_user",
+      "referringGeneralistLastName": "System",
+      "scheduleSlotPath": "-OWdmRlCY5Lks26SMIvo/schedule/2025-08-07/9:00 AM",
+      "sourceSystem": "UniHealth_Admin_Panel",
+      "specialistScheduleId": "sched_-OWdmRlCY5Lks26SMIvo_20250807"
+    },
+    "-OX-U4gX6lPKUKIjEJ9R": {
+      "appointmentDate": "2025-08-07",
+      "appointmentTime": "9:00 AM",
+      "assignedSpecialistFirstName": "Hello",
+      "assignedSpecialistId": "-OX-GFmhUU5IXLjMnOlT",
+      "assignedSpecialistLastName": "World",
+      "clinicAppointmentId": "appt_-OWpq1LlOtAVzbbPeIW7_1754502291727_id",
+      "generalistNotes": "Specialist appointment scheduled through admin panel",
+      "initialReasonForReferral": "Neurology Consultation",
+      "lastUpdated": "2025-08-06T17:44:51.727Z",
+      "patientArrivalConfirmed": false,
+      "patientFirstName": "Desiree",
+      "patientId": "-OWpq1LlOtAVzbbPeIW7",
+      "patientLastName": "Cendana",
+      "practiceLocation": {
+        "clinicId": "default_clinic_id",
+        "roomOrUnit": "Specialist Clinic"
+      },
+      "referralTimestamp": "2025-08-06T17:44:51.727Z",
+      "referringClinicId": "default_clinic_id",
+      "referringClinicName": "Admin Panel Clinic",
+      "referringGeneralistFirstName": "Admin",
+      "referringGeneralistId": "admin_user",
+      "referringGeneralistLastName": "User",
+      "scheduleSlotPath": "-OX-GFmhUU5IXLjMnOlT/sched_-OX-GFmhUU5IXLjMnOlT_20250807/2025-07-23/9:00 AM",
+      "sourceSystem": "UniHealth_Admin_Panel",
+      "specialistScheduleId": "sched_-OX-GFmhUU5IXLjMnOlT_20250807",
+      "status": "pending_acceptance"
+    },
+    "-OX-VRbrOBgHZI-t7jOQ": {
+      "appointmentDate": "2025-08-07",
+      "appointmentTime": "9:00 AM",
+      "assignedSpecialistFirstName": "Hello",
+      "assignedSpecialistId": "-OX-GFmhUU5IXLjMnOlT",
+      "assignedSpecialistLastName": "World",
+      "clinicAppointmentId": "appt_-OWvM6vkDgNqQjOFXTfn_1754502647785_id",
+      "generalistNotes": "Specialist appointment scheduled through admin panel",
+      "initialReasonForReferral": "Neurology Consultation",
+      "lastUpdated": "2025-08-06T17:50:47.785Z",
+      "patientArrivalConfirmed": false,
+      "patientFirstName": "Christine",
+      "patientId": "-OWvM6vkDgNqQjOFXTfn",
+      "patientLastName": "Ighot",
+      "practiceLocation": {
+        "clinicId": "clin_perpetual_succour_id",
+        "roomOrUnit": "Specialist Clinic"
+      },
+      "referralTimestamp": "2025-08-06T17:50:47.785Z",
+      "referringClinicId": "clin_perpetual_succour_id",
+      "referringClinicName": "Perpetual Succour Hospital",
+      "referringGeneralistFirstName": "Admin",
+      "referringGeneralistId": "admin_user",
+      "referringGeneralistLastName": "User",
+      "scheduleSlotPath": "-OX-GFmhUU5IXLjMnOlT/sched_-OX-GFmhUU5IXLjMnOlT_20250807/2025-07-23/9:00 AM",
+      "sourceSystem": "UniHealth_Admin_Panel",
+      "specialistScheduleId": "sched_-OX-GFmhUU5IXLjMnOlT_20250807",
+      "status": "pending_acceptance"
+    },
+    "-OX-Viun90CMdEc1qRTg": {
+      "appointmentDate": "2025-08-07",
+      "appointmentTime": "9:00 AM",
+      "assignedSpecialistFirstName": "vjhvjhvjhv",
+      "assignedSpecialistId": "-OX-UYbzOBOfHsOPUNwI",
+      "assignedSpecialistLastName": "jhvjhvjhv",
+      "clinicAppointmentId": "appt_-OWphurpD4ki5dlCMKO5_1754502722725_id",
+      "generalistNotes": "Specialist appointment scheduled through admin panel",
+      "initialReasonForReferral": "Obstetrics and Gynecology Consultation",
+      "lastUpdated": "2025-08-06T17:52:02.725Z",
+      "patientArrivalConfirmed": false,
+      "patientFirstName": "Aliya",
+      "patientId": "-OWphurpD4ki5dlCMKO5",
+      "patientLastName": "Penera",
+      "practiceLocation": {
+        "clinicId": "-OX-UIMSJEaN7jXWxbtw",
+        "roomOrUnit": "Specialist Clinic"
+      },
+      "referralTimestamp": "2025-08-06T17:52:02.725Z",
+      "referringClinicId": "-OX-UIMSJEaN7jXWxbtw",
+      "referringClinicName": "Lammm",
+      "referringGeneralistFirstName": "Admin",
+      "referringGeneralistId": "admin_user",
+      "referringGeneralistLastName": "User",
+      "scheduleSlotPath": "-OX-UYbzOBOfHsOPUNwI/sched_-OX-UYbzOBOfHsOPUNwI_20250807/2025-07-23/9:00 AM",
+      "sourceSystem": "UniHealth_Admin_Panel",
+      "specialistScheduleId": "sched_-OX-UYbzOBOfHsOPUNwI_20250807",
+      "status": "pending_acceptance"
+    },
+    "-OX-W4u3VjUXdDZFPKRx": {
+      "appointmentDate": "2025-08-07",
+      "appointmentTime": "9:00 AM",
+      "assignedSpecialistFirstName": "kajbdkjb",
+      "assignedSpecialistId": "doc_kajbdkjb_bkjbkj_1754423220762",
+      "assignedSpecialistLastName": "bkjbkj",
+      "clinicAppointmentId": "appt_m63VwObQtkfWiEidSo0RbcHLgOh1_1754502816885_id",
+      "generalistNotes": "Specialist appointment scheduled through admin panel",
+      "initialReasonForReferral": "Dermatology Consultation",
+      "lastUpdated": "2025-08-06T17:53:36.885Z",
+      "patientArrivalConfirmed": false,
+      "patientFirstName": "Mel Angelo",
+      "patientId": "m63VwObQtkfWiEidSo0RbcHLgOh1",
+      "patientLastName": "Cortes",
+      "practiceLocation": {
+        "clinicId": "clin_lahug_uhc_id",
+        "roomOrUnit": "Specialist Clinic"
+      },
+      "referralTimestamp": "2025-08-06T17:53:36.885Z",
+      "referringClinicId": "clin_lahug_uhc_id",
+      "referringClinicName": "Lahug Urban Health Center",
+      "referringGeneralistFirstName": "Admin",
+      "referringGeneralistId": "admin_user",
+      "referringGeneralistLastName": "User",
+      "scheduleSlotPath": "doc_kajbdkjb_bkjbkj_1754423220762/sched_doc_kajbdkjb_bkjbkj_1754423220762_20250807/2025-07-23/9:00 AM",
+      "sourceSystem": "UniHealth_Admin_Panel",
+      "specialistScheduleId": "sched_doc_kajbdkjb_bkjbkj_1754423220762_20250807",
+      "status": "pending_acceptance"
+    },
+    "ref_david_abd_001_id": {
+      "appointmentDate": "2025-07-23",
+      "appointmentTime": "16:00:00",
+      "assignedSpecialistFirstName": "Dr. Maria",
+      "assignedSpecialistId": "doc_maria_cala_uid",
+      "assignedSpecialistLastName": "Cala",
+      "clinicAppointmentId": "appt_david_emergency_001_id",
+      "generalistNotes": "Severe abdominal pain, possible appendicitis/gallstones. Needs immediate specialist evaluation. Admitted.",
+      "initialReasonForReferral": "Emergency - Acute Abdominal Pain",
+      "lastUpdated": "2025-07-23T16:50:00Z",
+      "patientArrivalConfirmed": true,
+      "patientFirstName": "David",
+      "patientId": "pat_david_lim_id",
+      "patientLastName": "Lim",
+      "practiceLocation": {
+        "clinicId": "clin_cebu_doctors_id",
+        "roomOrUnit": "Emergency Room / Admitting"
+      },
+      "referralTimestamp": "2025-07-23T16:25:00Z",
+      "referringClinicId": "clin_cebu_doctors_id",
+      "referringClinicName": "Cebu Doctors' University Hospital",
+      "referringGeneralistFirstName": "Dr. Sarah",
+      "referringGeneralistId": "doc_sarah_kim_uid",
+      "referringGeneralistLastName": "Kim (ER)",
+      "scheduleSlotPath": "doc_maria_cala_uid/sched_maria_cdh_wed_pm/2025-07-23/04:00 PM",
+      "sourceSystem": "UniHealth_ER_Module",
+      "specialistScheduleId": "sched_maria_cdh_wed_pm",
+      "status": "completed"
+    },
+    "ref_maria_thyroid_001_id": {
+      "appointmentDate": "2025-07-31",
+      "appointmentTime": "09:30:00",
+      "assignedSpecialistFirstName": "Dr. Maria",
+      "assignedSpecialistId": "doc_maria_cala_uid",
+      "assignedSpecialistLastName": "Cala",
+      "clinicAppointmentId": "appt_maria_general_001_id",
+      "generalistNotes": "Patient presents with persistent fatigue, initial labs suggest potential thyroid dysfunction. Referred for endocrinology or internal medicine consult.",
+      "initialReasonForReferral": "Suspected Thyroid Dysfunction",
+      "lastUpdated": "2025-07-28T10:35:00Z",
+      "patientArrivalConfirmed": false,
+      "patientFirstName": "Maria",
+      "patientId": "pat_maria_santos_id",
+      "patientLastName": "Santos",
+      "practiceLocation": {
+        "clinicId": "clin_perpetual_succour_id",
+        "roomOrUnit": "IM Clinic, Suite 305"
+      },
+      "referralTimestamp": "2025-07-28T10:30:00Z",
+      "referringClinicId": "clin_lahug_uhc_id",
+      "referringClinicName": "Lahug Urban Health Center",
+      "referringGeneralistFirstName": "Dr. Jose",
+      "referringGeneralistId": "doc_jose_reyes_uid",
+      "referringGeneralistLastName": "Reyes",
+      "scheduleSlotPath": "doc_maria_cala_uid/sched_maria_psh_tth_am/2025-07-31/09:30 AM",
+      "sourceSystem": "UniHealth_Generalist_Module",
+      "specialistScheduleId": "sched_maria_psh_tth_am",
+      "status": "confirmed"
+    },
+    "ref_sofia_skin_001_id": {
+      "appointmentDate": "2025-08-05",
+      "appointmentTime": "10:00:00",
+      "assignedSpecialistFirstName": "Dr. Elena",
+      "assignedSpecialistId": "doc_specialist_dermatology_uid",
+      "assignedSpecialistLastName": "Cruz (Dermatologist)",
+      "clinicAppointmentId": "appt_sofia_followup_001_id",
+      "generalistNotes": "Patient with persistent rash, not responding to general treatment. Suspect dermatitis. Referred to Dermatology.",
+      "initialReasonForReferral": "Persistent Skin Rash",
+      "lastUpdated": "2025-07-26T12:30:00Z",
+      "patientArrivalConfirmed": false,
+      "patientFirstName": "Sofia",
+      "patientId": "pat_sofia_garcia_id",
+      "patientLastName": "Garcia",
+      "practiceLocation": {
+        "clinicId": "clin_perpetual_succour_id",
+        "roomOrUnit": "Dermatology Clinic, Rm 201"
+      },
+      "referralTimestamp": "2025-07-26T12:30:00Z",
+      "referringClinicId": "clin_perpetual_succour_id",
+      "referringClinicName": "Perpetual Succour Hospital",
+      "referringGeneralistFirstName": "Dr. Jose",
+      "referringGeneralistId": "doc_jose_reyes_uid",
+      "referringGeneralistLastName": "Reyes",
+      "scheduleSlotPath": "doc_specialist_dermatology_uid/sched_elena_psh_mon_am/2025-08-05/10:00 AM",
+      "sourceSystem": "UniHealth_Generalist_Module",
+      "specialistScheduleId": "sched_elena_psh_mon_am",
+      "status": "pending_acceptance"
+    }
+  },
+  "roles": {
+    "admin": {
+      "name": "Admin",
+      "permissions": {
+        "canAdd": true,
+        "canDelete": true,
+        "canEdit": true,
+        "canView": true
+      }
+    },
+    "clinic_staff": {
+      "name": "Clinic Staff",
+      "permissions": {
+        "canAdd": true,
+        "canDelete": false,
+        "canEdit": false,
+        "canManageAppointments": true,
+        "canView": true
+      }
+    },
+    "doctor": {
+      "name": "Doctor",
+      "permissions": {
+        "canAdd": true,
+        "canDelete": true,
+        "canEdit": true,
+        "canView": true
+      }
+    },
+    "generalist": {
+      "name": "General Practitioner",
+      "permissions": {
+        "canEditMedicalHistory": true,
+        "canPrescribe": true,
+        "canReferPatients": true,
+        "canView": true
+      }
+    },
+    "lab_technician": {
+      "name": "Laboratory Technician",
+      "permissions": {
+        "canAccessLabs": true,
+        "canEditLabResults": true,
+        "canManageLabInventory": true
+      }
+    },
+    "manager": {
+      "name": "Manager",
+      "permissions": {
+        "canAdd": true,
+        "canDelete": true,
+        "canEdit": true,
+        "canView": true
+      }
+    },
+    "patient": {
+      "name": "Patient",
+      "permissions": {
+        "canAdd": false,
+        "canDelete": false,
+        "canEdit": false,
+        "canView": true
+      }
+    },
+    "role model": {
+      "name": "Role Model",
+      "permissions": {
+        "canAdd": true,
+        "canDelete": false,
+        "canEdit": false,
+        "canView": false
+      }
+    },
+    "specialist": {
+      "name": "Medical Specialist",
+      "permissions": {
+        "canEditMedicalHistory": true,
+        "canManageOwnSchedule": true,
+        "canPrescribe": true,
+        "canView": true
+      }
+    },
+    "staff": {
+      "name": "Staff",
+      "permissions": {
+        "canAdd": true,
+        "canDelete": false,
+        "canEdit": false,
+        "canView": true
+      }
+    },
+    "viewer": {
+      "name": "Patient",
+      "permissions": {
+        "canAdd": false,
+        "canDelete": false,
+        "canEdit": false,
+        "canView": true
+      }
+    }
+  },
+  "schedules": {
+    "-OWdmRwyL0BUy8tr_fLr": {
+      "clinicId": "-OWdmRD3EI9WyRHzIdi3",
+      "createdAt": 1754121489484,
+      "dayOfWeek": 1,
+      "doctorId": "-OWdmRghMBoK5EXbYi9B",
+      "endTime": "17:00",
+      "id": "-OWdmRwyL0BUy8tr_fLr",
+      "isActive": true,
+      "notes": "Regular consultation hours",
+      "startTime": "09:00",
+      "updatedAt": 1754121489484
+    },
+    "-OWdmRz9CVZyfqINd9IG": {
+      "clinicId": "-OWdmRcZYay1D6dv5bty",
+      "createdAt": 1754121489624,
+      "dayOfWeek": 2,
+      "doctorId": "-OWdmRj1tZ2T1931f0z3",
+      "endTime": "17:00",
+      "id": "-OWdmRz9CVZyfqINd9IG",
+      "isActive": true,
+      "notes": "Regular consultation hours",
+      "startTime": "09:00",
+      "updatedAt": 1754121489624
+    },
+    "-OWdmS-4HZLF-fZF3ts8": {
+      "clinicId": "-OWdmReUie0pXtC_bjyL",
+      "createdAt": 1754121489683,
+      "dayOfWeek": 3,
+      "doctorId": "-OWdmRlCY5Lks26SMIvo",
+      "endTime": "17:00",
+      "id": "-OWdmS-4HZLF-fZF3ts8",
+      "isActive": true,
+      "notes": "Regular consultation hours",
+      "startTime": "09:00",
+      "updatedAt": 1754121489683
+    }
+  },
+  "security-records": {
+    "admin-unihealth-ph": {
+      "consecutiveLockouts": 0,
+      "email": "admin@unihealth.ph",
+      "failedLoginAttempts": 0,
+      "lastAttemptTime": 1754287371207
+    },
+    "superadmin-gmail-com": {
+      "consecutiveLockouts": 0,
+      "email": "superadmin@gmail.com",
+      "failedLoginAttempts": 1,
+      "lastAttemptTime": 1754420212792
+    },
+    "superadmin-unihealth-ph": {
+      "consecutiveLockouts": 0,
+      "email": "superadmin@unihealth.ph",
+      "failedLoginAttempts": 0,
+      "lastAttemptTime": 1754502628650
+    }
+  },
+  "sessions": {
+    "mdt1i9wf-y1wwj9czsz": {
+      "expiresAt": 1754067806707,
+      "lastActivity": 1754066006707
+    },
+    "mdt1m97o-zy5aaueqklk": {
+      "expiresAt": 1754068280891,
+      "lastActivity": 1754066480891
+    },
+    "mdt1wfxk-kbespxgo8yq": {
+      "expiresAt": 1754068299108
+    },
+    "mdt1wsfv-2xlkpx6uqrk": {
+      "expiresAt": 1754068479652,
+      "lastActivity": 1754066679652
+    },
+    "me09kcln-j6vzv3uswd8": {
+      "createdAt": 1754502628811,
+      "expiresAt": 1754506971722,
+      "ipAddress": "127.0.0.1",
+      "isActive": true,
+      "lastActivity": 1754505171755,
+      "sessionId": "me09kcln-j6vzv3uswd8",
+      "userAgent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36",
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "X6TEqRNDUKSud1T10B8fZyfywKG3",
+      "userRole": "superadmin"
+    }
+  },
+  "specialistDailyAvailability": {
+    "doc_maria_cala_uid": {
+      "sched_maria_cdh_wed_pm": {
+        "2025-07-23": {
+          "02:00 PM": {
+            "status": "available"
+          },
+          "02:30 PM": {
+            "status": "available"
+          },
+          "03:00 PM": {
+            "status": "available"
+          },
+          "03:30 PM": {
+            "status": "available"
+          },
+          "04:00 PM": {
+            "appointmentId": "ref_david_abd_001_id",
+            "status": "booked"
+          }
+        }
+      },
+      "sched_maria_psh_tth_am": {
+        "2025-07-31": {
+          "09:00 AM": {
+            "status": "available"
+          },
+          "09:30 AM": {
+            "appointmentId": "ref_maria_thyroid_001_id",
+            "status": "booked"
+          },
+          "10:00 AM": {
+            "status": "available"
+          },
+          "10:30 AM": {
+            "status": "available"
+          },
+          "11:00 AM": {
+            "status": "available"
+          },
+          "11:30 AM": {
+            "status": "available"
+          }
+        }
+      }
+    }
+  },
+  "specialistSchedules": {
+    "-OX-GFmhUU5IXLjMnOlT": {
+      "sched_-OX-GFmhUU5IXLjMnOlT_1": {
+        "createdAt": "2025-08-06T16:44:24.699Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-06T16:44:24.699Z",
+        "practiceLocation": {
+          "clinicId": "clin_perpetual_succour_id",
+          "roomOrUnit": "3rd Flr., Rm 590"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            0,
+            2,
+            4
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "09:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "12:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "12:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "-OX-GFmhUU5IXLjMnOlT",
+        "validFrom": "2025-08-06"
+      }
+    },
+    "-OX-NB0dc0yg_A2o2wCD": {
+      "-OX-NB0e96SH_Vm1iK6d": {
+        "createdAt": "2025-08-06T17:14:39.765Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-06T17:14:39.765Z",
+        "practiceLocation": {
+          "clinicId": "-OX-N1sktzbUhHaFxJwe",
+          "roomOrUnit": "Worldy 4, Rm 41"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            2,
+            5
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "06:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "06:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "07:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "07:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "08:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "08:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "-OX-NB0dc0yg_A2o2wCD",
+        "validFrom": "2025-08-06"
+      }
+    },
+    "-OX-Sj7DkkmeKFH9XBbP": {
+      "-OX-Sj7DkkmeKFH9XBbQ": {
+        "createdAt": "2025-08-06T17:38:54.410Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-06T17:38:54.410Z",
+        "practiceLocation": {
+          "clinicId": "-OX-SbJApVY0328MEKbS",
+          "roomOrUnit": "skdjhvjhv"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            2,
+            3
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "04:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "05:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "05:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "06:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "06:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "07:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "07:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "-OX-Sj7DkkmeKFH9XBbP",
+        "validFrom": "2025-08-06"
+      }
+    },
+    "-OX-UYbzOBOfHsOPUNwI": {
+      "-OX-UYbzOBOfHsOPUNwJ": {
+        "createdAt": "2025-08-06T17:46:51.605Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-06T17:46:51.605Z",
+        "practiceLocation": {
+          "clinicId": "-OX-UIMSJEaN7jXWxbtw",
+          "roomOrUnit": "hbjhhjbj"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            2
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "02:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "02:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "03:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "03:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "05:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "05:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "-OX-UYbzOBOfHsOPUNwI",
+        "validFrom": "2025-08-06"
+      }
+    },
+    "-OX-YR-Df-5_XBRpuLYf": {
+      "-OX-YR-Df-5_XBRpuLYg": {
+        "createdAt": "2025-08-06T18:03:49.070Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-06T18:03:49.070Z",
+        "practiceLocation": {
+          "clinicId": "-OX-YC1sLBdLWFvDtI_t",
+          "roomOrUnit": "Rm 123"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            2
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "01:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "01:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "02:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "02:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "03:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "03:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "-OX-YR-Df-5_XBRpuLYf",
+        "validFrom": "2025-08-06"
+      }
+    },
+    "-OX-rlXRi7fM8rDruVCV": {
+      "-OX-rlXRi7fM8rDruVCW": {
+        "createdAt": "2025-08-06T19:32:39.888Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-06T19:32:39.888Z",
+        "practiceLocation": {
+          "clinicId": "-OX-N1sktzbUhHaFxJwe",
+          "roomOrUnit": "Rm 123"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            2
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "01:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "01:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "06:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "06:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "07:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "07:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "08:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "08:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "12:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "12:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "-OX-rlXRi7fM8rDruVCV",
+        "validFrom": "2025-08-06"
+      }
+    },
+    "-OX0W7ERZenvpd6_LNpy": {
+      "-OX0W7ERZenvpd6_LNpz": {
+        "createdAt": "2025-08-06T22:33:20.417Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-06T22:33:20.417Z",
+        "practiceLocation": {
+          "clinicId": "-OWdmRcZYay1D6dv5bty",
+          "roomOrUnit": "Room 201"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            "monday",
+            "wednesday",
+            "friday"
+          ]
+        },
+        "scheduleType": "regular",
+        "slotTemplate": {
+          "endTime": "09:00",
+          "startTime": "07:00"
+        },
+        "specialistId": "-OX0W7ERZenvpd6_LNpy",
+        "validFrom": "2025-01-01"
+      }
+    },
+    "-OX0W7dE_PaFYKuWrJfb": {
+      "-OX0W7dFakSqJfSM58GJ": {
+        "createdAt": "2025-08-06T22:33:21.717Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-06T22:33:21.717Z",
+        "practiceLocation": {
+          "clinicId": "-OWdmReUie0pXtC_bjyL",
+          "roomOrUnit": "Room 305"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            "tuesday",
+            "thursday",
+            "saturday"
+          ]
+        },
+        "scheduleType": "regular",
+        "slotTemplate": {
+          "endTime": "16:00",
+          "startTime": "13:00"
+        },
+        "specialistId": "-OX0W7dE_PaFYKuWrJfb",
+        "validFrom": "2025-01-01"
+      }
+    },
+    "-OX0W7rOMSFPpkRVVJbP": {
+      "-OX0W7rOMSFPpkRVVJbQ": {
+        "createdAt": "2025-08-06T22:33:23.351Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-06T22:33:23.351Z",
+        "practiceLocation": {
+          "clinicId": "clin_cebu_doctors_id",
+          "roomOrUnit": "Room 307"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            "monday",
+            "tuesday",
+            "wednesday"
+          ]
+        },
+        "scheduleType": "regular",
+        "slotTemplate": {
+          "endTime": "09:00",
+          "startTime": "07:00"
+        },
+        "specialistId": "-OX0W7rOMSFPpkRVVJbP",
+        "validFrom": "45875"
+      }
+    },
+    "-OX0W862l2seMbOxjZQ4": {
+      "-OX0W862l2seMbOxjZQ5": {
+        "createdAt": "2025-08-06T22:33:24.297Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-06T22:33:24.297Z",
+        "practiceLocation": {
+          "clinicId": "-OX-UIMSJEaN7jXWxbtw",
+          "roomOrUnit": "Room 307"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            "monday",
+            "tuesday",
+            "wednesday"
+          ]
+        },
+        "scheduleType": "regular",
+        "slotTemplate": {
+          "endTime": "16:00",
+          "startTime": "13:00"
+        },
+        "specialistId": "-OX0W862l2seMbOxjZQ4",
+        "validFrom": "45875"
+      }
+    },
+    "HEx5Sd1KCqU25mfgmFEwaBB2h7m2": {
+      "-OX19eorXGOSfltCLAy5": {
+        "createdAt": "2025-08-07T01:34:49.594Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-07T01:34:49.594Z",
+        "practiceLocation": {
+          "clinicId": "clin_lahug_uhc_id",
+          "roomOrUnit": "Rm. 571"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            0,
+            2,
+            4
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "specialistId": "HEx5Sd1KCqU25mfgmFEwaBB2h7m2",
+        "validFrom": "45753"
+      }
+    },
+    "SxqcH36yF6hRxs9eZScmTSd6pez1": {
+      "-OX09PfMmt2ZUXBLWYQ_": {
+        "createdAt": "2025-08-06T20:54:06.986Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-06T20:54:06.986Z",
+        "practiceLocation": {
+          "clinicId": "-OX-N1sktzbUhHaFxJwe",
+          "roomOrUnit": "Rm 310"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            2,
+            6
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "09:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "SxqcH36yF6hRxs9eZScmTSd6pez1",
+        "validFrom": "2025-08-06"
+      }
+    },
+    "doc_april_rosales_1754120757549": {
+      "sched_doc_april_rosales_1754120757549_1": {
+        "createdAt": "2025-08-02T07:45:57.549Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-02T07:45:57.549Z",
+        "practiceLocation": {
+          "clinicId": "clin_cebu_central_id",
+          "roomOrUnit": "503"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            5,
+            6
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "03:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "03:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "doc_april_rosales_1754120757549",
+        "validFrom": "2025-08-02"
+      }
+    },
+    "doc_gian mathew_gutang_1754286733328": {
+      "sched_doc_gian mathew_gutang_1754286733328_1": {
+        "createdAt": "2025-08-04T05:52:13.328Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-04T05:52:13.328Z",
+        "practiceLocation": {
+          "clinicId": "clin_lahug_uhc_id",
+          "roomOrUnit": "IM, Rm 67"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            2,
+            6
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "08:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "08:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "doc_gian mathew_gutang_1754286733328",
+        "validFrom": "2025-08-04"
+      },
+      "sched_doc_gian mathew_gutang_1754286733328_2": {
+        "createdAt": "2025-08-04T05:52:13.328Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-04T05:52:13.328Z",
+        "practiceLocation": {
+          "clinicId": "clin_lahug_uhc_id",
+          "roomOrUnit": "IM, Rm 67"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "01:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "01:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "02:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "02:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "12:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "12:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "doc_gian mathew_gutang_1754286733328",
+        "validFrom": "2025-08-04"
+      }
+    },
+    "doc_kajbdkjb_bkjbkj_1754423220762": {
+      "sched_doc_kajbdkjb_bkjbkj_1754423220762_1": {
+        "createdAt": "2025-08-05T19:47:00.762Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-05T19:47:00.762Z",
+        "practiceLocation": {
+          "clinicId": "clin_lahug_uhc_id",
+          "roomOrUnit": "sdsdsdf"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            2,
+            3
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "02:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "02:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "03:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "03:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "05:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "05:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "doc_kajbdkjb_bkjbkj_1754423220762",
+        "validFrom": "2025-08-05"
+      }
+    },
+    "doc_maria_cala_uid": {
+      "sched_maria_cdh_wed_pm": {
+        "createdAt": "2025-06-01T10:00:00Z",
+        "isActive": true,
+        "lastUpdated": "2025-07-23T09:05:00Z",
+        "practiceLocation": {
+          "clinicId": "clin_cebu_doctors_id",
+          "roomOrUnit": "Cardiology Clinic, Rm 501"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            3
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "02:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "02:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "03:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "03:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "doc_maria_cala_uid",
+        "validFrom": "2025-07-01"
+      },
+      "sched_maria_psh_tth_am": {
+        "createdAt": "2025-06-20T14:00:00Z",
+        "isActive": true,
+        "lastUpdated": "2025-07-23T12:11:00Z",
+        "practiceLocation": {
+          "clinicId": "clin_perpetual_succour_id",
+          "roomOrUnit": "IM Clinic, Suite 305"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            4
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "09:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "doc_maria_cala_uid",
+        "validFrom": "2025-07-01"
+      }
+    },
+    "doc_mel angelo_cortes_1754423091760": {
+      "sched_doc_mel angelo_cortes_1754423091760_1": {
+        "createdAt": "2025-08-05T19:44:51.760Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-05T19:44:51.760Z",
+        "practiceLocation": {
+          "clinicId": "clin_perpetual_succour_id",
+          "roomOrUnit": "Rm 718"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            5
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "03:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "03:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "05:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "05:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "doc_mel angelo_cortes_1754423091760",
+        "validFrom": "2025-08-05"
+      }
+    },
+    "doc_sd_hvhvh_1753925240265": {
+      "-OWdgdposDi_1evP4Hb-": {
+        "createdAt": "2025-08-02T07:32:49.440Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-02T07:32:49.440Z",
+        "practiceLocation": {
+          "clinicId": "clin_cebu_doctors_id",
+          "roomOrUnit": "Pediatrics 503"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            3
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "10:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "12:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "12:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "doc_sd_hvhvh_1753925240265",
+        "validFrom": "2025-08-23"
+      }
+    },
+    "o0Adq4h3Sff3GhZ8MQshnHPhROH2": {
+      "-OX1D9o7Yqcr6tpsaSDM": {
+        "createdAt": "2025-08-07T01:50:07.399Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-07T01:50:07.399Z",
+        "practiceLocation": {
+          "clinicId": "clin_lahug_uhc_id",
+          "roomOrUnit": "Rm. 571"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            0,
+            2,
+            4
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "specialistId": "o0Adq4h3Sff3GhZ8MQshnHPhROH2",
+        "validFrom": "45753"
+      }
+    }
+  },
+  "suppliers": {
+    "-OWpXd6QL3rTXmH6Nggo": {
+      "address": "Urgello Barangay Ronin",
+      "contactPerson": "Dan Ken Shen",
+      "createdAt": "2025-08-04T14:44:32.275Z",
+      "email": "danken@gmail.com",
+      "name": "SWU Pharmacy",
+      "phone": "09991591653"
+    }
+  },
+  "supplyHistoryTransfer": {
+    "-OWvLkVCE6hulKrPeTSI": {
+      "itemName": "Paracetamol",
+      "quantity": 5,
+      "reason": "test",
+      "recipientDepartment": "Laboratory",
+      "sender": "Neww DB",
+      "timestamp": "8/6/2025, 1:49:36 AM"
+    },
+    "-OWvO10qseUsIL6YRNh5": {
+      "itemName": "Paracetamol",
+      "quantity": 5,
+      "reason": "Test",
+      "recipientDepartment": "Laboratory",
+      "sender": "Neww DB",
+      "timestamp": "8/6/2025, 1:49:36 AM"
+    },
+    "-OWvP3GlsM0945MLHpOn": {
+      "itemName": "Syringe 5ml",
+      "quantity": 10,
+      "reason": "try",
+      "recipientDepartment": "Laboratory",
+      "sender": "Neww DB",
+      "timestamp": "8/6/2025, 1:49:36 AM"
+    }
+  },
+  "transactions": {
+    "-OWzheWhaVoSMCPkFr45": {
+      "adminProcessed": true,
+      "clinicId": "-OWpoI_htd_vh8Kbimjn",
+      "destinationDepartment": "Pharmacy",
+      "itemId": "pBkZlDGEn0MkmUrw3jyy",
+      "itemName": "Biogesic",
+      "processedByUserDepartment": "Admin",
+      "processedByUserFirstName": "admin",
+      "processedByUserId": "EDjKJWlRgoQ72upWsxhs6qZ3G5w1",
+      "processedByUserLastName": "admin",
+      "quantityChanged": 50,
+      "reason": "New stock",
+      "timestamp": "2025-08-06T14:08:53.875Z",
+      "transactionType": "stock_in"
+    }
+  },
+  "users": {
+    "-OX-GFmhUU5IXLjMnOlT": {
+      "contactNumber": "09159452699",
+      "createdAt": "2025-08-06T16:44:24.699Z",
+      "email": "universe@gmail.com",
+      "firstName": "Hello",
+      "lastName": "World",
+      "role": "specialist",
+      "specialty": "Neurology"
+    },
+    "-OX-NB0dc0yg_A2o2wCD": {
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-06T17:14:39.765Z",
+      "email": "maria.senora@gmail.com",
+      "firstName": "Maria",
+      "lastName": "Senora",
+      "role": "specialist",
+      "specialty": "Family Medicine"
+    },
+    "-OX-Sj7DkkmeKFH9XBbP": {
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-06T17:38:54.410Z",
+      "email": "vhjvjhv@gmail.com",
+      "firstName": "jsavjhv",
+      "lastName": "vjhjhvj",
+      "role": "specialist",
+      "specialty": "Dermatology"
+    },
+    "-OX-UYbzOBOfHsOPUNwI": {
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-06T17:46:51.605Z",
+      "email": "vjhvh@gmail.com",
+      "firstName": "vjhvjhvjhv",
+      "lastName": "jhvjhvjhv",
+      "role": "specialist",
+      "specialty": "Obstetrics and Gynecology"
+    },
+    "-OX-YR-Df-5_XBRpuLYf": {
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-06T18:03:49.070Z",
+      "email": "ouoioui@gmail.com",
+      "firstName": "uiui",
+      "lastName": "uiuiuoiuo",
+      "role": "specialist",
+      "specialty": "Oncology"
+    },
+    "-OX-aZfWI0hGEDtFyqLZ": {
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-06T18:17:30.868Z",
+      "email": "please.work@gmail.com",
+      "firstName": "Please",
+      "lastName": "Haha",
+      "patientId": "-OX-aZfWI0hGEDtFyqLZ",
+      "role": "patient"
+    },
+    "-OX-rlXRi7fM8rDruVCV": {
+      "contactNumber": "09091241444",
+      "createdAt": "2025-08-06T19:32:39.888Z",
+      "email": "mel.cortes@gmail.com",
+      "firstName": "Mel Angelo",
+      "lastName": "Cortes",
+      "role": "specialist",
+      "specialty": "Dermatology"
+    },
+    "-OX0W7ERZenvpd6_LNpy": {
+      "contactNumber": "+639123456789",
+      "createdAt": "2025-08-06T22:33:20.417Z",
+      "email": "john.doe@example.com",
+      "firstName": "John",
+      "lastName": "Doe",
+      "role": "specialist",
+      "specialty": "Cardiology"
+    },
+    "-OX0W7dE_PaFYKuWrJfb": {
+      "contactNumber": "+639987654321",
+      "createdAt": "2025-08-06T22:33:21.717Z",
+      "email": "jane.smith@example.com",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "role": "specialist",
+      "specialty": "Pediatrics"
+    },
+    "-OX0W7rOMSFPpkRVVJbP": {
+      "contactNumber": "639987651234",
+      "createdAt": "2025-08-06T22:33:23.351Z",
+      "email": "lesgowork@gmail.com",
+      "firstName": "Lesgo",
+      "lastName": "Work",
+      "role": "specialist",
+      "specialty": "Cardiology"
+    },
+    "-OX0W862l2seMbOxjZQ4": {
+      "contactNumber": "639087651004",
+      "createdAt": "2025-08-06T22:33:24.297Z",
+      "email": "lesgggg@gmail.com",
+      "firstName": "Lesgggg",
+      "lastName": "Work",
+      "role": "specialist",
+      "specialty": "Pediatrics"
+    },
+    "0sKaa7pcy0VrFWjZNbCPvgbDmSs1": {
+      "address": "None Nina Nine",
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-04T03:17:35.591Z",
+      "email": "hatdog@gmail.com",
+      "firstName": "Nana",
+      "lastName": "Banana",
+      "patientId": "0sKaa7pcy0VrFWjZNbCPvgbDmSs1",
+      "role": "patient"
+    },
+    "1mFaBuII7yZDgCISsDvzNVH9lv93": {
+      "clinicAffiliation": "-OWdmRcZYay1D6dv5bty",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-04T15:53:30.674Z",
+      "department": "Department of Managers",
+      "email": "danga@gmail.com",
+      "firstName": "Dan",
+      "lastName": "Galigao",
+      "role": "manager"
+    },
+    "3fhuQgn0rxfe16WGPhtjtTjxU9m2": {
+      "contactNumber": "0999151963",
+      "createdAt": "2025-08-04T16:09:16.273Z",
+      "email": "cendana@gmail.com",
+      "firstName": "Desiree",
+      "lastName": "Cendana",
+      "role": "patient"
+    },
+    "4ulHWkJvX0MwYzX7N9m9DvCLJ5c2": {
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-04T15:33:48.554Z",
+      "email": "aliya@gmail.com",
+      "firstName": "Aliya",
+      "lastName": "Penera",
+      "role": "patient"
+    },
+    "8w1YC0ZcSihp1F4hu57Pw37cvR92": {
+      "clinicAffiliation": "-OWERGBLCfEndC4ZfOOw",
+      "contactNumber": "09123456789",
+      "createdAt": "2025-08-03T16:14:11.508Z",
+      "department": "Admin",
+      "email": "odysseyclinsys1@gmail.com",
+      "firstName": "Odysys",
+      "lastName": "Test",
+      "role": "admin"
+    },
+    "AUyVoqnSNlQJcG0MfF7FNwqqlJf2": {
+      "createdAt": "2025-07-30T23:52:43.615Z",
+      "createdBy": "system",
+      "email": "test@unihealth.ph",
+      "firstName": "April",
+      "isActive": true,
+      "lastName": "Marie",
+      "role": "admin"
+    },
+    "Bm6vQQCeeLhsl3htVUAnqIvKLqy1": {
+      "address": "Cebu",
+      "contactNumber": "0965312465",
+      "createdAt": "2025-08-04T06:06:41.068Z",
+      "email": "itpongasi.swu@phinmaed.com",
+      "firstName": "Ira",
+      "lastName": "Pongasi",
+      "patientId": "Bm6vQQCeeLhsl3htVUAnqIvKLqy1",
+      "role": "patient"
+    },
+    "COtpZ1JpcDP6hjyMnUuM9jloDuY2": {
+      "clinicAffiliation": "Metro Cebu Hospital",
+      "contactNumber": "+639915916532",
+      "createdAt": "2025-08-04T14:46:31.220Z",
+      "email": "dkkk@gmail.com",
+      "firstName": "Dan Ken",
+      "lastName": "Penera",
+      "role": "Doctor"
+    },
+    "DhV9MDSs98PtsogiX1RpzmgQdPp1": {
+      "contactNumber": "09121321231",
+      "createdAt": "2025-08-02, 02:50 PM",
+      "email": "itpongasi.swu@phinmaed.com",
+      "firstName": "Aira",
+      "lastName": "Pongasi",
+      "role": "patient"
+    },
+    "EDjKJWlRgoQ72upWsxhs6qZ3G5w1": {
+      "clinicAffiliation": "",
+      "contactNumber": "12345667899",
+      "createdAt": "2025-07-30T19:51:19.178Z",
+      "department": "Admin",
+      "email": "admin3@gmail.com",
+      "firstName": "admin",
+      "lastName": "admin",
+      "role": "admin"
+    },
+    "EMdfHkpPclbyONaKma00ypIEE3R2": {
+      "clinicAffiliation": "-OWpoI_htd_vh8Kbimjn",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-06T07:08:39.348Z",
+      "email": "carl@gmail.com",
+      "firstName": "Dwight",
+      "lastName": "Carl",
+      "role": "doctor"
+    },
+    "F4cGOCWKE6OzoR4UmogCj5WgRS82": {
+      "clinicAffiliation": "-OWERGBLCfEndC4ZfOOw",
+      "contactNumber": "1222222222",
+      "createdAt": "2025-07-30T19:53:23.507Z",
+      "department": "General Manager",
+      "email": "lab@gmail.com",
+      "firstName": "lab",
+      "lastName": "lab",
+      "role": "manager"
+    },
+    "HaC6ywZvlSS1e4u9AA5cImXlosq1": {
+      "contactNumber": "09991212313",
+      "createdAt": "2025-08-04, 11:39 PM",
+      "email": "joshuabongz7@gmail.com",
+      "firstName": "Joshua",
+      "lastName": "Bonghanoy",
+      "role": "patient"
+    },
+    "IAZInKKVR4P2X1GXiURjX27YoKI2": {
+      "department": "Admin",
+      "email": "sample@gmail.com",
+      "firstName": "Access",
+      "lastName": "Tester",
+      "role": "admin"
+    },
+    "IOOI8gPrzbbky0Mn0URNrH4hB8R2": {
+      "clinicAffiliation": "-OWpoI_htd_vh8Kbimjn",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-05T03:47:13.716Z",
+      "department": "Laboratory",
+      "email": "managerswu@gmail.com",
+      "firstName": "Manager",
+      "lastName": "Swu",
+      "role": "manager"
+    },
+    "MwwfduBEPRbwVd1FzNjwL57tyq52": {
+      "clinicAffiliation": "-OWpoI_htd_vh8Kbimjn",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-05T18:05:46.301Z",
+      "email": "jm@gmail.com",
+      "firstName": "Jetchyy",
+      "lastName": "Merald",
+      "role": "doctor"
+    },
+    "NMrtxDZWQqU7ryqjFJdpLE6iKul2": {
+      "clinicAffiliation": "-OWpoI_htd_vh8Kbimjn",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-04T20:33:44.894Z",
+      "department": "Admin",
+      "email": "madayajetch@gmail.com",
+      "firstName": "jetch",
+      "lastName": "merald",
+      "role": "admin"
+    },
+    "O3CfI7n00Bgp4ilr6zJOUMHZ3uq2": {
+      "department": "CSR",
+      "email": "csr2@gmail.com",
+      "firstName": "csr2",
+      "lastName": "zz",
+      "role": "manager"
+    },
+    "Ps6gyGSdZGRKQadCUtErTCTvmIj1": {
+      "clinicAffiliation": "-OWERGBLCfEndC4ZfOOw",
+      "contactNumber": "0999159163",
+      "createdAt": "2025-07-30T18:18:19.645Z",
+      "email": "madayajetch01@gmail.com",
+      "firstName": "Jetch",
+      "lastName": "MeraldSS",
+      "role": "doctor"
+    },
+    "Q0IH2PEnWPXOyVDwUpNwL2FwSVv2": {
+      "clinicAffiliation": "-OWpoI_htd_vh8Kbimjn",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-04T18:29:58.965Z",
+      "department": "Department of Managers",
+      "email": "labo@gmail.com",
+      "firstName": "lab",
+      "lastName": "tory",
+      "role": "lab_technician"
+    },
+    "QCl50IldWVPugnVqoGCjlz7P70u2": {
+      "clinicAffiliation": "-OWERGBLCfEndC4ZfOOw",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-07-30T18:43:08.890Z",
+      "department": "Laboratory",
+      "email": "harvey01@gmail.com",
+      "firstName": "Harvey",
+      "lastName": "Staff",
+      "role": "manager"
+    },
+    "R4RBcLmhyydTslF7HIyrgddJkWI2": {
+      "clinicID": "Clinic2",
+      "department": "Admin",
+      "email": "test@gmail.com",
+      "firstName": "test",
+      "lastName": "test",
+      "role": "admin"
+    },
+    "RFQ3lYNgiMNp5eQlAj2A3EpK5i83": {
+      "createdAt": "2025-07-30T23:58:22.101Z",
+      "createdBy": "system",
+      "email": "lalala@unihealth.ph",
+      "firstName": "Lala",
+      "isActive": true,
+      "lastName": "Lala",
+      "role": "admin"
+    },
+    "S1SbfQMDSNbFfPc5tjGeLpmDX0Z2": {
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-05T17:51:55.864Z",
+      "email": "cj@gmail.com",
+      "firstName": "Christine",
+      "lastName": "Ighot",
+      "role": "patient"
+    },
+    "SxqcH36yF6hRxs9eZScmTSd6pez1": {
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-06T20:54:06.986Z",
+      "email": "wanwan@gmail.com",
+      "firstName": "Hello",
+      "lastName": "Wan",
+      "role": "specialist",
+      "specialty": "Dermatology"
+    },
+    "VEsT3WTIvxZG5g1zlDcnlRAftVy1": {
+      "clinicAffiliation": "-OWERGBLCfEndC4ZfOOw",
+      "department": "Super admin",
+      "email": "danken4445@gmail.com",
+      "firstName": "Super",
+      "lastName": "Skibidi",
+      "role": "superadmin"
+    },
+    "Vrep4aUHZjMOfK3ulYRCGoOt6lD2": {
+      "clinicAffiliation": "-OWES6hnk_CjXVB9gPuP",
+      "contactNumber": "123132131312",
+      "createdAt": "2025-08-03T16:51:52.771Z",
+      "email": "joshuabongz7@gmail.com",
+      "firstName": "J ",
+      "lastName": "Bongs",
+      "role": "doctor"
+    },
+    "WL8AcLiKHDdvrpk5jtLkaKcEwH52": {
+      "department": "Admin",
+      "email": "admin2@gmail.com",
+      "firstName": "Admin2",
+      "lastName": "zz",
+      "role": "superadmin"
+    },
+    "WPibpcIPZsQvxl60qcKZBMUokLn1": {
+      "clinicAffiliation": "-OWpoI_htd_vh8Kbimjn",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-04T14:55:46.473Z",
+      "email": "ag@gmail.com",
+      "firstName": "Aaliyah",
+      "lastName": "Galigao",
+      "role": "admin"
+    },
+    "WxnJBiUSd3dLJ5wRY937lGvimsB3": {
+      "clinicAffiliation": "-OWGiJ-API17ylq0XapT",
+      "contactNumber": "2313131231312",
+      "createdAt": "2025-08-03T16:35:08.115Z",
+      "email": "blanqueroshamel@gmail.com",
+      "firstName": "Practice",
+      "lastName": "test",
+      "role": "doctor"
+    },
+    "X6TEqRNDUKSud1T10B8fZyfywKG3": {
+      "createdAt": "2025-08-01T13:38:43.615Z",
+      "createdBy": "system",
+      "email": "superadmin@unihealth.ph",
+      "firstName": "April",
+      "isActive": true,
+      "lastLoginAt": 1754502628712,
+      "lastName": "Rosales",
+      "role": "superadmin",
+      "sessionCount": 1
+    },
+    "XMd6CzEJkjefKtssuohUKZWouqy2": {
+      "clinicAffiliation": "-OWERGBLCfEndC4ZfOOw",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-02T08:11:38.413Z",
+      "department": "Pharmacy",
+      "email": "jetch@gmail.com",
+      "firstName": "Jetch",
+      "lastName": "Merald",
+      "role": "manager"
+    },
+    "ZeFOSDMcWoUy61HJmtSAbypSGRP2": {
+      "createdAt": "2025-07-30T23:44:34.368Z",
+      "createdBy": "system",
+      "email": "gian_admin@unihealth.ph",
+      "firstName": "Gian",
+      "isActive": true,
+      "lastName": "Gutang",
+      "role": "admin"
+    },
+    "cJarTXwBchW6lZXFM0idBRsDvaU": {
+      "clinicAffiliations": [
+        "clin_cebu_central_id"
+      ],
+      "createdAt": "2024-01-01T08:00:00Z",
+      "department": "Admin",
+      "email": "mobile1@test.com",
+      "firstName": "Mobile",
+      "lastName": "Admin Test",
+      "role": "Admin"
+    },
+    "doc_kajbdkjb_bkjbkj_1754423220762": {
+      "contactNumber": "09879687687",
+      "createdAt": "2025-08-05T19:47:00.762Z",
+      "email": "bkk@gmail.com",
+      "firstName": "kajbdkjb",
+      "lastName": "bkjbkj",
+      "role": "specialist",
+      "specialty": "Dermatology"
+    },
+    "doc_mel angelo_cortes_1754423091760": {
+      "contactNumber": "0999999999",
+      "createdAt": "2025-08-05T19:44:51.760Z",
+      "email": "mees.cortes.swu@phinmaed.com",
+      "firstName": "Mel Angelo",
+      "lastName": "Cortes",
+      "role": "specialist",
+      "specialty": "Obstetrics and Gynecology"
+    },
+    "dpJYQgWG1hgNpDDQeqKPxjFyQa82": {
+      "clinicAffiliation": "-OWES6hnk_CjXVB9gPuP",
+      "contactNumber": "091212121212",
+      "createdAt": "2025-08-02T06:22:51.745Z",
+      "department": "",
+      "email": "test23@gmail.com",
+      "firstName": "admin",
+      "lastName": "test",
+      "role": "admin"
+    },
+    "esGHYBaZJaSuDaq29BNeEEU0E5h1": {
+      "clinicAffiliation": "-OWpoI_htd_vh8Kbimjn",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-04T16:02:35.352Z",
+      "email": "gg@gmail.com",
+      "firstName": "Galigao",
+      "lastName": "Aliya",
+      "role": "doctor"
+    },
+    "fkKupnk6cQNwYrCSYvcFbdnl0sR2": {
+      "contactNumber": "09099855322",
+      "createdAt": "2025-07-30T18:41:36.891Z",
+      "email": "harvey@gmail.com",
+      "firstName": "Harvey",
+      "lastName": "DeGracia",
+      "role": "patient"
+    },
+    "gK94eYMkAnVY6ZMZHvgrhCXU4qF2": {
+      "clinicAffiliation": "-OWERGBLCfEndC4ZfOOw",
+      "contactNumber": "091212121212",
+      "createdAt": "2025-08-02T06:42:51.765Z",
+      "department": "Admin",
+      "email": "test123@gmail.com",
+      "firstName": "Dan",
+      "lastName": "Ken",
+      "role": "admin"
+    },
+    "iINCwSPoPQcziURQmjTvyLBU2tw2": {
+      "clinicAffiliation": "-OWpoI_htd_vh8Kbimjn",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-04T18:34:52.017Z",
+      "department": "Laboratory",
+      "email": "labo1@gmail.com",
+      "firstName": "lab",
+      "lastName": "labo",
+      "role": "lab_technician"
+    },
+    "iz746J2IFaRNt1ybvRfLzHQxmjl2": {
+      "sessionCount": 0
+    },
+    "kDNxDSXM6CMsVwT9SnmBkrAidmc2": {
+      "clinicAffiliations": [
+        "clin_cebu_central_id"
+      ],
+      "createdAt": "2024-01-01T08:00:00Z",
+      "department": "Laboratory",
+      "email": "mobile2@test.com",
+      "firstName": "Mobile",
+      "lastName": "Department Test",
+      "role": "Staff"
+    },
+    "m63VwObQtkfWiEidSo0RbcHLgOh1": {
+      "address": "Cebu City ",
+      "contactNumber": "09475711827",
+      "createdAt": "2025-08-02T03:19:54.503Z",
+      "email": "angelomelcortes06@gmail.com",
+      "firstName": "Mel Angelo",
+      "lastName": "Cortes",
+      "patientId": "m63VwObQtkfWiEidSo0RbcHLgOh1",
+      "role": "patient"
+    },
+    "oXiHi8fD5sRbHA6UjfNnjdVy3RY2": {
+      "clinicAffiliation": "-OWdmRD3EI9WyRHzIdi3",
+      "contactNumber": "0991591653",
+      "createdAt": "2025-08-04T14:58:34.586Z",
+      "email": "jbongs@gmail.com",
+      "firstName": "Bongs",
+      "lastName": "Josh",
+      "role": "doctor"
+    },
+    "oyAR5IFW0EfMKfOVCiq2YJv7fE93": {
+      "department": "Admin",
+      "email": "test1@gmail.com",
+      "firstName": "Admin",
+      "lastName": "Tester",
+      "role": "admin"
+    },
+    "pgney6p630UQ7C0IKh2UxBXbWJt2": {
+      "address": "Paknaan, Mandaue, Cebu",
+      "contactNumber": "09925125004",
+      "createdAt": "2025-08-01T20:57:29.624Z",
+      "email": "giso.gutang.swu@phinmaed.com",
+      "firstName": "Gian Mathew",
+      "lastName": "Gutang",
+      "patientId": "pgney6p630UQ7C0IKh2UxBXbWJt2",
+      "role": "patient"
+    },
+    "sRcjoVt51VZ3xSwZyt0VZ1FRpCl2": {
+      "clinicAffiliation": "-OWpoI_htd_vh8Kbimjn",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-08-04T16:04:30.740Z",
+      "department": "Department of Managers",
+      "email": "clinicstaff@gmail.com",
+      "firstName": "clinic",
+      "lastName": "staff",
+      "role": "manager"
+    },
+    "super-admin-global-access": {
+      "accessLevel": "GLOBAL_ADMIN",
+      "clinicAffiliations": [
+        "*"
+      ],
+      "createdAt": "2025-07-26T00:00:00.000Z",
+      "displayName": "OdysseySystem Super Administrator",
+      "email": "superadmin@odysseysys.com",
+      "lastUpdated": "2025-08-06T18:32:15.788Z",
+      "permissions": {
+        "allClinics": true,
+        "analytics": true,
+        "clinicManagement": true,
+        "dataExport": true,
+        "globalAccess": true,
+        "inventoryManagement": true,
+        "reporting": true,
+        "systemAdmin": true,
+        "userManagement": true
+      },
+      "role": "superadmin",
+      "status": "active",
+      "uid": "super-admin-global-access"
+    },
+    "undefined": {
+      "sessionCount": 0
+    },
+    "uvIYw9rMdqZdq7SsfeM5xmoqB463": {
+      "address": "Jugan, Consolacion, Cebu",
+      "contactNumber": "09159452600",
+      "createdAt": "2025-08-01T20:47:44.139Z",
+      "email": "rosales.april65@gmail.com",
+      "firstName": "April",
+      "lastName": "Marie",
+      "patientId": "pat_april_marie_id",
+      "role": "patient"
+    },
+    "vpxbOKmXfZblaWqXjOA6WnNByre2": {
+      "clinicAffiliation": "-OWERGBLCfEndC4ZfOOw",
+      "contactNumber": "2312312312312",
+      "createdAt": "2025-08-03T16:23:52.440Z",
+      "department": "Billing",
+      "email": "blanqueroshame@gmail.com",
+      "firstName": "pract",
+      "lastName": "test",
+      "role": "admin"
+    },
+    "vz7Yz6az5hOz3srCPXLwZrIC3d83": {
+      "address": "sabdjbhs",
+      "contactNumber": "093840984",
+      "createdAt": "2025-08-01T21:14:27.620Z",
+      "email": "hatdog@email.com",
+      "firstName": "ajsbjhbs",
+      "lastName": "bjbjb",
+      "patientId": "vz7Yz6az5hOz3srCPXLwZrIC3d83",
+      "role": "patient"
+    },
+    "w84CMoMmD6blHGptFIlbatElT4K2": {
+      "clinicAffiliation": "",
+      "contactNumber": "09099855322",
+      "createdAt": "2025-08-04T14:41:36.511Z",
+      "department": "Admin",
+      "email": "newdb@gmail.com",
+      "firstName": "Neww",
+      "lastName": "DB",
+      "role": "admin"
+    },
+    "wBzBjbfxGgfDqPEGUGwlrmqIFe13": {
+      "contactNumber": "09991591653",
+      "createdAt": "2025-07-30T19:17:25.578Z",
+      "email": "danken@gmail.com",
+      "firstName": "Dan",
+      "lastName": "Ken",
+      "role": "patient"
+    }
+  }
+}
