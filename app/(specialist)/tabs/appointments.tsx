@@ -25,6 +25,7 @@ import {
   Hourglass,
   Circle as XCircle,
   Check as CheckMark,
+  Calendar,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
@@ -455,8 +456,15 @@ export default function SpecialistAppointmentsScreen() {
             filteredAppointments.map(renderAppointmentCard)
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>
+              <Calendar size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>
                 No {activeFilter.toLowerCase()} appointments found
+              </Text>
+              <Text style={styles.emptyStateText}>
+                {activeFilter === 'All' 
+                  ? "You don't have any appointments scheduled yet."
+                  : `You don't have any ${activeFilter.toLowerCase()} appointments at the moment.`
+                }
               </Text>
             </View>
           )}
@@ -718,11 +726,22 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: 48,
+    paddingHorizontal: 32,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   emptyStateText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   // Modal Styles (shared)
   modalBackdrop: {
