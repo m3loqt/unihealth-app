@@ -29,8 +29,9 @@ import {
   Star,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '@/src/hooks/auth/useAuth';
-import { databaseService, Appointment } from '@/src/services/database/firebase';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { databaseService, Appointment, MedicalHistory } from '@/services/database/firebase';
+import MedicalHistoryView from '../components/MedicalHistoryView';
 
 export default function AppointmentsScreen() {
   const { filter } = useLocalSearchParams();
@@ -48,6 +49,11 @@ export default function AppointmentsScreen() {
   const [feedbackStars, setFeedbackStars] = useState(0);
   const [feedbackReason, setFeedbackReason] = useState('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
+  // --- Medical History modal state ---
+  const [showMedicalHistoryModal, setShowMedicalHistoryModal] = useState(false);
+  const [medicalHistory, setMedicalHistory] = useState<MedicalHistory | null>(null);
+  const [loadingMedicalHistory, setLoadingMedicalHistory] = useState(false);
 
   useEffect(() => {
     if (filter && filters.includes(capitalize(filter as string))) {
@@ -85,6 +91,28 @@ export default function AppointmentsScreen() {
       Alert.alert('Error', 'Failed to load appointments. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMedicalHistory = async (appointment: Appointment) => {
+    if (!appointment.id || !appointment.patientId) return;
+    
+    try {
+      setLoadingMedicalHistory(true);
+      setShowMedicalHistoryModal(true);
+      
+      const history = await databaseService.getMedicalHistoryByAppointment(
+        appointment.id,
+        appointment.patientId
+      );
+      
+      setMedicalHistory(history);
+    } catch (error) {
+      console.error('Error loading medical history:', error);
+      Alert.alert('Error', 'Failed to load medical history. Please try again.');
+      setShowMedicalHistoryModal(false);
+    } finally {
+      setLoadingMedicalHistory(false);
     }
   };
 
@@ -221,6 +249,12 @@ export default function AppointmentsScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.secondaryButton}
+                onPress={() => loadMedicalHistory(appointment)}
+              >
+                <Text style={styles.secondaryButtonText}>View Medical History</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryButton}
                 onPress={() => router.push({
                   pathname: '/visit-overview',
                   params: { id: appointment.id }
@@ -242,6 +276,55 @@ export default function AppointmentsScreen() {
           )}
         </View>
       </View>
+    );
+  };
+
+  // === Medical History Modal ===
+  const renderMedicalHistoryModal = () => {
+    return (
+      <Modal
+        visible={showMedicalHistoryModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowMedicalHistoryModal(false)}
+      >
+        <SafeAreaView style={styles.medicalHistoryModalContainer}>
+          <StatusBar barStyle="dark-content" />
+          
+          {/* Header */}
+          <View style={styles.medicalHistoryModalHeader}>
+            <TouchableOpacity
+              style={styles.medicalHistoryModalBackButton}
+              onPress={() => setShowMedicalHistoryModal(false)}
+            >
+              <Text style={styles.medicalHistoryModalBackText}>← Back</Text>
+            </TouchableOpacity>
+            <Text style={styles.medicalHistoryModalTitle}>Medical History</Text>
+            <View style={styles.medicalHistoryModalSpacer} />
+          </View>
+
+          {/* Content */}
+          <ScrollView 
+            style={styles.medicalHistoryModalContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {loadingMedicalHistory ? (
+              <View style={styles.medicalHistoryLoadingContainer}>
+                <Text style={styles.medicalHistoryLoadingText}>Loading medical history...</Text>
+              </View>
+            ) : medicalHistory ? (
+              <MedicalHistoryView medicalHistory={medicalHistory} />
+            ) : (
+              <View style={styles.medicalHistoryEmptyContainer}>
+                <Text style={styles.medicalHistoryEmptyTitle}>No Medical History Available</Text>
+                <Text style={styles.medicalHistoryEmptyText}>
+                  Medical history for this appointment has not been recorded yet.
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     );
   };
 
@@ -497,6 +580,7 @@ export default function AppointmentsScreen() {
       </ScrollView>
       {renderAppointmentModal()}
       {renderFeedbackModal()}
+      {renderMedicalHistoryModal()}
     </SafeAreaView>
   );
 }
@@ -727,6 +811,75 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Medical History Modal Styles
+  medicalHistoryModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  medicalHistoryModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  medicalHistoryModalBackButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  medicalHistoryModalBackText: {
+    fontSize: 16,
+    color: '#1E40AF',
+    fontFamily: 'Inter-SemiBold',
+  },
+  medicalHistoryModalTitle: {
+    fontSize: 18,
+    color: '#1F2937',
+    fontFamily: 'Inter-Bold',
+    textAlign: 'center',
+    flex: 1,
+  },
+  medicalHistoryModalSpacer: {
+    width: 60,
+  },
+  medicalHistoryModalContent: {
+    flex: 1,
+  },
+  medicalHistoryLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  medicalHistoryLoadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  medicalHistoryEmptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 60,
+  },
+  medicalHistoryEmptyTitle: {
+    fontSize: 18,
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  medicalHistoryEmptyText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   // --- Modal styles (for Feedback modal only, see styles2 below for Appointment modal) ---
   modalBackdrop: {
