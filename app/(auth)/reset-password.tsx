@@ -17,7 +17,7 @@ import { Lock, Eye, EyeOff, Check, Shield } from 'lucide-react-native';
 import { authService } from '../../src/services/api/auth';
 
 export default function ResetPasswordScreen() {
-  const { oobCode } = useLocalSearchParams();
+  const { email, code } = useLocalSearchParams();
   const [formData, setFormData] = useState({
     password: '',
     confirmPassword: '',
@@ -28,7 +28,7 @@ export default function ResetPasswordScreen() {
   const [resetComplete, setResetComplete] = useState(false);
 
   useEffect(() => {
-    if (!oobCode) {
+    if (!email || !code) {
       Alert.alert(
         'Invalid Reset Link',
         'This password reset link is invalid or has expired. Please request a new one.',
@@ -40,7 +40,7 @@ export default function ResetPasswordScreen() {
         ]
       );
     }
-  }, [oobCode]);
+  }, [email, code]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -104,17 +104,19 @@ export default function ResetPasswordScreen() {
     setIsLoading(true);
 
     try {
-      await authService.confirmPasswordReset(oobCode as string, formData.password);
+      await authService.resetPasswordWithCode(email as string, code as string, formData.password);
+      // Mark the code as used after successful password reset
+      await authService.markResetCodeAsUsed(email as string);
       setResetComplete(true);
     } catch (error: any) {
       let errorMessage = 'Failed to reset password. Please try again.';
       
-      if (error.message.includes('expired-action-code')) {
-        errorMessage = 'This password reset link has expired. Please request a new one.';
-      } else if (error.message.includes('invalid-action-code')) {
-        errorMessage = 'This password reset link is invalid. Please request a new one.';
+      if (error.message.includes('Invalid or expired reset code')) {
+        errorMessage = 'This verification code has expired or is invalid. Please request a new one.';
       } else if (error.message.includes('weak-password')) {
         errorMessage = 'Password is too weak. Please choose a stronger password.';
+      } else if (error.message.includes('Password reset with code is not supported')) {
+        errorMessage = 'Password reset with code is not supported for this account type. Please contact support.';
       }
       
       Alert.alert('Reset Failed', errorMessage);

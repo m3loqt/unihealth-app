@@ -5,10 +5,12 @@ import {
   confirmPasswordReset,
   signOut,
   onAuthStateChanged,
-  User
+  User,
+  updatePassword
 } from 'firebase/auth';
-import { ref, set, get, child } from 'firebase/database';
+import { ref, set, get, child, remove } from 'firebase/database';
 import { auth, database } from '../../config/firebase';
+import { emailService } from '../email/emailService';
 
 // Static users for testing (keep these)
 export const STATIC_USERS = {
@@ -106,6 +108,21 @@ export interface PatientNode {
   lastName: string;
   lastUpdated?: string;
   userId: string;
+}
+
+export interface PasswordResetCode {
+  code: string;
+  email: string;
+  createdAt: string;
+  expiresAt: string;
+  used: boolean;
+}
+
+export interface RateLimitData {
+  email: string;
+  attempts: number;
+  lastAttempt: string;
+  blockedUntil?: string;
 }
 
 export const authService = {
@@ -457,5 +474,273 @@ export const authService = {
       console.error('Find user by email error:', error);
       return null;
     }
-  }
+  },
+
+  // Generate a random 6-digit code
+  generateResetCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  },
+
+  // Check rate limiting for password reset
+  async checkRateLimit(email: string): Promise<{ allowed: boolean; message?: string }> {
+    try {
+      const rateLimitRef = ref(database, `rateLimits/${email.replace(/[.#$[\]]/g, '_')}`);
+      const snapshot = await get(rateLimitRef);
+      
+      if (!snapshot.exists()) {
+        return { allowed: true };
+      }
+
+      const rateLimitData = snapshot.val() as RateLimitData;
+      const now = new Date();
+
+      // Check if user is blocked
+      if (rateLimitData.blockedUntil) {
+        const blockedUntil = new Date(rateLimitData.blockedUntil);
+        if (now < blockedUntil) {
+          const remainingMinutes = Math.ceil((blockedUntil.getTime() - now.getTime()) / (1000 * 60));
+          return { 
+            allowed: false, 
+            message: `Too many attempts. Please wait ${remainingMinutes} minutes before trying again.` 
+          };
+        } else {
+          // Reset rate limit if block period has expired
+          await set(rateLimitRef, { email, attempts: 0, lastAttempt: now.toISOString() });
+          return { allowed: true };
+        }
+      }
+
+      // Check attempts within the last hour
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const lastAttempt = new Date(rateLimitData.lastAttempt);
+
+      if (lastAttempt < oneHourAgo) {
+        // Reset attempts if more than an hour has passed
+        await set(rateLimitRef, { email, attempts: 1, lastAttempt: now.toISOString() });
+        return { allowed: true };
+      }
+
+      // Check if user has exceeded limit (3 attempts per hour)
+      if (rateLimitData.attempts >= 3) {
+        // Block for 1 hour
+        const blockedUntil = new Date(now.getTime() + 60 * 60 * 1000);
+        await set(rateLimitRef, { 
+          ...rateLimitData, 
+          blockedUntil: blockedUntil.toISOString() 
+        });
+        return { 
+          allowed: false, 
+          message: 'Too many attempts. Please wait 1 hour before trying again.' 
+        };
+      }
+
+      return { allowed: true };
+    } catch (error) {
+      console.error('Rate limit check error:', error);
+      // Allow request if rate limiting fails
+      return { allowed: true };
+    }
+  },
+
+  // Update rate limit after attempt
+  async updateRateLimit(email: string): Promise<void> {
+    try {
+      const rateLimitRef = ref(database, `rateLimits/${email.replace(/[.#$[\]]/g, '_')}`);
+      const snapshot = await get(rateLimitRef);
+      const now = new Date();
+
+      if (!snapshot.exists()) {
+        await set(rateLimitRef, { email, attempts: 1, lastAttempt: now.toISOString() });
+      } else {
+        const rateLimitData = snapshot.val() as RateLimitData;
+        await set(rateLimitRef, { 
+          ...rateLimitData, 
+          attempts: rateLimitData.attempts + 1, 
+          lastAttempt: now.toISOString() 
+        });
+      }
+    } catch (error) {
+      console.error('Update rate limit error:', error);
+    }
+  },
+
+  // Request password reset code
+  async requestPasswordResetCode(email: string): Promise<void> {
+    try {
+      // Validate email format
+      if (!emailService.validateEmail(email)) {
+        throw new Error('Invalid email format');
+      }
+
+      // Check rate limiting
+      const rateLimitCheck = await this.checkRateLimit(email);
+      if (!rateLimitCheck.allowed) {
+        throw new Error(rateLimitCheck.message || 'Rate limit exceeded');
+      }
+
+      // Check if user exists (for static users or Firebase users)
+      const staticUser = Object.values(STATIC_USERS).find(user => user.email === email);
+      if (!staticUser) {
+        // For Firebase users, we'll proceed and let the verification handle non-existent users
+        // In production, you might want to check if the email exists in your database first
+        console.log('Proceeding with password reset for potential Firebase user:', email);
+      }
+
+      // Check if email service is configured
+      if (!emailService.isEmailServiceReady()) {
+        throw new Error('Email service not configured. Please contact support.');
+      }
+
+      // Generate 6-digit code
+      const code = this.generateResetCode();
+      
+      // Set expiration time (5 minutes from now)
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
+      
+      // Create reset code data
+      const resetCodeData: PasswordResetCode = {
+        code,
+        email,
+        createdAt: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        used: false
+      };
+
+      // Store in database (use email as key for easy lookup)
+      const resetCodeRef = ref(database, `passwordResetCodes/${email.replace(/[.#$[\]]/g, '_')}`);
+      await set(resetCodeRef, resetCodeData);
+
+      // Send email with code using production email service
+      const userName = staticUser ? staticUser.name : undefined;
+      await emailService.sendPasswordResetEmail({
+        email,
+        code,
+        userName
+      });
+
+      // Update rate limit after successful attempt
+      await this.updateRateLimit(email);
+      
+    } catch (error: any) {
+      console.error('Password reset code request error:', error);
+      
+      // Clean up any partially created data
+      try {
+        const resetCodeRef = ref(database, `passwordResetCodes/${email.replace(/[.#$[\]]/g, '_')}`);
+        await remove(resetCodeRef);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup reset code data:', cleanupError);
+      }
+      
+      throw new Error(error.message);
+    }
+  },
+
+  // Verify password reset code
+  async verifyPasswordResetCode(email: string, code: string): Promise<boolean> {
+    try {
+      const resetCodeRef = ref(database, `passwordResetCodes/${email.replace(/[.#$[\]]/g, '_')}`);
+      const snapshot = await get(resetCodeRef);
+      
+      if (!snapshot.exists()) {
+        return false;
+      }
+
+      const resetCodeData = snapshot.val() as PasswordResetCode;
+      
+      // Check if code matches
+      if (resetCodeData.code !== code) {
+        return false;
+      }
+
+      // Check if code is already used
+      if (resetCodeData.used) {
+        return false;
+      }
+
+      // Check if code has expired
+      const now = new Date();
+      const expiresAt = new Date(resetCodeData.expiresAt);
+      
+      if (now > expiresAt) {
+        // Remove expired code
+        await remove(resetCodeRef);
+        return false;
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error('Password reset code verification error:', error);
+      return false;
+    }
+  },
+
+  // Reset password with code
+  async resetPasswordWithCode(email: string, code: string, newPassword: string): Promise<void> {
+    try {
+      // First verify the code
+      const isValid = await this.verifyPasswordResetCode(email, code);
+      if (!isValid) {
+        throw new Error('Invalid or expired reset code');
+      }
+
+      // For static users, we can't actually change their password in Firebase Auth
+      // but we can update their password in our static data
+      const staticUser = Object.values(STATIC_USERS).find(user => user.email === email);
+      if (staticUser) {
+        // Update static user password
+        staticUser.password = newPassword;
+        console.log('Static user password updated');
+        return;
+      }
+
+      // For Firebase users, we need to sign them in first to change password
+      // This is a limitation - we need the user to be signed in to change password
+      // Alternative approach: Use the original Firebase password reset flow
+      throw new Error('Password reset with code is not supported for Firebase users. Please use the email link method.');
+
+    } catch (error: any) {
+      console.error('Password reset with code error:', error);
+      throw new Error(error.message);
+    }
+  },
+
+  // Mark reset code as used
+  async markResetCodeAsUsed(email: string): Promise<void> {
+    try {
+      const resetCodeRef = ref(database, `passwordResetCodes/${email.replace(/[.#$[\]]/g, '_')}`);
+      await set(resetCodeRef, { used: true });
+    } catch (error: any) {
+      console.error('Mark reset code as used error:', error);
+    }
+  },
+
+  // Clean up expired reset codes
+  async cleanupExpiredResetCodes(): Promise<void> {
+    try {
+      const resetCodesRef = ref(database, 'passwordResetCodes');
+      const snapshot = await get(resetCodesRef);
+      
+      if (snapshot.exists()) {
+        const now = new Date();
+        const cleanupPromises: Promise<void>[] = [];
+        
+        snapshot.forEach((childSnapshot) => {
+          const resetCodeData = childSnapshot.val() as PasswordResetCode;
+          const expiresAt = new Date(resetCodeData.expiresAt);
+          
+          if (now > expiresAt) {
+            cleanupPromises.push(remove(childSnapshot.ref));
+          }
+        });
+        
+        await Promise.all(cleanupPromises);
+      }
+    } catch (error: any) {
+      console.error('Cleanup expired reset codes error:', error);
+    }
+  },
+
+
 }; 
