@@ -17,8 +17,8 @@ import {
   User,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { useAuth } from '@/src/hooks/auth/useAuth';
-import { databaseService, Prescription } from '@/src/services/database/firebase';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { databaseService, Prescription } from '@/services/database/firebase';
 
 export default function PrescriptionsScreen() {
   const { user } = useAuth();
