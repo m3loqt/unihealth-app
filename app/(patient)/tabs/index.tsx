@@ -37,11 +37,11 @@ import * as MediaLibrary from 'expo-media-library';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing'; // Added for more robust sharing
 
-import { useAuth } from '@/src/hooks/auth/useAuth';
-import { databaseService } from '@/src/services/database/firebase';
-import { Appointment, Prescription } from '@/src/services/database/firebase';
-import { getGreeting } from '@/src/utils/greeting';
-import { getFirstName } from '@/src/utils/string';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { databaseService } from '@/services/database/firebase';
+import { Appointment, Prescription } from '@/services/database/firebase';
+import { getGreeting } from '@/utils/greeting';
+import { getFirstName } from '@/utils/string';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_GAP = 16;

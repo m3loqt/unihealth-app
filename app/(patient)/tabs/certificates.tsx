@@ -18,8 +18,8 @@ import {
   Import as SortAsc, ChevronDown, Check, User
 } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { useAuth } from '@/src/hooks/auth/useAuth';
-import { databaseService, Certificate } from '@/src/services/database/firebase';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { databaseService, Certificate } from '@/services/database/firebase';
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = (screenWidth - 64) / 2;

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Image,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {
   ChevronLeft,
@@ -22,8 +24,11 @@ import {
   Shield,
   User,
   PlusCircle,
+  Clock,
+  Calendar,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { databaseService } from '../../../src/services/database/firebase';
 
 // ---- Constants ----
 const BLUE = '#2563EB';
@@ -37,13 +42,6 @@ const SERVICE_ICONS = {
   'Preventive Care': Shield,
   'Minor Procedures': PlusCircle,
 };
-
-const CLINIC_IMAGES = [
-  'https://images.pexels.com/photos/236380/pexels-photo-236380.jpeg?auto=compress&w=800&q=80',
-  'https://images.pexels.com/photos/263402/pexels-photo-263402.jpeg?auto=compress&w=800&q=80',
-  'https://images.pexels.com/photos/1170979/pexels-photo-1170979.jpeg?auto=compress&w=800&q=80',
-  'https://images.pexels.com/photos/305568/pexels-photo-305568.jpeg?auto=compress&w=800&q=80',
-];
 
 const APPOINTMENT_PURPOSES = [
   'General Consultation',
@@ -79,58 +77,72 @@ function getNextNDays(n: number) {
   return out;
 }
 
-function parseOperatingHours(hoursStr: string) {
-  const regex = /(\d{1,2}):(\d{2})\s?(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s?(AM|PM)/i;
-  const m = hoursStr.match(regex);
-  if (!m) return null;
-  const start = {
-    hour: parseInt(m[1], 10),
-    min: parseInt(m[2], 10),
-    ampm: m[3].toUpperCase(),
-  };
-  const end = {
-    hour: parseInt(m[4], 10),
-    min: parseInt(m[5], 10),
-    ampm: m[6].toUpperCase(),
-  };
-  return [start, end];
-}
-
 function timeToMinutes(t: any) {
   let hour = t.hour % 12;
-  if (t.ampm === 'PM') hour += 12;
+  if (t.ampm === 'PM' && hour !== 12) hour += 12;
+  if (t.ampm === 'AM' && hour === 12) hour = 0;
   return hour * 60 + t.min;
 }
 
 function generateTimeSlots(start: any, end: any) {
+  const startMinutes = timeToMinutes(start);
+  const endMinutes = timeToMinutes(end);
   const slots = [];
-  let startMins = timeToMinutes(start);
-  let endMins = timeToMinutes(end);
-  if (endMins <= startMins) endMins += 24 * 60;
-  for (let mins = startMins; mins <= endMins; mins += 30) {
-    let hour = Math.floor(mins / 60) % 24;
-    let min = mins % 60;
-    let ampm = hour >= 12 ? 'PM' : 'AM';
-    let hour12 = hour % 12;
-    if (hour12 === 0) hour12 = 12;
-    slots.push(
-      `${hour12.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')} ${ampm}`
-    );
+  for (let i = startMinutes; i < endMinutes; i += 30) {
+    const hour = Math.floor(i / 60);
+    const min = i % 60;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    slots.push({
+      time: `${displayHour}:${min.toString().padStart(2, '0')} ${ampm}`,
+      minutes: i,
+    });
   }
   return slots;
 }
 
-// Helper: divide items into 5 "pages"
 function getPagerData(items: any[], numPages: number) {
-  const pageSize = Math.ceil(items.length / numPages);
-  return { pageSize, numPages };
+  const pages = [];
+  for (let i = 0; i < items.length; i += numPages) {
+    pages.push(items.slice(i, i + numPages));
+  }
+  return { pages, pageSize: numPages };
+}
+
+interface Doctor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  specialty: string;
+  contactNumber: string;
+  clinicAffiliations: string[];
+  availability: {
+    lastUpdated: string;
+    weeklySchedule: {
+      monday?: { enabled: boolean; timeSlots?: Array<{ startTime: string; endTime: string }> };
+      tuesday?: { enabled: boolean; timeSlots?: Array<{ startTime: string; endTime: string }> };
+      wednesday?: { enabled: boolean; timeSlots?: Array<{ startTime: string; endTime: string }> };
+      thursday?: { enabled: boolean; timeSlots?: Array<{ startTime: string; endTime: string }> };
+      friday?: { enabled: boolean; timeSlots?: Array<{ startTime: string; endTime: string }> };
+      saturday?: { enabled: boolean; timeSlots?: Array<{ startTime: string; endTime: string }> };
+      sunday?: { enabled: boolean; timeSlots?: Array<{ startTime: string; endTime: string }> };
+    };
+    specificDates?: {
+      [date: string]: {
+        timeSlots: Array<{ startTime: string; endTime: string }>;
+      };
+    };
+  };
 }
 
 export default function SelectDateTimeScreen() {
-  const { clinicData } = useLocalSearchParams();
-  const clinic = JSON.parse(clinicData as string);
-
-  const clinicImage = CLINIC_IMAGES[clinic.id % CLINIC_IMAGES.length];
+  const params = useLocalSearchParams();
+  const clinicId = params.clinicId as string;
+  const clinicName = params.clinicName as string;
+  const doctorId = params.doctorId as string;
+  const doctorName = params.doctorName as string;
+  const doctorSpecialty = params.doctorSpecialty as string;
 
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
@@ -139,28 +151,55 @@ export default function SelectDateTimeScreen() {
   const [notes, setNotes] = useState('');
   const [datePage, setDatePage] = useState(0);
   const [timePage, setTimePage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [doctor, setDoctor] = useState<Doctor | null>(null);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
 
   // Generate 30 days ahead for date picker
   const AVAILABLE_DATES = useMemo(() => getNextNDays(30), []);
-  // Parse operating hours
-  const operatingHoursParsed = useMemo(
-    () => parseOperatingHours(clinic.operatingHours),
-    [clinic.operatingHours]
-  );
-  // Generate available times based on hours
-  const TIME_SLOTS = useMemo(() => {
-    if (!operatingHoursParsed) return [];
-    const [start, end] = operatingHoursParsed;
-    return generateTimeSlots(start, end);
-  }, [operatingHoursParsed]);
 
   // refs for scrolling
   const dateScrollRef = useRef(null);
   const timeScrollRef = useRef(null);
 
+  useEffect(() => {
+    loadDoctorData();
+  }, [doctorId]);
+
+  useEffect(() => {
+    if (selectedDate && doctor) {
+      loadAvailableTimeSlots();
+    }
+  }, [selectedDate, doctor]);
+
+  const loadDoctorData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const doctorData = await databaseService.getDoctorById(doctorId);
+      setDoctor(doctorData);
+    } catch (error) {
+      console.error('Failed to load doctor data:', error);
+      setError('Failed to load doctor data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAvailableTimeSlots = async () => {
+    try {
+      const slots = await databaseService.getAvailableTimeSlots(doctorId, selectedDate);
+      setAvailableTimeSlots(slots);
+    } catch (error) {
+      console.error('Failed to load available time slots:', error);
+      setAvailableTimeSlots([]);
+    }
+  };
+
   // Pager data
   const datePager = getPagerData(AVAILABLE_DATES, 5);
-  const timePager = getPagerData(TIME_SLOTS, 5);
+  const timePager = getPagerData(availableTimeSlots.map(slot => ({ time: slot, minutes: 0 })), 5);
 
   // onScroll event to update active page
   const handleDateScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -168,6 +207,7 @@ export default function SelectDateTimeScreen() {
     const w = datePager.pageSize * 64; // Card+margin width
     setDatePage(Math.round(x / w));
   };
+  
   const handleTimeScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
     const w = timePager.pageSize * 70;
@@ -179,15 +219,61 @@ export default function SelectDateTimeScreen() {
       router.push({
         pathname: '/book-visit/review-confirm',
         params: {
-          clinicData: JSON.stringify(clinic),
+          clinicId,
+          clinicName,
+          doctorId,
+          doctorName,
+          doctorSpecialty,
           selectedDate,
           selectedTime,
           selectedPurpose,
           notes,
         },
       });
+    } else {
+      Alert.alert('Missing Information', 'Please select a date, time, and appointment purpose.');
     }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ChevronLeft size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Select Date & Time</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1E40AF" />
+          <Text style={styles.loadingText}>Loading doctor availability...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ChevronLeft size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Select Date & Time</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadDoctorData}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -198,7 +284,7 @@ export default function SelectDateTimeScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color="#1E40AF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Book Appointment</Text>
+        <Text style={styles.headerTitle}>Select Date & Time</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -218,219 +304,171 @@ export default function SelectDateTimeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
       >
-        {/* Clinic Card (unchanged) */}
+        {/* Doctor Card */}
         <View style={styles.clinicCardContainer}>
           <View style={styles.clinicCardTopRow}>
             <View style={styles.clinicCardNameCol}>
-              <Text style={styles.clinicName}>{clinic.name}</Text>
-              <Text style={styles.clinicDistance}>{clinic.distance} <Text style={styles.awayText}>away</Text></Text>
+              <Text style={styles.clinicName}>{doctorName}</Text>
+              <Text style={styles.clinicDistance}>{clinicName}</Text>
             </View>
-            <Image
-              source={{ uri: clinicImage }}
-              style={styles.clinicImageStatic}
-              resizeMode="cover"
-            />
+            <View style={styles.clinicCardIconContainer}>
+              <User size={24} color="#1E40AF" />
+            </View>
           </View>
-          <Text style={styles.infoValue}>{clinic.address}</Text>
-          <Text style={styles.infoValue}>{clinic.operatingHours}</Text>
-          <View style={styles.dividerSubtle} />
-          <View style={styles.servicesTags}>
-            {clinic.services.slice(0, 3).map((service: string, i: number) => {
-              const Icon = SERVICE_ICONS[service as keyof typeof SERVICE_ICONS] || User;
-              return (
-                <View key={i} style={styles.serviceTag}>
-                  <Icon size={12} color={BLUE} style={{ marginRight: 4 }} />
-                  <Text style={styles.serviceTagText}>{service}</Text>
-                </View>
-              );
-            })}
-            {clinic.services.length > 3 && (
-              <View style={styles.serviceTag}>
-                <PlusCircle size={12} color={BLUE} style={{ marginRight: 4 }} />
-                <Text style={styles.serviceTagText}>+{clinic.services.length - 3} more</Text>
-              </View>
-            )}
+          <View style={styles.clinicCardBottomRow}>
+            <View style={styles.clinicCardInfoItem}>
+              <Clock size={16} color="#6B7280" />
+              <Text style={styles.clinicCardInfoText}>{doctorSpecialty}</Text>
+            </View>
+            <View style={styles.clinicCardInfoItem}>
+              <Calendar size={16} color="#6B7280" />
+              <Text style={styles.clinicCardInfoText}>
+                Last updated: {new Date(doctor?.availability?.lastUpdated || '').toLocaleDateString()}
+              </Text>
+            </View>
           </View>
         </View>
 
         {/* Date Selection */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Select Date</Text>
-          <View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.datesContainer}
-              ref={dateScrollRef}
-              onScroll={handleDateScroll}
-              scrollEventThrottle={16}
-            >
-              {AVAILABLE_DATES.map((dateItem) => (
-                <TouchableOpacity
-                  key={dateItem.date}
-                  style={[
-                    styles.dateCard,
-                    selectedDate === dateItem.date && styles.selectedDateCard
-                  ]}
-                  onPress={() => setSelectedDate(dateItem.date)}
-                  activeOpacity={0.85}
-                >
-                  <Text
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleDateScroll}
+            scrollEventThrottle={16}
+            ref={dateScrollRef}
+          >
+            {datePager.pages.map((page, pageIndex) => (
+              <View key={pageIndex} style={styles.dateRow}>
+                {page.map((dateItem, index) => (
+                  <TouchableOpacity
+                    key={index}
                     style={[
-                      styles.dateMonth,
-                      selectedDate === dateItem.date && styles.selectedDateMonth,
+                      styles.dateCard,
+                      selectedDate === dateItem.date && styles.dateCardSelected
                     ]}
+                    onPress={() => setSelectedDate(dateItem.date)}
                   >
-                    {dateItem.month}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.dateNumber,
-                      selectedDate === dateItem.date && styles.selectedDateNumber,
-                    ]}
-                  >
-                    {dateItem.day}
-                  </Text>
-                  <Text
-                    style={[
+                    <Text style={[
                       styles.dateDayName,
-                      selectedDate === dateItem.date && styles.selectedDateDayName,
-                    ]}
-                  >
-                    {dateItem.dayName}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <View style={styles.indicatorRow}>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.circleIndicator,
-                    i === datePage ? styles.circleIndicatorActive : null
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
+                      selectedDate === dateItem.date && styles.dateDayNameSelected
+                    ]}>
+                      {dateItem.dayName}
+                    </Text>
+                    <Text style={[
+                      styles.dateDay,
+                      selectedDate === dateItem.date && styles.dateDaySelected
+                    ]}>
+                      {dateItem.day}
+                    </Text>
+                    <Text style={[
+                      styles.dateMonth,
+                      selectedDate === dateItem.date && styles.dateMonthSelected
+                    ]}>
+                      {dateItem.month}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
+          </ScrollView>
         </View>
 
         {/* Time Selection */}
         {selectedDate && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Select Time</Text>
-            <View>
+            {availableTimeSlots.length === 0 ? (
+              <View style={styles.noSlotsContainer}>
+                <Text style={styles.noSlotsText}>No available time slots for this date</Text>
+                <Text style={styles.noSlotsSubtext}>Please select a different date</Text>
+              </View>
+            ) : (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.timesContainer}
-                ref={timeScrollRef}
                 onScroll={handleTimeScroll}
                 scrollEventThrottle={16}
+                ref={timeScrollRef}
               >
-                {TIME_SLOTS.length === 0 && (
-                  <Text style={{ color: '#9CA3AF', fontSize: 15, padding: 10 }}>
-                    No time slots available
-                  </Text>
-                )}
-                {TIME_SLOTS.map((time) => (
-                  <TouchableOpacity
-                    key={time}
-                    style={[
-                      styles.timeCard,
-                      selectedTime === time && styles.selectedTimeCard,
-                    ]}
-                    onPress={() => setSelectedTime(time)}
-                    activeOpacity={0.85}
-                  >
-                    <Text
-                      style={[
-                        styles.timeCardText,
-                        selectedTime === time && styles.selectedTimeCardText,
-                      ]}
-                    >
-                      {time}
-                    </Text>
-                  </TouchableOpacity>
+                {timePager.pages.map((page, pageIndex) => (
+                  <View key={pageIndex} style={styles.timeRow}>
+                    {page.map((timeItem, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.timeCard,
+                          selectedTime === timeItem.time && styles.timeCardSelected
+                        ]}
+                        onPress={() => setSelectedTime(timeItem.time)}
+                      >
+                        <Text style={[
+                          styles.timeText,
+                          selectedTime === timeItem.time && styles.timeTextSelected
+                        ]}>
+                          {timeItem.time}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 ))}
               </ScrollView>
-              <View style={styles.indicatorRow}>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.circleIndicator,
-                      i === timePage ? styles.circleIndicatorActive : null
-                    ]}
-                  />
-                ))}
-              </View>
-            </View>
+            )}
           </View>
         )}
 
-        {/* Purpose Selection */}
+        {/* Appointment Purpose */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Purpose of Visit</Text>
-          <View style={styles.purposeContainer}>
-            <TouchableOpacity
-              style={styles.purposeDropdown}
-              onPress={() => setShowPurposeDropdown(!showPurposeDropdown)}
-            >
-              <Text style={[
-                styles.purposeText,
-                !selectedPurpose && styles.purposePlaceholder
-              ]}>
-                {selectedPurpose || 'Select purpose of visit'}
-              </Text>
-              <ChevronDown size={20} color="#6B7280" />
-            </TouchableOpacity>
-            {showPurposeDropdown && (
-              <View style={styles.purposeDropdownMenu}>
-                {APPOINTMENT_PURPOSES.map((purpose) => (
-                  <TouchableOpacity
-                    key={purpose}
-                    style={[
-                      styles.purposeDropdownItem,
-                      selectedPurpose === purpose && styles.purposeDropdownItemActive
-                    ]}
-                    onPress={() => {
-                      setSelectedPurpose(purpose);
-                      setShowPurposeDropdown(false);
-                    }}
-                  >
-                    <Text style={[
-                      styles.purposeDropdownItemText,
-                      selectedPurpose === purpose && styles.purposeDropdownItemTextActive
-                    ]}>
-                      {purpose}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
+          <Text style={styles.sectionTitle}>Appointment Purpose</Text>
+          <TouchableOpacity
+            style={styles.purposeDropdown}
+            onPress={() => setShowPurposeDropdown(!showPurposeDropdown)}
+          >
+            <Text style={[
+              styles.purposeDropdownText,
+              !selectedPurpose && styles.purposePlaceholder
+            ]}>
+              {selectedPurpose || 'Select appointment purpose'}
+            </Text>
+            <ChevronDown size={20} color="#6B7280" />
+          </TouchableOpacity>
+          
+          {showPurposeDropdown && (
+            <View style={styles.purposeDropdownMenu}>
+              {APPOINTMENT_PURPOSES.map((purpose, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.purposeDropdownItem}
+                  onPress={() => {
+                    setSelectedPurpose(purpose);
+                    setShowPurposeDropdown(false);
+                  }}
+                >
+                  <Text style={styles.purposeDropdownItemText}>{purpose}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
-        {/* Notes Section */}
+        {/* Notes */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Additional Notes (Optional)</Text>
           <TextInput
             style={styles.notesInput}
-            placeholder="Describe your symptoms, concerns, or any additional information for the healthcare provider..."
-            placeholderTextColor="#9CA3AF"
+            placeholder="Add any additional information..."
             value={notes}
             onChangeText={setNotes}
             multiline
             numberOfLines={4}
-            textAlignVertical="top"
+            placeholderTextColor="#9CA3AF"
           />
         </View>
       </ScrollView>
 
       {/* Continue Button */}
-      <View style={styles.bottomContainer}>
+      <View style={styles.continueButtonContainer}>
         <TouchableOpacity
           style={[
             styles.continueButton,
@@ -443,7 +481,7 @@ export default function SelectDateTimeScreen() {
             styles.continueButtonText,
             (!selectedDate || !selectedTime || !selectedPurpose) && styles.continueButtonTextDisabled
           ]}>
-            Continue to Review
+            Continue
           </Text>
         </TouchableOpacity>
       </View>
@@ -484,6 +522,43 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 40,
+  },
+  headerRight: {
+    width: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: BLUE,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
   },
   scrollView: {
     flex: 1,
@@ -570,11 +645,39 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
-  clinicImageStatic: {
-    width: 94,
-    height: 94,
-    borderRadius: 14,
-    backgroundColor: '#E5E7EB',
+  clinicCardIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clinicCardBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  clinicCardInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: LIGHT_BLUE,
+    marginRight: 5,
+    marginBottom: 5,
+    flexShrink: 1,
+    minWidth: 0,
+    maxWidth: '100%',
+  },
+  clinicCardInfoText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#1E40AF',
+    marginLeft: 4,
   },
   clinicName: {
     fontSize: 15,
@@ -590,26 +693,6 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     fontFamily: 'Inter-Medium',
     marginBottom: 2,
-  },
-  awayText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontFamily: 'Inter-Medium',
-  },
-  infoValue: {
-    flex: 1,
-    fontSize: 13,
-    color: '#374151',
-    paddingVertical: 2,
-    fontFamily: 'Inter-Regular',
-    flexWrap: 'wrap',
-    marginBottom: 2,
-  },
-  dividerSubtle: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginVertical: 9,
-    marginRight: 18,
   },
   servicesTags: {
     flexDirection: 'row',
@@ -654,6 +737,10 @@ const styles = StyleSheet.create({
   datesContainer: {
     paddingRight: 12,
   },
+  dateRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
   dateCard: {
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
@@ -667,9 +754,30 @@ const styles = StyleSheet.create({
     minHeight: 72,
     justifyContent: 'center',
   },
-  selectedDateCard: {
+  dateCardSelected: {
     backgroundColor: BLUE,
     borderColor: BLUE,
+  },
+  dateDayName: {
+    textTransform: 'uppercase',
+    fontSize: 11,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    marginBottom: -2,
+  },
+  dateDayNameSelected: {
+    color: '#fff',
+  },
+  dateDay: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    letterSpacing: 1,
+    marginTop: 0,
+    marginBottom: -2,
+  },
+  dateDaySelected: {
+    color: '#fff',
   },
   dateMonth: {
     textTransform: 'uppercase',
@@ -678,31 +786,15 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: -2,
   },
-  selectedDateMonth: {
-    color: '#fff',
-  },
-  dateNumber: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#1F2937',
-    letterSpacing: 1,
-    marginTop: 0,
-    marginBottom: -2,
-  },
-  selectedDateNumber: {
-    color: '#fff',
-  },
-  dateDayName: {
-    fontSize: 11,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  selectedDateDayName: {
+  dateMonthSelected: {
     color: '#fff',
   },
   timesContainer: {
     paddingRight: 12,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
   },
   timeCard: {
     backgroundColor: '#F9FAFB',
@@ -717,17 +809,32 @@ const styles = StyleSheet.create({
     minHeight: 38,
     justifyContent: 'center',
   },
-  selectedTimeCard: {
+  timeCardSelected: {
     backgroundColor: BLUE,
     borderColor: BLUE,
   },
-  timeCardText: {
+  timeText: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
   },
-  selectedTimeCardText: {
+  timeTextSelected: {
     color: '#fff',
+  },
+  noSlotsContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  noSlotsText: {
+    fontSize: 15,
+    color: '#9CA3AF',
+    fontFamily: 'Inter-Medium',
+    marginBottom: 5,
+  },
+  noSlotsSubtext: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
   },
 
   indicatorRow: {
@@ -765,7 +872,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  purposeText: {
+  purposeDropdownText: {
     fontSize: 15,
     fontFamily: 'Inter-Regular',
     color: '#1F2937',
@@ -814,7 +921,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     minHeight: 88,
   },
-  bottomContainer: {
+  continueButtonContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
