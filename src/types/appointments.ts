@@ -45,4 +45,37 @@ export interface CreateAppointmentData {
   specialty: string;
   status: 'pending' | 'confirmed' | 'completed' | 'canceled';
   type: string;
+}
+
+export interface Referral {
+  id?: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  assignedSpecialistFirstName: string;
+  assignedSpecialistId: string;
+  assignedSpecialistLastName: string;
+  clinicAppointmentId: string;
+  generalistNotes?: string;
+  initialReasonForReferral: string;
+  lastUpdated: string;
+  patientArrivalConfirmed: boolean;
+  patientFirstName: string;
+  patientId: string;
+  patientLastName: string;
+  practiceLocation: {
+    clinicId: string;
+    roomOrUnit: string;
+  };
+  referralTimestamp: string;
+  referringClinicId: string;
+  referringClinicName: string;
+  referringGeneralistFirstName: string;
+  referringGeneralistId: string;
+  referringGeneralistLastName: string;
+  scheduleSlotPath: string;
+  sourceSystem: string;
+  specialistScheduleId: string;
+  status: 'pending_acceptance' | 'accepted' | 'declined' | 'completed';
+  declineReason?: string;
+  specialistNotes?: string;
 } 
