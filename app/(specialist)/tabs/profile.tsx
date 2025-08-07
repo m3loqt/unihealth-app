@@ -30,9 +30,33 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService } from '../../../src/services/database/firebase';
+import { Input, Dropdown, DatePicker } from '../../../src/components/ui/Input';
 
 export default function SpecialistProfileScreen() {
   const { user, signOut } = useAuth();
+  
+  // Helper function to format date safely (avoiding timezone issues)
+  const formatDateSafely = (dateString: string): string => {
+    if (!dateString) return '';
+    
+    // Parse YYYY-MM-DD format without timezone conversion
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+      const day = parseInt(parts[2], 10);
+      
+      // Create date in local timezone and format it
+      const date = new Date(year, month, day);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+    
+    return '';
+  };
   const [profileData, setProfileData] = useState({
     name: '',
     email: '',
@@ -54,7 +78,37 @@ export default function SpecialistProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showFullProfileModal, setShowFullProfileModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editableData, setEditableData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    specialization: '',
+    experience: '',
+    medicalLicenseNumber: '',
+    prcId: '',
+    prcExpiryDate: '',
+    professionalFee: '',
+    gender: '',
+    dateOfBirth: '',
+    civilStatus: '',
+  });
   const [clinicNames, setClinicNames] = useState<string[]>([]);
+
+  // Dropdown options
+  const genderOptions = [
+    { label: 'Male', value: 'male' },
+    { label: 'Female', value: 'female' },
+    { label: 'Other', value: 'other' },
+  ];
+
+  const civilStatusOptions = [
+    { label: 'Single', value: 'single' },
+    { label: 'Married', value: 'married' },
+    { label: 'Divorced', value: 'divorced' },
+    { label: 'Widowed', value: 'widowed' },
+  ];
 
   // Load profile data from Firebase
   useEffect(() => {
@@ -169,6 +223,86 @@ export default function SpecialistProfileScreen() {
         },
       ]
     );
+  };
+
+  const handleEditProfile = () => {
+    setIsEditing(true);
+    // Initialize editable data with current profile data
+    setEditableData({
+      name: profileData.name,
+      email: profileData.email,
+      phone: profileData.phone,
+      address: profileData.address,
+      specialization: profileData.specialization,
+      experience: profileData.experience,
+      medicalLicenseNumber: profileData.medicalLicenseNumber,
+      prcId: profileData.prcId,
+      prcExpiryDate: profileData.prcExpiryDate || '2025-12-31', // Default expiry date if empty
+      professionalFee: profileData.professionalFee.replace('₱', ''),
+      gender: profileData.gender,
+      dateOfBirth: profileData.dateOfBirth || '2020-01-01', // Default date if empty
+      civilStatus: profileData.civilStatus,
+    });
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) {
+      Alert.alert('Error', 'Please log in to update your profile.');
+      return;
+    }
+
+    try {
+      // Prepare the updates for the database
+      const updates = {
+        // Split the name into firstName and lastName
+        firstName: editableData.name.split(' ')[0] || '',
+        lastName: editableData.name.split(' ').slice(1).join(' ') || '',
+        email: editableData.email,
+        contactNumber: editableData.phone,
+        address: editableData.address,
+        specialty: editableData.specialization,
+        yearsOfExperience: editableData.experience ? parseInt(editableData.experience.replace(' years', '')) : 0,
+        medicalLicenseNumber: editableData.medicalLicenseNumber,
+        prcId: editableData.prcId,
+        prcExpiryDate: editableData.prcExpiryDate,
+        professionalFee: editableData.professionalFee ? parseInt(editableData.professionalFee) : 0,
+        gender: editableData.gender,
+        dateOfBirth: editableData.dateOfBirth,
+        civilStatus: editableData.civilStatus,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      // Update the specialist profile in the database
+      await databaseService.updateDocument(`doctors/${user.uid}`, updates);
+
+      // Update local state
+      setProfileData(prev => ({
+        ...prev,
+        name: editableData.name,
+        email: editableData.email,
+        phone: editableData.phone,
+        address: editableData.address,
+        specialization: editableData.specialization,
+        experience: editableData.experience,
+        medicalLicenseNumber: editableData.medicalLicenseNumber,
+        prcId: editableData.prcId,
+        prcExpiryDate: editableData.prcExpiryDate,
+        professionalFee: editableData.professionalFee ? `₱${editableData.professionalFee}` : '',
+        gender: editableData.gender,
+        dateOfBirth: editableData.dateOfBirth,
+        civilStatus: editableData.civilStatus,
+      }));
+      
+      setIsEditing(false);
+      Alert.alert('Success', 'Profile updated successfully!');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', 'Failed to save profile. Please try again.');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
   };
 
   const quickActions = [
@@ -289,7 +423,7 @@ export default function SpecialistProfileScreen() {
                    <Building size={16} color="#6B7280" />
                    <Text style={styles.contactText}>
                      {clinicNames.slice(0, 2).join(', ')}
-                     {clinicNames.length > 2 && ` +${clinicNames.length - 2} more`}
+                     {clinicNames.length > 2 ? ` +${clinicNames.length - 2} more` : ''}
                    </Text>
                  </View>
                )}
@@ -390,183 +524,369 @@ export default function SpecialistProfileScreen() {
         visible={showFullProfileModal}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowFullProfileModal(false)}
+        onRequestClose={() => {
+          setShowFullProfileModal(false);
+          setIsEditing(false);
+        }}
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalContainer}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Full Profile</Text>
+              <Text style={styles.modalTitle}>
+                {isEditing ? 'Edit Profile' : 'Full Profile'}
+              </Text>
               <TouchableOpacity
                 style={styles.closeButton}
-                onPress={() => setShowFullProfileModal(false)}
+                onPress={() => {
+                  setShowFullProfileModal(false);
+                  setIsEditing(false);
+                }}
               >
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </View>
 
             {/* Modal Content */}
-            <ScrollView 
-              style={styles.modalScrollView}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.modalContent}
-            >
-
-              {/* Profile Header */}
-              <View style={styles.modalProfileHeader}>
-                <View style={styles.modalProfileImageContainer}>
-                  {profileImage ? (
-                    <Image source={{ uri: profileImage }} style={styles.modalProfileImage} />
-                  ) : (
-                    <View style={styles.modalProfileImagePlaceholder}>
-                      <Text style={styles.modalProfileImageText}>
-                        {name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'DR'}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.modalProfileInfo}>
-                  <Text style={styles.modalUserName}>Dr. {name}</Text>
-                  <Text style={styles.modalUserSpecialty}>{specialization || 'Specialist'}</Text>
-                  {experience && <Text style={styles.modalExperience}>{experience} experience</Text>}
-                </View>
-              </View>
-
-              {/* Personal Information */}
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Personal Information</Text>
-                <View style={styles.modalInfoGrid}>
-                  {gender && (
-                    <View style={styles.modalInfoItem}>
-                      <Text style={styles.modalInfoLabel}>Gender</Text>
-                      <Text style={styles.modalInfoValue}>
-                        {gender.charAt(0).toUpperCase() + gender.slice(1)}
-                      </Text>
-                    </View>
-                  )}
-                  {dateOfBirth && (
-                    <View style={styles.modalInfoItem}>
-                      <Text style={styles.modalInfoLabel}>Date of Birth</Text>
-                      <Text style={styles.modalInfoValue}>
-                        {new Date(dateOfBirth).toLocaleDateString('en-US', { 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
-                      </Text>
-                    </View>
-                  )}
-                  {civilStatus && (
-                    <View style={styles.modalInfoItem}>
-                      <Text style={styles.modalInfoLabel}>Civil Status</Text>
-                      <Text style={styles.modalInfoValue}>
-                        {civilStatus.charAt(0).toUpperCase() + civilStatus.slice(1)}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              {/* Contact Information */}
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Contact Information</Text>
-                <View style={styles.modalContactList}>
-                  <View style={styles.modalContactItem}>
-                    <Mail size={18} color="#6B7280" />
-                    <Text style={styles.modalContactText}>{email}</Text>
-                  </View>
-                  {phone && (
-                    <View style={styles.modalContactItem}>
-                      <Phone size={18} color="#6B7280" />
-                      <Text style={styles.modalContactText}>{phone}</Text>
-                    </View>
-                  )}
-                  {address && (
-                    <View style={styles.modalContactItem}>
-                      <MapPin size={18} color="#6B7280" />
-                      <Text style={styles.modalContactText}>{address}</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-
-                             {/* Professional Information */}
-               <View style={styles.modalSection}>
-                 <Text style={styles.modalSectionTitle}>Professional Information</Text>
-                 <View style={styles.modalInfoList}>
-                   {medicalLicenseNumber && (
-                     <View style={styles.modalInfoRow}>
-                       <Text style={styles.modalInfoLabel}>License Number</Text>
-                       <Text style={styles.modalInfoValue}>{medicalLicenseNumber}</Text>
-                     </View>
-                   )}
-                   {prcId && (
-                     <View style={styles.modalInfoRow}>
-                       <Text style={styles.modalInfoLabel}>PRC ID</Text>
-                       <Text style={styles.modalInfoValue}>{prcId}</Text>
-                     </View>
-                   )}
-                   {prcExpiryDate && (
-                     <View style={styles.modalInfoRow}>
-                       <Text style={styles.modalInfoLabel}>PRC Expiry Date</Text>
-                       <Text style={styles.modalInfoValue}>
-                         {new Date(prcExpiryDate).toLocaleDateString('en-US', { 
-                           year: 'numeric', 
-                           month: 'long', 
-                           day: 'numeric' 
-                         })}
-                       </Text>
-                     </View>
-                   )}
-                   {professionalFee && (
-                     <View style={styles.modalInfoRow}>
-                       <Text style={styles.modalInfoLabel}>Professional Fee</Text>
-                       <Text style={styles.modalInfoValue}>{professionalFee}</Text>
-                     </View>
-                   )}
-                   {status && (
-                     <View style={styles.modalInfoRow}>
-                       <Text style={styles.modalInfoLabel}>Status</Text>
-                       <Text style={[
-                         styles.modalInfoValue, 
-                         { color: status === 'pending' ? '#F59E0B' : '#10B981' }
-                       ]}>
-                         {status.charAt(0).toUpperCase() + status.slice(1)}
-                       </Text>
-                     </View>
-                   )}
-                 </View>
-                               </View>
-
-                {/* Clinic Affiliations */}
-                {clinicNames.length > 0 && (
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Clinic Affiliations</Text>
-                    <View style={styles.modalInfoList}>
-                      {clinicNames.map((clinicName, index) => (
-                        <View key={index} style={styles.modalInfoRow}>
-                          <Text style={styles.modalInfoLabel}>Clinic {index + 1}</Text>
-                          <Text style={styles.modalInfoValue}>{clinicName}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                
-
-               {/* Edit Profile Button */}
-              <TouchableOpacity 
-                style={styles.editProfileButton}
-                onPress={() => {
-                  setShowFullProfileModal(false);
-                  Alert.alert('Edit Profile', 'Edit profile functionality will be implemented here.');
-                }}
+            <View style={styles.modalContentWrapper}>
+              <ScrollView 
+                style={styles.modalScrollView}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalContent}
               >
-                <Edit size={18} color="#FFFFFF" />
-                <Text style={styles.editProfileButtonText}>Edit Profile</Text>
-              </TouchableOpacity>
-            </ScrollView>
+                {isEditing ? (
+                  // Edit Form - Inline Editing
+                  <>
+                    {/* Profile Header */}
+                    <View style={styles.modalProfileHeader}>
+                      <View style={styles.modalProfileImageContainer}>
+                        {profileImage ? (
+                          <Image source={{ uri: profileImage }} style={styles.modalProfileImage} />
+                        ) : (
+                          <View style={styles.modalProfileImagePlaceholder}>
+                            <Text style={styles.modalProfileImageText}>
+                              {name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'DR'}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.modalProfileInfo}>
+                        <Input
+                          value={editableData.name}
+                          onChangeText={(text) => setEditableData(prev => ({ ...prev, name: text }))}
+                          placeholder="Enter your full name"
+                          style={styles.inlineInput}
+                          inputStyle={styles.inlineInputText}
+                        />
+                        <Input
+                          value={editableData.specialization}
+                          onChangeText={(text) => setEditableData(prev => ({ ...prev, specialization: text }))}
+                          placeholder="Enter specialization"
+                          style={styles.inlineInput}
+                          inputStyle={styles.inlineInputText}
+                        />
+                        <Input
+                          value={editableData.experience}
+                          onChangeText={(text) => setEditableData(prev => ({ ...prev, experience: text }))}
+                          placeholder="Enter years of experience"
+                          keyboardType="numeric"
+                          style={styles.inlineInput}
+                          inputStyle={styles.inlineInputText}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Personal Information */}
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Personal Information</Text>
+                      <View style={styles.modalInfoGrid}>
+                        <View style={styles.modalInfoItem}>
+                          <Text style={styles.modalInfoLabel}>Gender</Text>
+                          <Dropdown
+                            options={genderOptions}
+                            value={editableData.gender}
+                            onValueChange={(value) => setEditableData(prev => ({ ...prev, gender: value }))}
+                            placeholder="Select gender"
+                            style={styles.inlineInput}
+                          />
+                        </View>
+                        <View style={styles.modalInfoItem}>
+                          <Text style={styles.modalInfoLabel}>Date of Birth</Text>
+                          <DatePicker
+                            value={editableData.dateOfBirth}
+                            onValueChange={(value) => setEditableData(prev => ({ ...prev, dateOfBirth: value }))}
+                            placeholder="Select date of birth"
+                            style={styles.inlineInput}
+                          />
+                        </View>
+                        <View style={styles.modalInfoItem}>
+                          <Text style={styles.modalInfoLabel}>Civil Status</Text>
+                          <Dropdown
+                            options={civilStatusOptions}
+                            value={editableData.civilStatus}
+                            onValueChange={(value) => setEditableData(prev => ({ ...prev, civilStatus: value }))}
+                            placeholder="Select civil status"
+                            style={styles.inlineInput}
+                          />
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Contact Information */}
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Contact Information</Text>
+                      <View style={styles.modalContactList}>
+                        <View style={styles.modalContactItem}>
+                          <Mail size={18} color="#6B7280" />
+                          <Input
+                            value={editableData.email}
+                            onChangeText={(text) => setEditableData(prev => ({ ...prev, email: text }))}
+                            placeholder="Enter email"
+                            keyboardType="email-address"
+                            style={styles.inlineInput}
+                            inputStyle={styles.inlineInputText}
+                          />
+                        </View>
+                        <View style={styles.modalContactItem}>
+                          <Phone size={18} color="#6B7280" />
+                          <Input
+                            value={editableData.phone}
+                            onChangeText={(text) => setEditableData(prev => ({ ...prev, phone: text }))}
+                            placeholder="Enter phone number"
+                            keyboardType="phone-pad"
+                            style={styles.inlineInput}
+                            inputStyle={styles.inlineInputText}
+                          />
+                        </View>
+                        <View style={styles.modalContactItem}>
+                          <MapPin size={18} color="#6B7280" />
+                          <Input
+                            value={editableData.address}
+                            onChangeText={(text) => setEditableData(prev => ({ ...prev, address: text }))}
+                            placeholder="Enter address"
+                            multiline
+                            numberOfLines={3}
+                            style={styles.inlineInput}
+                            inputStyle={styles.inlineInputText}
+                          />
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Professional Information */}
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Professional Information</Text>
+                      <View style={styles.modalInfoList}>
+                        <View style={styles.modalInfoRow}>
+                          <Text style={styles.modalInfoLabel}>License Number</Text>
+                          <Input
+                            value={editableData.medicalLicenseNumber}
+                            onChangeText={(text) => setEditableData(prev => ({ ...prev, medicalLicenseNumber: text }))}
+                            placeholder="Enter license number"
+                            style={styles.inlineInput}
+                            inputStyle={styles.inlineInputText}
+                          />
+                        </View>
+                        <View style={styles.modalInfoRow}>
+                          <Text style={styles.modalInfoLabel}>PRC ID</Text>
+                          <Input
+                            value={editableData.prcId}
+                            onChangeText={(text) => setEditableData(prev => ({ ...prev, prcId: text }))}
+                            placeholder="Enter PRC ID"
+                            style={styles.inlineInput}
+                            inputStyle={styles.inlineInputText}
+                          />
+                        </View>
+                        <View style={styles.modalInfoRow}>
+                          <Text style={styles.modalInfoLabel}>PRC Expiry Date</Text>
+                          <DatePicker
+                            value={editableData.prcExpiryDate}
+                            onValueChange={(value) => setEditableData(prev => ({ ...prev, prcExpiryDate: value }))}
+                            placeholder="Select expiry date"
+                            style={styles.inlineInput}
+                          />
+                        </View>
+                        <View style={styles.modalInfoRow}>
+                          <Text style={styles.modalInfoLabel}>Professional Fee</Text>
+                          <Input
+                            value={editableData.professionalFee}
+                            onChangeText={(text) => setEditableData(prev => ({ ...prev, professionalFee: text }))}
+                            placeholder="Enter professional fee"
+                            keyboardType="numeric"
+                            style={styles.inlineInput}
+                            inputStyle={styles.inlineInputText}
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  // View Mode
+                  <>
+                    {/* Profile Header */}
+                    <View style={styles.modalProfileHeader}>
+                      <View style={styles.modalProfileImageContainer}>
+                        {profileImage ? (
+                          <Image source={{ uri: profileImage }} style={styles.modalProfileImage} />
+                        ) : (
+                          <View style={styles.modalProfileImagePlaceholder}>
+                            <Text style={styles.modalProfileImageText}>
+                              {name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'DR'}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.modalProfileInfo}>
+                        <Text style={styles.modalUserName}>Dr. {name}</Text>
+                        <Text style={styles.modalUserSpecialty}>{specialization || 'Specialist'}</Text>
+                        {experience && <Text style={styles.modalExperience}>{experience} experience</Text>}
+                      </View>
+                    </View>
+
+                    {/* Personal Information */}
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Personal Information</Text>
+                      <View style={styles.modalInfoGrid}>
+                        {gender && (
+                          <View style={styles.modalInfoItem}>
+                            <Text style={styles.modalInfoLabel}>Gender</Text>
+                            <Text style={styles.modalInfoValue}>
+                              {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                            </Text>
+                          </View>
+                        )}
+                        {dateOfBirth && (
+                          <View style={styles.modalInfoItem}>
+                            <Text style={styles.modalInfoLabel}>Date of Birth</Text>
+                            <Text style={styles.modalInfoValue}>
+                              {formatDateSafely(dateOfBirth)}
+                            </Text>
+                          </View>
+                        )}
+                        {civilStatus && (
+                          <View style={styles.modalInfoItem}>
+                            <Text style={styles.modalInfoLabel}>Civil Status</Text>
+                            <Text style={styles.modalInfoValue}>
+                              {civilStatus.charAt(0).toUpperCase() + civilStatus.slice(1)}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* Contact Information */}
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Contact Information</Text>
+                      <View style={styles.modalContactList}>
+                        <View style={styles.modalContactItem}>
+                          <Mail size={18} color="#6B7280" />
+                          <Text style={styles.modalContactText}>{email}</Text>
+                        </View>
+                        {phone && (
+                          <View style={styles.modalContactItem}>
+                            <Phone size={18} color="#6B7280" />
+                            <Text style={styles.modalContactText}>{phone}</Text>
+                          </View>
+                        )}
+                        {address && (
+                          <View style={styles.modalContactItem}>
+                            <MapPin size={18} color="#6B7280" />
+                            <Text style={styles.modalContactText}>{address}</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* Professional Information */}
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Professional Information</Text>
+                      <View style={styles.modalInfoList}>
+                        {medicalLicenseNumber && (
+                          <View style={styles.modalInfoRow}>
+                            <Text style={styles.modalInfoLabel}>License Number</Text>
+                            <Text style={styles.modalInfoValue}>{medicalLicenseNumber}</Text>
+                          </View>
+                        )}
+                        {prcId && (
+                          <View style={styles.modalInfoRow}>
+                            <Text style={styles.modalInfoLabel}>PRC ID</Text>
+                            <Text style={styles.modalInfoValue}>{prcId}</Text>
+                          </View>
+                        )}
+                        {prcExpiryDate && (
+                          <View style={styles.modalInfoRow}>
+                            <Text style={styles.modalInfoLabel}>PRC Expiry Date</Text>
+                            <Text style={styles.modalInfoValue}>
+                              {formatDateSafely(prcExpiryDate)}
+                            </Text>
+                          </View>
+                        )}
+                        {professionalFee && (
+                          <View style={styles.modalInfoRow}>
+                            <Text style={styles.modalInfoLabel}>Professional Fee</Text>
+                            <Text style={styles.modalInfoValue}>{professionalFee}</Text>
+                          </View>
+                        )}
+                        {status && (
+                          <View style={styles.modalInfoRow}>
+                            <Text style={styles.modalInfoLabel}>Status</Text>
+                            <Text style={[
+                              styles.modalInfoValue, 
+                              { color: status === 'pending' ? '#F59E0B' : '#10B981' }
+                            ]}>
+                              {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* Clinic Affiliations */}
+                    {clinicNames.length > 0 && (
+                      <View style={styles.modalSection}>
+                        <Text style={styles.modalSectionTitle}>Clinic Affiliations</Text>
+                        <View style={styles.modalInfoList}>
+                          {clinicNames.map((clinicName, index) => (
+                            <View key={index} style={styles.modalInfoRow}>
+                              <Text style={styles.modalInfoLabel}>Clinic {index + 1}</Text>
+                              <Text style={styles.modalInfoValue}>{clinicName}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </>
+                )}
+              </ScrollView>
+            </View>
+
+            {/* Floating Buttons */}
+            {isEditing ? (
+              <View style={styles.floatingButtonsContainer}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={handleCancelEdit}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.saveButton}
+                  onPress={handleSaveProfile}
+                >
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.floatingButtonsContainer}>
+                <TouchableOpacity 
+                  style={styles.editProfileButton}
+                  onPress={handleEditProfile}
+                >
+                  <Edit size={18} color="#FFFFFF" />
+                  <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -895,6 +1215,10 @@ const styles = StyleSheet.create({
   modalScrollView: {
     flex: 1,
   },
+  modalContentWrapper: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
   modalContent: {
     padding: 24,
     paddingBottom: 32,
@@ -1034,6 +1358,99 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   editProfileButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
+  },
+  editButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+  },
+  cancelButton: {
+    backgroundColor: '#E5E7EB',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    textAlign: 'center',
+  },
+  saveButton: {
+    backgroundColor: '#1E40AF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  inlineInput: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    marginBottom: 0,
+  },
+  inlineInputText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    paddingVertical: 0,
+  },
+  floatingButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: 'transparent',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    borderRadius: 16,
+    marginHorizontal: 24,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E40AF',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#1E40AF',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  editButtonText: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#FFFFFF',
