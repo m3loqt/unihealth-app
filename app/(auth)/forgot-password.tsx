@@ -18,7 +18,6 @@ import { authService } from '../../src/services/api/auth';
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,15 +38,19 @@ export default function ForgotPasswordScreen() {
     setIsLoading(true);
 
     try {
-      await authService.requestPasswordReset(email);
-      setEmailSent(true);
+      await authService.requestPasswordResetCode(email);
+      // Navigate to verify code screen instead of showing success
+      router.push({
+        pathname: '/verify-code',
+        params: { email }
+      });
     } catch (error: any) {
-      let errorMessage = 'Failed to send password reset email. Please try again.';
+      let errorMessage = 'Failed to send verification code. Please try again.';
       
       if (error.message.includes('user-not-found')) {
         errorMessage = 'No account found with this email address. Please check your email or sign up for a new account.';
       } else if (error.message.includes('too-many-requests')) {
-        errorMessage = 'Too many password reset requests. Please wait a few minutes before trying again.';
+        errorMessage = 'Too many verification code requests. Please wait a few minutes before trying again.';
       } else if (error.message.includes('invalid-email')) {
         errorMessage = 'Please enter a valid email address.';
       }
@@ -62,48 +65,7 @@ export default function ForgotPasswordScreen() {
     router.push('/');
   };
 
-  if (emailSent) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardAvoid}
-        >
-          <View style={styles.centerContent}>
-            <View style={styles.successContainer}>
-              <View style={styles.successIcon}>
-                <Send size={32} color="#1E40AF" />
-              </View>
-              <Text style={styles.successTitle}>Check Your Email</Text>
-              <Text style={styles.successMessage}>
-                We've sent a password reset link to{'\n'}
-                <Text style={styles.emailText}>{email}</Text>
-              </Text>
-              <Text style={styles.instructionText}>
-                Click the link in the email to reset your password. If you don't see the email, check your spam folder.
-              </Text>
-              <TouchableOpacity
-                style={styles.backToSignInButton}
-                onPress={handleBackToSignIn}
-              >
-                <Text style={styles.backToSignInButtonText}>Back to Sign In</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.resendButton}
-                onPress={() => {
-                  setEmailSent(false);
-                  setEmail('');
-                }}
-              >
-                <Text style={styles.resendButtonText}>Use Different Email</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    );
-  }
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -149,7 +111,7 @@ export default function ForgotPasswordScreen() {
               disabled={!email.trim() || isLoading}
             >
               <Text style={styles.sendButtonText}>
-                {isLoading ? 'Sending...' : 'Send Reset Link'}
+                {isLoading ? 'Sending...' : 'Send Verification Code'}
               </Text>
             </TouchableOpacity>
 
@@ -160,7 +122,7 @@ export default function ForgotPasswordScreen() {
 
             {/* Help Text */}
             <Text style={styles.helpText}>
-              Enter the email address associated with your UniHEALTH account and we'll send you a link to reset your password.
+              Enter the email address associated with your UniHEALTH account and we'll send you a verification code to reset your password.
             </Text>
           </View>
         </View>
