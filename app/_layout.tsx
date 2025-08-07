@@ -11,7 +11,7 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '../src/hooks/auth/useAuth';
-import { initializeGoogleSpeechToText } from '../src/services/googleSpeechToText';
+
 
 SplashScreen.preventAutoHideAsync();
 

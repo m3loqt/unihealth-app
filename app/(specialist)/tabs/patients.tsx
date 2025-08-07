@@ -12,7 +12,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { Search, User } from 'lucide-react-native';
+import { Search, User, Users } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService, Patient } from '../../../src/services/database/firebase';
@@ -215,8 +215,15 @@ export default function SpecialistPatientsScreen() {
             filteredPatients.map(renderPatientCard)
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>
+              <Users size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>
                 No {activeFilter.toLowerCase()} patients found
+              </Text>
+              <Text style={styles.emptyStateText}>
+                {activeFilter === 'All' 
+                  ? "You haven't added any patients yet."
+                  : `You don't have any ${activeFilter.toLowerCase()} patients at the moment.`
+                }
               </Text>
             </View>
           )}
@@ -238,12 +245,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 16,
     backgroundColor: '#FFFFFF',
   },
   headerTitle: {
     fontSize: 24,
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
   },
   profileButton: {
@@ -391,11 +398,22 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: 48,
+    paddingHorizontal: 32,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   emptyStateText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
  
