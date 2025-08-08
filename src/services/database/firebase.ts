@@ -31,6 +31,8 @@ export interface Appointment {
   patientId: string;
   patientLastName: string;
   relatedReferralId?: string;
+  consultationId?: string;
+  appointmentConsultationId?: string;
   sourceSystem: string;
   specialty: string;
   status: 'pending' | 'confirmed' | 'completed' | 'canceled';
@@ -130,6 +132,7 @@ export interface Clinic {
   isActive: boolean;
   createdAt: number;
   updatedAt: number;
+  hasGeneralistDoctors?: boolean; // Added to indicate if clinic has generalist doctors
 }
 
 export interface Doctor {
@@ -167,6 +170,8 @@ export interface Referral {
   assignedSpecialistId: string;
   assignedSpecialistLastName: string;
   clinicAppointmentId: string;
+  consultationId?: string;
+  referralConsultationId?: string;
   generalistNotes?: string;
   initialReasonForReferral: string;
   lastUpdated: string;
@@ -285,12 +290,12 @@ export const databaseService = {
         // Check each valid clinic for generalist doctors
         for (const clinic of validClinics) {
           const hasGeneralist = await this.hasGeneralistDoctors(clinic.id);
-          if (hasGeneralist) {
-            clinics.push({
-              id: clinic.id,
-              ...clinic.data
-            });
-          }
+          // Show all clinics with valid addresses, but mark which ones have generalist doctors
+          clinics.push({
+            id: clinic.id,
+            ...clinic.data,
+            hasGeneralistDoctors: hasGeneralist // Add this flag for UI purposes
+          });
         }
         
         return clinics;
@@ -304,23 +309,24 @@ export const databaseService = {
 
   // Helper method to check if clinic has a valid address
   hasValidAddress(clinicData: any): boolean {
-    // Check if address field exists and is not empty
-    const hasAddress = clinicData.address && 
-                      typeof clinicData.address === 'string' && 
-                      clinicData.address.trim().length > 0;
+    // Check for new address format (address, city, province)
+    const hasNewFormat = clinicData.address && 
+                        typeof clinicData.address === 'string' && 
+                        clinicData.address.trim().length > 0 &&
+                        clinicData.city && 
+                        typeof clinicData.city === 'string' && 
+                        clinicData.city.trim().length > 0 &&
+                        clinicData.province && 
+                        typeof clinicData.province === 'string' && 
+                        clinicData.province.trim().length > 0;
     
-    // Check if city field exists and is not empty
-    const hasCity = clinicData.city && 
-                   typeof clinicData.city === 'string' && 
-                   clinicData.city.trim().length > 0;
+    // Check for old address format (addressLine)
+    const hasOldFormat = clinicData.addressLine && 
+                        typeof clinicData.addressLine === 'string' && 
+                        clinicData.addressLine.trim().length > 0;
     
-    // Check if province field exists and is not empty
-    const hasProvince = clinicData.province && 
-                       typeof clinicData.province === 'string' && 
-                       clinicData.province.trim().length > 0;
-    
-    // Return true only if all address components are present and valid
-    return hasAddress && hasCity && hasProvince;
+    // Return true if either format is valid
+    return hasNewFormat || hasOldFormat;
   },
 
   async getClinicById(clinicId: string): Promise<Clinic | null> {
@@ -674,6 +680,24 @@ export const databaseService = {
     } catch (error) {
       console.error('Delete appointment error:', error);
       throw error;
+    }
+  },
+
+  async getAppointmentById(appointmentId: string): Promise<Appointment | null> {
+    try {
+      const appointmentRef = ref(database, `appointments/${appointmentId}`);
+      const snapshot = await get(appointmentRef);
+      
+      if (snapshot.exists()) {
+        return {
+          id: snapshot.key,
+          ...snapshot.val()
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Get appointment by ID error:', error);
+      return null;
     }
   },
 
@@ -1443,6 +1467,22 @@ export const databaseService = {
       await remove(docRef);
     } catch (error) {
       console.error(`Delete document error (${path}):`, error);
+      throw error;
+    }
+  },
+
+  async pushDocument(path: string, data: any): Promise<string> {
+    try {
+      const docRef = ref(database, path);
+      const newRef = push(docRef);
+      await set(newRef, {
+        ...data,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      return newRef.key!;
+    } catch (error) {
+      console.error(`Push document error (${path}):`, error);
       throw error;
     }
   }

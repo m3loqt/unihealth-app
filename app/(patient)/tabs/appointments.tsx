@@ -27,6 +27,7 @@ import {
   User,
   X,
   Star,
+  Eye,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -109,25 +110,105 @@ export default function AppointmentsScreen() {
     }
   };
 
-  const loadMedicalHistory = async (appointment: Appointment) => {
-    if (!appointment.id || !appointment.patientId) return;
+  const loadMedicalHistory = async (appointment: Appointment, source: 'appointment' | 'referral' = 'appointment') => {
+    Alert.alert('Debug', 'Medical History function called!');
+    console.log('🚀 LOAD MEDICAL HISTORY FUNCTION CALLED!');
+    console.log('=== MEDICAL HISTORY DEBUG START ===');
+    console.log('Appointment object:', appointment);
+    console.log('Appointment ID:', appointment.id);
+    console.log('Appointment patientId:', appointment.patientId);
+    console.log('Appointment type:', appointment.type);
+    console.log('Appointment relatedReferralId:', appointment.relatedReferralId);
+    console.log('Appointment status:', appointment.status);
     
+    if (!appointment.patientId) {
+      console.log('ERROR: No patient ID found in appointment');
+      Alert.alert('Error', 'No patient ID found.');
+      return;
+    }
+
     try {
       setLoadingMedicalHistory(true);
       setShowMedicalHistoryModal(true);
       
-      const history = await databaseService.getMedicalHistoryByAppointment(
-        appointment.id,
-        appointment.patientId
-      );
+      // Get the actual patientId string value
+      const patientIdString = appointment.patientId;
       
-      setMedicalHistory(history);
+      // Determine the correct consultationId to use based on source
+      let consultationIdToUse = '';
+      
+      if (source === 'referral') {
+        // This is a referral card click - use referralConsultationId
+        console.log('This is a referral card click');
+        console.log('Fetching referral data for referralId:', appointment.relatedReferralId);
+        
+        // Fetch the referral object to get the consultationId directly
+        const referral = await databaseService.getReferralById(appointment.relatedReferralId || '');
+        console.log('Fetched referral object:', referral);
+        
+        if (referral?.referralConsultationId) {
+          // For referrals, use the referralConsultationId from the referral object
+          consultationIdToUse = referral.referralConsultationId;
+          console.log('Using referralConsultationId from referral object:', consultationIdToUse);
+        } else if (referral?.consultationId) {
+          // Fallback to old consultationId field
+          consultationIdToUse = referral.consultationId;
+          console.log('Using fallback consultationId from referral object:', consultationIdToUse);
+        } else {
+          console.log('No consultationId found in referral object - consultation may not be completed');
+          Alert.alert('No Medical History', 'Medical history is only available for completed consultations.');
+          setShowMedicalHistoryModal(false);
+          return;
+        }
+      } else {
+        // This is a regular appointment card click - use appointmentConsultationId
+        console.log('This is a regular appointment card click');
+        if (appointment.appointmentConsultationId) {
+          consultationIdToUse = appointment.appointmentConsultationId;
+          console.log('Using appointment.appointmentConsultationId:', appointment.appointmentConsultationId);
+        } else if (appointment.consultationId) {
+          // Fallback for old appointments that might have the old consultationId field
+          consultationIdToUse = appointment.consultationId;
+          console.log('Using fallback appointment.consultationId:', appointment.consultationId);
+        } else {
+          console.log('No consultationId found in appointment - consultation may not be completed');
+          Alert.alert('No Medical History', 'Medical history is only available for completed consultations.');
+          setShowMedicalHistoryModal(false);
+          return;
+        }
+      }
+      
+      console.log('Final patientIdString:', patientIdString);
+      console.log('Final consultationIdToUse:', consultationIdToUse);
+      
+      // Try to get medical history from the specific consultation
+      const medicalHistoryPath = `patientMedicalHistory/${patientIdString}/entries/${consultationIdToUse}`;
+      console.log('Full Firebase path being queried:', medicalHistoryPath);
+      
+      const history = await databaseService.getDocument(medicalHistoryPath);
+      console.log('Raw response from databaseService.getDocument:', history);
+      
+      if (history) {
+        console.log('Found medical history - Object keys:', Object.keys(history));
+        console.log('Found medical history - Full object:', history);
+        setMedicalHistory(history);
+      } else {
+        console.log('No medical history found for this consultation');
+        console.log('The databaseService.getDocument returned null/undefined');
+        setMedicalHistory(null);
+      }
     } catch (error) {
       console.error('Error loading medical history:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       Alert.alert('Error', 'Failed to load medical history. Please try again.');
       setShowMedicalHistoryModal(false);
     } finally {
       setLoadingMedicalHistory(false);
+      console.log('=== MEDICAL HISTORY DEBUG END ===');
     }
   };
 
@@ -196,7 +277,7 @@ export default function AppointmentsScreen() {
         const isLoading = loadingReferrals[appointment.relatedReferralId];
         
         referralCards.push({
-          id: `referral-${appointment.relatedReferralId}`,
+          id: appointment.id || `referral-${appointment.relatedReferralId}`, // Use appointment.id as unique key, fallback to referral ID
           type: 'referral',
           appointment,
           referral,
@@ -260,62 +341,70 @@ export default function AppointmentsScreen() {
       }
     };
 
+    const specialistName = `${referral?.assignedSpecialistFirstName || ''} ${referral?.assignedSpecialistLastName || ''}`.trim();
+    const specialistInitials = `${referral?.assignedSpecialistFirstName?.[0] || 'S'}${referral?.assignedSpecialistLastName?.[0] || 'p'}`;
+
     return (
       <View key={referralData.id} style={styles.referralCard}>
         <View style={styles.referralCardHeader}>
-          <View style={styles.referralIconContainer}>
-            <Text style={styles.referralCardIcon}>📋</Text>
+          <View style={styles.referralCardHeaderLeft}>
+            <View style={styles.referralIconContainer}>
+              <Text style={styles.referralCardIcon}>📋</Text>
+            </View>
+            {/* Medical History Button - Only show if referral is completed */}
+            {referral?.status === 'completed' && (
+              <TouchableOpacity
+                style={styles.medicalHistoryButton}
+                onPress={() => {
+                  console.log('🔍 MEDICAL HISTORY EYE ICON PRESSED!');
+                  console.log('Appointment being passed:', appointment);
+                  loadMedicalHistory(appointment, 'referral');
+                }}
+              >
+                <Eye size={16} color="#059669" />
+              </TouchableOpacity>
+            )}
           </View>
-                     <View style={styles.referralCardDetails}>
-             <Text style={styles.referralCardTitle}>Referral</Text>
-             <Text style={styles.referralCardSubtitle}>
-               {referral?.assignedSpecialistFirstName && referral?.assignedSpecialistLastName
-                 ? `${referral.assignedSpecialistFirstName} ${referral.assignedSpecialistLastName}`
-                 : 'Specialist'}
-             </Text>
-           </View>
-                     <View style={styles.referralStatusBadge}>
-             <Text style={styles.referralStatusText}>
-               {referral?.status === 'confirmed' ? 'Ready' :
-                referral?.status === 'pending' ? 'Pending' :
-                referral?.status === 'completed' ? 'Completed' :
-                referral?.status === 'canceled' ? 'Canceled' : 'Unknown'}
-             </Text>
-           </View>
+          <View style={styles.referralCardDetails}>
+            <Text style={styles.referralCardTitle}>Referral</Text>
+            <Text style={styles.referralCardSubtitle}>
+              {specialistName || 'Specialist'}
+            </Text>
+          </View>
+          <View style={styles.referralStatusBadge}>
+            <Text style={styles.referralStatusText}>
+              {referral?.status === 'accepted' ? 'Accepted' :
+               referral?.status === 'pending_acceptance' ? 'Pending' :
+               referral?.status === 'completed' ? 'Completed' :
+               referral?.status === 'declined' ? 'Declined' :
+               referral?.status === 'pending' ? 'Pending' :
+               referral?.status === 'confirmed' ? 'Confirmed' :
+               referral?.status === 'canceled' ? 'Canceled' : 'Unknown'}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.subtleDivider} />
+        <View style={styles.appointmentMeta}>
+          <View style={styles.metaRow}>
+            <Clock size={16} color="#6B7280" />
+            <Text style={styles.metaText}>
+              {formatDisplayDate(referral?.appointmentDate || '')} at {formatDisplayTime(referral?.appointmentTime || '')}
+            </Text>
+          </View>
+          <View style={styles.metaRow}>
+            <MapPin size={16} color="#6B7280" />
+            <Text style={styles.metaText}>
+              {referral?.referringClinicName || 'Clinic not specified'}
+            </Text>
+          </View>
+        </View>
 
-                 <View style={styles.referralCardDetails}>
-           {loading ? (
-             <Text style={styles.referralCardText}>Loading referral details...</Text>
-           ) : referral ? (
-             <>
-                               <View style={styles.keyValueRow}>
-                  <Text style={styles.label}>Reason:</Text>
-                  <Text style={styles.value}>
-                    {referral.initialReasonForReferral || 'Not specified'}
-                  </Text>
-                </View>
-                                 <View style={styles.keyValueRow}>
-                   <Text style={styles.label}>Clinic:</Text>
-                   <Text style={styles.value}>
-                     {referral.referringClinicName || 'Clinic not specified'}
-                   </Text>
-                 </View>
-                <View style={styles.keyValueRow}>
-                  <Text style={styles.label}>Date:</Text>
-                  <Text style={styles.value}>{formatDisplayDate(referral.appointmentDate)}</Text>
-                </View>
-                <View style={styles.keyValueRow}>
-                  <Text style={styles.label}>Time:</Text>
-                  <Text style={styles.value}>{formatDisplayTime(referral.appointmentTime)}</Text>
-                </View>
-             </>
-           ) : (
-             <Text style={styles.referralCardText}>Referral details not available</Text>
-           )}
-         </View>
+        {referral?.initialReasonForReferral && (
+          <View style={styles.notesSection}>
+            <Text style={styles.notesLabel}>Reason:</Text>
+            <Text style={styles.notesText}>{referral.initialReasonForReferral}</Text>
+          </View>
+        )}
 
         <View style={styles.referralCardActions}>
           <TouchableOpacity
@@ -363,59 +452,69 @@ export default function AppointmentsScreen() {
       }
     };
 
+    const doctorName = `${appointment.doctorFirstName || ''} ${appointment.doctorLastName || ''}`.trim();
+    const doctorInitials = `${appointment.doctorFirstName?.[0] || 'D'}${appointment.doctorLastName?.[0] || 'r'}`;
+
     return (
       <View key={appointment.id} style={styles.appointmentCard}>
         <View style={styles.appointmentHeader}>
           <View style={styles.doctorInfo}>
             <View style={styles.doctorAvatar}>
               <Text style={styles.doctorInitial}>
-                {(appointment.doctorFirstName || 'D').charAt(0) + (appointment.doctorLastName || 'octor').charAt(0)}
+                {doctorInitials}
               </Text>
             </View>
             <View style={styles.doctorDetails}>
               <Text style={styles.doctorName}>
-                {appointment.doctorFirstName && appointment.doctorLastName
-                  ? `${appointment.doctorFirstName} ${appointment.doctorLastName}`
-                  : 'Doctor not specified'
-                }
+                {doctorName || 'Doctor not specified'}
               </Text>
               <Text style={styles.doctorSpecialty}>
                 {appointment.specialty || 'General Practice'}
               </Text>
             </View>
           </View>
-          <View style={styles.statusBadge}>
-            {getStatusIcon(appointment.status)}
-            <Text style={styles.statusText}>{capitalize(appointment.status)}</Text>
+          <View style={styles.appointmentHeaderRight}>
+            {/* Medical History Button - Only show if appointment is completed */}
+            {isCompleted && (
+              <TouchableOpacity
+                style={styles.medicalHistoryButton}
+                onPress={() => {
+                  console.log('🔍 MEDICAL HISTORY BUTTON PRESSED (REGULAR APPOINTMENT)!');
+                  console.log('Appointment being passed:', appointment);
+                  loadMedicalHistory(appointment, 'appointment');
+                }}
+              >
+                <Eye size={16} color="#059669" />
+              </TouchableOpacity>
+            )}
+            <View style={styles.statusBadge}>
+              {getStatusIcon(appointment.status)}
+              <Text style={styles.statusText}>{capitalize(appointment.status)}</Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.subtleDivider} />
-
-        <View style={styles.appointmentDetails}>
-          <View style={styles.keyValueRow}>
-            <Text style={styles.label}>Clinic:</Text>
-            <Text style={styles.value}>
+        <View style={styles.appointmentMeta}>
+          <View style={styles.metaRow}>
+            <Clock size={16} color="#6B7280" />
+            <Text style={styles.metaText}>
+              {formatDisplayDate(appointment.appointmentDate)} at {formatDisplayTime(appointment.appointmentTime)}
+            </Text>
+          </View>
+          <View style={styles.metaRow}>
+            <MapPin size={16} color="#6B7280" />
+            <Text style={styles.metaText}>
               {appointment.clinicName || 'Clinic not specified'}
             </Text>
           </View>
-          <View style={styles.keyValueRow}>
-            <Text style={styles.label}>Date:</Text>
-            <Text style={styles.value}>{formatDisplayDate(appointment.appointmentDate)}</Text>
-          </View>
-          <View style={styles.keyValueRow}>
-            <Text style={styles.label}>Time:</Text>
-            <Text style={styles.value}>{formatDisplayTime(appointment.appointmentTime)}</Text>
-          </View>
-          {appointment.notes && (
-            <View style={styles.keyValueRow}>
-              <Text style={styles.label}>Notes:</Text>
-              <Text style={styles.value}>{appointment.notes}</Text>
-            </View>
-          )}
         </View>
 
-        
+        {appointment.notes && (
+          <View style={styles.notesSection}>
+            <Text style={styles.notesLabel}>Notes:</Text>
+            <Text style={styles.notesText}>{appointment.notes}</Text>
+          </View>
+        )}
 
         <View style={styles.appointmentActions}>
           {isCompleted ? (
@@ -434,7 +533,11 @@ export default function AppointmentsScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.secondaryButton}
-                onPress={() => loadMedicalHistory(appointment)}
+                onPress={() => {
+                  console.log('🔍 VIEW MEDICAL HISTORY BUTTON PRESSED!');
+                  console.log('Appointment being passed:', appointment);
+                  loadMedicalHistory(appointment, 'appointment');
+                }}
               >
                 <Text style={styles.secondaryButtonText}>View Medical History</Text>
               </TouchableOpacity>
@@ -451,7 +554,7 @@ export default function AppointmentsScreen() {
           ) : (
             <TouchableOpacity
               style={styles.secondaryButton}
-              onPress={() => {
+              onPress={ () => {
                 setModalAppointment(appointment);
                 setShowModal(true);
               }}
@@ -600,11 +703,36 @@ export default function AppointmentsScreen() {
       { label: "Purpose", value: referral?.initialReasonForReferral || 'Not specified' },
       { 
         label: "Status", 
-        value: a.status === 'confirmed' ? 'Ready' :
-               a.status === 'pending' ? 'Pending' :
-               a.status === 'completed' ? 'Completed' :
-               a.status === 'canceled' ? 'Canceled' : 
-               capitalize(a.status || 'Unknown')
+        value: (() => {
+          // Handle referral-specific statuses
+          if (isReferral && referral) {
+            switch (referral.status) {
+              case 'accepted':
+                return 'Accepted';
+              case 'pending_acceptance':
+                return 'Pending';
+              case 'completed':
+                return 'Completed';
+              case 'declined':
+                return 'Declined';
+              default:
+                return capitalize(referral.status || 'Unknown');
+            }
+          }
+          // Handle regular appointment statuses
+          switch (a.status) {
+            case 'confirmed':
+              return 'Confirmed';
+            case 'pending':
+              return 'Pending';
+            case 'completed':
+              return 'Completed';
+            case 'canceled':
+              return 'Canceled';
+            default:
+              return capitalize(a.status || 'Unknown');
+          }
+        })()
       },
     ] : [
       // Regular appointment fields
@@ -964,6 +1092,19 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
+  appointmentHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  medicalHistoryButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#D1FAE5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   doctorInfo: {
     flexDirection: 'row',
     flex: 1,
@@ -1076,6 +1217,37 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
+  },
+  // Appointment Meta Section
+  appointmentMeta: {
+    marginBottom: 12,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  metaText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+  // Notes Section
+  notesSection: {
+    marginBottom: 12,
+  },
+  notesLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  notesText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    lineHeight: 20,
   },
   emptyState: {
     alignItems: 'center',
@@ -1397,6 +1569,11 @@ feedbackModalButton: {
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12,
+  },
+  referralCardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   referralIconContainer: {
     width: 40,
