@@ -143,23 +143,24 @@ export default function SpecialistProfileScreen() {
 
   // Helper function to check if clinic has a valid address
   const hasValidAddress = (clinicData: any): boolean => {
-    // Check if address field exists and is not empty
-    const hasAddress = clinicData.address && 
-                      typeof clinicData.address === 'string' && 
-                      clinicData.address.trim().length > 0;
+    // Check for new address format (address, city, province)
+    const hasNewFormat = clinicData.address && 
+                        typeof clinicData.address === 'string' && 
+                        clinicData.address.trim().length > 0 &&
+                        clinicData.city && 
+                        typeof clinicData.city === 'string' && 
+                        clinicData.city.trim().length > 0 &&
+                        clinicData.province && 
+                        typeof clinicData.province === 'string' && 
+                        clinicData.province.trim().length > 0;
     
-    // Check if city field exists and is not empty
-    const hasCity = clinicData.city && 
-                   typeof clinicData.city === 'string' && 
-                   clinicData.city.trim().length > 0;
+    // Check for old address format (addressLine)
+    const hasOldFormat = clinicData.addressLine && 
+                        typeof clinicData.addressLine === 'string' && 
+                        clinicData.addressLine.trim().length > 0;
     
-    // Check if province field exists and is not empty
-    const hasProvince = clinicData.province && 
-                       typeof clinicData.province === 'string' && 
-                       clinicData.province.trim().length > 0;
-    
-    // Return true only if all address components are present and valid
-    return hasAddress && hasCity && hasProvince;
+    // Return true if either format is valid
+    return hasNewFormat || hasOldFormat;
   };
 
   const loadProfileData = async () => {

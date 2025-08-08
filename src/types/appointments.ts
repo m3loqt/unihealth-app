@@ -22,6 +22,8 @@ export interface Appointment {
   specialty: string;
   status: 'pending' | 'confirmed' | 'completed' | 'canceled';
   type: string;
+  consultationId?: string;
+  appointmentConsultationId?: string;
 }
 
 export interface CreateAppointmentData {
@@ -55,6 +57,8 @@ export interface Referral {
   assignedSpecialistId: string;
   assignedSpecialistLastName: string;
   clinicAppointmentId: string;
+  consultationId?: string;
+  referralConsultationId?: string;
   generalistNotes?: string;
   initialReasonForReferral: string;
   lastUpdated: string;
