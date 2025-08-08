@@ -69,6 +69,8 @@ interface Clinic {
   isActive: boolean;
   createdAt: number;
   updatedAt: number;
+  addressLine?: string; // Added for old format
+  hasGeneralistDoctors?: boolean; // Added to indicate if clinic has generalist doctors
 }
 
 export default function BookVisitScreen() {
@@ -98,8 +100,9 @@ export default function BookVisitScreen() {
 
   const filteredClinics = clinics.filter(clinic =>
     clinic.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    clinic.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    clinic.city.toLowerCase().includes(searchQuery.toLowerCase())
+    (clinic.address && clinic.address.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (clinic.city && clinic.city.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (clinic.addressLine && clinic.addressLine.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleClinicSelect = (clinic: Clinic) => {
@@ -131,6 +134,27 @@ export default function BookVisitScreen() {
       'medical_center': 'Medical Center',
     };
     return typeMap[type] || 'Clinic';
+  };
+
+  const formatClinicAddress = (clinic: Clinic) => {
+    // Check for new address format (address, city, province)
+    if (clinic.address && clinic.city && clinic.province) {
+      const parts = [
+        clinic.address,
+        clinic.city,
+        clinic.province,
+        clinic.zipCode
+      ].filter(Boolean);
+      return parts.join(', ');
+    }
+    
+    // Check for old address format (addressLine)
+    if (clinic.addressLine) {
+      return clinic.addressLine;
+    }
+    
+    // Fallback
+    return 'Address not available';
   };
 
   if (loading) {
@@ -241,7 +265,7 @@ export default function BookVisitScreen() {
                     <View style={styles.detailRow}>
                       <MapPin size={16} color="#6B7280" />
                       <Text style={styles.detailText}>
-                        {clinic.address}, {clinic.city}, {clinic.province} {clinic.zipCode}
+                        {formatClinicAddress(clinic)}
                       </Text>
                     </View>
                     
@@ -249,6 +273,14 @@ export default function BookVisitScreen() {
                       <Phone size={16} color="#6B7280" />
                       <Text style={styles.detailText}>{clinic.phone}</Text>
                     </View>
+                    
+                    {clinic.hasGeneralistDoctors === false && (
+                      <View style={styles.warningRow}>
+                        <Text style={styles.warningText}>
+                          ⚠️ No generalist doctors currently available
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </TouchableOpacity>
               );
@@ -384,6 +416,19 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginLeft: 8,
     flex: 1,
+  },
+  warningRow: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  warningText: {
+    fontSize: 13,
+    color: '#964B00',
+    fontWeight: '500',
   },
   emptyContainer: {
     alignItems: 'center',

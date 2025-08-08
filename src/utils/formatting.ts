@@ -249,9 +249,30 @@ export const formatDoctorInfo = (doctor: any): string => {
 export const formatClinicInfo = (clinic: any): string => {
   if (!clinic) return 'Clinic information not available';
   
+  let addressInfo = '';
+  
+  // Check for new address format (address, city, province)
+  if (clinic.address && clinic.city && clinic.province) {
+    const parts = [
+      clinic.address,
+      clinic.city,
+      clinic.province,
+      clinic.zipCode
+    ].filter(Boolean);
+    addressInfo = parts.join(', ');
+  }
+  // Check for old address format (addressLine)
+  else if (clinic.addressLine) {
+    addressInfo = clinic.addressLine;
+  }
+  // Check for single address field
+  else if (clinic.address) {
+    addressInfo = formatAddress(clinic.address);
+  }
+  
   const parts = [
     clinic.name,
-    clinic.address ? formatAddress(clinic.address) : '',
+    addressInfo
   ].filter(Boolean);
   
   return parts.join(' • ');

@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
   Animated,
+  Modal,
 } from 'react-native';
 import {
   ChevronLeft,
@@ -21,15 +22,23 @@ import {
   Trash2,
   Pill,
   FileText,
+  Eye,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useVoiceToText } from '../../src/hooks/useVoiceToText';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService } from '../../src/services/database/firebase';
+import { ref, update } from 'firebase/database';
+import { database } from '@/config/firebase';
 
 export default function PatientConsultationScreen() {
-  const { patientId, consultationId } = useLocalSearchParams();
+  const { patientId, consultationId, referralId } = useLocalSearchParams();
   const { user } = useAuth();
+  
+  // Convert consultationId to string if it's an array
+  const consultationIdString = Array.isArray(consultationId) ? consultationId[0] : consultationId;
+  // Convert referralId to string if it's an array
+  const referralIdString = Array.isArray(referralId) ? referralId[0] : referralId;
 
   // Voice-to-text hook
   const {
@@ -79,44 +88,86 @@ export default function PatientConsultationScreen() {
 
   // Load consultation data from Firebase
   useEffect(() => {
-    if (consultationId) {
+    if (consultationIdString || referralIdString) {
       loadConsultationData();
     }
-  }, [consultationId]);
+  }, [consultationIdString, referralIdString]);
 
   const loadConsultationData = async () => {
-    if (!consultationId) return;
+    if (!consultationIdString && !referralIdString) return;
     
     try {
-      const consultation = await databaseService.getAppointmentById(consultationId as string);
-      if (consultation) {
-        setFormData({
-          diagnosis: consultation.diagnosis || '',
-          differentialDiagnosis: consultation.differentialDiagnosis || '',
-          reviewOfSymptoms: consultation.reviewOfSymptoms || '',
-          presentIllnessHistory: consultation.presentIllnessHistory || '',
-          subjective: consultation.soapNotes?.subjective || '',
-          objective: consultation.soapNotes?.objective || '',
-          assessment: consultation.soapNotes?.assessment || '',
-          plan: consultation.soapNotes?.plan || '',
-          labResults: consultation.labResults || '',
-          allergies: consultation.allergies || '',
-          medications: consultation.medications || '',
-          vitals: consultation.vitals || '',
-          prescriptions: consultation.prescriptions || [],
-          certificates: consultation.certificates || [],
-        });
+      let consultation = null;
+      let referral = null;
+      
+      // If we have a referralId, try to load referral data first
+      if (referralIdString) {
+        try {
+          referral = await databaseService.getReferralById(referralIdString as string);
+          console.log('Loaded referral data:', referral);
+          setReferralData(referral);
+        } catch (error) {
+          console.log('Error loading referral data:', error);
+        }
       }
+      
+      // Try to load consultation/appointment data
+      if (consultationIdString) {
+        try {
+          consultation = await databaseService.getAppointmentById(consultationIdString as string);
+          console.log('Loaded consultation data:', consultation);
+          setAppointmentData(consultation);
+        } catch (error) {
+          console.log('Error loading consultation data:', error);
+        }
+      }
+      
+      // Check if appointment or referral is completed
+      const checkCompletionStatus = () => {
+        if (referral && referral.status === 'completed') {
+          setIsCompleted(true);
+          return;
+        }
+        if (consultation && consultation.status === 'completed') {
+          setIsCompleted(true);
+          return;
+        }
+        setIsCompleted(false);
+      };
+      
+      checkCompletionStatus();
+      
+      // Also try to get medical history for this appointment
+      let medicalHistory = null;
+      if (patientId && consultationIdString) {
+        try {
+          medicalHistory = await databaseService.getMedicalHistoryByAppointment(consultationIdString as string, patientId as string);
+        } catch (error) {
+          console.log('No medical history found for this appointment:', error);
+        }
+      }
+
+      setFormData({
+        diagnosis: medicalHistory?.diagnosis?.[0]?.description || '',
+        differentialDiagnosis: medicalHistory?.differentialDiagnosis || '',
+        reviewOfSymptoms: medicalHistory?.reviewOfSymptoms || referral?.initialReasonForReferral || '',
+        presentIllnessHistory: medicalHistory?.presentIllnessHistory || '',
+        subjective: medicalHistory?.soapNotes?.subjective || '',
+        objective: medicalHistory?.soapNotes?.objective || '',
+        assessment: medicalHistory?.soapNotes?.assessment || '',
+        plan: medicalHistory?.soapNotes?.plan || '',
+        labResults: medicalHistory?.labResults || '',
+        allergies: medicalHistory?.allergies || '',
+        medications: medicalHistory?.medications || '',
+        vitals: medicalHistory?.vitals || '',
+        prescriptions: medicalHistory?.prescriptions || [],
+        certificates: medicalHistory?.certificates || [],
+      });
     } catch (error) {
       console.error('Error loading consultation data:', error);
       Alert.alert('Error', 'Failed to load consultation data. Please try again.');
     }
   };
-
-  // Debug: Log form data changes
-  useEffect(() => {
-    console.log('Patient Consultation - Form data updated:', formData);
-  }, [formData]);
 
   // UI state
   const [activeField, setActiveField] = useState<string | null>(null);
@@ -137,6 +188,33 @@ export default function PatientConsultationScreen() {
     validUntil: '',
     restrictions: '',
   });
+
+  // Medical History Modal State
+  const [showMedicalHistoryModal, setShowMedicalHistoryModal] = useState(false);
+  const [medicalHistory, setMedicalHistory] = useState<any>(null);
+  const [loadingMedicalHistory, setLoadingMedicalHistory] = useState(false);
+
+  // Add state for appointment and referral data
+  const [appointmentData, setAppointmentData] = useState<any>(null);
+  const [referralData, setReferralData] = useState<any>(null);
+  const [isCompleted, setIsCompleted] = useState(false);
+
+  // Update completion status when appointment or referral data changes
+  useEffect(() => {
+    const checkCompletionStatus = () => {
+      if (referralData && referralData.status === 'completed') {
+        setIsCompleted(true);
+        return;
+      }
+      if (appointmentData && appointmentData.status === 'completed') {
+        setIsCompleted(true);
+        return;
+      }
+      setIsCompleted(false);
+    };
+    
+    checkCompletionStatus();
+  }, [appointmentData, referralData]);
 
   // Animation for pulsing mic
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -437,34 +515,148 @@ export default function PatientConsultationScreen() {
     );
   };
 
-  // --- SAVE & COMPLETE ---
-  const handleSaveChanges = async () => {
-    if (!consultationId) {
-      Alert.alert('Error', 'No consultation ID found.');
+  // --- LOAD MEDICAL HISTORY ---
+  const loadMedicalHistory = async () => {
+    if (!patientId) {
+      Alert.alert('Error', 'No patient ID found.');
       return;
     }
 
     try {
-      // Save consultation data to Firebase
-      await databaseService.updateAppointment(consultationId as string, {
-        diagnosis: formData.diagnosis,
-        differentialDiagnosis: formData.differentialDiagnosis,
-        reviewOfSymptoms: formData.reviewOfSymptoms,
-        presentIllnessHistory: formData.presentIllnessHistory,
-        soapNotes: {
-          subjective: formData.subjective,
-          objective: formData.objective,
-          assessment: formData.assessment,
-          plan: formData.plan,
-        },
-        labResults: formData.labResults,
-        allergies: formData.allergies,
-        medications: formData.medications,
-        vitals: formData.vitals,
-        prescriptions: formData.prescriptions,
-        certificates: formData.certificates,
-        lastUpdated: new Date().toISOString(),
-      });
+      setLoadingMedicalHistory(true);
+      setShowMedicalHistoryModal(true);
+      
+      // Get the actual patientId string value
+      const patientIdString = Array.isArray(patientId) ? patientId[0] : patientId;
+      
+      // Determine the correct consultationId to use
+      let consultationIdToUse = '';
+      
+      if (referralData && referralData.status === 'completed' && referralData.consultationId) {
+        // Use consultationId from completed referral
+        consultationIdToUse = referralData.consultationId;
+      } else if (appointmentData && appointmentData.status === 'completed' && appointmentData.consultationId) {
+        // Use consultationId from completed appointment
+        consultationIdToUse = appointmentData.consultationId;
+      } else {
+        // Fallback to the original consultationIdString
+        consultationIdToUse = (consultationIdString as string) || `consultation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+      
+      console.log('Loading medical history for patientId:', patientIdString);
+      console.log('Looking for consultationId:', consultationIdToUse);
+      
+      // Try to get medical history from the specific consultation
+      const medicalHistoryPath = `patientMedicalHistory/${patientIdString}/entries/${consultationIdToUse}`;
+      const history = await databaseService.getDocument(medicalHistoryPath);
+      
+      if (history) {
+        console.log('Found medical history:', history);
+        setMedicalHistory(history);
+      } else {
+        console.log('No medical history found for this consultation');
+        setMedicalHistory(null);
+      }
+    } catch (error) {
+      console.error('Error loading medical history:', error);
+      Alert.alert('Error', 'Failed to load medical history. Please try again.');
+      setShowMedicalHistoryModal(false);
+    } finally {
+      setLoadingMedicalHistory(false);
+    }
+  };
+
+  // --- SAVE & COMPLETE ---
+  const handleSaveChanges = async () => {
+    if (!patientId) {
+      Alert.alert('Error', 'No patient ID found.');
+      return;
+    }
+
+    try {
+      // Use existing consultationId or generate a new one using Firebase push key
+      let consultationIdToUse = consultationIdString as string;
+      
+      if (!consultationIdToUse) {
+        // Generate a new consultationId using Firebase push key
+        const medicalHistoryData = {
+          diagnosis: formData.diagnosis ? [{ code: 'DIAG001', description: formData.diagnosis }] : [],
+          differentialDiagnosis: formData.differentialDiagnosis,
+          reviewOfSymptoms: formData.reviewOfSymptoms,
+          presentIllnessHistory: formData.presentIllnessHistory,
+          soapNotes: {
+            subjective: formData.subjective,
+            objective: formData.objective,
+            assessment: formData.assessment,
+            plan: formData.plan,
+          },
+          labResults: formData.labResults,
+          allergies: formData.allergies,
+          medications: formData.medications,
+          vitals: formData.vitals,
+          prescriptions: formData.prescriptions,
+          certificates: formData.certificates,
+          consultationDate: new Date().toISOString(),
+          consultationTime: new Date().toLocaleTimeString(),
+          patientId: patientId as string,
+          provider: {
+            id: user?.uid || '',
+            firstName: user?.name?.split(' ')[0] || '',
+            lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+            providerType: 'specialist',
+            sourceSystem: 'unihealth',
+          },
+          type: 'consultation',
+          clinicalSummary: formData.diagnosis,
+          treatmentPlan: formData.plan,
+        };
+
+        // Use Firebase push to generate the consultationId
+        consultationIdToUse = await databaseService.pushDocument(`patientMedicalHistory/${patientId}/entries`, medicalHistoryData);
+        console.log('Generated consultationId using Firebase push key:', consultationIdToUse);
+      } else {
+        // Save consultation data to medical history with existing consultationId
+        const medicalHistoryData = {
+          diagnosis: formData.diagnosis ? [{ code: 'DIAG001', description: formData.diagnosis }] : [],
+          differentialDiagnosis: formData.differentialDiagnosis,
+          reviewOfSymptoms: formData.reviewOfSymptoms,
+          presentIllnessHistory: formData.presentIllnessHistory,
+          soapNotes: {
+            subjective: formData.subjective,
+            objective: formData.objective,
+            assessment: formData.assessment,
+            plan: formData.plan,
+          },
+          labResults: formData.labResults,
+          allergies: formData.allergies,
+          medications: formData.medications,
+          vitals: formData.vitals,
+          prescriptions: formData.prescriptions,
+          certificates: formData.certificates,
+          consultationDate: new Date().toISOString(),
+          consultationTime: new Date().toLocaleTimeString(),
+          patientId: patientId as string,
+          provider: {
+            id: user?.uid || '',
+            firstName: user?.name?.split(' ')[0] || '',
+            lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+            providerType: 'specialist',
+            sourceSystem: 'unihealth',
+          },
+          relatedAppointment: {
+            id: consultationIdToUse,
+            type: 'consultation',
+          },
+          type: 'consultation',
+          clinicalSummary: formData.diagnosis,
+          treatmentPlan: formData.plan,
+          lastUpdated: new Date().toISOString(),
+        };
+
+        // Save to medical history
+        const medicalHistoryPath = `patientMedicalHistory/${patientId}/entries/${consultationIdToUse}`;
+        await databaseService.setDocument(medicalHistoryPath, medicalHistoryData);
+      }
 
       Alert.alert('Success', 'Changes saved successfully!');
       setHasChanges(false);
@@ -475,10 +667,22 @@ export default function PatientConsultationScreen() {
   };
 
   const handleCompleteConsultation = async () => {
-    if (!consultationId) {
-      Alert.alert('Error', 'No consultation ID found.');
+    // Debug: Log patientId being fetched
+    console.log('=== DEBUG: Patient ID Check ===');
+    console.log('patientId from useLocalSearchParams:', patientId);
+    console.log('patientId type:', typeof patientId);
+    console.log('patientId is array:', Array.isArray(patientId));
+    console.log('patientId string value:', Array.isArray(patientId) ? patientId[0] : patientId);
+    console.log('================================');
+
+    if (!patientId) {
+      Alert.alert('Error', 'No patient ID found.');
       return;
     }
+
+    // Get the actual patientId string value
+    const patientIdString = Array.isArray(patientId) ? patientId[0] : patientId;
+    console.log('Using patientIdString:', patientIdString);
 
     Alert.alert(
       'Complete Consultation',
@@ -490,35 +694,219 @@ export default function PatientConsultationScreen() {
           style: 'default',
           onPress: async () => {
             try {
-              // Complete consultation and save to Firebase
-              await databaseService.updateAppointment(consultationId as string, {
-                status: 'completed',
-                diagnosis: formData.diagnosis,
-                differentialDiagnosis: formData.differentialDiagnosis,
-                reviewOfSymptoms: formData.reviewOfSymptoms,
-                presentIllnessHistory: formData.presentIllnessHistory,
-                soapNotes: {
-                  subjective: formData.subjective,
-                  objective: formData.objective,
-                  assessment: formData.assessment,
-                  plan: formData.plan,
-                },
-                labResults: formData.labResults,
-                allergies: formData.allergies,
-                medications: formData.medications,
-                vitals: formData.vitals,
-                prescriptions: formData.prescriptions,
-                certificates: formData.certificates,
-                completedAt: new Date().toISOString(),
-                lastUpdated: new Date().toISOString(),
-              });
+              // Generate a unique consultationId for this specific consultation
+              let consultationIdToUse = consultationIdString as string;
+              
+              if (!consultationIdToUse) {
+                // Generate a new consultationId using Firebase push key
+                const medicalHistoryData = {
+                  diagnosis: formData.diagnosis ? [{ code: 'DIAG001', description: formData.diagnosis }] : [],
+                  differentialDiagnosis: formData.differentialDiagnosis,
+                  reviewOfSymptoms: formData.reviewOfSymptoms,
+                  presentIllnessHistory: formData.presentIllnessHistory,
+                  soapNotes: {
+                    subjective: formData.subjective,
+                    objective: formData.objective,
+                    assessment: formData.assessment,
+                    plan: formData.plan,
+                  },
+                  labResults: formData.labResults,
+                  allergies: formData.allergies,
+                  medications: formData.medications,
+                  vitals: formData.vitals,
+                  prescriptions: formData.prescriptions,
+                  certificates: formData.certificates,
+                  consultationDate: new Date().toISOString(),
+                  consultationTime: new Date().toLocaleTimeString(),
+                  patientId: patientIdString,
+                  provider: {
+                    id: user?.uid || '',
+                    firstName: user?.name?.split(' ')[0] || '',
+                    lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+                    providerType: 'specialist',
+                    sourceSystem: 'unihealth',
+                  },
+                  type: 'consultation',
+                  clinicalSummary: formData.diagnosis,
+                  treatmentPlan: formData.plan,
+                };
+
+                // Use Firebase push to generate the consultationId
+                consultationIdToUse = await databaseService.pushDocument(`patientMedicalHistory/${patientIdString}/entries`, medicalHistoryData);
+                console.log('Generated consultationId using Firebase push key:', consultationIdToUse);
+              } else {
+                console.log('Using existing consultationId:', consultationIdToUse);
+              }
+              
+              // Step 1: ALWAYS handle the original appointment first (generalist always makes a diagnosis)
+              // If consultationIdString exists, it's the original appointment that needs appointmentConsultationId
+              if (consultationIdString) {
+                // Check if this is a referral by looking it up
+                try {
+                  const referral = await databaseService.getReferralById(consultationIdString as string);
+                  if (referral) {
+                    // This is a referral, but we still need to handle the original appointment
+                    // The original appointment should have appointmentConsultationId set
+                    console.log('Found referral, but original appointment still needs appointmentConsultationId');
+                  }
+                } catch (error) {
+                  console.log('Error checking referral/appointment:', error);
+                }
+                
+                // ALWAYS generate appointmentConsultationId for the original appointment
+                let appointmentConsultationId = consultationIdToUse;
+                if (!appointmentConsultationId) {
+                  const medicalHistoryData = {
+                    diagnosis: formData.diagnosis ? [{ code: 'DIAG001', description: formData.diagnosis }] : [],
+                    differentialDiagnosis: formData.differentialDiagnosis,
+                    reviewOfSymptoms: formData.reviewOfSymptoms,
+                    presentIllnessHistory: formData.presentIllnessHistory,
+                    soapNotes: {
+                      subjective: formData.subjective,
+                      objective: formData.objective,
+                      assessment: formData.assessment,
+                      plan: formData.plan,
+                    },
+                    labResults: formData.labResults,
+                    allergies: formData.allergies,
+                    medications: formData.medications,
+                    vitals: formData.vitals,
+                    prescriptions: formData.prescriptions,
+                    certificates: formData.certificates,
+                    consultationDate: new Date().toISOString(),
+                    consultationTime: new Date().toLocaleTimeString(),
+                    patientId: patientIdString,
+                    provider: {
+                      id: user?.uid || '',
+                      firstName: user?.name?.split(' ')[0] || '',
+                      lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+                      providerType: 'specialist',
+                      sourceSystem: 'unihealth',
+                    },
+                    type: 'consultation',
+                    clinicalSummary: formData.diagnosis,
+                    treatmentPlan: formData.plan,
+                  };
+                  appointmentConsultationId = await databaseService.pushDocument(`patientMedicalHistory/${patientIdString}/entries`, medicalHistoryData);
+                  console.log('Generated appointmentConsultationId using Firebase push key:', appointmentConsultationId);
+                }
+                
+                console.log('Updating appointment status to completed with appointmentConsultationId:', appointmentConsultationId);
+                await databaseService.updateAppointment(consultationIdString as string, {
+                  status: 'completed',
+                  appointmentConsultationId: appointmentConsultationId,
+                });
+                console.log('Appointment status updated successfully');
+              }
+
+              // Step 2: If there's also a referral being created, handle it separately
+              if (referralIdString) {
+                // Generate a separate referralConsultationId for the referral
+                let referralConsultationId = null;
+                const medicalHistoryData = {
+                  diagnosis: formData.diagnosis ? [{ code: 'DIAG001', description: formData.diagnosis }] : [],
+                  differentialDiagnosis: formData.differentialDiagnosis,
+                  reviewOfSymptoms: formData.reviewOfSymptoms,
+                  presentIllnessHistory: formData.presentIllnessHistory,
+                  soapNotes: {
+                    subjective: formData.subjective,
+                    objective: formData.objective,
+                    assessment: formData.assessment,
+                    plan: formData.plan,
+                  },
+                  labResults: formData.labResults,
+                  allergies: formData.allergies,
+                  medications: formData.medications,
+                  vitals: formData.vitals,
+                  prescriptions: formData.prescriptions,
+                  certificates: formData.certificates,
+                  consultationDate: new Date().toISOString(),
+                  consultationTime: new Date().toLocaleTimeString(),
+                  patientId: patientIdString,
+                  provider: {
+                    id: user?.uid || '',
+                    firstName: user?.name?.split(' ')[0] || '',
+                    lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+                    providerType: 'specialist',
+                    sourceSystem: 'unihealth',
+                  },
+                  type: 'consultation',
+                  clinicalSummary: formData.diagnosis,
+                  treatmentPlan: formData.plan,
+                };
+                referralConsultationId = await databaseService.pushDocument(`patientMedicalHistory/${patientIdString}/entries`, medicalHistoryData);
+                console.log('Generated referralConsultationId using Firebase push key:', referralConsultationId);
+                
+                console.log('Updating referral status to completed with referralConsultationId:', referralConsultationId);
+                const referralRef = ref(database, `referrals/${referralIdString}`);
+                await update(referralRef, {
+                  status: 'completed',
+                  referralConsultationId: referralConsultationId,
+                  lastUpdated: new Date().toISOString(),
+                });
+                console.log('Referral status updated successfully');
+              }
+
+              // Step 2: If we didn't already save the medical history data (when consultationIdToUse was generated),
+              // save it now with the existing consultationId
+              if (consultationIdString) {
+                console.log('=== DEBUG: Medical History Data ===');
+                console.log('Using patientIdString for medical history:', patientIdString);
+                console.log('consultationIdToUse:', consultationIdToUse);
+                
+                const medicalHistoryData = {
+                  diagnosis: formData.diagnosis ? [{ code: 'DIAG001', description: formData.diagnosis }] : [],
+                  differentialDiagnosis: formData.differentialDiagnosis,
+                  reviewOfSymptoms: formData.reviewOfSymptoms,
+                  presentIllnessHistory: formData.presentIllnessHistory,
+                  soapNotes: {
+                    subjective: formData.subjective,
+                    objective: formData.objective,
+                    assessment: formData.assessment,
+                    plan: formData.plan,
+                  },
+                  labResults: formData.labResults,
+                  allergies: formData.allergies,
+                  medications: formData.medications,
+                  vitals: formData.vitals,
+                  prescriptions: formData.prescriptions,
+                  certificates: formData.certificates,
+                  consultationDate: new Date().toISOString(),
+                  consultationTime: new Date().toLocaleTimeString(),
+                  patientId: patientIdString,
+                  provider: {
+                    id: user?.uid || '',
+                    firstName: user?.name?.split(' ')[0] || '',
+                    lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+                    providerType: 'specialist',
+                    sourceSystem: 'unihealth',
+                  },
+                  relatedAppointment: {
+                    id: consultationIdToUse,
+                    type: 'consultation',
+                  },
+                  type: 'consultation',
+                  clinicalSummary: formData.diagnosis,
+                  treatmentPlan: formData.plan,
+                  lastUpdated: new Date().toISOString(),
+                  createdAt: new Date().toISOString(),
+                };
+
+                // Save to patientMedicalHistory node with the existing consultationId
+                const medicalHistoryPath = `patientMedicalHistory/${patientIdString}/entries/${consultationIdToUse}`;
+                console.log('Saving consultation data to path:', medicalHistoryPath);
+                console.log('Medical history data keys:', Object.keys(medicalHistoryData));
+                await databaseService.setDocument(medicalHistoryPath, medicalHistoryData);
+                console.log('Consultation data saved to medical history successfully');
+                console.log('================================');
+              }
 
               Alert.alert('Success', 'Consultation completed successfully!', [
                 {
                   text: 'OK',
                   onPress: () => {
                     try {
-                      router.push('/(specialist)/tabs/patients?filter=completed');
+                      router.push('/(specialist)/tabs/appointments?filter=completed');
                     } catch (navError) {
                       console.error('Navigation error:', navError);
                       router.back();
@@ -550,7 +938,6 @@ export default function PatientConsultationScreen() {
           textAlignVertical={multiline ? 'top' : 'center'}
           placeholder={`Enter ${label.toLowerCase()}...`}
           placeholderTextColor="#9CA3AF"
-          key={`${field}-${formData[field as keyof typeof formData]}`} // Force re-render when value changes
         />
         <TouchableOpacity
           style={[
@@ -654,7 +1041,17 @@ export default function PatientConsultationScreen() {
           <ChevronLeft size={24} color="#1E40AF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Patient Consultation</Text>
-        <View style={styles.headerSpacer} />
+        <View style={styles.headerActions}>
+          {/* View Medical History Button - Only show if appointment/referral is completed */}
+          {isCompleted && (consultationIdString || referralIdString) && (
+            <TouchableOpacity
+              style={styles.viewHistoryButton}
+              onPress={loadMedicalHistory}
+            >
+              <Eye size={20} color="#1E40AF" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <ScrollView
@@ -958,6 +1355,215 @@ export default function PatientConsultationScreen() {
           <Text style={styles.completeButtonText}>Complete Consultation</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Medical History Modal */}
+      <Modal
+        visible={showMedicalHistoryModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowMedicalHistoryModal(false)}
+      >
+        <SafeAreaView style={styles.medicalHistoryModalContainer}>
+          <StatusBar barStyle="dark-content" />
+          
+          {/* Header */}
+          <View style={styles.medicalHistoryModalHeader}>
+            <TouchableOpacity
+              style={styles.medicalHistoryModalBackButton}
+              onPress={() => setShowMedicalHistoryModal(false)}
+            >
+              <Text style={styles.medicalHistoryModalBackText}>← Back</Text>
+            </TouchableOpacity>
+            <Text style={styles.medicalHistoryModalTitle}>Medical History</Text>
+            <View style={styles.medicalHistoryModalSpacer} />
+          </View>
+
+          {/* Content */}
+          <ScrollView 
+            style={styles.medicalHistoryModalContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {loadingMedicalHistory ? (
+              <View style={styles.medicalHistoryLoadingContainer}>
+                <Text style={styles.medicalHistoryLoadingText}>Loading medical history...</Text>
+              </View>
+            ) : medicalHistory ? (
+              <View style={styles.medicalHistoryContent}>
+                {/* Clinical Summary */}
+                <View style={styles.medicalHistorySection}>
+                  <Text style={styles.medicalHistorySectionTitle}>Clinical Summary</Text>
+                  <View style={styles.medicalHistoryCard}>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Diagnosis:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.diagnosis && medicalHistory.diagnosis.length > 0 
+                          ? medicalHistory.diagnosis[0].description 
+                          : 'Not specified'}
+                      </Text>
+                    </View>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Differential Diagnosis:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.differentialDiagnosis || 'Not specified'}
+                      </Text>
+                    </View>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Clinical Summary:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.clinicalSummary || 'Not specified'}
+                      </Text>
+                    </View>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Treatment Plan:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.treatmentPlan || 'Not specified'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* SOAP Notes */}
+                <View style={styles.medicalHistorySection}>
+                  <Text style={styles.medicalHistorySectionTitle}>SOAP Notes</Text>
+                  <View style={styles.medicalHistoryCard}>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Subjective:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.soapNotes?.subjective || 'Not specified'}
+                      </Text>
+                    </View>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Objective:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.soapNotes?.objective || 'Not specified'}
+                      </Text>
+                    </View>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Assessment:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.soapNotes?.assessment || 'Not specified'}
+                      </Text>
+                    </View>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Plan:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.soapNotes?.plan || 'Not specified'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Additional Information */}
+                <View style={styles.medicalHistorySection}>
+                  <Text style={styles.medicalHistorySectionTitle}>Additional Information</Text>
+                  <View style={styles.medicalHistoryCard}>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Lab Results:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.labResults || 'Not specified'}
+                      </Text>
+                    </View>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Allergies:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.allergies || 'Not specified'}
+                      </Text>
+                    </View>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Vitals:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.vitals || 'Not specified'}
+                      </Text>
+                    </View>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Medications:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.medications || 'Not specified'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Prescriptions */}
+                {medicalHistory.prescriptions && medicalHistory.prescriptions.length > 0 && (
+                  <View style={styles.medicalHistorySection}>
+                    <Text style={styles.medicalHistorySectionTitle}>Prescriptions</Text>
+                    <View style={styles.medicalHistoryCard}>
+                      {medicalHistory.prescriptions.map((prescription: any, index: number) => (
+                        <View key={index} style={styles.prescriptionItem}>
+                          <Text style={styles.prescriptionMedication}>{prescription.medication}</Text>
+                          <Text style={styles.prescriptionDetailsText}>
+                            {prescription.dosage} • {prescription.frequency}
+                          </Text>
+                          {prescription.description && (
+                            <Text style={styles.prescriptionDescriptionText}>{prescription.description}</Text>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Certificates */}
+                {medicalHistory.certificates && medicalHistory.certificates.length > 0 && (
+                  <View style={styles.medicalHistorySection}>
+                    <Text style={styles.medicalHistorySectionTitle}>Medical Certificates</Text>
+                    <View style={styles.medicalHistoryCard}>
+                      {medicalHistory.certificates.map((certificate: any, index: number) => (
+                        <View key={index} style={styles.certificateItem}>
+                          <Text style={styles.certificateTypeText}>{certificate.type}</Text>
+                          <Text style={styles.certificateDescriptionText}>{certificate.description}</Text>
+                          {certificate.validUntil && (
+                            <Text style={styles.certificateValidUntil}>Valid until: {certificate.validUntil}</Text>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Consultation Details */}
+                <View style={styles.medicalHistorySection}>
+                  <Text style={styles.medicalHistorySectionTitle}>Consultation Details</Text>
+                  <View style={styles.medicalHistoryCard}>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Consultation Date:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {new Date(medicalHistory.consultationDate).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Consultation Time:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {medicalHistory.consultationTime}
+                      </Text>
+                    </View>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Provider:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        Dr. {medicalHistory.provider?.firstName} {medicalHistory.provider?.lastName}
+                      </Text>
+                    </View>
+                    <View style={styles.medicalHistoryField}>
+                      <Text style={styles.medicalHistoryFieldLabel}>Last Updated:</Text>
+                      <Text style={styles.medicalHistoryFieldValue}>
+                        {new Date(medicalHistory.lastUpdated).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.medicalHistoryEmptyContainer}>
+                <Text style={styles.medicalHistoryEmptyTitle}>No Medical History Available</Text>
+                <Text style={styles.medicalHistoryEmptyText}>
+                  Medical history for this consultation has not been recorded yet.
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -994,6 +1600,21 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 40,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  viewHistoryButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
   scrollView: {
     flex: 1,
@@ -1374,6 +1995,157 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#1E40AF',
+  },
+  // Medical History Modal Styles
+  medicalHistoryModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  medicalHistoryModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  medicalHistoryModalBackButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  medicalHistoryModalBackText: {
+    fontSize: 16,
+    color: '#1E40AF',
+    fontFamily: 'Inter-SemiBold',
+  },
+  medicalHistoryModalTitle: {
+    fontSize: 18,
+    color: '#1F2937',
+    fontFamily: 'Inter-Bold',
+    textAlign: 'center',
+    flex: 1,
+  },
+  medicalHistoryModalSpacer: {
+    width: 60,
+  },
+  medicalHistoryModalContent: {
+    flex: 1,
+  },
+  medicalHistoryLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  medicalHistoryLoadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  medicalHistoryContent: {
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+  },
+  medicalHistorySection: {
+    marginBottom: 24,
+  },
+  medicalHistorySectionTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  medicalHistoryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  medicalHistoryField: {
+    marginBottom: 12,
+  },
+  medicalHistoryFieldLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  medicalHistoryFieldValue: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    lineHeight: 20,
+  },
+  prescriptionItem: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  prescriptionMedication: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  prescriptionDetailsText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  prescriptionDescriptionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  certificateItem: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  certificateTypeText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  certificateDescriptionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  certificateValidUntil: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+  },
+  medicalHistoryEmptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 60,
+  },
+  medicalHistoryEmptyTitle: {
+    fontSize: 18,
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  medicalHistoryEmptyText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 

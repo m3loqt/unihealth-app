@@ -35,6 +35,7 @@ import {
   Mail,
   MapPin,
   Pill,
+  Heart,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { getGreeting } from '../../../src/utils/greeting';
@@ -101,20 +102,30 @@ export default function SpecialistHomeScreen() {
         appointments,
         pendingAppointments,
         completedAppointments,
-        allAppointments
+        allAppointments,
+        referrals,
+        pendingReferrals
       ] = await Promise.all([
         databaseService.getPatientsBySpecialist(user.uid),
         databaseService.getAppointmentsBySpecialist(user.uid),
         databaseService.getAppointmentsBySpecialistAndStatus(user.uid, 'pending'),
         databaseService.getAppointmentsBySpecialistAndStatus(user.uid, 'completed'),
-        databaseService.getAppointmentsBySpecialist(user.uid)
+        databaseService.getAppointmentsBySpecialist(user.uid),
+        databaseService.getReferralsBySpecialist(user.uid),
+        databaseService.getReferralsBySpecialistAndStatus(user.uid, 'pending_acceptance')
       ]);
 
-      // Calculate today's appointments
+      // Calculate today's appointments (including referrals)
       const today = new Date().toDateString();
       const todayAppointments = appointments.filter(apt => 
         new Date(apt.appointmentDate).toDateString() === today
       );
+      
+      // Add today's referrals to appointments count
+      const todayReferrals = referrals.filter(ref => 
+        new Date(ref.appointmentDate).toDateString() === today
+      );
+      const totalTodayAppointments = todayAppointments.length + todayReferrals.length;
 
       // Calculate completed today
       const completedToday = completedAppointments.filter(apt => 
@@ -146,6 +157,32 @@ export default function SpecialistHomeScreen() {
       });
 
       // Calculate patient growth (new patients this month vs last month)
+      // Include patients from both appointments and referrals
+      const allPatientIds = new Set();
+      
+      // Add patients from appointments
+      appointments.forEach(apt => {
+        if (apt.patientId) {
+          allPatientIds.add(apt.patientId);
+        }
+      });
+      
+      // Add patients from referrals
+      referrals.forEach(ref => {
+        if (ref.patientId) {
+          allPatientIds.add(ref.patientId);
+        }
+      });
+      
+      // Add patients from the patients list
+      patients.forEach(patient => {
+        if (patient.id) {
+          allPatientIds.add(patient.id);
+        }
+      });
+
+      const totalPatients = allPatientIds.size;
+
       const currentMonthPatients = patients.filter(patient => {
         if (!patient.createdAt) return false;
         const patientDate = new Date(patient.createdAt);
@@ -163,9 +200,20 @@ export default function SpecialistHomeScreen() {
       const appointmentGrowth = currentMonthAppointments.length - lastMonthAppointments.length;
       const completedGrowth = completedToday.length - yesterdayCompleted.length;
 
-      // Get next 3 appointments
+      // Get next 3 appointments (including referrals)
       const upcomingAppointments = appointments
         .filter(apt => apt.status === 'confirmed')
+        .sort((a, b) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime())
+        .slice(0, 3);
+
+      // Get upcoming referrals
+      const upcomingReferrals = referrals
+        .filter(ref => ref.status === 'accepted' || ref.status === 'pending_acceptance')
+        .sort((a, b) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime())
+        .slice(0, 3);
+
+      // Combine appointments and referrals for display
+      const allUpcoming = [...upcomingAppointments, ...upcomingReferrals]
         .sort((a, b) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime())
         .slice(0, 3);
 
@@ -175,9 +223,9 @@ export default function SpecialistHomeScreen() {
         .slice(0, 3);
 
       setDashboardData({
-        totalPatients: patients.length,
-        todayAppointments: todayAppointments.length,
-        pendingRequests: pendingAppointments.length,
+        totalPatients: totalPatients,
+        todayAppointments: totalTodayAppointments,
+        pendingRequests: pendingAppointments.length + pendingReferrals.length,
         completedToday: completedToday.length,
         // Add trend data
         patientGrowth,
@@ -190,7 +238,7 @@ export default function SpecialistHomeScreen() {
         yesterdayCompleted: yesterdayCompleted.length
       });
 
-      setNextAppointments(upcomingAppointments);
+      setNextAppointments(allUpcoming);
       setNewPatients(recentPatients);
 
     } catch (error) {
@@ -257,7 +305,7 @@ export default function SpecialistHomeScreen() {
     setScanned(false);
   };
 
-  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+  const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
     if (scanned) return; // Prevent multiple scans
     
     setScanned(true);
@@ -270,8 +318,35 @@ export default function SpecialistHomeScreen() {
       if (qrData.type === 'patient' && qrData.id) {
         console.log('Scanned patient QR code:', qrData);
         
-        // Set the scanned patient data and show the modal
-        setScannedPatient(qrData);
+        // Fetch additional patient information from database
+        let patientDetails = null;
+        try {
+          patientDetails = await databaseService.getPatientById(qrData.id);
+        } catch (error) {
+          console.log('Could not fetch patient details from database:', error);
+        }
+        
+        // Combine QR data with database data
+        const enhancedPatientData = {
+          ...qrData,
+          ...patientDetails,
+          // Ensure we have the most complete information
+          name: patientDetails?.name || patientDetails?.patientFirstName + ' ' + patientDetails?.patientLastName || qrData.name || 'Unknown Patient',
+          email: patientDetails?.email || qrData.email || '',
+          phone: patientDetails?.phone || patientDetails?.contactNumber || qrData.phone || '',
+          address: patientDetails?.address || qrData.address || '',
+          dateOfBirth: patientDetails?.dateOfBirth || '',
+          gender: patientDetails?.gender || '',
+          bloodType: patientDetails?.bloodType || '',
+          emergencyContact: patientDetails?.emergencyContact || null,
+          createdAt: patientDetails?.createdAt || '',
+          lastVisit: patientDetails?.lastVisit || '',
+          specialty: patientDetails?.specialty || '',
+          status: patientDetails?.status || ''
+        };
+        
+        // Set the enhanced patient data and show the modal
+        setScannedPatient(enhancedPatientData);
         setShowPatientModal(true);
         handleCloseQRModal();
       } else {
@@ -708,22 +783,73 @@ export default function SpecialistHomeScreen() {
               {scannedPatient && (
                 <View style={patientModalStyles.patientInfo}>
                   {/* Patient Avatar */}
-                  <View style={patientModalStyles.patientAvatar}>
+                  {/* <View style={patientModalStyles.patientAvatar}>
                     <User size={32} color="#FFFFFF" />
-                  </View>
+                  </View> */}
                   
                   {/* Patient Name */}
                   <Text style={patientModalStyles.patientName}>
-                    {scannedPatient.name || 'Unknown Patient'}
+                    {scannedPatient.firstName + " " + scannedPatient.lastName}
                   </Text>
                   
                   {/* Patient ID */}
-                  <Text style={patientModalStyles.patientId}>
+                  {/* <Text style={patientModalStyles.patientId}>
                     ID: {scannedPatient.id}
-                  </Text>
+                  </Text> */}
                   
-                  {/* Additional Info */}
+                  {/* Basic Info Grid */}
                   <View style={patientModalStyles.infoGrid}>
+                    {scannedPatient.dateOfBirth && (
+                      <View style={patientModalStyles.infoItem}>
+                        <Calendar size={16} color="#6B7280" />
+                        <Text style={patientModalStyles.infoText}>
+                          {(() => {
+                            try {
+                              // Handle YYYY-MM-DD format specifically
+                              const dateString = scannedPatient.dateOfBirth;
+                              if (dateString && typeof dateString === 'string') {
+                                // Check if it's in YYYY-MM-DD format
+                                if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+                                  const date = new Date(dateString + 'T00:00:00');
+                                  if (!isNaN(date.getTime())) {
+                                    return date.toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    });
+                                  }
+                                }
+                                // Fallback for other date formats
+                                const date = new Date(dateString);
+                                if (!isNaN(date.getTime())) {
+                                  return date.toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  });
+                                }
+                              }
+                              return scannedPatient.dateOfBirth;
+                            } catch (error) {
+                              console.log('Error formatting dateOfBirth:', error);
+                              return scannedPatient.dateOfBirth;
+                            }
+                          })()}
+                        </Text>
+                      </View>
+                    )}
+                    {scannedPatient.gender && (
+                      <View style={patientModalStyles.infoItem}>
+                        <User size={16} color="#6B7280" />
+                        <Text style={patientModalStyles.infoText}>{scannedPatient.gender}</Text>
+                      </View>
+                    )}
+                    {scannedPatient.bloodType && (
+                      <View style={patientModalStyles.infoItem}>
+                        <Heart size={16} color="#6B7280" />
+                        <Text style={patientModalStyles.infoText}>Blood Type: {scannedPatient.bloodType}</Text>
+                      </View>
+                    )}
                     {scannedPatient.email && (
                       <View style={patientModalStyles.infoItem}>
                         <Mail size={16} color="#6B7280" />
@@ -743,6 +869,25 @@ export default function SpecialistHomeScreen() {
                       </View>
                     )}
                   </View>
+                  
+                  {/* Emergency Contact */}
+                  {scannedPatient.emergencyContact && (
+                    <View style={patientModalStyles.emergencyContactSection}>
+                      <Text style={patientModalStyles.sectionTitle}>Emergency Contact</Text>
+                      <View style={patientModalStyles.emergencyContactCard}>
+                        <Text style={patientModalStyles.emergencyContactName}>
+                          {scannedPatient.emergencyContact.name}
+                        </Text>
+                        <Text style={patientModalStyles.emergencyContactPhone}>
+                          {scannedPatient.emergencyContact.phone}
+                        </Text>
+                        <Text style={patientModalStyles.emergencyContactRelationship}>
+                          {scannedPatient.emergencyContact.relationship}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                                    
                 </View>
               )}
               
@@ -1335,10 +1480,11 @@ const patientModalStyles = StyleSheet.create({
     marginBottom: 16,
   },
   patientName: {
+    marginTop: -20,
     fontSize: 24,
     fontFamily: 'Inter-Bold',
     color: '#1F2937',
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: 'center',
   },
   patientId: {
@@ -1368,6 +1514,72 @@ const patientModalStyles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#374151',
     flex: 1,
+  },
+  emergencyContactSection: {
+    width: '100%',
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  emergencyContactCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  emergencyContactName: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  emergencyContactPhone: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  emergencyContactRelationship: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  additionalInfoSection: {
+    width: '100%',
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  additionalInfoItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  additionalInfoLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+  },
+  additionalInfoValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'right',
   },
   actions: { 
     flexDirection: 'row', 
