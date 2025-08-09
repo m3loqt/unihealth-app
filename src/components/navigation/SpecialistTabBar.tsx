@@ -18,7 +18,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
     { name: 'patients', icon: Users, route: '/(specialist)/tabs/patients' },
     { name: 'appointments', icon: Calendar, route: '/(specialist)/tabs/appointments' },
     { name: 'profile', icon: User, route: '/(specialist)/tabs/profile' },
-  ];
+  ] as const;
 
   const getActiveTab = () => {
     if (activeTab) return activeTab;

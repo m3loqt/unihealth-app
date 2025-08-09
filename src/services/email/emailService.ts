@@ -29,6 +29,21 @@ class EmailService {
     }
   }
 
+  async sendPasswordResetCode(email: string, code: string): Promise<void> {
+    const subject = 'Password Reset Code';
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Password Reset Request</h2>
+        <p>You requested a password reset for your account.</p>
+        <p>Your reset code is: <strong style="font-size: 24px; color: #007bff;">${code}</strong></p>
+        <p>This code will expire in 5 minutes.</p>
+        <p>If you didn't request this, please ignore this email.</p>
+      </div>
+    `;
+    
+    await this.sendEmail({ to: email, subject, html });
+  }
+
   /**
    * Send a password reset verification code email
    */
@@ -82,7 +97,12 @@ class EmailService {
    */
   async sendEmail(options: EmailOptions): Promise<void> {
     if (!this.isConfigured) {
-      throw new Error('Email service not configured');
+      // In development, log the email instead of throwing an error
+      console.log(`📧 Mock email sent to ${options.to}:`);
+      console.log(`Subject: ${options.subject}`);
+      console.log(`Content: ${options.text || this.stripHtml(options.html)}`);
+      console.log(`✅ Mock email sent to ${options.to} (email service not configured)`);
+      return;
     }
 
     try {

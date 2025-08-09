@@ -38,12 +38,26 @@ export default function ForgotPasswordScreen() {
     setIsLoading(true);
 
     try {
-      await authService.requestPasswordResetCode(email);
-      // Navigate to verify code screen instead of showing success
-      router.push({
-        pathname: '/verify-code',
-        params: { email }
-      });
+      const result = await authService.requestPasswordResetCode(email);
+      
+      if (result.success) {
+        // Navigate to verify code screen
+        router.push({
+          pathname: '/verify-code',
+          params: { email }
+        });
+      } else {
+        // Handle specific error cases
+        let errorMessage = result.message;
+        
+        if (result.message.includes('User not found')) {
+          errorMessage = 'No account found with this email address. Please check your email or sign up for a new account.';
+        } else if (result.message.includes('Failed to send reset code')) {
+          errorMessage = 'Failed to send verification code. Please try again.';
+        }
+        
+        Alert.alert('Error', errorMessage);
+      }
     } catch (error: any) {
       let errorMessage = 'Failed to send verification code. Please try again.';
       

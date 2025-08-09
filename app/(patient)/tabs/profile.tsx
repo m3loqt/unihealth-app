@@ -36,6 +36,7 @@ import {
 } from '@/hooks/auth/useBiometricAuth';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { safeDataAccess } from '@/utils/safeDataAccess';
 
 // Default profile data
 const defaultProfileData = {
@@ -74,10 +75,10 @@ export default function ProfileScreen() {
 
   // Use user data from database or fallback to default
   const profileData = user ? {
-    fullName: user.name || 'User',
+    fullName: safeDataAccess.getUserFullName(user, 'Unknown User'),
     dob: user.dateOfBirth || 'Not provided',
     address: user.address || 'Not provided',
-    contact: user.phone || 'Not provided',
+    contact: safeDataAccess.getUserPhone(user, 'Not provided'),
     email: user.email || 'Not provided',
     memberSince: '2024',
     emergency: user.emergencyContact ? {
@@ -397,11 +398,7 @@ export default function ProfileScreen() {
             <View style={styles.emergencyHeader}>
               <View style={styles.emergencyAvatar}>
                 <Text style={styles.emergencyInitial}>
-                  {emergency.name
-                    .split(' ')
-                    .map((n) => n[0])
-                    .join('')
-                    .toUpperCase()}
+                  {safeDataAccess.getUserInitials({ name: emergency.name }, 'E')}
                 </Text>
               </View>
               <View style={styles.emergencyInfo}>

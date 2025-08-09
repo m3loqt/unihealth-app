@@ -17,6 +17,7 @@ import { ChevronLeft, User, Mail, Phone, MapPin, Camera } from 'lucide-react-nat
 import { router } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService } from '../../src/services/database/firebase';
+import { safeDataAccess } from '../../src/utils/safeDataAccess';
 
 export default function EditProfileScreen() {
   const { user } = useAuth();
@@ -46,20 +47,20 @@ export default function EditProfileScreen() {
       
       if (patientProfile) {
         setProfileData({
-          fullName: patientProfile.name || user.displayName || '',
+          fullName: safeDataAccess.getUserFullName(patientProfile, user.name || ''),
           email: patientProfile.email || user.email || '',
-          phone: patientProfile.phone || '',
+          phone: safeDataAccess.getUserPhone(patientProfile, ''),
           address: patientProfile.address || '',
-          profileImage: patientProfile.profileImage || user.photoURL || '',
+          profileImage: patientProfile.profileImage || '',
         });
       } else {
         // Use basic user data if no patient profile exists
         setProfileData({
-          fullName: user.displayName || '',
+          fullName: user.name || '',
           email: user.email || '',
           phone: '',
           address: '',
-          profileImage: user.photoURL || '',
+          profileImage: '',
         });
       }
     } catch (error) {
@@ -143,7 +144,11 @@ export default function EditProfileScreen() {
         {/* Profile Photo Section */}
         <View style={styles.photoSection}>
           <View style={styles.photoContainer}>
-            <Image source={{ uri: profileData.profileImage }} style={styles.profilePhoto} />
+            {/* <Image 
+              source={{ uri: profileData.profileImage || undefined }} 
+              style={styles.profilePhoto}
+              defaultSource={require('../../assets/default-avatar.png')}
+            /> */}
             <TouchableOpacity style={styles.cameraButton} onPress={handleChangePhoto}>
               <Camera size={16} color="#FFFFFF" />
             </TouchableOpacity>
