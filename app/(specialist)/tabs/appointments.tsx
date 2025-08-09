@@ -35,6 +35,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService, Appointment } from '../../../src/services/database/firebase';
+import { safeDataAccess } from '../../../src/utils/safeDataAccess';
+import LoadingState from '../../../src/components/ui/LoadingState';
+import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
+import { dataValidation } from '../../../src/utils/dataValidation';
+import { useDeepMemo } from '../../../src/utils/performance';
 
 export default function SpecialistAppointmentsScreen() {
   const { filter } = useLocalSearchParams();
@@ -44,7 +49,13 @@ export default function SpecialistAppointmentsScreen() {
   // ---- DATA STATE ----
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Performance optimization: memoize filtered data
+  const validAppointments = useDeepMemo(() => {
+    return dataValidation.validateArray(appointments, dataValidation.isValidAppointment);
+  }, [appointments]);
 
   // ---- REFERRAL STATE ----
   const [referrals, setReferrals] = useState<{[key: string]: any}>({});
@@ -79,6 +90,11 @@ export default function SpecialistAppointmentsScreen() {
   const [showMedicalHistoryModal, setShowMedicalHistoryModal] = useState(false);
   const [medicalHistory, setMedicalHistory] = useState<any>(null);
   const [loadingMedicalHistory, setLoadingMedicalHistory] = useState(false);
+
+  const handleRetry = () => {
+    setError(null);
+    loadAppointments();
+  };
 
   // Load appointments and referrals from Firebase
   useEffect(() => {
@@ -171,7 +187,7 @@ export default function SpecialistAppointmentsScreen() {
       
     } catch (error) {
       console.error('Error loading appointments and referrals:', error);
-      Alert.alert('Error', 'Failed to load appointments and referrals. Please try again.');
+      setError('Failed to load appointments and referrals. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -675,8 +691,8 @@ export default function SpecialistAppointmentsScreen() {
   const renderAppointmentCard = (appointment: Appointment) => {
     const isPending = appointment.status === 'pending';
     const isReferralAppointment = isReferral(appointment);
-    const patientName = `${appointment.patientFirstName} ${appointment.patientLastName}`;
-    const patientInitials = `${appointment.patientFirstName?.[0] || ''}${appointment.patientLastName?.[0] || ''}`;
+    const patientName = safeDataAccess.getUserFullName(appointment, 'Unknown Patient');
+    const patientInitials = safeDataAccess.getUserInitials(appointment, 'U');
 
     return (
       <View key={appointment.id} style={styles.appointmentCard}>
@@ -689,14 +705,14 @@ export default function SpecialistAppointmentsScreen() {
             </View>
             <View style={styles.appointmentDetails}>
               <Text style={styles.patientName}>{patientName}</Text>
-              <Text style={styles.appointmentType}>{appointment.type}</Text>
+              <Text style={styles.appointmentType}>{appointment.type || 'General Consultation'}</Text>
               {isReferralAppointment ? (
                 <View style={styles.referralBadge}>
                   <FileText size={12} color="#1E40AF" />
                   <Text style={styles.referralText}>Referral</Text>
                 </View>
               ) : (
-                <Text style={styles.referredBy}>Referred by {appointment.specialty}</Text>
+                <Text style={styles.referredBy}>Referred by {appointment.specialty || 'General Medicine'}</Text>
               )}
             </View>
           </View>
@@ -711,11 +727,13 @@ export default function SpecialistAppointmentsScreen() {
         <View style={styles.appointmentMeta}>
           <View style={styles.metaRow}>
             <Clock size={16} color="#6B7280" />
-            <Text style={styles.metaText}>{appointment.appointmentDate} at {appointment.appointmentTime}</Text>
+            <Text style={styles.metaText}>
+              {appointment.appointmentDate || 'Date not specified'} at {appointment.appointmentTime || 'Time not specified'}
+            </Text>
           </View>
           <View style={styles.metaRow}>
             <MapPin size={16} color="#6B7280" />
-            <Text style={styles.metaText}>{appointment.clinicName}</Text>
+            <Text style={styles.metaText}>{appointment.clinicName || 'Clinic not specified'}</Text>
           </View>
         </View>
 
@@ -1383,8 +1401,17 @@ export default function SpecialistAppointmentsScreen() {
       >
         <View style={styles.appointmentsList}>
           {loading ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>Loading appointments...</Text>
+            <LoadingState
+              message="Loading appointments..."
+              variant="inline"
+              size="large"
+            />
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
             </View>
           ) : filteredAppointments.length > 0 || getReferralCards().length > 0 ? (
             <>
@@ -2144,5 +2171,32 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
 });

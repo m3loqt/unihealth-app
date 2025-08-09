@@ -20,6 +20,11 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { databaseService, Certificate } from '@/services/database/firebase';
+import { safeDataAccess } from '@/utils/safeDataAccess';
+import LoadingState from '@/components/ui/LoadingState';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { dataValidation } from '@/utils/dataValidation';
+import { useDeepMemo } from '@/utils/performance';
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = (screenWidth - 64) / 2;
@@ -47,6 +52,7 @@ export default function CertificatesScreen() {
   const sortBtnRef = useRef<View>(null);
   const [userCertificates, setUserCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Load certificates from database
   useEffect(() => {
@@ -58,42 +64,51 @@ export default function CertificatesScreen() {
   const loadCertificates = async () => {
     try {
       setLoading(true);
+      setError(null);
       const certificates = await databaseService.getCertificates(user.uid);
-      setUserCertificates(certificates);
+      
+      // Validate certificates data
+      const validCertificates = dataValidation.validateArray(certificates, dataValidation.isValidCertificate);
+      setUserCertificates(validCertificates);
     } catch (error) {
       console.error('Error loading certificates:', error);
-      Alert.alert('Error', 'Failed to load certificates. Please try again.');
+      setError('Failed to load certificates. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleRetry = () => {
+    setError(null);
+    loadCertificates();
+  };
 
-
-  // Only use database certificates, no fallback to static data
-  const filteredCertificates = userCertificates
-    .filter((cert) => {
-      const matchesSearch =
-        cert.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        cert.specialistId.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus =
-        statusFilter === 'all' || cert.status.toLowerCase() === statusFilter;
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'date':
-          return new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime();
-        case 'type':
-          return a.type.localeCompare(b.type);
-        case 'doctor':
-          return a.specialistId.localeCompare(b.specialistId);
-        case 'validUntil':
-          return new Date(b.expiryDate || '').getTime() - new Date(a.expiryDate || '').getTime();
-        default:
-          return 0;
-      }
-    });
+  // Performance optimization: memoize filtered and sorted certificates
+  const filteredCertificates = useDeepMemo(() => {
+    return userCertificates
+      .filter((cert) => {
+        const matchesSearch =
+          cert.type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          cert.specialistId?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus =
+          statusFilter === 'all' || cert.status?.toLowerCase() === statusFilter;
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'date':
+            return new Date(b.issueDate || '').getTime() - new Date(a.issueDate || '').getTime();
+          case 'type':
+            return (a.type || '').localeCompare(b.type || '');
+          case 'doctor':
+            return (a.specialistId || '').localeCompare(b.specialistId || '');
+          case 'validUntil':
+            return new Date(b.expiryDate || '').getTime() - new Date(a.expiryDate || '').getTime();
+          default:
+            return 0;
+        }
+      });
+  }, [userCertificates, searchQuery, statusFilter, sortBy]);
 
   const getStatusColors = (status: string) => {
     switch (status) {
@@ -230,12 +245,14 @@ export default function CertificatesScreen() {
       {renderPDFThumbnail(certificate)}
       <View style={styles.cardContent}>
         <Text style={styles.certificateType} numberOfLines={2}>
-          {certificate.type}
+          {certificate.type || 'Medical Certificate'}
         </Text>
         <Text style={styles.doctorName} numberOfLines={1}>
-          {certificate.specialistId}
+          {certificate.specialistId || 'Doctor not specified'}
         </Text>
-        <Text style={styles.issuedDate}>{certificate.issueDate}</Text>
+        <Text style={styles.issuedDate}>
+          {certificate.issueDate ? new Date(certificate.issueDate).toLocaleDateString() : 'Date not specified'}
+        </Text>
         <View style={styles.gridActions}>
           <TouchableOpacity style={styles.secondaryButton}>
             <Eye 
@@ -296,7 +313,7 @@ export default function CertificatesScreen() {
         <Text style={styles.headerTitle}>Medical Certificates</Text>
         <TouchableOpacity 
           style={styles.profileButton}
-          onPress={() => router.push('/profile')}
+          onPress={() => router.push('/(patient)/tabs/profile')}
         >
           <User size={24} color="#6B7280" />
         </TouchableOpacity>
@@ -363,7 +380,9 @@ export default function CertificatesScreen() {
         contentContainerStyle={{ paddingBottom: 80 }} // <--- Added here
       >
         <View style={styles.certificatesList}>
-          {filteredCertificates.length === 0 ? renderEmptyState() : renderGrid()}
+          {loading && error ? (
+            <LoadingState message={error} />
+          ) : filteredCertificates.length === 0 ? renderEmptyState() : renderGrid()}
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -24,7 +24,7 @@ export const useAppointments = (): UseAppointmentsReturn => {
     try {
       setLoading(true);
       setError(null);
-      const userAppointments = await databaseService.getAppointments(user.uid);
+      const userAppointments = await databaseService.getAppointments(user.uid, 'patient');
       setAppointments(userAppointments);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load appointments');

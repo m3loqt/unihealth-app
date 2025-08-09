@@ -35,6 +35,11 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService, Patient, Appointment, MedicalHistory, Prescription } from '../../src/services/database/firebase';
+import safeDataAccess from '../../src/utils/safeDataAccess';
+import LoadingState from '../../src/components/ui/LoadingState';
+import ErrorBoundary from '../../src/components/ui/ErrorBoundary';
+import { dataValidation } from '../../src/utils/dataValidation';
+import { performanceUtils } from '../../src/utils/performance';
 
 interface PatientData extends Patient {
   firstName?: string;
@@ -77,6 +82,7 @@ export default function PatientOverviewScreen() {
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistory[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   // Load patient data from Firebase
@@ -91,6 +97,7 @@ export default function PatientOverviewScreen() {
     
     try {
       setLoading(true);
+      setError(null);
       
       // Load all patient data in parallel
       const [patient, patientAppointments, patientMedicalHistory, patientPrescriptions] = await Promise.all([
@@ -101,14 +108,19 @@ export default function PatientOverviewScreen() {
       ]);
 
       if (patient) {
-        setPatientData(patient);
-        setAppointments(patientAppointments);
-        setMedicalHistory(patientMedicalHistory);
-        setPrescriptions(patientPrescriptions);
+        // Validate patient data
+        const validPatient = dataValidation.isValidUser(patient) ? patient : null;
+        const validAppointments = dataValidation.validateArray(patientAppointments, dataValidation.isValidAppointment);
+        const validPrescriptions = dataValidation.validateArray(patientPrescriptions, dataValidation.isValidPrescription);
+        
+        setPatientData(validPatient);
+        setAppointments(validAppointments);
+        setMedicalHistory(patientMedicalHistory); // Keep original data for now
+        setPrescriptions(validPrescriptions);
       }
     } catch (error) {
       console.error('Error loading patient data:', error);
-      Alert.alert('Error', 'Failed to load patient data. Please try again.');
+      setError('Failed to load patient data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -120,20 +132,26 @@ export default function PatientOverviewScreen() {
     setRefreshing(false);
   };
 
+  const handleRetry = () => {
+    setError(null);
+    loadPatientData();
+  };
+
   const handleEmergencyCall = () => {
-    if (patientData?.emergencyContact?.phone) {
-      Linking.openURL(`tel:${patientData.emergencyContact.phone}`);
+    const emergencyPhone = safeDataAccess.getEmergencyContactPhone(patientData);
+    if (emergencyPhone && emergencyPhone !== 'Not provided') {
+      Linking.openURL(`tel:${emergencyPhone}`);
     } else {
       Alert.alert('No Emergency Contact', 'Emergency contact information is not available.');
     }
   };
 
   const handleActiveConsultationPress = () => {
-    const activeAppointments = appointments.filter(apt => 
+    const activeAppts = appointments.filter(apt => 
       apt.status === 'pending' || apt.status === 'confirmed'
     );
-    if (activeAppointments.length > 0) {
-      const consultation = activeAppointments[0];
+    if (activeAppts.length > 0) {
+      const consultation = activeAppts[0];
       router.push(`/patient-consultation?patientId=${patientData?.id}&consultationId=${consultation.id}`);
     }
   };
@@ -149,13 +167,7 @@ export default function PatientOverviewScreen() {
   };
 
   const getPatientName = () => {
-    if (patientData?.firstName && patientData?.lastName) {
-      return `${patientData.firstName} ${patientData.lastName}`;
-    }
-    if (patientData?.patientFirstName && patientData?.patientLastName) {
-      return `${patientData.patientFirstName} ${patientData.patientLastName}`;
-    }
-    return 'Unknown Patient';
+    return safeDataAccess.getUserFullName(patientData, 'Unknown Patient');
   };
 
   const getPatientAge = () => {
@@ -172,19 +184,24 @@ export default function PatientOverviewScreen() {
     return null;
   };
 
-  const getActiveAppointments = () => {
+  // Performance optimization: memoize filtered data
+  const activeAppointments = performanceUtils.useDeepMemo(() => {
     return appointments.filter(apt => 
       apt.status === 'pending' || apt.status === 'confirmed'
     );
-  };
+  }, [appointments]);
 
-  const getCompletedAppointments = () => {
+  const completedAppointments = performanceUtils.useDeepMemo(() => {
     return appointments.filter(apt => apt.status === 'completed');
-  };
+  }, [appointments]);
 
-  const getActivePrescriptions = () => {
+  const activePrescriptions = performanceUtils.useDeepMemo(() => {
     return prescriptions.filter(pres => pres.status === 'active');
-  };
+  }, [prescriptions]);
+
+  const getActiveAppointments = () => activeAppointments;
+  const getCompletedAppointments = () => completedAppointments;
+  const getActivePrescriptions = () => activePrescriptions;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -225,9 +242,6 @@ export default function PatientOverviewScreen() {
     );
   }
 
-  const activeAppointments = getActiveAppointments();
-  const completedAppointments = getCompletedAppointments();
-  const activePrescriptions = getActivePrescriptions();
   const patientAge = getPatientAge();
 
   return (
@@ -253,292 +267,310 @@ export default function PatientOverviewScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Patient Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Patient Details</Text>
-          <View style={styles.patientCard}>
-            <View style={styles.patientHeader}>
-              <View style={styles.patientAvatar}>
-                <User size={32} color="#FFFFFF" />
-              </View>
-              <View style={styles.patientInfo}>
-                <Text style={styles.patientName}>{getPatientName()}</Text>
-                <Text style={styles.patientAge}>
-                  {patientAge ? `${patientAge} years old` : ''} • {patientData.gender || 'Unknown'} • {patientData.bloodType || 'No blood type'}
-                </Text>
-                <Text style={styles.patientId}>ID: {patientData.id}</Text>
-              </View>
-            </View>
-            
-            <View style={styles.divider} />
-            
-            <View style={styles.contactInfo}>
-              {patientData.phone && (
-                <View style={styles.contactItem}>
-                  <Phone size={16} color="#6B7280" />
-                  <Text style={styles.contactText}>{patientData.phone}</Text>
+        {/* Loading and Error States */}
+        {loading ? (
+          <LoadingState
+            message="Loading patient data..."
+            variant="inline"
+            size="large"
+          />
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Patient Details</Text>
+              <View style={styles.patientCard}>
+                <View style={styles.patientHeader}>
+                  <View style={styles.patientAvatar}>
+                    <User size={32} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.patientInfo}>
+                    <Text style={styles.patientName}>{getPatientName()}</Text>
+                    <Text style={styles.patientAge}>
+                      {patientAge ? `${patientAge} years old` : ''} • {safeDataAccess.getUserGender(patientData)} • {safeDataAccess.getBloodType(patientData)}
+                    </Text>
+                    <Text style={styles.patientId}>ID: {patientData.id}</Text>
+                  </View>
                 </View>
-              )}
-              {patientData.email && (
-                <View style={styles.contactItem}>
-                  <Mail size={16} color="#6B7280" />
-                  <Text style={styles.contactText}>{patientData.email}</Text>
-                </View>
-              )}
-              {patientData.address && (
-                <View style={styles.contactItem}>
-                  <MapPin size={16} color="#6B7280" />
-                  <Text style={styles.contactText}>{patientData.address}</Text>
-                </View>
-              )}
-            </View>
-            
-            {patientData.medicalConditions && patientData.medicalConditions.length > 0 && (
-              <>
+                
                 <View style={styles.divider} />
-                <View style={styles.medicalConditions}>
-                  <Text style={styles.medicalConditionsTitle}>Medical Conditions</Text>
-                  {patientData.medicalConditions.map((condition, index) => (
-                    <View key={index} style={styles.conditionItem}>
-                      <AlertCircle size={14} color="#EF4444" />
-                      <Text style={styles.conditionText}>{condition}</Text>
+                
+                <View style={styles.contactInfo}>
+                  {safeDataAccess.getUserPhone(patientData) !== 'Not provided' && (
+                    <View style={styles.contactItem}>
+                      <Phone size={16} color="#6B7280" />
+                      <Text style={styles.contactText}>{safeDataAccess.getUserPhone(patientData)}</Text>
+                    </View>
+                  )}
+                  {patientData?.email && (
+                    <View style={styles.contactItem}>
+                      <Mail size={16} color="#6B7280" />
+                      <Text style={styles.contactText}>{patientData.email}</Text>
+                    </View>
+                  )}
+                  {patientData?.address && (
+                    <View style={styles.contactItem}>
+                      <MapPin size={16} color="#6B7280" />
+                      <Text style={styles.contactText}>{patientData.address}</Text>
+                    </View>
+                  )}
+                </View>
+                
+                {patientData?.medicalConditions && patientData.medicalConditions.length > 0 && (
+                  <>
+                    <View style={styles.divider} />
+                    <View style={styles.medicalConditions}>
+                      <Text style={styles.medicalConditionsTitle}>Medical Conditions</Text>
+                      {patientData.medicalConditions.map((condition, index) => (
+                        <View key={index} style={styles.conditionItem}>
+                          <AlertCircle size={14} color="#EF4444" />
+                          <Text style={styles.conditionText}>{condition}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </>
+                )}
+                        </View>
+            </View>
+
+            {/* Emergency Contact */}
+            {patientData?.emergencyContact?.name && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Emergency Contact</Text>
+                <View style={styles.emergencyCard}>
+                  <View style={styles.emergencyLeft}>
+                    <View style={styles.emergencyAvatar}>
+                      <Text style={styles.emergencyInitial}>
+                        {patientData.emergencyContact.name
+                          .split(' ')
+                          .map((n: string) => n[0])
+                          .join('')
+                          .toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={styles.emergencyInfo}>
+                      <Text style={styles.emergencyName}>{patientData.emergencyContact.name}</Text>
+                      <View style={styles.relationshipRow}>
+                        <Text style={styles.relationshipPill}>{patientData.emergencyContact.relationship || 'Unknown'}</Text>
+                      </View>
+                      <Text style={styles.emergencyPhone}>{safeDataAccess.getEmergencyContactPhone(patientData)}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity style={styles.emergencyCallButton} onPress={handleEmergencyCall}>
+                    <Phone size={18} color="#fff" />
+                    <Text style={styles.emergencyCallText}>Call</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Visit Summary */}
+            {patientData?.visitHistory && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Visit Summary</Text>
+                <View style={styles.visitSummaryCard}>
+                  <View style={styles.visitStats}>
+                    <View style={styles.visitStat}>
+                      <Text style={styles.visitStatValue}>{patientData.visitHistory.visitCount || 0}</Text>
+                      <Text style={styles.visitStatLabel}>Total Visits</Text>
+                    </View>
+                    <View style={styles.visitStat}>
+                      <Text style={styles.visitStatValue}>
+                        {patientData.visitHistory.firstVisit ? formatDate(patientData.visitHistory.firstVisit) : 'N/A'}
+                      </Text>
+                      <Text style={styles.visitStatLabel}>First Visit</Text>
+                    </View>
+                    <View style={styles.visitStat}>
+                      <Text style={styles.visitStatValue}>
+                        {patientData.visitHistory.lastVisit ? formatDate(patientData.visitHistory.lastVisit) : 'N/A'}
+                      </Text>
+                      <Text style={styles.visitStatLabel}>Last Visit</Text>
+                    </View>
+                  </View>
+                  {patientData.visitHistory.currentAdmission && (
+                    <View style={styles.currentAdmission}>
+                      <Text style={styles.currentAdmissionTitle}>Currently Admitted</Text>
+                      <Text style={styles.currentAdmissionText}>
+                        {patientData.visitHistory.currentAdmission.department} • {patientData.visitHistory.currentAdmission.attendingStaffName}
+                      </Text>
+                      <Text style={styles.currentAdmissionDate}>
+                        Since {formatDate(patientData.visitHistory.currentAdmission.admissionDate)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Active Consultation */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Active Consultation</Text>
+              {activeAppointments.length > 0 ? (
+                <TouchableOpacity style={styles.consultationCard} onPress={handleActiveConsultationPress}>
+                  <View style={styles.consultationHeader}>
+                    <View style={styles.consultationIcon}>
+                      <FileText size={20} color="#1E40AF" />
+                    </View>
+                    <View style={styles.consultationInfo}>
+                      <Text style={styles.consultationType}>{activeAppointments[0]?.type || 'Consultation'}</Text>
+                      <Text style={styles.consultationDate}>
+                        {activeAppointments[0]?.appointmentDate || 'N/A'} at {activeAppointments[0]?.appointmentTime || 'N/A'}
+                      </Text>
+                      <View style={styles.statusContainer}>
+                        <View style={[
+                          styles.statusBadge,
+                          activeAppointments[0]?.status === 'confirmed' ? styles.statusConfirmed : styles.statusPending
+                        ]}>
+                          <Text style={styles.statusText}>{activeAppointments[0]?.status || 'pending'}</Text>
+                        </View>
+                      </View>
+                    </View>
+                    <ChevronRight size={20} color="#9CA3AF" />
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.noConsultationCard}>
+                  <FileText size={32} color="#9CA3AF" />
+                  <Text style={styles.noConsultationText}>No active consultation</Text>
+                  <Text style={styles.noConsultationSubtext}>
+                    Start a new consultation to begin patient care
+                  </Text>
+                  <TouchableOpacity style={styles.startConsultationButton} onPress={handleNewConsultation}>
+                    <Text style={styles.startConsultationButtonText}>Start Consultation</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* Active Prescriptions */}
+            {activePrescriptions.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Active Prescriptions</Text>
+                <View style={styles.prescriptionsContainer}>
+                  {activePrescriptions.slice(0, 3).map((prescription) => (
+                    <View key={prescription.id} style={styles.prescriptionCard}>
+                      <View style={styles.prescriptionHeader}>
+                        <View style={styles.prescriptionIcon}>
+                          <Pill size={16} color="#1E40AF" />
+                        </View>
+                        <View style={styles.prescriptionInfo}>
+                          <Text style={styles.prescriptionMedication}>{prescription?.medication || 'Unknown Medication'}</Text>
+                          <Text style={styles.prescriptionDosage}>
+                            {prescription?.dosage || 'Dosage not specified'} • {prescription?.frequency || 'Frequency not specified'}
+                          </Text>
+                          <Text style={styles.prescriptionDate}>
+                            Prescribed: {prescription?.prescribedDate ? formatDate(prescription.prescribedDate) : 'Date not specified'}
+                          </Text>
+                        </View>
+                        <View style={styles.prescriptionStatus}>
+                          <CheckCircle size={16} color="#10B981" />
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                  {activePrescriptions.length > 3 && (
+                    <TouchableOpacity style={styles.viewMoreButton}>
+                      <Text style={styles.viewMoreText}>View all {activePrescriptions.length} prescriptions</Text>
+                      <ChevronRight size={16} color="#1E40AF" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Medical History */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Medical History</Text>
+              {medicalHistory.length > 0 ? (
+                <View style={styles.historyContainer}>
+                  {medicalHistory.slice(0, 5).map((item: MedicalHistory) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.historyCard}
+                      onPress={() => handleMedicalHistoryPress(item)}
+                    >
+                      <View style={styles.historyHeader}>
+                        <View style={styles.historyIcon}>
+                          <Calendar size={16} color="#1E40AF" />
+                        </View>
+                        <View style={styles.historyInfo}>
+                          <Text style={styles.historyType}>{item.type}</Text>
+                          <Text style={styles.historyDate}>
+                            {formatDate(item.consultationDate)} at {formatTime(item.consultationTime)}
+                          </Text>
+                          <Text style={styles.historyDoctor}>
+                            Dr. {safeDataAccess.getUserFullName(item?.provider, 'Unknown Doctor')}
+                          </Text>
+                          {item?.diagnosis && item.diagnosis.length > 0 && (
+                            <Text style={styles.historyDiagnosis}>
+                              {item.diagnosis[0]?.description || 'Diagnosis not specified'}
+                            </Text>
+                          )}
+                        </View>
+                        <ChevronRight size={16} color="#9CA3AF" />
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  {medicalHistory.length > 5 && (
+                    <TouchableOpacity style={styles.viewMoreButton}>
+                      <Text style={styles.viewMoreText}>View all {medicalHistory.length} records</Text>
+                      <ChevronRight size={16} color="#1E40AF" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.noConsultationCard}>
+                  <FileText size={32} color="#9CA3AF" />
+                  <Text style={styles.noConsultationText}>No medical history</Text>
+                  <Text style={styles.noConsultationSubtext}>
+                    No previous visits or consultations recorded.
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Recent Appointments */}
+            {completedAppointments.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Recent Appointments</Text>
+                <View style={styles.appointmentsContainer}>
+                  {completedAppointments.slice(0, 3).map((appointment) => (
+                    <View key={appointment.id} style={styles.appointmentCard}>
+                      <View style={styles.appointmentHeader}>
+                        <View style={styles.appointmentIcon}>
+                          <Clock size={16} color="#6B7280" />
+                        </View>
+                        <View style={styles.appointmentInfo}>
+                          <Text style={styles.appointmentType}>{appointment?.type || 'Appointment'}</Text>
+                          <Text style={styles.appointmentDate}>
+                            {appointment?.appointmentDate || 'Date not specified'} at {appointment?.appointmentTime || 'Time not specified'}
+                          </Text>
+                          <Text style={styles.appointmentDoctor}>
+                            Dr. {safeDataAccess.getUserFullName(appointment, 'Unknown Doctor')}
+                          </Text>
+                        </View>
+                        <View style={styles.appointmentStatus}>
+                          <CheckCircle size={16} color="#10B981" />
+                        </View>
+                      </View>
                     </View>
                   ))}
                 </View>
-              </>
+              </View>
             )}
-          </View>
-        </View>
-
-        {/* Emergency Contact */}
-        {patientData.emergencyContact && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Emergency Contact</Text>
-            <View style={styles.emergencyCard}>
-              <View style={styles.emergencyLeft}>
-                <View style={styles.emergencyAvatar}>
-                  <Text style={styles.emergencyInitial}>
-                    {patientData.emergencyContact.name
-                      .split(' ')
-                      .map((n: string) => n[0])
-                      .join('')
-                      .toUpperCase()}
-                  </Text>
-                </View>
-                <View style={styles.emergencyInfo}>
-                  <Text style={styles.emergencyName}>{patientData.emergencyContact.name}</Text>
-                  <View style={styles.relationshipRow}>
-                    <Text style={styles.relationshipPill}>{patientData.emergencyContact.relationship}</Text>
-                  </View>
-                  <Text style={styles.emergencyPhone}>{patientData.emergencyContact.phone}</Text>
-                </View>
-              </View>
-              <TouchableOpacity style={styles.emergencyCallButton} onPress={handleEmergencyCall}>
-                <Phone size={18} color="#fff" />
-                <Text style={styles.emergencyCallText}>Call</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          </> 
         )}
-
-        {/* Visit Summary */}
-        {patientData.visitHistory && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Visit Summary</Text>
-            <View style={styles.visitSummaryCard}>
-              <View style={styles.visitStats}>
-                <View style={styles.visitStat}>
-                  <Text style={styles.visitStatValue}>{patientData.visitHistory.visitCount || 0}</Text>
-                  <Text style={styles.visitStatLabel}>Total Visits</Text>
-                </View>
-                <View style={styles.visitStat}>
-                  <Text style={styles.visitStatValue}>
-                    {patientData.visitHistory.firstVisit ? formatDate(patientData.visitHistory.firstVisit) : 'N/A'}
-                  </Text>
-                  <Text style={styles.visitStatLabel}>First Visit</Text>
-                </View>
-                <View style={styles.visitStat}>
-                  <Text style={styles.visitStatValue}>
-                    {patientData.visitHistory.lastVisit ? formatDate(patientData.visitHistory.lastVisit) : 'N/A'}
-                  </Text>
-                  <Text style={styles.visitStatLabel}>Last Visit</Text>
-                </View>
-              </View>
-              {patientData.visitHistory.currentAdmission && (
-                <View style={styles.currentAdmission}>
-                  <Text style={styles.currentAdmissionTitle}>Currently Admitted</Text>
-                  <Text style={styles.currentAdmissionText}>
-                    {patientData.visitHistory.currentAdmission.department} • {patientData.visitHistory.currentAdmission.attendingStaffName}
-                  </Text>
-                  <Text style={styles.currentAdmissionDate}>
-                    Since {formatDate(patientData.visitHistory.currentAdmission.admissionDate)}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Active Consultation */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Active Consultation</Text>
-          {activeAppointments.length > 0 ? (
-            <TouchableOpacity style={styles.consultationCard} onPress={handleActiveConsultationPress}>
-              <View style={styles.consultationHeader}>
-                <View style={styles.consultationIcon}>
-                  <FileText size={20} color="#1E40AF" />
-                </View>
-                <View style={styles.consultationInfo}>
-                  <Text style={styles.consultationType}>{activeAppointments[0].type}</Text>
-                  <Text style={styles.consultationDate}>
-                    {activeAppointments[0].appointmentDate} at {activeAppointments[0].appointmentTime}
-                  </Text>
-                  <View style={styles.statusContainer}>
-                    <View style={[
-                      styles.statusBadge,
-                      activeAppointments[0].status === 'confirmed' ? styles.statusConfirmed : styles.statusPending
-                    ]}>
-                      <Text style={styles.statusText}>{activeAppointments[0].status}</Text>
-                    </View>
-                  </View>
-                </View>
-                <ChevronRight size={20} color="#9CA3AF" />
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.noConsultationCard}>
-              <FileText size={32} color="#9CA3AF" />
-              <Text style={styles.noConsultationText}>No active consultation</Text>
-              <Text style={styles.noConsultationSubtext}>
-                Start a new consultation to begin patient care
-              </Text>
-              <TouchableOpacity style={styles.startConsultationButton} onPress={handleNewConsultation}>
-                <Text style={styles.startConsultationButtonText}>Start Consultation</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Active Prescriptions */}
-        {activePrescriptions.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Active Prescriptions</Text>
-            <View style={styles.prescriptionsContainer}>
-              {activePrescriptions.slice(0, 3).map((prescription) => (
-                <View key={prescription.id} style={styles.prescriptionCard}>
-                  <View style={styles.prescriptionHeader}>
-                    <View style={styles.prescriptionIcon}>
-                      <Pill size={16} color="#1E40AF" />
-                    </View>
-                    <View style={styles.prescriptionInfo}>
-                      <Text style={styles.prescriptionMedication}>{prescription.medication}</Text>
-                      <Text style={styles.prescriptionDosage}>
-                        {prescription.dosage} • {prescription.frequency}
-                      </Text>
-                      <Text style={styles.prescriptionDate}>
-                        Prescribed: {formatDate(prescription.prescribedDate)}
-                      </Text>
-                    </View>
-                    <View style={styles.prescriptionStatus}>
-                      <CheckCircle size={16} color="#10B981" />
-                    </View>
-                  </View>
-                </View>
-              ))}
-              {activePrescriptions.length > 3 && (
-                <TouchableOpacity style={styles.viewMoreButton}>
-                  <Text style={styles.viewMoreText}>View all {activePrescriptions.length} prescriptions</Text>
-                  <ChevronRight size={16} color="#1E40AF" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Medical History */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Medical History</Text>
-          {medicalHistory.length > 0 ? (
-            <View style={styles.historyContainer}>
-              {medicalHistory.slice(0, 5).map((item: MedicalHistory) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.historyCard}
-                  onPress={() => handleMedicalHistoryPress(item)}
-                >
-                  <View style={styles.historyHeader}>
-                    <View style={styles.historyIcon}>
-                      <Calendar size={16} color="#1E40AF" />
-                    </View>
-                    <View style={styles.historyInfo}>
-                      <Text style={styles.historyType}>{item.type}</Text>
-                      <Text style={styles.historyDate}>
-                        {formatDate(item.consultationDate)} at {formatTime(item.consultationTime)}
-                      </Text>
-                      <Text style={styles.historyDoctor}>
-                        Dr. {item.provider.firstName} {item.provider.lastName}
-                      </Text>
-                      {item.diagnosis && item.diagnosis.length > 0 && (
-                        <Text style={styles.historyDiagnosis}>
-                          {item.diagnosis[0].description}
-                        </Text>
-                      )}
-                    </View>
-                    <ChevronRight size={16} color="#9CA3AF" />
-                  </View>
-                </TouchableOpacity>
-              ))}
-              {medicalHistory.length > 5 && (
-                <TouchableOpacity style={styles.viewMoreButton}>
-                  <Text style={styles.viewMoreText}>View all {medicalHistory.length} records</Text>
-                  <ChevronRight size={16} color="#1E40AF" />
-                </TouchableOpacity>
-              )}
-            </View>
-          ) : (
-            <View style={styles.noConsultationCard}>
-              <FileText size={32} color="#9CA3AF" />
-              <Text style={styles.noConsultationText}>No medical history</Text>
-              <Text style={styles.noConsultationSubtext}>
-                No previous visits or consultations recorded.
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Recent Appointments */}
-        {completedAppointments.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Appointments</Text>
-            <View style={styles.appointmentsContainer}>
-              {completedAppointments.slice(0, 3).map((appointment) => (
-                <View key={appointment.id} style={styles.appointmentCard}>
-                  <View style={styles.appointmentHeader}>
-                    <View style={styles.appointmentIcon}>
-                      <Clock size={16} color="#6B7280" />
-                    </View>
-                    <View style={styles.appointmentInfo}>
-                      <Text style={styles.appointmentType}>{appointment.type}</Text>
-                      <Text style={styles.appointmentDate}>
-                        {appointment.appointmentDate} at {appointment.appointmentTime}
-                      </Text>
-                      <Text style={styles.appointmentDoctor}>
-                        Dr. {appointment.doctorFirstName} {appointment.doctorLastName}
-                      </Text>
-                    </View>
-                    <View style={styles.appointmentStatus}>
-                      <CheckCircle size={16} color="#10B981" />
-                    </View>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-      </ScrollView>
+        </ScrollView>
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -1046,6 +1078,34 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: '#6B7280',
     marginTop: 16,
+  },
+  // Error state styles
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    margin: 20,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontFamily: 'Inter-Regular',
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
  

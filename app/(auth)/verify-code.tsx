@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ export default function VerifyCodeScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
   const [canResend, setCanResend] = useState(false);
-  const inputRefs = useRef<TextInput[]>([]);
+  const inputRefs = useRef<(TextInput | null)[]>([]);
 
   useEffect(() => {
     if (!email) {
@@ -51,25 +51,51 @@ export default function VerifyCodeScreen() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleCodeChange = (index: number, value: string) => {
-    if (value.length > 1) return; // Only allow single digit
+  const handleCodeChange = useCallback((index: number, value: string) => {
+    // Only allow single digit
+    if (value.length > 1) return;
 
     const newCode = [...code];
     newCode[index] = value;
     setCode(newCode);
 
-    // Auto-focus next input
+    // Simple auto-focus next input without complex timing
     if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+      const nextInput = inputRefs.current[index + 1];
+      if (nextInput) {
+        nextInput.focus();
+      }
     }
-  };
+    
+    // If clearing an input, ensure current input stays focused
+    if (!value) {
+      const currentInput = inputRefs.current[index];
+      if (currentInput) {
+        currentInput.focus();
+      }
+    }
+  }, [code]);
 
-  const handleKeyPress = (index: number, key: string) => {
+  const handleKeyPress = useCallback((index: number, key: string) => {
     if (key === 'Backspace' && !code[index] && index > 0) {
       // Move to previous input on backspace if current is empty
-      inputRefs.current[index - 1]?.focus();
+      const prevInput = inputRefs.current[index - 1];
+      if (prevInput) {
+        prevInput.focus();
+      }
     }
-  };
+  }, [code]);
+
+  const setInputRef = useCallback((index: number) => (ref: TextInput | null) => {
+    inputRefs.current[index] = ref;
+  }, []);
+
+  const focusInput = useCallback((index: number) => {
+    const input = inputRefs.current[index];
+    if (input) {
+      input.focus();
+    }
+  }, []);
 
   const handleVerifyCode = async () => {
     const codeString = code.join('');
@@ -82,16 +108,16 @@ export default function VerifyCodeScreen() {
     setIsLoading(true);
 
     try {
-      const isValid = await authService.verifyPasswordResetCode(email as string, codeString);
+      const result = await authService.verifyPasswordResetCode(email as string, codeString);
       
-      if (isValid) {
+      if (result.success) {
         // Navigate to reset password screen with email and code
         router.push({
           pathname: '/reset-password',
           params: { email: email as string, code: codeString }
         });
       } else {
-        Alert.alert('Error', 'Invalid or expired code. Please try again.');
+        Alert.alert('Error', result.message || 'Invalid or expired code. Please try again.');
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to verify code. Please try again.');
@@ -104,11 +130,16 @@ export default function VerifyCodeScreen() {
     setIsLoading(true);
 
     try {
-      await authService.requestPasswordResetCode(email as string);
-      setTimeLeft(300); // Reset timer to 5 minutes
-      setCanResend(false);
-      setCode(['', '', '', '', '', '']); // Clear code inputs
-      Alert.alert('Success', 'A new verification code has been sent to your email.');
+      const result = await authService.requestPasswordResetCode(email as string);
+      
+      if (result.success) {
+        setTimeLeft(300); // Reset timer to 5 minutes
+        setCanResend(false);
+        setCode(['', '', '', '', '', '']); // Clear code inputs
+        Alert.alert('Success', 'A new verification code has been sent to your email.');
+      } else {
+        Alert.alert('Error', result.message || 'Failed to send verification code. Please try again.');
+      }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to send verification code. Please try again.');
     } finally {
@@ -162,20 +193,27 @@ export default function VerifyCodeScreen() {
               <Text style={styles.codeLabel}>Enter 6-digit code</Text>
               <View style={styles.codeInputs}>
                 {code.map((digit, index) => (
-                  <TextInput
+                  <TouchableOpacity
                     key={index}
-                    ref={(ref) => {
-                      if (ref) inputRefs.current[index] = ref;
-                    }}
-                    style={styles.codeInput}
-                    value={digit}
-                    onChangeText={(value) => handleCodeChange(index, value)}
-                    onKeyPress={({ nativeEvent }) => handleKeyPress(index, nativeEvent.key)}
-                    keyboardType="numeric"
-                    maxLength={1}
-                    selectTextOnFocus
-                    autoFocus={index === 0}
-                  />
+                    style={styles.codeInputWrapper}
+                    onPress={() => focusInput(index)}
+                    activeOpacity={0.7}
+                  >
+                    <TextInput
+                      ref={setInputRef(index)}
+                      style={styles.codeInput}
+                      value={digit}
+                      onChangeText={(value) => handleCodeChange(index, value)}
+                      onKeyPress={({ nativeEvent }) => handleKeyPress(index, nativeEvent.key)}
+                      keyboardType="numeric"
+                      maxLength={1}
+                      selectTextOnFocus
+                      autoFocus={index === 0}
+                      blurOnSubmit={false}
+                      returnKeyType="next"
+                      editable={!isLoading}
+                    />
+                  </TouchableOpacity>
                 ))}
               </View>
             </View>
@@ -311,17 +349,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  codeInput: {
+  codeInputWrapper: {
     width: 48,
     height: 56,
     borderWidth: 2,
     borderColor: '#E5E7EB',
     borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  codeInput: {
+    width: '100%',
+    height: '100%',
     fontSize: 24,
     fontFamily: 'Inter-Bold',
     textAlign: 'center',
-    backgroundColor: '#F9FAFB',
     color: '#1F2937',
+    backgroundColor: 'transparent',
   },
   verifyButton: {
     flexDirection: 'row',

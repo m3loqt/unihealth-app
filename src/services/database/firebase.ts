@@ -9,7 +9,7 @@ import {
   onValue,
   off
 } from 'firebase/database';
-import { database } from '@/config/firebase';
+import { database } from '../../config/firebase';
 
 export interface Appointment {
   id?: string;
@@ -102,10 +102,18 @@ export interface Certificate {
   specialistId: string;
   type: string;
   issueDate: string;
+  issueTime?: string;
   expiryDate?: string;
   status: 'active' | 'expired';
   description: string;
+  documentUrl?: string;
   fileUrl?: string;
+  certificateNumber?: string;
+  doctor?: string;
+  issuedDate?: string;
+  clinicName?: string;
+  medicalFindings?: string;
+  restrictions?: string;
 }
 
 export interface Patient {
@@ -752,7 +760,7 @@ export const databaseService = {
   },
 
   // Specialist-specific methods
-  async getPatientsBySpecialist(specialistId: string): Promise<any[]> {
+  async getPatientsBySpecialist(specialistId: string): Promise<Patient[]> {
     try {
       const appointmentsRef = ref(database, 'appointments');
       const snapshot = await get(appointmentsRef);

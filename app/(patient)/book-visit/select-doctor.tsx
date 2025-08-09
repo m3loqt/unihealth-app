@@ -20,6 +20,7 @@ import {
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { databaseService } from '../../../src/services/database/firebase';
+import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 
 interface Doctor {
   id: string;
@@ -82,8 +83,8 @@ export default function SelectDoctorScreen() {
         clinicId,
         clinicName,
         doctorId: doctor.id,
-        doctorName: doctor.fullName,
-        doctorSpecialty: doctor.specialty,
+        doctorName: safeDataAccess.getUserFullName(doctor, 'Unknown Doctor'),
+        doctorSpecialty: doctor.specialty || 'General Medicine',
       }
     });
   };
