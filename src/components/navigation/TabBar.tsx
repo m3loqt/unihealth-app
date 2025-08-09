@@ -14,12 +14,12 @@ export default function TabBar({ activeTab }: TabBarProps) {
   const router = useRouter();
 
   const TABS = [
-    { name: 'index', icon: Home },
-    { name: 'appointments', icon: Calendar },
-    { name: 'prescriptions', icon: Pill },
-    { name: 'certificates', icon: FileText },
-    { name: 'profile', icon: User },
-  ];
+    { name: 'index', icon: Home, route: '/(patient)/tabs' },
+    { name: 'appointments', icon: Calendar, route: '/(patient)/tabs/appointments' },
+    { name: 'prescriptions', icon: Pill, route: '/(patient)/tabs/prescriptions' },
+    { name: 'certificates', icon: FileText, route: '/(patient)/tabs/certificates' },
+    { name: 'profile', icon: User, route: '/(patient)/tabs/profile' },
+  ] as const;
 
   const getActiveTab = () => {
     if (activeTab) return activeTab;
@@ -31,13 +31,13 @@ export default function TabBar({ activeTab }: TabBarProps) {
 
   return (
     <View style={[styles.tabContainer, { }]}> 
-      {TABS.map(({ name, icon: Icon }) => {
+      {TABS.map(({ name, icon: Icon, route }) => {
         const isFocused = currentActiveTab === name;
 
         return (
           <TouchableOpacity
             key={name}
-            onPress={() => router.push(name === 'index' ? '/(patient)/tabs' : `/(patient)/tabs/${name}`)}
+            onPress={() => router.push(route)}
             style={styles.tab}
             activeOpacity={0.9}
           >

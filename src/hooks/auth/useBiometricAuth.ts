@@ -193,7 +193,7 @@ export async function authenticateWithBiometrics(): Promise<boolean> {
       console.log('Biometric authentication successful');
       return true;
     } else {
-      console.log('Biometric authentication failed or cancelled:', result.error);
+      console.log('Biometric authentication failed or cancelled');
       return false;
     }
   } catch (error) {

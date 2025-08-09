@@ -30,6 +30,7 @@ import {
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { databaseService } from '../../../src/services/database/firebase';
+import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 
 // ---- Constants ----
 const BLUE = '#2563EB';

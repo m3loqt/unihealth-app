@@ -31,6 +31,7 @@ import {
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { databaseService } from '../../../src/services/database/firebase';
+import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 
 // Map services to icons
 const SERVICE_ICONS = {
@@ -255,8 +256,8 @@ export default function BookVisitScreen() {
                       <IconComponent size={24} color="#1E40AF" />
                     </View>
                     <View style={styles.clinicInfo}>
-                      <Text style={styles.clinicName}>{clinic.name}</Text>
-                      <Text style={styles.clinicType}>{getClinicTypeDisplay(clinic.type)}</Text>
+                      <Text style={styles.clinicName}>{clinic.name || 'Unknown Clinic'}</Text>
+                      <Text style={styles.clinicType}>{getClinicTypeDisplay(clinic.type || 'Unknown')}</Text>
                     </View>
                     <ChevronRight size={20} color="#9CA3AF" />
                   </View>
@@ -265,13 +266,13 @@ export default function BookVisitScreen() {
                     <View style={styles.detailRow}>
                       <MapPin size={16} color="#6B7280" />
                       <Text style={styles.detailText}>
-                        {formatClinicAddress(clinic)}
+                        {formatClinicAddress(clinic) || 'Address not available'}
                       </Text>
                     </View>
                     
                     <View style={styles.detailRow}>
                       <Phone size={16} color="#6B7280" />
-                      <Text style={styles.detailText}>{clinic.phone}</Text>
+                      <Text style={styles.detailText}>{clinic.phone || 'Phone not available'}</Text>
                     </View>
                     
                     {clinic.hasGeneralistDoctors === false && (
