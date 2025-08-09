@@ -141,7 +141,7 @@ export const formatMedicalSpecialty = (specialty: string): string => {
     'emergency_medicine': 'Emergency Medicine',
   };
   
-  return specialtyMap[specialty.toLowerCase()] || toTitleCase(specialty);
+  return specialtyMap[specialty.toLowerCase()] || snakeCaseToTitleCase(specialty);
 };
 
 /**
@@ -296,11 +296,11 @@ export const formatMedicalHistory = (history: any): string => {
 };
 
 /**
- * Convert string to title case
+ * Convert snake_case string to title case
  * @param str - Input string
  * @returns Title case string
  */
-export const toTitleCase = (str: string): string => {
+export const snakeCaseToTitleCase = (str: string): string => {
   if (!str) return '';
   return str
     .toLowerCase()

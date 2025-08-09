@@ -31,6 +31,11 @@ import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService } from '../../../src/services/database/firebase';
 import { Input, Dropdown, DatePicker } from '../../../src/components/ui/Input';
+import { safeDataAccess } from '../../../src/utils/safeDataAccess';
+import LoadingState from '../../../src/components/ui/LoadingState';
+import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
+import { dataValidation } from '../../../src/utils/dataValidation';
+import { performanceUtils } from '../../../src/utils/performance';
 
 export default function SpecialistProfileScreen() {
   const { user, signOut } = useAuth();
@@ -76,6 +81,7 @@ export default function SpecialistProfileScreen() {
     clinicAffiliations: [],
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showFullProfileModal, setShowFullProfileModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -95,6 +101,9 @@ export default function SpecialistProfileScreen() {
     civilStatus: '',
   });
   const [clinicNames, setClinicNames] = useState<string[]>([]);
+
+  // Performance optimization: memoize clinic names
+  const memoizedClinicNames = performanceUtils.useDeepMemo(() => clinicNames, [clinicNames]);
 
   // Dropdown options
   const genderOptions = [
@@ -168,52 +177,55 @@ export default function SpecialistProfileScreen() {
     
     try {
       setLoading(true);
+      setError(null);
       const specialistProfile = await databaseService.getSpecialistProfile(user.uid);
       
       if (specialistProfile) {
+        // Use specialist profile data directly
         console.log('Specialist profile loaded:', specialistProfile);
-                 setProfileData({
-           name: `${specialistProfile.firstName || ''} ${specialistProfile.lastName || ''}`.trim() || user.name || '',
-           email: specialistProfile.email || user.email || '',
-           phone: specialistProfile.contactNumber || '',
-           address: specialistProfile.address || '',
-           specialization: specialistProfile.specialty || '',
-           experience: specialistProfile.yearsOfExperience && specialistProfile.yearsOfExperience > 0 ? `${specialistProfile.yearsOfExperience} years` : '',
-           profileImage: specialistProfile.profileImageUrl || '',
-           medicalLicenseNumber: specialistProfile.medicalLicenseNumber || '',
-           prcId: specialistProfile.prcId || '',
-           prcExpiryDate: specialistProfile.prcExpiryDate || '',
-           professionalFee: specialistProfile.professionalFee ? `₱${specialistProfile.professionalFee}` : '',
-           gender: specialistProfile.gender || '',
-           dateOfBirth: specialistProfile.dateOfBirth || '',
-           civilStatus: specialistProfile.civilStatus || '',
-           status: specialistProfile.status || '',
-           clinicAffiliations: specialistProfile.clinicAffiliations || [],
-         });
+        
+        setProfileData({
+          name: safeDataAccess.getUserFullName(specialistProfile, user.name || ''),
+          email: specialistProfile.email || user.email || '',
+          phone: safeDataAccess.getUserPhone(specialistProfile, ''),
+          address: specialistProfile.address || '',
+          specialization: specialistProfile.specialty || '',
+          experience: specialistProfile.yearsOfExperience && specialistProfile.yearsOfExperience > 0 ? `${specialistProfile.yearsOfExperience} years` : '',
+          profileImage: specialistProfile.profileImageUrl || '',
+          medicalLicenseNumber: specialistProfile.medicalLicenseNumber || '',
+          prcId: specialistProfile.prcId || '',
+          prcExpiryDate: specialistProfile.prcExpiryDate || '',
+          professionalFee: specialistProfile.professionalFee ? `₱${specialistProfile.professionalFee}` : '',
+          gender: safeDataAccess.getUserGender(specialistProfile, ''),
+          dateOfBirth: specialistProfile.dateOfBirth || '',
+          civilStatus: specialistProfile.civilStatus || '',
+          status: specialistProfile.status || '',
+          clinicAffiliations: specialistProfile.clinicAffiliations || [],
+        });
       } else {
-                 // Use basic user data if no specialist profile exists
-         setProfileData({
-           name: user.name || '',
-           email: user.email || '',
-           phone: '',
-           address: '',
-           specialization: '',
-           experience: '',
-           profileImage: '',
-           medicalLicenseNumber: '',
-           prcId: '',
-           prcExpiryDate: '',
-           professionalFee: '',
-           gender: '',
-           dateOfBirth: '',
-           civilStatus: '',
-           status: '',
-           clinicAffiliations: [],
-         });
+        // Use basic user data if no specialist profile exists
+        setProfileData({
+          name: user.name || '',
+          email: user.email || '',
+          phone: '',
+          address: '',
+          specialization: '',
+          experience: '',
+          profileImage: '',
+          medicalLicenseNumber: '',
+          prcId: '',
+          prcExpiryDate: '',
+          professionalFee: '',
+          gender: '',
+          dateOfBirth: '',
+          civilStatus: '',
+          status: '',
+          clinicAffiliations: [],
+        });
       }
     } catch (error) {
       console.error('Error loading profile data:', error);
-      Alert.alert('Error', 'Failed to load profile data. Please try again.');
+      setError('Failed to load profile data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -223,6 +235,11 @@ export default function SpecialistProfileScreen() {
     setRefreshing(true);
     await loadProfileData();
     setRefreshing(false);
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    loadProfileData();
   };
 
   const handleSignOut = async () => {
@@ -399,7 +416,8 @@ export default function SpecialistProfileScreen() {
    }, [clinicAffiliations]);
 
    return (
-    <SafeAreaView style={styles.safeArea}>
+    <ErrorBoundary>
+      <SafeAreaView style={styles.safeArea}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -417,23 +435,43 @@ export default function SpecialistProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Profile Card */}
+        {/* Loading and Error States */}
+        {loading ? (
+          <LoadingState
+            message="Loading profile..."
+            variant="inline"
+            size="large"
+          />
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
             <View style={styles.profileImageContainer}>
               {profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.profileImage} />
+                <Image 
+                  source={{ uri: profileImage }} 
+                  style={styles.profileImage}
+                  // defaultSource={require('../../../assets/default-avatar.png')}
+                />
               ) : (
                 <View style={styles.profileImagePlaceholder}>
                   <Text style={styles.profileImageText}>
-                    {name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'DR'}
+                    {name ? safeDataAccess.getUserInitials({ name }, 'DR') : 'DR'}
                   </Text>
                 </View>
               )}
             </View>
                          <View style={styles.profileInfo}>
-               <Text style={styles.userName}>Dr. {name}</Text>
-               <Text style={styles.userSpecialty}>{specialization}</Text>
+               <Text style={styles.userName}>Dr. {name || 'Unknown Doctor'}</Text>
+               <Text style={styles.userSpecialty}>{specialization || 'General Medicine'}</Text>
                {experience && <Text style={styles.experience}>{experience} experience</Text>}
              </View>
           </View>
@@ -441,18 +479,18 @@ export default function SpecialistProfileScreen() {
                      {/* Essential Contact Info */}
            <View style={styles.contactInfo}>
              <View style={styles.contactItems}>
-               {clinicNames.length > 0 && (
+               {memoizedClinicNames.length > 0 && (
                  <View style={styles.contactItem}>
                    <Building size={16} color="#6B7280" />
                    <Text style={styles.contactText}>
-                     {clinicNames.slice(0, 2).join(', ')}
-                     {clinicNames.length > 2 ? ` +${clinicNames.length - 2} more` : ''}
+                     {memoizedClinicNames.slice(0, 2).join(', ')}
+                     {memoizedClinicNames.length > 2 ? ` +${memoizedClinicNames.length - 2} more` : ''}
                    </Text>
                  </View>
                )}
                <View style={styles.contactItem}>
                  <Mail size={16} color="#6B7280" />
-                 <Text style={styles.contactText}>{email}</Text>
+                 <Text style={styles.contactText}>{email || 'Email not provided'}</Text>
                </View>
                {phone && (
                  <View style={styles.contactItem}>
@@ -540,6 +578,8 @@ export default function SpecialistProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Full Profile Modal */}
@@ -584,11 +624,15 @@ export default function SpecialistProfileScreen() {
                     <View style={styles.modalProfileHeader}>
                       <View style={styles.modalProfileImageContainer}>
                         {profileImage ? (
-                          <Image source={{ uri: profileImage }} style={styles.modalProfileImage} />
+                          <Image 
+                            source={{ uri: profileImage }} 
+                            style={styles.modalProfileImage}
+                            // defaultSource={require('../../../assets/default-avatar.png')}
+                          />
                         ) : (
                           <View style={styles.modalProfileImagePlaceholder}>
                             <Text style={styles.modalProfileImageText}>
-                              {name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'DR'}
+                              {name ? safeDataAccess.getUserInitials({ name }, 'DR') : 'DR'}
                             </Text>
                           </View>
                         )}
@@ -750,18 +794,22 @@ export default function SpecialistProfileScreen() {
                     <View style={styles.modalProfileHeader}>
                       <View style={styles.modalProfileImageContainer}>
                         {profileImage ? (
-                          <Image source={{ uri: profileImage }} style={styles.modalProfileImage} />
+                          <Image 
+                            source={{ uri: profileImage }} 
+                            style={styles.modalProfileImage}
+                            // defaultSource={require('../../../assets/default-avatar.png')}
+                          />
                         ) : (
                           <View style={styles.modalProfileImagePlaceholder}>
                             <Text style={styles.modalProfileImageText}>
-                              {name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'DR'}
+                              {name ? safeDataAccess.getUserInitials({ name }, 'DR') : 'DR'}
                             </Text>
                           </View>
                         )}
                       </View>
                       <View style={styles.modalProfileInfo}>
-                        <Text style={styles.modalUserName}>Dr. {name}</Text>
-                        <Text style={styles.modalUserSpecialty}>{specialization || 'Specialist'}</Text>
+                        <Text style={styles.modalUserName}>Dr. {name || 'Unknown Doctor'}</Text>
+                        <Text style={styles.modalUserSpecialty}>{specialization || 'General Medicine'}</Text>
                         {experience && <Text style={styles.modalExperience}>{experience} experience</Text>}
                       </View>
                     </View>
@@ -803,7 +851,7 @@ export default function SpecialistProfileScreen() {
                       <View style={styles.modalContactList}>
                         <View style={styles.modalContactItem}>
                           <Mail size={18} color="#6B7280" />
-                          <Text style={styles.modalContactText}>{email}</Text>
+                          <Text style={styles.modalContactText}>{email || 'Email not provided'}</Text>
                         </View>
                         {phone && (
                           <View style={styles.modalContactItem}>
@@ -865,11 +913,11 @@ export default function SpecialistProfileScreen() {
                     </View>
 
                     {/* Clinic Affiliations */}
-                    {clinicNames.length > 0 && (
+                    {memoizedClinicNames.length > 0 && (
                       <View style={styles.modalSection}>
                         <Text style={styles.modalSectionTitle}>Clinic Affiliations</Text>
                         <View style={styles.modalInfoList}>
-                          {clinicNames.map((clinicName, index) => (
+                          {memoizedClinicNames.map((clinicName, index) => (
                             <View key={index} style={styles.modalInfoRow}>
                               <Text style={styles.modalInfoLabel}>Clinic {index + 1}</Text>
                               <Text style={styles.modalInfoValue}>{clinicName}</Text>
@@ -913,7 +961,8 @@ export default function SpecialistProfileScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ErrorBoundary>
   );
 }
 
@@ -1477,5 +1526,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#FFFFFF',
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
 });

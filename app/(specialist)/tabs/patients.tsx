@@ -16,6 +16,11 @@ import { Search, User, Users } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService, Patient } from '../../../src/services/database/firebase';
+import { safeDataAccess } from '../../../src/utils/safeDataAccess';
+import LoadingState from '../../../src/components/ui/LoadingState';
+import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
+import { dataValidation } from '../../../src/utils/dataValidation';
+import { useDeepMemo } from '../../../src/utils/performance';
 
 export default function SpecialistPatientsScreen() {
   const { user } = useAuth();
@@ -23,6 +28,7 @@ export default function SpecialistPatientsScreen() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const filters = ['All', 'Active', 'Completed'];
 
@@ -38,12 +44,16 @@ export default function SpecialistPatientsScreen() {
     
     try {
       setLoading(true);
+      setError(null);
       const specialistPatients = await databaseService.getPatientsBySpecialist(user.uid);
-      console.log('Loaded patients:', specialistPatients.length);
-      setPatients(specialistPatients);
+      
+      // Validate patients data
+      const validPatients = dataValidation.validateArray(specialistPatients, dataValidation.isValidPatient);
+      console.log('Loaded patients:', validPatients.length);
+      setPatients(validPatients);
     } catch (error) {
       console.error('Error loading patients:', error);
-      Alert.alert('Error', 'Failed to load patients. Please try again.');
+      setError('Failed to load patients. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -55,14 +65,21 @@ export default function SpecialistPatientsScreen() {
     setRefreshing(false);
   };
 
-  const filteredPatients = patients.filter((patient) => {
-    const matchesSearch =
-      patient.patientFirstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.patientLastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.referredFrom?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = activeFilter === 'All' || patient.status === activeFilter;
-    return matchesSearch && matchesFilter;
-  });
+  const handleRetry = () => {
+    setError(null);
+    loadPatients();
+  };
+
+  // Performance optimization: memoize filtered patients
+  const filteredPatients = useDeepMemo(() => {
+    return patients.filter((patient) => {
+      const matchesSearch =
+        safeDataAccess.getUserFullName(patient, '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        patient.referredFrom?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesFilter = activeFilter === 'All' || patient.status === activeFilter;
+      return matchesSearch && matchesFilter;
+    });
+  }, [patients, searchQuery, activeFilter]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -89,12 +106,8 @@ export default function SpecialistPatientsScreen() {
 
   const renderPatientCard = (patient: Patient) => {
     const statusColors = getStatusColor(patient.status || 'Active');
-    const patientName = `${patient.patientFirstName || ''} ${patient.patientLastName || ''}`.trim();
-    const initials = patientName
-      .split(' ')
-      .map((n: string) => n[0])
-      .join('')
-      .toUpperCase();
+    const patientName = safeDataAccess.getUserFullName(patient, 'Unknown Patient');
+    const initials = safeDataAccess.getUserInitials(patient, 'U');
 
     return (
       <TouchableOpacity
@@ -140,7 +153,8 @@ export default function SpecialistPatientsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ErrorBoundary>
+      <SafeAreaView style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
       {/* Header */}
@@ -208,8 +222,17 @@ export default function SpecialistPatientsScreen() {
       >
         <View style={styles.patientsList}>
           {loading ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>Loading patients...</Text>
+            <LoadingState
+              message="Loading patients..."
+              variant="inline"
+              size="large"
+            />
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
             </View>
           ) : filteredPatients.length > 0 ? (
             filteredPatients.map(renderPatientCard)
@@ -229,7 +252,8 @@ export default function SpecialistPatientsScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ErrorBoundary>
   );
 }
 
@@ -414,6 +438,33 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
 });
  

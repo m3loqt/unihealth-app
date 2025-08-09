@@ -19,6 +19,11 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { databaseService, Prescription } from '@/services/database/firebase';
+import { safeDataAccess } from '@/utils/safeDataAccess';
+import LoadingState from '@/components/ui/LoadingState';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { dataValidation } from '@/utils/dataValidation';
+import { useDeepMemo } from '@/utils/performance';
 
 export default function PrescriptionsScreen() {
   const { user } = useAuth();
@@ -26,6 +31,7 @@ export default function PrescriptionsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Load prescriptions from database
   useEffect(() => {
@@ -39,20 +45,34 @@ export default function PrescriptionsScreen() {
     
     try {
       setLoading(true);
+      setError(null);
       const userPrescriptions = await databaseService.getPrescriptions(user.uid);
-      console.log('Loaded prescriptions:', userPrescriptions.length);
-      setPrescriptions(userPrescriptions);
+      
+      // Validate prescriptions data
+      const validPrescriptions = dataValidation.validateArray(userPrescriptions, dataValidation.isValidPrescription);
+      console.log('Loaded prescriptions:', validPrescriptions.length);
+      setPrescriptions(validPrescriptions);
     } catch (error) {
       console.error('Error loading prescriptions:', error);
-      Alert.alert('Error', 'Failed to load prescriptions. Please try again.');
+      setError('Failed to load prescriptions. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Use database prescriptions only - filter by status
-  const activePrescriptions = prescriptions.filter(p => p.status === 'active');
-  const pastPrescriptions = prescriptions.filter(p => p.status === 'completed' || p.status === 'discontinued');
+  const handleRetry = () => {
+    setError(null);
+    loadPrescriptions();
+  };
+
+  // Performance optimization: memoize filtered prescriptions
+  const activePrescriptions = useDeepMemo(() => 
+    prescriptions.filter(p => p.status === 'active'), [prescriptions]
+  );
+  
+  const pastPrescriptions = useDeepMemo(() => 
+    prescriptions.filter(p => p.status === 'completed' || p.status === 'discontinued'), [prescriptions]
+  );
   
   // Debug logging
   console.log('Total prescriptions:', prescriptions.length);
@@ -61,11 +81,12 @@ export default function PrescriptionsScreen() {
   console.log('Available statuses:', Array.from(new Set(prescriptions.map(p => p.status))));
   
   // Filter prescriptions that have essential data
-  const validActivePrescriptions = activePrescriptions.filter(p => 
-    p.medication && p.dosage && p.frequency
+  const validActivePrescriptions = useDeepMemo(() => 
+    activePrescriptions.filter(p => p.medication && p.dosage && p.frequency), [activePrescriptions]
   );
-  const validPastPrescriptions = pastPrescriptions.filter(p => 
-    p.medication && p.dosage && p.frequency
+  
+  const validPastPrescriptions = useDeepMemo(() => 
+    pastPrescriptions.filter(p => p.medication && p.dosage && p.frequency), [pastPrescriptions]
   );
 
   const filterPrescriptions = (list: Prescription[]) =>
@@ -84,9 +105,9 @@ export default function PrescriptionsScreen() {
             <Pill size={20} color="#1E3A8A" />
           </View>
           <View style={styles.prescriptionDetails}>
-            <Text style={styles.medicationName}>{prescription.medication}</Text>
+            <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
             <Text style={styles.medicationDosage}>
-              {prescription.dosage} • {prescription.frequency}
+              {prescription.dosage || 'N/A'} • {prescription.frequency || 'N/A'}
             </Text>
             <Text style={styles.prescriptionDescription}>
               {prescription.instructions || 'No additional instructions'}
@@ -129,9 +150,9 @@ export default function PrescriptionsScreen() {
             <Pill size={20} color="#1E3A8A" />
           </View>
           <View style={styles.prescriptionDetails}>
-            <Text style={styles.medicationName}>{prescription.medication}</Text>
+            <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
             <Text style={styles.medicationDosage}>
-              {prescription.dosage} • {prescription.frequency}
+              {prescription.dosage || 'N/A'} • {prescription.frequency || 'N/A'}
             </Text>
             <Text style={styles.prescriptionDescription}>
               {prescription.instructions || 'No additional instructions'}
@@ -196,80 +217,95 @@ export default function PrescriptionsScreen() {
   console.log('Filtered past prescriptions:', filteredPast.length);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Prescriptions</Text>
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={() => router.push('/(patient)/tabs/profile')}
-        >
-          <User size={24} color="#6B7280" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.filtersContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersContent}
-        >
-          {['All', 'Active', 'Past'].map((filter) => (
-            <TouchableOpacity
-              key={filter}
-              style={[
-                styles.filterButton,
-                activeTab === filter && styles.activeFilterButton,
-              ]}
-              onPress={() => setActiveTab(filter)}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  activeTab === filter && styles.activeFilterText,
-                ]}
-              >
-                {filter}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 95 }}
-      >
-        <View style={styles.prescriptionsList}>
-          {activeTab === 'All' ? (
-            <>
-              {filteredActive.length === 0 && filteredPast.length === 0
-                ? renderEmptyState('All')
-                : (
-                  <>
-                    {filteredActive.length === 0
-                      ? renderEmptyState('Active')
-                      : filteredActive.map(renderActivePrescription)}
-                    {filteredPast.length === 0
-                      ? renderEmptyState('Past')
-                      : filteredPast.map(renderPastPrescription)}
-                  </>
-                )
-              }
-            </>
-          ) : activeTab === 'Active' ? (
-            filteredActive.length === 0
-              ? renderEmptyState('Active')
-              : filteredActive.map(renderActivePrescription)
-          ) : (
-            filteredPast.length === 0
-              ? renderEmptyState('Past')
-              : filteredPast.map(renderPastPrescription)
-          )}
+    <ErrorBoundary>
+      <SafeAreaView style={styles.container}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Prescriptions</Text>
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() => router.push('/(patient)/tabs/profile')}
+          >
+            <User size={24} color="#6B7280" />
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+
+        <View style={styles.filtersContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersContent}
+          >
+            {['All', 'Active', 'Past'].map((filter) => (
+              <TouchableOpacity
+                key={filter}
+                style={[
+                  styles.filterButton,
+                  activeTab === filter && styles.activeFilterButton,
+                ]}
+                onPress={() => setActiveTab(filter)}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    activeTab === filter && styles.activeFilterText,
+                  ]}
+                >
+                  {filter}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 95 }}
+        >
+          <View style={styles.prescriptionsList}>
+            {loading ? (
+                            <LoadingState
+                message="Loading prescriptions..."
+                variant="inline"
+                size="large"
+              />
+            ) : error ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : activeTab === 'All' ? (
+              <>
+                {filteredActive.length === 0 && filteredPast.length === 0
+                  ? renderEmptyState('All')
+                  : (
+                    <>
+                      {filteredActive.length === 0
+                        ? renderEmptyState('Active')
+                        : filteredActive.map(renderActivePrescription)}
+                      {filteredPast.length === 0
+                        ? renderEmptyState('Past')
+                        : filteredPast.map(renderPastPrescription)}
+                    </>
+                  )
+                }
+              </>
+            ) : activeTab === 'Active' ? (
+              filteredActive.length === 0
+                ? renderEmptyState('Active')
+                : filteredActive.map(renderActivePrescription)
+            ) : (
+              filteredPast.length === 0
+                ? renderEmptyState('Past')
+                : filteredPast.map(renderPastPrescription)
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </ErrorBoundary>
   );
 }
 
@@ -443,5 +479,32 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    margin: 20,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontFamily: 'Inter-Regular',
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

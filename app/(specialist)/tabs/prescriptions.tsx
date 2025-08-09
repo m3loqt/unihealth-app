@@ -16,6 +16,11 @@ import { Pill, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService, Prescription } from '../../../src/services/database/firebase';
+import { safeDataAccess } from '../../../src/utils/safeDataAccess';
+import LoadingState from '../../../src/components/ui/LoadingState';
+import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
+import { dataValidation } from '../../../src/utils/dataValidation';
+import { useDeepMemo } from '../../../src/utils/performance';
 
 export default function SpecialistPrescriptionsScreen() {
   const { user } = useAuth();
@@ -23,6 +28,7 @@ export default function SpecialistPrescriptionsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   // Load prescriptions from Firebase
@@ -37,12 +43,16 @@ export default function SpecialistPrescriptionsScreen() {
     
     try {
       setLoading(true);
+      setError(null);
       const specialistPrescriptions = await databaseService.getPrescriptionsBySpecialist(user.uid);
-      console.log('Loaded prescriptions:', specialistPrescriptions.length);
-      setPrescriptions(specialistPrescriptions);
+      
+      // Validate prescriptions data
+      const validPrescriptions = dataValidation.validateArray(specialistPrescriptions, dataValidation.isValidPrescription);
+      console.log('Loaded prescriptions:', validPrescriptions.length);
+      setPrescriptions(validPrescriptions);
     } catch (error) {
       console.error('Error loading prescriptions:', error);
-      Alert.alert('Error', 'Failed to load prescriptions. Please try again.');
+      setError('Failed to load prescriptions. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -54,8 +64,19 @@ export default function SpecialistPrescriptionsScreen() {
     setRefreshing(false);
   };
 
-  const activePrescriptions = prescriptions.filter(p => p.status === 'active');
-  const pastPrescriptions = prescriptions.filter(p => p.status === 'completed' || p.status === 'discontinued');
+  const handleRetry = () => {
+    setError(null);
+    loadPrescriptions();
+  };
+
+  // Performance optimization: memoize filtered prescriptions
+  const activePrescriptions = useDeepMemo(() => 
+    prescriptions.filter(p => p.status === 'active'), [prescriptions]
+  );
+  
+  const pastPrescriptions = useDeepMemo(() => 
+    prescriptions.filter(p => p.status === 'completed' || p.status === 'discontinued'), [prescriptions]
+  );
 
   const filterPrescriptions = (list: Prescription[]) =>
     list.filter((item: Prescription) => item.medication?.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -67,9 +88,9 @@ export default function SpecialistPrescriptionsScreen() {
           <Pill size={20} color="#1E3A8A" />
         </View>
         <View style={styles.prescriptionDetails}>
-          <Text style={styles.medicationName}>{prescription.medication}</Text>
+          <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
           <Text style={styles.medicationDosage}>
-            {prescription.dosage} • {prescription.frequency}
+            {prescription.dosage || 'N/A'} • {prescription.frequency || 'N/A'}
           </Text>
           <Text style={styles.prescriptionDescription}>
             {prescription.instructions || 'No additional instructions'}
@@ -104,9 +125,9 @@ export default function SpecialistPrescriptionsScreen() {
           <Pill size={20} color="#1E3A8A" />
         </View>
         <View style={styles.prescriptionDetails}>
-          <Text style={styles.medicationName}>{prescription.medication}</Text>
+          <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
           <Text style={styles.medicationDosage}>
-            {prescription.dosage} • {prescription.frequency}
+            {prescription.dosage || 'N/A'} • {prescription.frequency || 'N/A'}
           </Text>
           <Text style={styles.prescriptionDescription}>
             {prescription.instructions || 'No additional instructions'}
@@ -151,9 +172,21 @@ export default function SpecialistPrescriptionsScreen() {
   const renderContent = () => {
     if (loading) {
       return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1E40AF" />
-          <Text style={styles.loadingText}>Loading prescriptions...</Text>
+        <LoadingState
+          message="Loading prescriptions..."
+          variant="inline"
+          size="large"
+        />
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -222,7 +255,8 @@ export default function SpecialistPrescriptionsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ErrorBoundary>
+      <SafeAreaView style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Prescriptions Issued</Text>
@@ -255,7 +289,8 @@ export default function SpecialistPrescriptionsScreen() {
         </ScrollView>
       </View>
       {renderContent()}
-    </SafeAreaView>
+      </SafeAreaView>
+    </ErrorBoundary>
   );
 }
 
@@ -446,5 +481,32 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 16,
     textAlign: 'center',
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
 });

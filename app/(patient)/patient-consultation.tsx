@@ -30,6 +30,7 @@ import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService } from '../../src/services/database/firebase';
 import { ref, update } from 'firebase/database';
 import { database } from '@/config/firebase';
+import { safeDataAccess } from '../../src/utils/safeDataAccess';
 
 export default function PatientConsultationScreen() {
   const { patientId, consultationId, referralId } = useLocalSearchParams();

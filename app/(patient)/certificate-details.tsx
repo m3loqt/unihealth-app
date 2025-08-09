@@ -29,6 +29,7 @@ import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService, Certificate } from '../../src/services/database/firebase';
+import { safeDataAccess } from '../../src/utils/safeDataAccess';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -149,7 +150,7 @@ export default function CertificateDetailsScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `${certificate.type} - Issued by ${certificate.doctor} on ${certificate.issuedDate}`,
+        message: `${certificate.type} - Issued by ${certificate.doctor} on ${certificate.issueDate}`,
         url: certificate.documentUrl,
       });
     } catch (error) {
@@ -202,7 +203,7 @@ export default function CertificateDetailsScreen() {
           <View style={styles.detailsSection}>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Issued by:</Text>
-              <Text style={styles.detailValue}>{certificate.specialistId}</Text>
+              <Text style={styles.detailValue}>{certificate.specialistId || 'Unknown Specialist'}</Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Clinic:</Text>
@@ -211,7 +212,7 @@ export default function CertificateDetailsScreen() {
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Issued Date:</Text>
               <Text style={styles.detailValue}>
-                {new Date(certificate.issueDate).toLocaleDateString()}
+                {certificate.issueDate ? new Date(certificate.issueDate).toLocaleDateString() : 'Date not specified'}
               </Text>
             </View>
             <View style={styles.detailRow}>
@@ -222,7 +223,7 @@ export default function CertificateDetailsScreen() {
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Valid Until:</Text>
                 <Text style={styles.detailValue}>
-                  {new Date(certificate.expiryDate).toLocaleDateString()}
+                  {certificate.expiryDate ? new Date(certificate.expiryDate).toLocaleDateString() : 'No expiry date'}
                 </Text>
               </View>
             )}
@@ -264,9 +265,10 @@ export default function CertificateDetailsScreen() {
             activeOpacity={0.8}
           >
             <Image
-              source={{ uri: certificate.documentUrl || 'https://via.placeholder.com/400x600?text=Certificate+Document' }}
+              source={{ uri: certificate.documentUrl || undefined }}
               style={styles.documentImage}
               resizeMode="cover"
+              defaultSource={require('../../assets/images/icon.png')}
             />
             <View style={styles.documentOverlay}>
               <View style={styles.viewFullButton}>
@@ -310,7 +312,7 @@ export default function CertificateDetailsScreen() {
           />
           <SafeAreaView style={styles.fullViewContent}>
             <View style={styles.fullViewHeader}>
-              <Text style={styles.fullViewTitle}>{certificate.type}</Text>
+              <Text style={styles.fullViewTitle}>{certificate.type || 'Medical Certificate'}</Text>
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setShowFullView(false)}
@@ -326,9 +328,10 @@ export default function CertificateDetailsScreen() {
               showsHorizontalScrollIndicator={false}
             >
               <Image
-                source={{ uri: certificate.documentUrl }}
+                source={{ uri: certificate.documentUrl || undefined }}
                 style={styles.fullViewImage}
                 resizeMode="contain"
+                defaultSource={require('../../assets/images/icon.png')}
               />
             </ScrollView>
           </SafeAreaView>

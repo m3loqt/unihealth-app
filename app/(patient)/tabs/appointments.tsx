@@ -33,6 +33,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { databaseService, Appointment, MedicalHistory } from '@/services/database/firebase';
 import MedicalHistoryView from '../components/MedicalHistoryView';
+import { safeDataAccess } from '@/utils/safeDataAccess';
+import LoadingState from '@/components/ui/LoadingState';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { dataValidation } from '@/utils/dataValidation';
+import { performanceUtils } from '@/utils/performance';
 
 export default function AppointmentsScreen() {
   const { filter } = useLocalSearchParams();
@@ -43,6 +48,8 @@ export default function AppointmentsScreen() {
   const [modalAppointment, setModalAppointment] = useState<Appointment | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // --- Feedback modal state ---
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -98,16 +105,31 @@ export default function AppointmentsScreen() {
     
     try {
       setLoading(true);
+      setError(null);
       const userAppointments = await databaseService.getAppointments(user.uid, user.role);
-      console.log('Loaded appointments:', userAppointments.length);
-      console.log('Appointments:', userAppointments);
-      setAppointments(userAppointments);
+      
+      // Validate appointments data
+      const validAppointments = dataValidation.validateArray(userAppointments, dataValidation.isValidAppointment);
+      console.log('Loaded appointments:', validAppointments.length);
+      console.log('Appointments:', validAppointments);
+      setAppointments(validAppointments);
     } catch (error) {
       console.error('Error loading appointments:', error);
-      Alert.alert('Error', 'Failed to load appointments. Please try again.');
+      setError('Failed to load appointments. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadAppointments();
+    setRefreshing(false);
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    loadAppointments();
   };
 
   const loadMedicalHistory = async (appointment: Appointment, source: 'appointment' | 'referral' = 'appointment') => {
@@ -255,8 +277,8 @@ export default function AppointmentsScreen() {
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   }
 
-  // Filter appointments based on active filter
-  const getFilteredAppointments = () => {
+  // Performance optimization: memoize filtered appointments
+  const filteredAppointments = performanceUtils.useDeepMemo(() => {
     if (activeFilter === 'All') {
       return appointments;
     }
@@ -265,7 +287,10 @@ export default function AppointmentsScreen() {
     return appointments.filter(appointment => 
       appointment.status.toLowerCase() === filterStatus
     );
-  };
+  }, [appointments, activeFilter]);
+
+  // Filter appointments based on active filter (legacy function for compatibility)
+  const getFilteredAppointments = () => filteredAppointments;
 
   // Get referrals for appointments
   const getReferralCards = () => {
@@ -427,6 +452,7 @@ export default function AppointmentsScreen() {
     
     // Format date for display
     const formatDisplayDate = (dateString: string) => {
+      if (!dateString) return 'Date not specified';
       try {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', {
@@ -441,6 +467,7 @@ export default function AppointmentsScreen() {
 
     // Format time for display
     const formatDisplayTime = (timeString: string) => {
+      if (!timeString) return 'Time not specified';
       try {
         const [hours, minutes] = timeString.split(':');
         const hour = parseInt(hours);
@@ -452,8 +479,8 @@ export default function AppointmentsScreen() {
       }
     };
 
-    const doctorName = `${appointment.doctorFirstName || ''} ${appointment.doctorLastName || ''}`.trim();
-    const doctorInitials = `${appointment.doctorFirstName?.[0] || 'D'}${appointment.doctorLastName?.[0] || 'r'}`;
+    const doctorName = safeDataAccess.getUserFullName(appointment, 'Doctor not specified');
+    const doctorInitials = safeDataAccess.getUserInitials(appointment, 'DR');
 
     return (
       <View key={appointment.id} style={styles.appointmentCard}>
@@ -469,7 +496,7 @@ export default function AppointmentsScreen() {
                 {doctorName || 'Doctor not specified'}
               </Text>
               <Text style={styles.doctorSpecialty}>
-                {appointment.specialty || 'General Practice'}
+                {appointment.specialty || 'General Medicine'}
               </Text>
             </View>
           </View>
@@ -504,7 +531,7 @@ export default function AppointmentsScreen() {
           <View style={styles.metaRow}>
             <MapPin size={16} color="#6B7280" />
             <Text style={styles.metaText}>
-              {appointment.clinicName || 'Clinic not specified'}
+              {appointment.clinicName || 'Clinic not available'}
             </Text>
           </View>
         </View>
@@ -616,7 +643,7 @@ export default function AppointmentsScreen() {
     );
   };
 
-  const filteredAppointments = getFilteredAppointments();
+  // Get filtered appointments from memoized value
 
   // === Appointment Details Modal (Improved UI) ===
   const renderAppointmentModal = () => {
@@ -626,11 +653,11 @@ export default function AppointmentsScreen() {
     // Utility to render label-value row
     const Row = ({ label, value, isLast }: { label: string; value: string; isLast: boolean }) => (
       <View style={[
-        styles2.row,
-        !isLast && styles2.rowDivider
+        styles.row,
+        !isLast && styles.rowDivider
       ]}>
-        <Text style={styles2.rowLabel}>{label}</Text>
-        <Text style={styles2.rowValue} numberOfLines={2}>{value}</Text>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowValue} numberOfLines={2}>{value}</Text>
       </View>
     );
 
@@ -773,21 +800,21 @@ export default function AppointmentsScreen() {
         transparent
         onRequestClose={() => setShowModal(false)}
       >
-        <View style={styles2.backdrop}>
-          <View style={styles2.card}>
+        <View style={styles.backdrop}>
+          <View style={styles.card}>
             {/* Modal Header */}
-            <View style={styles2.header}>
-              <Text style={styles2.title}>Appointment Details</Text>
+            <View style={styles.header}>
+              <Text style={styles.title}>Appointment Details</Text>
               <TouchableOpacity
-                style={styles2.closeBtn}
+                style={styles.closeBtn}
                 onPress={() => setShowModal(false)}
                 hitSlop={{ top: 12, left: 12, right: 12, bottom: 12 }}
               >
-                <Text style={styles2.closeX}>×</Text>
+                <Text style={styles.closeX}>×</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles2.contentWrap}>
+            <View style={styles.contentWrap}>
               {fields.map((f, i) => (
                 <Row
                   key={i}
@@ -913,8 +940,9 @@ export default function AppointmentsScreen() {
   }; 
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+    <ErrorBoundary>
+      <SafeAreaView style={styles.container}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Appointments</Text>
         <View style={styles.headerActions}>
@@ -959,15 +987,28 @@ export default function AppointmentsScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
           <RefreshControl
-            refreshing={loading}
-            onRefresh={loadAppointments}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             colors={['#1E40AF']}
             tintColor="#1E40AF"
           />
         }
       >
                  <View style={styles.appointmentsList}>
-           {filteredAppointments.length > 0 || getReferralCards().length > 0 ? (
+           {loading ? (
+             <LoadingState
+               message="Loading appointments..."
+               variant="inline"
+               size="large"
+             />
+           ) : error ? (
+             <View style={styles.errorContainer}>
+               <Text style={styles.errorText}>{error}</Text>
+               <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+                 <Text style={styles.retryButtonText}>Retry</Text>
+               </TouchableOpacity>
+             </View>
+           ) : filteredAppointments.length > 0 || getReferralCards().length > 0 ? (
              <>
                {/* Render referral cards first */}
                {getReferralCards().map(renderReferralCard)}
@@ -978,12 +1019,12 @@ export default function AppointmentsScreen() {
            ) : (
              <View style={styles.emptyState}>
                <Text style={styles.emptyStateText}>
-                 {loading ? 'Loading appointments...' : `No ${activeFilter.toLowerCase()} appointments found`}
+                 {`No ${activeFilter.toLowerCase()} appointments found`}
                </Text>
-               {!loading && activeFilter === 'All' && (
+               {activeFilter === 'All' && (
                  <TouchableOpacity
                    style={styles.addAppointmentButton}
-                   onPress={() => router.push('/book-visit')}
+                   onPress={() => router.push('/(patient)/book-visit')}
                  >
                    <Text style={styles.addAppointmentButtonText}>Book Your First Appointment</Text>
                  </TouchableOpacity>
@@ -996,6 +1037,7 @@ export default function AppointmentsScreen() {
       {renderFeedbackModal()}
       {renderMedicalHistoryModal()}
     </SafeAreaView>
+    </ErrorBoundary>
   );
 }
 
@@ -1018,6 +1060,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     color: '#1F2937',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    textAlign: 'center',
+    flex: 1,
   },
   addButton: {
     width: 40,
@@ -1266,6 +1315,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addAppointmentButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Error state styles
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    margin: 20,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontFamily: 'Inter-Regular',
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  retryButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
@@ -1624,11 +1701,7 @@ feedbackModalButton: {
     gap: 12,
     marginTop: 12,
   },
-
-});
-
-// -- Modern, minimal modal for Appointment Details --
-const styles2 = StyleSheet.create({
+  // Modal styles
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.14)',
@@ -1647,26 +1720,7 @@ const styles2 = StyleSheet.create({
     elevation: 10,
     maxHeight: '87%',
   },
-  header: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    paddingHorizontal: 20,
-    paddingTop: 22,
-    paddingBottom: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    borderBottomWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-    textAlign: 'center',
-    flex: 1,
-  },
+
   closeBtn: {
     position: 'absolute',
     right: 12,
@@ -1715,6 +1769,4 @@ const styles2 = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
-
 });
- 

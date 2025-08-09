@@ -42,6 +42,11 @@ import { databaseService } from '@/services/database/firebase';
 import { Appointment, Prescription } from '@/services/database/firebase';
 import { getGreeting } from '@/utils/greeting';
 import { getFirstName } from '@/utils/string';
+import { safeDataAccess } from '@/utils/safeDataAccess';
+import LoadingState from '@/components/ui/LoadingState';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { dataValidation } from '@/utils/dataValidation';
+import { performanceUtils } from '@/utils/performance';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_GAP = 16;
@@ -83,6 +88,9 @@ export default function HomeScreen() {
   const [activePrescriptions, setActivePrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [qrActionLoading, setQrActionLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
 
   // Load user data
   useEffect(() => {
@@ -93,33 +101,65 @@ export default function HomeScreen() {
 
   const loadDashboardData = async () => {
     if (!user) return;
+    
     try {
       setLoading(true);
-      // Load appointments
+      setError(null);
+      
+      // Load appointments with validation
+      setAppointmentsLoading(true);
       const appointments = await databaseService.getAppointments(user.uid, user.role);
-      const upcoming = appointments.filter(appt =>
+      const validAppointments = dataValidation.validateArray(appointments, dataValidation.isValidAppointment);
+      const upcoming = validAppointments.filter(appt =>
         appt.status === 'confirmed' || appt.status === 'pending'
       ).slice(0, 3);
       setUpcomingAppointments(upcoming);
-      // Load prescriptions
+      setAppointmentsLoading(false);
+      
+      // Load prescriptions with validation
+      setPrescriptionsLoading(true);
       const prescriptions = await databaseService.getPrescriptions(user.uid);
-      const active = prescriptions.filter(prescription =>
+      const validPrescriptions = dataValidation.validateArray(prescriptions, dataValidation.isValidPrescription);
+      const active = validPrescriptions.filter(prescription =>
         prescription.status === 'active'
       ).slice(0, 3);
       setActivePrescriptions(active);
+      setPrescriptionsLoading(false);
+      
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      Alert.alert('Error', 'Failed to load dashboard data');
+      setError('Failed to load dashboard data. Please try again.');
+      setAppointmentsLoading(false);
+      setPrescriptionsLoading(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleScroll = (event: any) => {
+  const handleRetry = () => {
+    setError(null);
+    loadDashboardData();
+  };
+
+  // Performance optimization: memoize filtered data
+  const filteredAppointments = performanceUtils.useDeepMemo(() => 
+    upcomingAppointments.filter(appt => 
+      appt.status === 'confirmed' || appt.status === 'pending'
+    ), [upcomingAppointments]
+  );
+
+  const filteredPrescriptions = performanceUtils.useDeepMemo(() => 
+    activePrescriptions.filter(prescription => 
+      prescription.status === 'active'
+    ), [activePrescriptions]
+  );
+
+  // Performance optimization: stable callbacks
+  const handleScroll = performanceUtils.useStableCallback((event: any) => {
     const x = event.nativeEvent.contentOffset.x;
     const page = Math.round(x / (CARD_WIDTH + CARD_GAP));
     setActiveTip(page);
-  };
+  }, []);
 
   // QR Modal Actions
   const handleCloseQRModal = () => setShowQRModal(false);
@@ -232,13 +272,14 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: 90 }}
-        showsVerticalScrollIndicator={false}
-      >
+    <ErrorBoundary>
+      <SafeAreaView style={styles.container}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={{ paddingBottom: 90 }}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -351,11 +392,20 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.appointmentsContainer}>
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Loading appointments...</Text>
+            {appointmentsLoading ? (
+              <LoadingState 
+                message="Loading appointments..." 
+                variant="inline" 
+                size="small" 
+              />
+            ) : error ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
               </View>
-            ) : upcomingAppointments.length === 0 ? (
+            ) : filteredAppointments.length === 0 ? (
               renderAppointmentPlaceholder()
             ) : (
               upcomingAppointments.map((appt) => (
@@ -363,25 +413,19 @@ export default function HomeScreen() {
                   <View style={styles.appointmentHeader}>
                     <View style={styles.doctorAvatar}>
                       <Text style={styles.doctorInitial}>
-                        {appt.doctorFirstName && appt.doctorLastName
-                          ? `${appt.doctorFirstName[0]}${appt.doctorLastName[0]}`
-                          : 'DR'
-                        }
+                        {safeDataAccess.getUserInitials(appt, 'DR')}
                       </Text>
                     </View>
                     <View style={styles.appointmentDetails}>
                       <Text style={styles.doctorName}>
-                        {appt.doctorFirstName && appt.doctorLastName
-                          ? `Dr. ${appt.doctorFirstName} ${appt.doctorLastName}`
-                          : appt.doctorId || 'Doctor'
-                        }
+                        {safeDataAccess.getUserFullName(appt, 'Dr. General')}
                       </Text>
-                      <Text style={styles.doctorSpecialty}>{appt.specialty || 'General'}</Text>
+                      <Text style={styles.doctorSpecialty}>{appt.specialty || 'General Medicine'}</Text>
                     </View>
                     <View style={styles.appointmentTime}>
                       <Clock size={16} color="#6B7280" />
                       <Text style={styles.appointmentDate}>
-                        {appt.appointmentDate ? new Date(appt.appointmentDate).toLocaleDateString() : 'Date TBD'}
+                        {appt.appointmentDate ? new Date(appt.appointmentDate).toLocaleDateString() : 'Date not specified'}
                       </Text>
                     </View>
                   </View>
@@ -406,23 +450,25 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.prescriptionsContainer}>
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Loading prescriptions...</Text>
-              </View>
-            ) : activePrescriptions.length === 0 ? (
+            {prescriptionsLoading ? (
+              <LoadingState 
+                message="Loading prescriptions..." 
+                variant="inline" 
+                size="small" 
+              />
+            ) : filteredPrescriptions.length === 0 ? (
               renderPrescriptionPlaceholder()
             ) : (
-              activePrescriptions.map((prescription) => (
+              filteredPrescriptions.map((prescription) => (
                 <View key={prescription.id} style={styles.prescriptionCard}>
                   <View style={styles.prescriptionHeader}>
                     <View style={[styles.medicationIcon, { backgroundColor: '#1E3A8A15' }]}>
                       <Pill size={20} color="#1E3A8A" />
                     </View>
                     <View style={styles.prescriptionDetails}>
-                      <Text style={styles.medicationName}>{prescription.medication}</Text>
+                      <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
                       <Text style={styles.medicationDosage}>
-                        {prescription.dosage} • {prescription.frequency}
+                        {prescription.dosage || 'N/A'} • {prescription.frequency || 'N/A'}
                       </Text>
                       <Text style={styles.prescriptionDescription}>
                         {prescription.instructions || 'No additional instructions'}
@@ -482,27 +528,27 @@ export default function HomeScreen() {
                   }}
                 >
                   <View style={qrModalStyles.qrCodeWrapper}>
-                    <QRCode
-                      ref={qrCodeRef}
-                      value={JSON.stringify({
-                        type: 'patient',
-                        id: user?.uid || 'user-id',
-                        name: user?.name || 'User',
-                        email: user?.email || 'N/A',
-                        timestamp: new Date().toISOString()
-                      })}
-                      size={180}
-                      color="#1F2937"
-                      backgroundColor="#FFFFFF"
-                    />
+                                      <QRCode
+                    ref={qrCodeRef}
+                    value={JSON.stringify({
+                      type: 'patient',
+                      id: user?.uid || 'user-id',
+                      name: safeDataAccess.getUserFullName(user, 'Unknown User'),
+                      email: user?.email || 'Email not provided',
+                      timestamp: new Date().toISOString()
+                    })}
+                    size={180}
+                    color="#1F2937"
+                    backgroundColor="#FFFFFF"
+                  />
                   </View>
                 </ViewShot>
                 <View style={qrModalStyles.patientInfo}>
                   <Text style={qrModalStyles.patientName}>
-                    {user?.name || 'User'}
+                    {safeDataAccess.getUserFullName(user, 'Unknown User')}
                   </Text>
-                  <Text style={qrModalStyles.patientId}>ID: {user?.uid || 'N/A'}</Text>
-                  <Text style={qrModalStyles.patientEmail}>{user?.email || 'N/A'}</Text>
+                  <Text style={qrModalStyles.patientId}>ID: {user?.uid || 'ID not available'}</Text>
+                  <Text style={qrModalStyles.patientEmail}>{user?.email || 'Email not provided'}</Text>
                 </View>
               </View>
               {/* Instructions */}
@@ -542,6 +588,7 @@ export default function HomeScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+    </ErrorBoundary>
   );
 }
 
@@ -552,6 +599,32 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   scrollView: { flex: 1 },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontFamily: 'Inter-Regular',
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -870,6 +943,32 @@ const qrModalStyles = StyleSheet.create({
   secondaryButtonText: { color: '#374151', fontSize: 15, fontFamily: 'Inter-SemiBold' },
   disabledButton: {
     opacity: 0.6,
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontFamily: 'Inter-Regular',
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
  
