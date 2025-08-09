@@ -104,10 +104,25 @@ export default function ResetPasswordScreen() {
     setIsLoading(true);
 
     try {
-      await authService.resetPasswordWithCode(email as string, code as string, formData.password);
-      // Mark the code as used after successful password reset
-      await authService.markResetCodeAsUsed(email as string);
-      setResetComplete(true);
+      const result = await authService.resetPasswordWithCode(email as string, code as string, formData.password);
+      
+      if (result.success) {
+        // Mark the code as used after successful password reset
+        await authService.markResetCodeAsUsed(email as string, code as string);
+        setResetComplete(true);
+      } else {
+        let errorMessage = result.message || 'Failed to reset password. Please try again.';
+        
+        if (result.message.includes('Invalid or expired code')) {
+          errorMessage = 'This verification code has expired or is invalid. Please request a new one.';
+        } else if (result.message.includes('weak-password')) {
+          errorMessage = 'Password is too weak. Please choose a stronger password.';
+        } else if (result.message.includes('Password reset with code is not supported')) {
+          errorMessage = 'Password reset with code is not supported for this account type. Please contact support.';
+        }
+        
+        Alert.alert('Reset Failed', errorMessage);
+      }
     } catch (error: any) {
       let errorMessage = 'Failed to reset password. Please try again.';
       

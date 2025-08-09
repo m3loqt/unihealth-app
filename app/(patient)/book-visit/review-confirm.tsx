@@ -17,6 +17,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService } from '../../../src/services/database/firebase';
+import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 
 // Color constants (match previous screens)
 const BLUE = '#2563EB';

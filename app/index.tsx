@@ -19,6 +19,7 @@ import { Stethoscope, Eye, EyeOff, Mail, Lock, Fingerprint, User, AlertCircle, X
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../src/hooks/auth/useAuth';
 import { performBiometricLogin, isBiometricLoginAvailable, saveBiometricCredentials, checkBiometricSupport } from '../src/hooks/auth/useBiometricAuth';
+import { safeDataAccess } from '../src/utils/safeDataAccess';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -236,13 +237,10 @@ export default function SignInScreen() {
   };
 
   const getUserDisplayName = () => {
-    if (lastSuccessfulLogin?.userProfile?.name) {
-      return lastSuccessfulLogin.userProfile.name;
+    if (lastSuccessfulLogin?.userProfile) {
+      return safeDataAccess.getUserFullName(lastSuccessfulLogin.userProfile, lastSuccessfulLogin.userProfile.email || 'User');
     }
-    if (lastSuccessfulLogin?.userProfile?.firstName && lastSuccessfulLogin?.userProfile?.lastName) {
-      return `${lastSuccessfulLogin.userProfile.firstName} ${lastSuccessfulLogin.userProfile.lastName}`;
-    }
-    return lastSuccessfulLogin?.userProfile?.email || 'User';
+    return 'User';
   };
 
   const getUserRole = () => {

@@ -42,6 +42,11 @@ import { getGreeting } from '../../../src/utils/greeting';
 import { getFirstName } from '../../../src/utils/string';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService } from '../../../src/services/database/firebase';
+import { safeDataAccess } from '../../../src/utils/safeDataAccess';
+import LoadingState from '../../../src/components/ui/LoadingState';
+import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
+import { dataValidation } from '../../../src/utils/dataValidation';
+import { useDeepMemo } from '../../../src/utils/performance';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -64,7 +69,17 @@ export default function SpecialistHomeScreen() {
   });
   const [nextAppointments, setNextAppointments] = useState<any[]>([]);
   const [newPatients, setNewPatients] = useState<any[]>([]);
+  
+  // Performance optimization: memoize filtered data
+  const validNextAppointments = useDeepMemo(() => {
+    return dataValidation.validateArray(nextAppointments, dataValidation.isValidAppointment);
+  }, [nextAppointments]);
+  
+  const validNewPatients = useDeepMemo(() => {
+    return dataValidation.validateArray(newPatients, dataValidation.isValidUser);
+  }, [newPatients]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -90,11 +105,17 @@ export default function SpecialistHomeScreen() {
     }
   }, [showQRModal]);
 
+  const handleRetry = () => {
+    setError(null);
+    loadDashboardData();
+  };
+
   const loadDashboardData = async () => {
     if (!user) return;
     
     try {
       setLoading(true);
+      setError(null);
       
       // Load all data in parallel
       const [
@@ -243,7 +264,7 @@ export default function SpecialistHomeScreen() {
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      Alert.alert('Error', 'Failed to load dashboard data. Please try again.');
+      setError('Failed to load dashboard data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -398,14 +419,23 @@ export default function SpecialistHomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1E40AF" />
-          <Text style={styles.loadingText}>Loading dashboard...</Text>
-        </View>
-      ) : (
+    <ErrorBoundary>
+      <SafeAreaView style={styles.container}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        {loading ? (
+          <LoadingState
+            message="Loading dashboard..."
+            variant="fullscreen"
+            size="large"
+          />
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={{ paddingBottom: 90 }}
@@ -517,12 +547,13 @@ export default function SpecialistHomeScreen() {
           <View style={styles.appointmentsContainer}>
             {nextAppointments.length > 0 ? (
               nextAppointments.map((appointment) => {
-                const patientName = `${appointment.patientFirstName} ${appointment.patientLastName}`;
-                const patientInitials = `${appointment.patientFirstName?.[0] || ''}${appointment.patientLastName?.[0] || ''}`;
+                const patientName = safeDataAccess.getUserFullName(appointment.patient || appointment, 'Unknown Patient');
+                const patientInitials = safeDataAccess.getUserInitials(appointment.patient || appointment, 'U');
                 
                 // Format appointment date
                 const formatAppointmentDate = (dateString: string) => {
                   try {
+                    if (!dateString) return 'Date not specified';
                     const date = new Date(dateString);
                     const today = new Date();
                     const tomorrow = new Date(today);
@@ -566,7 +597,7 @@ export default function SpecialistHomeScreen() {
                         </Text>
                         <View style={styles.timeContainer}>
                           <Clock size={14} color="#6B7280" />
-                          <Text style={styles.timeText}>{appointment.appointmentTime}</Text>
+                          <Text style={styles.timeText}>{appointment.appointmentTime || 'Time not specified'}</Text>
                         </View>
                       </View>
                     </View>
@@ -598,12 +629,13 @@ export default function SpecialistHomeScreen() {
           <View style={styles.patientsContainer}>
             {newPatients.length > 0 ? (
               newPatients.map((patient) => {
-                const patientName = `${patient.patientFirstName} ${patient.patientLastName}`;
-                const patientInitials = `${patient.patientFirstName?.[0] || ''}${patient.patientLastName?.[0] || ''}`;
+                const patientName = safeDataAccess.getUserFullName(patient, 'Unknown Patient');
+                const patientInitials = safeDataAccess.getUserInitials(patient, 'U');
                 
                 // Format when the patient was added
                 const formatAddedDate = (dateString: string) => {
                   try {
+                    if (!dateString) return 'Recently added';
                     const date = new Date(dateString);
                     const now = new Date();
                     const diffTime = Math.abs(now.getTime() - date.getTime());
@@ -910,7 +942,8 @@ export default function SpecialistHomeScreen() {
           </SafeAreaView>
         </View>
       </Modal>
-    </SafeAreaView>
+        </SafeAreaView>
+      </ErrorBoundary>
   );
 }
 
@@ -1195,6 +1228,32 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 16,
     textAlign: 'center',
+  },
+  // Error state styles
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 64,
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   emptyStateCard: {
     backgroundColor: '#F9FAFB',

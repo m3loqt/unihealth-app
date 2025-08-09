@@ -20,6 +20,11 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService, Certificate } from '../../../src/services/database/firebase';
+import { safeDataAccess } from '../../../src/utils/safeDataAccess';
+import LoadingState from '../../../src/components/ui/LoadingState';
+import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
+import { dataValidation } from '../../../src/utils/dataValidation';
+import { useDeepMemo } from '../../../src/utils/performance';
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = (screenWidth - 64) / 2;
@@ -47,6 +52,7 @@ export default function SpecialistCertificatesScreen() {
   const sortBtnRef = useRef<any>(null);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   // Load certificates from Firebase
@@ -61,12 +67,16 @@ export default function SpecialistCertificatesScreen() {
     
     try {
       setLoading(true);
+      setError(null);
       const specialistCertificates = await databaseService.getCertificatesBySpecialist(user.uid);
-      console.log('Loaded certificates:', specialistCertificates.length);
-      setCertificates(specialistCertificates);
+      
+      // Validate certificates data
+      const validCertificates = dataValidation.validateArray(specialistCertificates, dataValidation.isValidCertificate);
+      console.log('Loaded certificates:', validCertificates.length);
+      setCertificates(validCertificates);
     } catch (error) {
       console.error('Error loading certificates:', error);
-      Alert.alert('Error', 'Failed to load certificates. Please try again.');
+      setError('Failed to load certificates. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -78,29 +88,37 @@ export default function SpecialistCertificatesScreen() {
     setRefreshing(false);
   };
 
-  const filteredCertificates = certificates
-    .filter((cert) => {
-      const matchesSearch =
-        cert.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        cert.patientId.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus =
-        statusFilter === 'all' || cert.status.toLowerCase() === statusFilter;
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'date':
-          return new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime();
-        case 'type':
-          return a.type.localeCompare(b.type);
-        case 'patient':
-          return a.patientId.localeCompare(b.patientId);
-        case 'validUntil':
-          return new Date(b.expiryDate || '').getTime() - new Date(a.expiryDate || '').getTime();
-        default:
-          return 0;
-      }
-    });
+  const handleRetry = () => {
+    setError(null);
+    loadCertificates();
+  };
+
+  // Performance optimization: memoize filtered and sorted certificates
+  const filteredCertificates = useDeepMemo(() => {
+    return certificates
+      .filter((cert) => {
+        const matchesSearch =
+          cert.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          cert.patientId.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus =
+          statusFilter === 'all' || cert.status.toLowerCase() === statusFilter;
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'date':
+            return new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime();
+          case 'type':
+            return a.type.localeCompare(b.type);
+          case 'patient':
+            return a.patientId.localeCompare(b.patientId);
+          case 'validUntil':
+            return new Date(b.expiryDate || '').getTime() - new Date(a.expiryDate || '').getTime();
+          default:
+            return 0;
+        }
+      });
+  }, [certificates, searchQuery, statusFilter, sortBy]);
 
   const getStatusColors = (status: string) => {
     switch (status) {
@@ -218,12 +236,14 @@ export default function SpecialistCertificatesScreen() {
         </View>
         <View style={styles.cardContent}>
           <Text style={styles.certificateType} numberOfLines={2}>
-            {certificate.type}
+            {certificate.type || 'Medical Certificate'}
           </Text>
           <Text style={styles.doctorName} numberOfLines={1}>
-            {certificate.patientId}
+            {certificate.patientId || 'Patient ID not available'}
           </Text>
-          <Text style={styles.issuedDate}>{certificate.issueDate}</Text>
+          <Text style={styles.issuedDate}>
+            {certificate.issueDate ? new Date(certificate.issueDate).toLocaleDateString() : 'Date not specified'}
+          </Text>
           <View style={styles.gridActions}>
             <TouchableOpacity style={styles.secondaryButton}>
               <Eye size={20} color="#374151" />
@@ -267,7 +287,8 @@ export default function SpecialistCertificatesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ErrorBoundary>
+      <SafeAreaView style={styles.container}>
       <StatusBar
         translucent
         backgroundColor="transparent"
@@ -340,8 +361,17 @@ export default function SpecialistCertificatesScreen() {
       >
         <View style={styles.certificatesList}>
           {loading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading certificates...</Text>
+            <LoadingState
+              message="Loading certificates..."
+              variant="inline"
+              size="large"
+            />
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
             </View>
           ) : filteredCertificates.length === 0 ? (
             renderEmptyState()
@@ -350,7 +380,8 @@ export default function SpecialistCertificatesScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ErrorBoundary>
   );
 }
 
@@ -678,5 +709,32 @@ const styles = StyleSheet.create({
   sortDropdownActiveText: {
     color: '#1E40AF',
     fontWeight: 'bold',
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
 });

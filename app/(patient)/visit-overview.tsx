@@ -29,6 +29,40 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService, Appointment, Prescription, Certificate } from '../../src/services/database/firebase';
+import { safeDataAccess } from '../../src/utils/safeDataAccess';
+
+// Extended interface for visit data that includes additional properties
+interface VisitData extends Appointment {
+  doctorName?: string;
+  doctorPhoto?: string;
+  clinic?: string;
+  date?: string;
+  time?: string;
+  address?: string;
+  diagnosis?: string;
+  differentialDiagnosis?: string;
+  reviewOfSymptoms?: string;
+  presentIllnessHistory?: string;
+  soapNotes?: {
+    subjective?: string;
+    objective?: string;
+    assessment?: string;
+    plan?: string;
+  };
+  labResults?: string;
+  allergies?: string;
+  vitals?: string;
+  medications?: string;
+}
+
+// Extended interface for prescriptions that includes additional properties
+interface ExtendedPrescription extends Prescription {
+  color?: string;
+  description?: string;
+  remaining?: string;
+  prescribedBy?: string;
+  nextRefill?: string;
+}
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -39,8 +73,8 @@ const HORIZONTAL_MARGIN = 24;
 export default function VisitOverviewScreen() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
-  const [visitData, setVisitData] = useState<Appointment | null>(null);
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [visitData, setVisitData] = useState<VisitData | null>(null);
+  const [prescriptions, setPrescriptions] = useState<ExtendedPrescription[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -146,30 +180,35 @@ export default function VisitOverviewScreen() {
           <Text style={styles.sectionTitle}>Consultation Details</Text>
           <View style={styles.cardBox}>
             <View style={styles.doctorRow}>
-              <Text style={styles.doctorName}>{visitData.doctorName}</Text>
-              <Image source={{ uri: visitData.doctorPhoto }} style={styles.doctorImage} resizeMode="cover" />
+              <Text style={styles.doctorName}>{visitData.doctorName || 'Unknown Doctor'}</Text>
+              {/* <Image 
+                source={{ uri: visitData.doctorPhoto || undefined }} 
+                style={styles.doctorImage} 
+                resizeMode="cover"
+                defaultSource={require('../../assets/default-avatar.png')}
+              /> */}
             </View>
             <View style={styles.consultDivider} />
             <View style={styles.consultDetailsTable}>
               <View style={styles.consultDetailsRow}>
                 <Text style={styles.consultLabel}>Consultation ID</Text>
-                <Text style={styles.consultValue}>{visitData.consultationId}</Text>
+                <Text style={styles.consultValue}>{visitData.consultationId || 'N/A'}</Text>
               </View>
               <View style={styles.consultDetailsRow}>
                 <Text style={styles.consultLabel}>Clinic</Text>
-                <Text style={styles.consultValue}>{visitData.clinic}</Text>
+                <Text style={styles.consultValue}>{visitData.clinic || 'Unknown Clinic'}</Text>
               </View>
               <View style={styles.consultDetailsRow}>
                 <Text style={styles.consultLabel}>Date</Text>
-                <Text style={styles.consultValue}>{visitData.date}</Text>
+                <Text style={styles.consultValue}>{visitData.date || 'Not specified'}</Text>
               </View>
               <View style={styles.consultDetailsRow}>
                 <Text style={styles.consultLabel}>Time</Text>
-                <Text style={styles.consultValue}>{visitData.time}</Text>
+                <Text style={styles.consultValue}>{visitData.time || 'Not specified'}</Text>
               </View>
               <View style={styles.consultDetailsRowNoBorder}>
                 <Text style={styles.consultLabel}>Address</Text>
-                <Text style={styles.consultValue}>{visitData.address}</Text>
+                <Text style={styles.consultValue}>{visitData.address || 'Address not provided'}</Text>
               </View>
             </View>
           </View>
@@ -181,69 +220,69 @@ export default function VisitOverviewScreen() {
           <View style={styles.cardBoxClinical}>
             {/* Clinical Summary fields will be loaded here from visitData */}
             {/* For now, we'll show a placeholder or load dynamically */}
-            <View style={styles.clinicalSectionHeader} onPress={() => toggleSection('clinicalSummary')}>
+            <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('clinicalSummary')}>
               <Text style={styles.clinicalSectionLabel}>Clinical Summary</Text>
               {expandedSections['clinicalSummary'] ? (
                 <ChevronDown size={23} color="#6B7280" />
               ) : (
                 <ChevronRight size={23} color="#9CA3AF" />
               )}
-            </View>
+            </TouchableOpacity>
             {expandedSections['clinicalSummary'] && (
               <View style={styles.clinicalSectionBody}>
                 {/* Placeholder for clinical summary fields */}
                 <View style={styles.clinicalFieldRow}>
                   <Text style={styles.clinicalFieldLabel}>Diagnosis:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.diagnosis}</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.diagnosis || 'No diagnosis recorded'}</Text>
                 </View>
                 <View style={styles.clinicalFieldRow}>
                   <Text style={styles.clinicalFieldLabel}>Differential Diagnosis:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.differentialDiagnosis}</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.differentialDiagnosis || 'No differential diagnosis recorded'}</Text>
                 </View>
                 <View style={styles.clinicalFieldRow}>
                   <Text style={styles.clinicalFieldLabel}>Review of Symptoms:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.reviewOfSymptoms}</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.reviewOfSymptoms || 'No symptoms reviewed'}</Text>
                 </View>
                 <View style={styles.clinicalFieldRow}>
                   <Text style={styles.clinicalFieldLabel}>Present Illness History:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.presentIllnessHistory}</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.presentIllnessHistory || 'No illness history recorded'}</Text>
                 </View>
                 <View style={styles.clinicalFieldRow}>
                   <Text style={styles.clinicalFieldLabel}>SOAP Notes:</Text>
                   <View style={styles.soapNotesContainer}>
                     <View style={styles.soapNotesSubRow}>
                       <Text style={styles.soapNotesLabel}>Subjective:</Text>
-                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.subjective}</Text>
+                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.subjective || 'No subjective notes'}</Text>
                     </View>
                     <View style={styles.soapNotesSubRow}>
                       <Text style={styles.soapNotesLabel}>Objective:</Text>
-                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.objective}</Text>
+                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.objective || 'No objective notes'}</Text>
                     </View>
                     <View style={styles.soapNotesSubRow}>
                       <Text style={styles.soapNotesLabel}>Assessment:</Text>
-                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.assessment}</Text>
+                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.assessment || 'No assessment notes'}</Text>
                     </View>
                     <View style={styles.soapNotesSubRow}>
                       <Text style={styles.soapNotesLabel}>Plan:</Text>
-                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.plan}</Text>
+                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.plan || 'No plan notes'}</Text>
                     </View>
                   </View>
                 </View>
                 <View style={styles.clinicalFieldRow}>
                   <Text style={styles.clinicalFieldLabel}>Lab Results:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.labResults}</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.labResults || 'No lab results recorded'}</Text>
                 </View>
                 <View style={styles.clinicalFieldRow}>
                   <Text style={styles.clinicalFieldLabel}>Allergies:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.allergies}</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.allergies || 'No allergies recorded'}</Text>
                 </View>
                 <View style={styles.clinicalFieldRow}>
                   <Text style={styles.clinicalFieldLabel}>Vitals:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.vitals}</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.vitals || 'No vitals recorded'}</Text>
                 </View>
                 <View style={styles.clinicalFieldRow}>
                   <Text style={styles.clinicalFieldLabel}>Medications:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.medications}</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.medications || 'No medications recorded'}</Text>
                 </View>
               </View>
             )}
@@ -260,9 +299,9 @@ export default function VisitOverviewScreen() {
                   <Pill size={20} color={p.color} />
                 </View>
                 <View style={styles.prescriptionDetails}>
-                  <Text style={styles.medicationName}>{p.medication}</Text>
-                  <Text style={styles.medicationDosage}>{p.dosage} • {p.frequency}</Text>
-                  <Text style={styles.prescriptionDescription}>{p.description}</Text>
+                  <Text style={styles.medicationName}>{p.medication || 'Unknown Medication'}</Text>
+                  <Text style={styles.medicationDosage}>{p.dosage || 'N/A'} • {p.frequency || 'N/A'}</Text>
+                  <Text style={styles.prescriptionDescription}>{p.description || 'No description provided'}</Text>
                 </View>
                 <View style={styles.prescriptionStatus}>
                   <Text style={styles.remainingDays}>{p.remaining}</Text>
@@ -272,11 +311,11 @@ export default function VisitOverviewScreen() {
               <View style={styles.prescriptionMeta}>
                 <View style={styles.metaRow}>
                   <Text style={styles.metaLabel}>Prescribed by:</Text>
-                  <Text style={styles.metaValue}>{p.prescribedBy}</Text>
+                  <Text style={styles.metaValue}>{p.prescribedBy || 'Unknown Doctor'}</Text>
                 </View>
                 <View style={styles.metaRow}>
                   <Text style={styles.metaLabel}>Next refill:</Text>
-                  <Text style={styles.metaValue}>{p.nextRefill}</Text>
+                  <Text style={styles.metaValue}>{p.nextRefill || 'Not specified'}</Text>
                 </View>
               </View>
             </View>
@@ -298,7 +337,7 @@ export default function VisitOverviewScreen() {
                   <View style={styles.uniformIconCircle}>
                     <FileText size={20} color="#1E3A8A" />
                   </View>
-                  <Text style={styles.certificateType}>{cert.type}</Text>
+                  <Text style={styles.certificateType}>{cert.type || 'Unknown Type'}</Text>
                   <View style={[styles.certificateStatus, statusStyle.container]}>
                     {statusStyle.icon}
                     <Text style={[styles.certificateStatusText, statusStyle.text]}>
@@ -309,11 +348,11 @@ export default function VisitOverviewScreen() {
                 <View style={styles.certificateDivider} />
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued by:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.doctor}</Text>
+                  <Text style={styles.certificateInfoValue}>{cert.doctor || 'Unknown Doctor'}</Text>
                 </View>
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued on:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.issuedDate}</Text>
+                  <Text style={styles.certificateInfoValue}>{cert.issuedDate || 'Date not specified'}</Text>
                 </View>
                 <View style={styles.certificateActions}>
                   <TouchableOpacity style={[styles.secondaryButton, { marginRight: 9 }]}>
