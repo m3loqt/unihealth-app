@@ -11,70 +11,81 @@ import {
   Platform,
   Alert,
   Image,
-  RefreshControl,
 } from 'react-native';
-import { ChevronLeft, User, Mail, Phone, MapPin, Camera } from 'lucide-react-native';
+import { ChevronLeft, User, Mail, Phone, MapPin, Camera, Heart } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
-import { databaseService } from '../../src/services/database/firebase';
+import { usePatientProfile } from '../../src/hooks/data/usePatientProfile';
 import { safeDataAccess } from '../../src/utils/safeDataAccess';
 
 export default function EditProfileScreen() {
   const { user } = useAuth();
+  const { profile, loading: profileLoading, error: profileError, updateProfile } = usePatientProfile();
   const [profileData, setProfileData] = useState({
     fullName: '',
     email: '',
     phone: '',
     address: '',
     profileImage: '',
+    emergencyContact: {
+      name: '',
+      relationship: '',
+      phone: '',
+    },
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
-  // Load profile data from Firebase
+  // Load profile data from real-time hook
   useEffect(() => {
-    if (user && user.uid) {
-      loadProfileData();
-    }
-  }, [user]);
-
-  const loadProfileData = async () => {
-    if (!user) return;
-    
-    try {
-      setRefreshing(true);
-      const patientProfile = await databaseService.getPatientProfile(user.uid);
+    if (profile) {
+      console.log('=== EDIT PROFILE: Profile data received ===');
+      console.log('Raw profile from hook:', profile);
+      console.log('Profile contactNumber:', profile.contactNumber);
+      console.log('Profile address:', profile.address);
+      console.log('Profile address type:', typeof profile.address);
+      console.log('Profile address length:', profile.address?.length);
       
-      if (patientProfile) {
-        setProfileData({
-          fullName: safeDataAccess.getUserFullName(patientProfile, user.name || ''),
-          email: patientProfile.email || user.email || '',
-          phone: safeDataAccess.getUserPhone(patientProfile, ''),
-          address: patientProfile.address || '',
-          profileImage: patientProfile.profileImage || '',
-        });
-      } else {
-        // Use basic user data if no patient profile exists
-        setProfileData({
-          fullName: user.name || '',
-          email: user.email || '',
-          phone: '',
-          address: '',
-          profileImage: '',
-        });
-      }
-    } catch (error) {
-      console.error('Error loading profile data:', error);
-      Alert.alert('Error', 'Failed to load profile data. Please try again.');
-    } finally {
-      setRefreshing(false);
+      setProfileData({
+        fullName: profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` : profile.firstName || profile.lastName || '',
+        email: profile.email || '',
+        phone: profile.contactNumber || '',
+        address: profile.address || '',
+        profileImage: profile.profileImage || '',
+        emergencyContact: {
+          name: profile.emergencyContact?.name || '',
+          relationship: profile.emergencyContact?.relationship || '',
+          phone: profile.emergencyContact?.phone || '',
+        },
+      });
+      
+      console.log('Profile data set to state:', {
+        phone: profile.contactNumber || '',
+        address: profile.address || '',
+      });
+      console.log('Address field set to state:', profile.address || '');
+      console.log('==========================================');
     }
-  };
+  }, [profile]);
 
   const handleInputChange = (field: string, value: string) => {
+    // Prevent changes to read-only fields
+    if (field === 'fullName' || field === 'email') {
+      return;
+    }
+    
     setProfileData(prev => ({
       ...prev,
       [field]: value,
+    }));
+  };
+
+  const handleEmergencyContactChange = (field: string, value: string) => {
+    setProfileData(prev => ({
+      ...prev,
+      emergencyContact: {
+        ...prev.emergencyContact,
+        [field]: value,
+      },
     }));
   };
 
@@ -84,18 +95,56 @@ export default function EditProfileScreen() {
       return;
     }
 
+    // Validate required fields
+    if (!profileData.fullName.trim()) {
+      Alert.alert('Error', 'Full name is required.');
+      return;
+    }
+
+    if (!profileData.emergencyContact.name.trim()) {
+      Alert.alert('Error', 'Emergency contact name is required.');
+      return;
+    }
+
+    if (!profileData.emergencyContact.phone.trim()) {
+      Alert.alert('Error', 'Emergency contact phone number is required.');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      // Update profile in Firebase
-      await databaseService.updatePatientProfile(user.uid, {
+      // Prepare the update data
+      const updateData = {
+        // Update name in both nodes for consistency
         name: profileData.fullName,
-        email: profileData.email,
-        phone: profileData.phone,
+        // Update contact number in users node (this is where it's stored)
+        contactNumber: profileData.phone,
+        // Update address in users node (this is where it's stored)
         address: profileData.address,
-        profileImage: profileData.profileImage,
+        // Update emergency contact in patients node (this is where it's stored)
+        emergencyContact: {
+          name: profileData.emergencyContact.name.trim(),
+          relationship: profileData.emergencyContact.relationship.trim(),
+          phone: profileData.emergencyContact.phone.trim(),
+        },
         lastUpdated: new Date().toISOString(),
-      });
+      };
+
+      console.log('=== SAVING PROFILE DATA ===');
+      console.log('Current profileData state:', profileData);
+      console.log('Sending update data:', updateData);
+      console.log('User ID:', user.uid);
+      console.log('Address being sent:', updateData.address);
+      console.log('Address type being sent:', typeof updateData.address);
+      console.log('Address length being sent:', updateData.address?.length);
+      console.log('==========================');
+
+      // Update profile using the real-time hook
+      await updateProfile(updateData);
+
+      console.log('Profile update completed successfully');
+      console.log('After update - profileData state:', profileData);
 
       Alert.alert('Success', 'Profile updated successfully!', [
         { text: 'OK', onPress: () => router.back() }
@@ -137,9 +186,6 @@ export default function EditProfileScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={loadProfileData} />
-        }
       >
         {/* Profile Photo Section */}
         <View style={styles.photoSection}>
@@ -160,18 +206,19 @@ export default function EditProfileScreen() {
         <View style={styles.formSection}>
           {/* Full Name */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Full Name</Text>
+            <Text style={styles.inputLabel}>Full Name *</Text>
             <View style={styles.inputContainer}>
               <User size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.readOnlyInput]}
                 value={profileData.fullName}
-                onChangeText={(value) => handleInputChange('fullName', value)}
                 placeholder="Enter your full name"
                 placeholderTextColor="#9CA3AF"
                 autoCapitalize="words"
+                editable={false}
               />
             </View>
+            <Text style={styles.readOnlyNote}>This field cannot be edited</Text>
           </View>
 
           {/* Email */}
@@ -180,15 +227,16 @@ export default function EditProfileScreen() {
             <View style={styles.inputContainer}>
               <Mail size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.readOnlyInput]}
                 value={profileData.email}
-                onChangeText={(value) => handleInputChange('email', value)}
                 placeholder="Enter your email"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                editable={false}
               />
             </View>
+            <Text style={styles.readOnlyNote}>This field cannot be edited</Text>
           </View>
 
           {/* Phone */}
@@ -221,6 +269,60 @@ export default function EditProfileScreen() {
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
+              />
+            </View>
+          </View>
+
+          {/* Emergency Contact Section */}
+          <View style={styles.sectionHeader}>
+            <Heart size={20} color="#EF4444" />
+            <Text style={styles.sectionTitle}>Emergency Contact</Text>
+          </View>
+
+          {/* Emergency Contact Name */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Emergency Contact Name *</Text>
+            <View style={styles.inputContainer}>
+              <User size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={profileData.emergencyContact.name}
+                onChangeText={(value) => handleEmergencyContactChange('name', value)}
+                placeholder="Enter emergency contact name"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="words"
+              />
+            </View>
+          </View>
+
+          {/* Emergency Contact Relationship */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Relationship</Text>
+            <View style={styles.inputContainer}>
+              <Heart size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={profileData.emergencyContact.relationship}
+                onChangeText={(value) => handleEmergencyContactChange('relationship', value)}
+                placeholder="e.g., Spouse, Parent, Sibling"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="words"
+              />
+            </View>
+          </View>
+
+          {/* Emergency Contact Phone */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Emergency Contact Phone *</Text>
+            <View style={styles.inputContainer}>
+              <Phone size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={profileData.emergencyContact.phone}
+                onChangeText={(value) => handleEmergencyContactChange('phone', value)}
+                placeholder="Enter emergency contact phone"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="phone-pad"
               />
             </View>
           </View>
@@ -321,6 +423,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 32,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 32,
+    marginBottom: 20,
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+  },
   inputGroup: {
     marginBottom: 24,
   },
@@ -350,6 +464,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#1F2937',
     paddingVertical: 0,
+  },
+  readOnlyInput: {
+    backgroundColor: '#F3F4F6',
+    color: '#6B7280',
+  },
+  readOnlyNote: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   addressInput: {
     minHeight: 60,
