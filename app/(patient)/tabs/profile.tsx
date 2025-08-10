@@ -36,7 +36,9 @@ import {
 } from '@/hooks/auth/useBiometricAuth';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { usePatientProfile } from '@/hooks/data/usePatientProfile';
 import { safeDataAccess } from '@/utils/safeDataAccess';
+import { RealTimeTest } from '@/components/RealTimeTest';
 
 // Default profile data
 const defaultProfileData = {
@@ -59,6 +61,7 @@ const LIGHT_BLUE = '#DBEAFE';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
+  const { profile, loading: profileLoading, error: profileError } = usePatientProfile();
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [notificationCenterVisible, setNotificationCenterVisible] = useState(false);
   const [notifications, setNotifications] = useState([
@@ -73,18 +76,18 @@ export default function ProfileScreen() {
   const [biometricUnavailableReason, setBiometricUnavailableReason] = useState('');
   const [showBiometricModal, setShowBiometricModal] = useState(false);
 
-  // Use user data from database or fallback to default
-  const profileData = user ? {
-    fullName: safeDataAccess.getUserFullName(user, 'Unknown User'),
-    dob: user.dateOfBirth || 'Not provided',
-    address: user.address || 'Not provided',
-    contact: safeDataAccess.getUserPhone(user, 'Not provided'),
-    email: user.email || 'Not provided',
+  // Use real-time profile data from hook or fallback to default
+  const profileData = profile ? {
+    fullName: profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` : 'Unknown User',
+    dob: profile.dateOfBirth || 'Not provided',
+    address: profile.address || 'Not provided',
+    contact: profile.contactNumber || 'Not provided',
+    email: profile.email || 'Not provided',
     memberSince: '2024',
-    emergency: user.emergencyContact ? {
-      name: user.emergencyContact.name || 'Not provided',
-      relationship: user.emergencyContact.relationship || 'Not provided',
-      phone: user.emergencyContact.phone || 'Not provided',
+    emergency: profile.emergencyContact ? {
+      name: profile.emergencyContact.name || 'Not provided',
+      relationship: profile.emergencyContact.relationship || 'Not provided',
+      phone: profile.emergencyContact.phone || 'Not provided',
     } : {
       name: 'Not provided',
       relationship: 'Not provided',
@@ -92,6 +95,23 @@ export default function ProfileScreen() {
     },
     profileImg: defaultProfileData.profileImg,
   } : defaultProfileData;
+
+  // Debug logging
+  React.useEffect(() => {
+    if (profile) {
+      console.log('=== PROFILE SCREEN: Profile data received ===');
+      console.log('Raw profile:', profile);
+      console.log('Profile address:', profile.address);
+      console.log('Profile contactNumber:', profile.contactNumber);
+      console.log('Profile address type:', typeof profile.address);
+      console.log('Profile address length:', profile.address?.length);
+      console.log('Processed profileData:', profileData);
+      console.log('Display address:', profileData.address);
+      console.log('Display contact:', profileData.contact);
+      console.log('Address field in profileData:', profileData.address);
+      console.log('==========================================');
+    }
+  }, [profile, profileData]);
 
   const {
     fullName,
@@ -362,85 +382,117 @@ export default function ProfileScreen() {
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
-          <View style={styles.profileHeader}>
-            <Image source={{ uri: profileImg }} style={styles.profileImage} />
-            <View style={styles.profileInfo}>
-              <Text style={styles.userName}>{fullName}</Text>
-              {calcAge(dob) && <Text style={styles.userAge}>{calcAge(dob)}</Text>}
-              <Text style={styles.memberSince}>Member since {memberSince}</Text>
+          {profileLoading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading profile...</Text>
             </View>
-          </View>
-          <View style={styles.contactInfo}>
-            <View style={styles.contactItem}>
-              <Phone size={16} color="#6B7280" />
-              <Text style={styles.contactText}>{contact}</Text>
+          ) : profileError ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>Error loading profile: {profileError}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => window.location.reload()}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.contactItem}>
-              <Mail size={16} color="#6B7280" />
-              <Text style={styles.contactText}>{email}</Text>
-            </View>
-            <View style={styles.contactItem}>
-              <MapPin size={16} color="#6B7280" />
-              <Text style={styles.contactText}>{address}</Text>
-            </View>
-          </View>
+          ) : (
+            <>
+              <View style={styles.profileHeader}>
+                <Image source={{ uri: profileImg }} style={styles.profileImage} />
+                <View style={styles.profileInfo}>
+                  <Text style={styles.userName}>{fullName}</Text>
+                  {calcAge(dob) && <Text style={styles.userAge}>{calcAge(dob)}</Text>}
+                  {/* <Text style={styles.memberSince}>Member since {memberSince}</Text> */}
+                </View>
+              </View>
+              <View style={styles.contactInfo}>
+                <View style={styles.contactItem}>
+                  <Phone size={16} color="#6B7280" />
+                  <Text style={styles.contactText}>{contact}</Text>
+                </View>
+                <View style={styles.contactItem}>
+                  <Mail size={16} color="#6B7280" />
+                  <Text style={styles.contactText}>{email}</Text>
+                </View>
+                <View style={styles.contactItem}>
+                  <MapPin size={16} color="#6B7280" />
+                  <Text style={styles.contactText}>{address}</Text>
+                </View>
+              </View>
+              
+              {/* Edit Profile Button */}
+              <TouchableOpacity
+                style={styles.editProfileButton}
+                onPress={() => router.push('/(patient)/edit-profile')}
+              >
+                <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+              </TouchableOpacity>
+              
+              {/* Info Text */}
+              <Text style={styles.infoText}>
+                Tap "Edit Profile" to update your contact information and emergency contact details.
+              </Text>
+            </>
+          )}
         </View>
 
         {/* Emergency Contact */}
-        <View style={styles.card}>
-          <View style={styles.emergencyHeaderRow}>
-            <Text style={styles.sectionTitle}>Emergency Contact</Text>
-            <View style={styles.relationshipTagFixed}>
-              <Text style={styles.relationshipTagText}>{emergency.relationship}</Text>
-            </View>
-          </View>
-          <View style={styles.emergencyCard}>
-            <View style={styles.emergencyHeader}>
-              <View style={styles.emergencyAvatar}>
-                <Text style={styles.emergencyInitial}>
-                  {safeDataAccess.getUserInitials({ name: emergency.name }, 'E')}
-                </Text>
-              </View>
-              <View style={styles.emergencyInfo}>
-                <Text style={styles.emergencyName}>{emergency.name}</Text>
-                <Text style={styles.emergencyPhone}>{emergency.phone}</Text>
+        {!profileLoading && !profileError && (
+          <View style={styles.card}>
+            <View style={styles.emergencyHeaderRow}>
+              <Text style={styles.sectionTitle}>Emergency Contact</Text>
+              <View style={styles.relationshipTagFixed}>
+                <Text style={styles.relationshipTagText}>{emergency.relationship}</Text>
               </View>
             </View>
-            <TouchableOpacity
-              style={styles.emergencyCallButton}
-              onPress={handleEmergencyCall}
-            >
-              <Phone size={16} color="#FFFFFF" />
-              <Text style={styles.emergencyCallText}>Call</Text>
-            </TouchableOpacity>
+            <View style={styles.emergencyCard}>
+              <View style={styles.emergencyHeader}>
+                <View style={styles.emergencyAvatar}>
+                  <Text style={styles.emergencyInitial}>
+                    {safeDataAccess.getUserInitials({ name: emergency.name }, 'E')}
+                  </Text>
+                </View>
+                <View style={styles.emergencyInfo}>
+                  <Text style={styles.emergencyName}>{emergency.name}</Text>
+                  <Text style={styles.emergencyPhone}>{emergency.phone}</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.emergencyCallButton}
+                onPress={handleEmergencyCall}
+              >
+                <Phone size={16} color="#FFFFFF" />
+                <Text style={styles.emergencyCallText}>Call</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Settings */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Settings</Text>
-          <View style={styles.menuContainer}>
-            {settingsItems.map((item) => (
-              <TouchableOpacity key={item.title} style={styles.menuItem} onPress={item.onPress}>
-                <View style={[styles.menuIcon, { backgroundColor: `${item.color}20` }]}>
-                  <item.icon size={20} color={item.color} />
+        {!profileLoading && !profileError && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Settings</Text>
+            <View style={styles.menuContainer}>
+              {settingsItems.map((item) => (
+                <TouchableOpacity key={item.title} style={styles.menuItem} onPress={item.onPress}>
+                  <View style={[styles.menuIcon, { backgroundColor: `${item.color}20` }]}>
+                    <item.icon size={20} color={item.color} />
+                  </View>
+                  <Text style={styles.menuTitle}>{item.title}</Text>
+                  <ChevronRight size={20} color={BLUE} />
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={[styles.logoutItem, { zIndex: 10 }]}
+                onPress={handleLogout}
+              >
+                <View style={[styles.menuIcon, { backgroundColor: '#1E40AF20' }]}>
+                  <LogOut size={20} color={BLUE} />
                 </View>
-                <Text style={styles.menuTitle}>{item.title}</Text>
+                <Text style={styles.menuTitle}>Logout</Text>
                 <ChevronRight size={20} color={BLUE} />
               </TouchableOpacity>
-            ))}
-            <TouchableOpacity
-              style={[styles.logoutItem, { zIndex: 10 }]}
-              onPress={handleLogout}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: '#1E40AF20' }]}>
-                <LogOut size={20} color={BLUE} />
-              </View>
-              <Text style={styles.menuTitle}>Logout</Text>
-              <ChevronRight size={20} color={BLUE} />
-            </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
       </ScrollView>
 
       {/* Notification Preferences Modal */}
@@ -566,6 +618,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#374151',
   },
+  editIndicator: {
+    color: BLUE,
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    marginLeft: 8,
+  },
   card: {
     backgroundColor: '#F9FAFB',
     marginHorizontal: 24,
@@ -581,6 +639,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
     position: 'relative',
+  },
+  editIconButton: {
+    position: 'absolute',
+    right: 80,
+    top: 0,
+    backgroundColor: '#EFF6FF',
+    borderColor: LIGHT_BLUE,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-end',
+    minWidth: 32,
+    alignItems: 'center',
+  },
+  editIconText: {
+    color: BLUE,
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
   },
   relationshipTagFixed: {
     position: 'absolute',
@@ -693,6 +770,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderRadius: 8,
     marginTop: 2,
+  },
+  editProfileButton: {
+    backgroundColor: BLUE,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  editProfileButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+  },
+  infoText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginTop: 10,
+    textAlign: 'center',
   },
   // --- Notifications Dropdown ---
   notificationsDropdownBackdrop: {
@@ -822,6 +918,40 @@ const styles = StyleSheet.create({
   },
   modalSecondaryButtonText: {
     color: '#374151',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+  },
+  // Loading and Error States
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  retryButton: {
+    backgroundColor: BLUE,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
   },

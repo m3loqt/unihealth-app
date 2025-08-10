@@ -44,42 +44,62 @@ export const usePrescriptions = (): UsePrescriptionsReturn => {
     try {
       setError(null);
       const prescriptionId = await databaseService.createPrescription(prescriptionData);
-      await loadPrescriptions(); // Refresh the list
+      // No need to manually refresh - real-time listener will handle this
       return prescriptionId;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create prescription');
       console.error('Error creating prescription:', err);
       return null;
     }
-  }, [user, loadPrescriptions]);
+  }, [user]);
 
   const updatePrescription = useCallback(async (id: string, updates: Partial<Prescription>): Promise<void> => {
     try {
       setError(null);
-      // TODO: Implement updatePrescription in database service
-      console.warn('updatePrescription not yet implemented');
-      await loadPrescriptions(); // Refresh the list
+      await databaseService.updatePrescription(id, updates);
+      // No need to manually refresh - real-time listener will handle this
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update prescription');
       console.error('Error updating prescription:', err);
     }
-  }, [loadPrescriptions]);
+  }, []);
 
   const deletePrescription = useCallback(async (id: string): Promise<void> => {
     try {
       setError(null);
-      // TODO: Implement deletePrescription in database service
-      console.warn('deletePrescription not yet implemented');
-      await loadPrescriptions(); // Refresh the list
+      await databaseService.deletePrescription(id);
+      // No need to manually refresh - real-time listener will handle this
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete prescription');
       console.error('Error deleting prescription:', err);
     }
-  }, [loadPrescriptions]);
+  }, []);
 
+  // Set up real-time listener for prescriptions
   useEffect(() => {
-    loadPrescriptions();
-  }, [loadPrescriptions]);
+    if (!user) {
+      setPrescriptions([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    
+    // Subscribe to real-time updates
+    const unsubscribe = databaseService.onPrescriptionsChange(
+      user.uid, 
+      (updatedPrescriptions) => {
+        setPrescriptions(updatedPrescriptions);
+        setLoading(false);
+        setError(null);
+      }
+    );
+
+    // Cleanup subscription on unmount or user change
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
 
   return {
     prescriptions,
