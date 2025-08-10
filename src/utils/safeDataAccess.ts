@@ -87,6 +87,19 @@ export const safeDataAccess = {
   },
 
   /**
+   * Safely get user's address
+   */
+  getUserAddress(user: any, fallback: string = 'Not provided'): string {
+    if (!user) return fallback;
+    
+    if (user.address) return user.address;
+    if (user.patientAddress) return user.patientAddress;
+    if (user.profile?.address) return user.profile.address;
+    
+    return fallback;
+  },
+
+  /**
    * Safely get emergency contact phone
    */
   getEmergencyContactPhone(user: any, fallback: string = 'Not provided'): string {

@@ -661,6 +661,21 @@ export const databaseService = {
       };
       
       await set(newAppointmentRef, appointmentData);
+      
+      // Create notification for the appointment
+      try {
+        const { notificationService } = await import('./notificationService');
+        await notificationService.createAppointmentNotification(
+          appointment.patientId,
+          newAppointmentRef.key!,
+          'created',
+          appointmentData
+        );
+      } catch (notificationError) {
+        console.warn('Failed to create appointment notification:', notificationError);
+        // Don't fail the appointment creation if notification fails
+      }
+      
       return newAppointmentRef.key!;
     } catch (error) {
       console.error('Create appointment error:', error);
@@ -755,6 +770,29 @@ export const databaseService = {
       return newPrescriptionRef.key!;
     } catch (error) {
       console.error('Create prescription error:', error);
+      throw error;
+    }
+  },
+
+  async updatePrescription(id: string, updates: Partial<Prescription>): Promise<void> {
+    try {
+      const prescriptionRef = ref(database, `prescriptions/${id}`);
+      await update(prescriptionRef, {
+        ...updates,
+        lastUpdated: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Update prescription error:', error);
+      throw error;
+    }
+  },
+
+  async deletePrescription(id: string): Promise<void> {
+    try {
+      const prescriptionRef = ref(database, `prescriptions/${id}`);
+      await remove(prescriptionRef);
+    } catch (error) {
+      console.error('Delete prescription error:', error);
       throw error;
     }
   },
@@ -1001,31 +1039,129 @@ export const databaseService = {
 
   async updatePatientProfile(patientId: string, updates: any): Promise<void> {
     try {
-      // Try to update in patients node first
-      const patientRef = ref(database, `patients/${patientId}`);
-      const patientSnapshot = await get(patientRef);
-      if (patientSnapshot.exists()) {
-        await update(patientRef, {
-          ...updates,
-          lastUpdated: new Date().toISOString(),
-        });
-        return;
+      console.log('=== updatePatientProfile: Starting update ===');
+      console.log('Patient ID:', patientId);
+      console.log('Updates received:', updates);
+      console.log('Address in updates:', updates.address);
+      console.log('Contact number in updates:', updates.contactNumber);
+      
+      // Separate updates for different nodes
+      const userUpdates: any = {};
+      const patientUpdates: any = {};
+      
+      // Fields that go to users node
+      if (updates.contactNumber !== undefined) userUpdates.contactNumber = updates.contactNumber;
+      if (updates.address !== undefined) userUpdates.address = updates.address;
+      if (updates.name !== undefined) userUpdates.name = updates.name;
+      if (updates.email !== undefined) userUpdates.email = updates.email;
+      if (updates.lastUpdated !== undefined) userUpdates.lastUpdated = updates.lastUpdated;
+      
+      // Fields that go to patients node
+      if (updates.emergencyContact !== undefined) patientUpdates.emergencyContact = updates.emergencyContact;
+      if (updates.lastUpdated !== undefined) patientUpdates.lastUpdated = updates.lastUpdated;
+      
+      console.log('User updates to be applied:', userUpdates);
+      console.log('Patient updates to be applied:', patientUpdates);
+      console.log('Address will be written to users node:', userUpdates.address);
+      
+      // Update users node if there are user-specific updates
+      if (Object.keys(userUpdates).length > 0) {
+        const userRef = ref(database, `users/${patientId}`);
+        const userSnapshot = await get(userRef);
+        if (userSnapshot.exists()) {
+          console.log('Updating users node with:', userUpdates);
+          await update(userRef, userUpdates);
+          console.log('Users node updated successfully');
+          
+          // Verify the update
+          const verifySnapshot = await get(userRef);
+          if (verifySnapshot.exists()) {
+            const updatedData = verifySnapshot.val();
+            console.log('Users node after update:', updatedData);
+            console.log('Contact number after update:', updatedData.contactNumber);
+            console.log('Address after update:', updatedData.address);
+            console.log('Address field type:', typeof updatedData.address);
+            console.log('Address field length:', updatedData.address?.length);
+          }
+        } else {
+          console.log('Users node does not exist for patient:', patientId);
+        }
       }
       
-      // If not found in patients, try users node
-      const userRef = ref(database, `users/${patientId}`);
-      const userSnapshot = await get(userRef);
-      if (userSnapshot.exists()) {
-        await update(userRef, {
-          ...updates,
-          lastUpdated: new Date().toISOString(),
-        });
-        return;
+      // Update patients node if there are patient-specific updates
+      if (Object.keys(patientUpdates).length > 0) {
+        const patientRef = ref(database, `patients/${patientId}`);
+        const patientSnapshot = await get(patientRef);
+        if (patientSnapshot.exists()) {
+          console.log('Updating patients node with:', patientUpdates);
+          await update(patientRef, patientUpdates);
+          console.log('Patients node updated successfully');
+        } else {
+          console.log('Patients node does not exist for patient:', patientId);
+        }
       }
       
-      throw new Error('Patient not found in database');
+      console.log('Profile update completed successfully');
+      console.log('=== updatePatientProfile: Update completed ===');
     } catch (error) {
       console.error('Update patient profile error:', error);
+      throw error;
+    }
+  },
+
+  async updateSpecialistProfile(specialistId: string, updates: any): Promise<void> {
+    try {
+      // Separate updates for different nodes
+      const userUpdates: any = {};
+      const doctorUpdates: any = {};
+      
+      // Fields that go to users node
+      if (updates.firstName !== undefined) userUpdates.firstName = updates.firstName;
+      if (updates.lastName !== undefined) userUpdates.lastName = updates.lastName;
+      if (updates.email !== undefined) userUpdates.email = updates.email;
+      if (updates.contactNumber !== undefined) userUpdates.contactNumber = updates.contactNumber;
+      if (updates.address !== undefined) userUpdates.address = updates.address;
+      if (updates.lastUpdated !== undefined) userUpdates.lastUpdated = updates.lastUpdated;
+      
+      // Fields that go to doctors node
+      if (updates.specialty !== undefined) doctorUpdates.specialty = updates.specialty;
+      if (updates.yearsOfExperience !== undefined) doctorUpdates.yearsOfExperience = updates.yearsOfExperience;
+      if (updates.medicalLicenseNumber !== undefined) doctorUpdates.medicalLicenseNumber = updates.medicalLicenseNumber;
+      if (updates.prcId !== undefined) doctorUpdates.prcId = updates.prcId;
+      if (updates.prcExpiryDate !== undefined) doctorUpdates.prcExpiryDate = updates.prcExpiryDate;
+      if (updates.professionalFee !== undefined) doctorUpdates.professionalFee = updates.professionalFee;
+      if (updates.gender !== undefined) doctorUpdates.gender = updates.gender;
+      if (updates.dateOfBirth !== undefined) doctorUpdates.dateOfBirth = updates.dateOfBirth;
+      if (updates.civilStatus !== undefined) doctorUpdates.civilStatus = updates.civilStatus;
+      if (updates.lastUpdated !== undefined) doctorUpdates.lastUpdated = updates.lastUpdated;
+      
+      // Update users node if there are user-specific updates
+      if (Object.keys(userUpdates).length > 0) {
+        const userRef = ref(database, `users/${specialistId}`);
+        const userSnapshot = await get(userRef);
+        if (userSnapshot.exists()) {
+          await update(userRef, userUpdates);
+          console.log('Updated users node with:', userUpdates);
+        } else {
+          console.log('Users node does not exist for specialist:', specialistId);
+        }
+      }
+      
+      // Update doctors node if there are doctor-specific updates
+      if (Object.keys(doctorUpdates).length > 0) {
+        const doctorRef = ref(database, `doctors/${specialistId}`);
+        const doctorSnapshot = await get(doctorRef);
+        if (doctorSnapshot.exists()) {
+          await update(doctorRef, doctorUpdates);
+          console.log('Updated doctors node with:', doctorUpdates);
+        } else {
+          console.log('Doctors node does not exist for specialist:', specialistId);
+        }
+      }
+      
+      console.log('Specialist profile update completed successfully');
+    } catch (error) {
+      console.error('Update specialist profile error:', error);
       throw error;
     }
   },
@@ -1222,6 +1358,29 @@ export const databaseService = {
     }
   },
 
+  async updateCertificate(id: string, updates: Partial<Certificate>): Promise<void> {
+    try {
+      const certificateRef = ref(database, `certificates/${id}`);
+      await update(certificateRef, {
+        ...updates,
+        lastUpdated: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Update certificate error:', error);
+      throw error;
+    }
+  },
+
+  async deleteCertificate(id: string): Promise<void> {
+    try {
+      const certificateRef = ref(database, `certificates/${id}`);
+      await remove(certificateRef);
+    } catch (error) {
+      console.error('Delete certificate error:', error);
+      throw error;
+    }
+  },
+
   // Medical History
   async getMedicalHistory(patientId: string): Promise<MedicalHistory[]> {
     try {
@@ -1374,6 +1533,23 @@ export const databaseService = {
       }
       
       await update(referralRef, updates);
+      
+      // Create notification for the referral status change
+      try {
+        const { notificationService } = await import('./notificationService');
+        const referral = await this.getReferralById(referralId);
+        if (referral) {
+          await notificationService.createReferralNotification(
+            referral.assignedSpecialistId,
+            referralId,
+            status,
+            referral
+          );
+        }
+      } catch (notificationError) {
+        console.warn('Failed to create referral notification:', notificationError);
+        // Don't fail the referral update if notification fails
+      }
     } catch (error) {
       console.error('Update referral status error:', error);
       throw error;
@@ -1425,6 +1601,323 @@ export const databaseService = {
     });
     
     return unsubscribe;
+  },
+
+  onReferralsChange(specialistId: string, callback: (referrals: Referral[]) => void) {
+    const referralsRef = ref(database, 'referrals');
+    
+    const unsubscribe = onValue(referralsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const referrals: Referral[] = [];
+        
+        snapshot.forEach((childSnapshot) => {
+          const referralData = childSnapshot.val();
+          // Filter referrals assigned to this specialist
+          if (referralData.assignedSpecialistId === specialistId) {
+            referrals.push({
+              id: childSnapshot.key,
+              ...referralData
+            });
+          }
+        });
+        
+        callback(referrals.sort((a, b) => new Date(b.referralTimestamp).getTime() - new Date(a.referralTimestamp).getTime()));
+      } else {
+        callback([]);
+      }
+    });
+    
+    return unsubscribe;
+  },
+
+  onPrescriptionsChange(patientId: string, callback: (prescriptions: Prescription[]) => void) {
+    const prescriptionsRef = ref(database, 'prescriptions');
+    
+    const unsubscribe = onValue(prescriptionsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const prescriptions: Prescription[] = [];
+        
+        snapshot.forEach((childSnapshot) => {
+          const prescriptionData = childSnapshot.val();
+          // Filter prescriptions by patientId
+          if (prescriptionData.patientId === patientId) {
+            prescriptions.push({
+              id: childSnapshot.key,
+              ...prescriptionData
+            });
+          }
+        });
+        
+        callback(prescriptions.sort((a, b) => new Date(b.prescribedDate).getTime() - new Date(a.prescribedDate).getTime()));
+      } else {
+        callback([]);
+      }
+    });
+    
+    return unsubscribe;
+  },
+
+  onMedicalHistoryChange(patientId: string, callback: (medicalHistory: MedicalHistory[]) => void) {
+    const medicalHistoryRef = ref(database, `patientMedicalHistory/${patientId}/entries`);
+    
+    const unsubscribe = onValue(medicalHistoryRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const medicalHistory: MedicalHistory[] = [];
+        
+        snapshot.forEach((childSnapshot) => {
+          const entry = childSnapshot.val();
+          medicalHistory.push({
+            id: childSnapshot.key!,
+            ...entry
+          });
+        });
+        
+        callback(medicalHistory.sort((a, b) => new Date(b.consultationDate).getTime() - new Date(a.consultationDate).getTime()));
+      } else {
+        callback([]);
+      }
+    });
+    
+    return unsubscribe;
+  },
+
+  onCertificatesChange(patientId: string, callback: (certificates: Certificate[]) => void) {
+    const certificatesRef = ref(database, 'certificates');
+    
+    const unsubscribe = onValue(certificatesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const certificates: Certificate[] = [];
+        
+        snapshot.forEach((childSnapshot) => {
+          const certificateData = childSnapshot.val();
+          // Filter certificates by patientId
+          if (certificateData.patientId === patientId) {
+            certificates.push({
+              id: childSnapshot.key,
+              ...certificateData
+            });
+          }
+        });
+        
+        callback(certificates.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()));
+      } else {
+        callback([]);
+      }
+    });
+    
+    return unsubscribe;
+  },
+
+  onNotificationsChange(userId: string, callback: (notifications: any[]) => void) {
+    const notificationsRef = ref(database, 'notifications');
+    
+    const unsubscribe = onValue(notificationsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const notifications: any[] = [];
+        
+        snapshot.forEach((childSnapshot) => {
+          const notificationData = childSnapshot.val();
+          // Filter notifications by userId
+          if (notificationData.userId === userId) {
+            notifications.push({
+              id: childSnapshot.key,
+              ...notificationData
+            });
+          }
+        });
+        
+        callback(notifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+      } else {
+        callback([]);
+      }
+    });
+    
+    return unsubscribe;
+  },
+
+  // Real-time profile listeners
+  onPatientProfileChange(patientId: string, callback: (profile: any) => void) {
+    console.log('=== onPatientProfileChange: Setting up listeners ===');
+    console.log('Patient ID:', patientId);
+    
+    // Listen to both patients and users nodes for comprehensive profile data
+    const patientsRef = ref(database, `patients/${patientId}`);
+    const usersRef = ref(database, `users/${patientId}`);
+    
+    let patientData: any = null;
+    let userData: any = null;
+    let hasCalledCallback = false;
+    
+    // Function to combine data and call callback
+    const combineAndCallback = () => {
+      console.log('=== combineAndCallback called ===');
+      console.log('Current userData:', userData);
+      console.log('Current patientData:', patientData);
+      console.log('Has called callback before:', hasCalledCallback);
+      
+      if (userData || patientData) {
+        const combinedProfile = {
+          id: patientId,
+          // User data (basic info like name, email, contact, address)
+          firstName: userData?.firstName,
+          lastName: userData?.lastName,
+          email: userData?.email,
+          contactNumber: userData?.contactNumber,
+          address: userData?.address,
+          role: userData?.role,
+          // Patient data (medical-specific info)
+          dateOfBirth: patientData?.dateOfBirth,
+          gender: patientData?.gender,
+          bloodType: patientData?.bloodType,
+          emergencyContact: patientData?.emergencyContact,
+          // Timestamps
+          createdAt: userData?.createdAt || patientData?.createdAt,
+          lastUpdated: userData?.lastUpdated || patientData?.lastUpdated,
+        };
+        
+        console.log('Combined profile created:', combinedProfile);
+        console.log('Address in combined profile:', combinedProfile.address);
+        console.log('Contact number in combined profile:', combinedProfile.contactNumber);
+        
+        // Only call callback if we haven't called it before or if data has changed
+        if (!hasCalledCallback || JSON.stringify(combinedProfile) !== JSON.stringify(lastCombinedProfile)) {
+          console.log('Calling callback with combined profile');
+          callback(combinedProfile);
+          hasCalledCallback = true;
+          lastCombinedProfile = JSON.stringify(combinedProfile);
+        } else {
+          console.log('Skipping callback - data unchanged');
+        }
+      } else {
+        console.log('No data available yet');
+        if (!hasCalledCallback) {
+          callback(null);
+          hasCalledCallback = true;
+        }
+      }
+    };
+    
+    let lastCombinedProfile: string = '';
+    
+    const unsubscribePatients = onValue(patientsRef, (snapshot) => {
+      console.log('=== onPatientProfileChange: Patients node update ===');
+      if (snapshot.exists()) {
+        patientData = snapshot.val();
+        console.log('Patient data received:', patientData);
+        console.log('Patient data keys:', Object.keys(patientData || {}));
+      } else {
+        patientData = null;
+        console.log('Patients node does not exist');
+      }
+      combineAndCallback();
+    });
+    
+    const unsubscribeUsers = onValue(usersRef, (snapshot) => {
+      console.log('=== onPatientProfileChange: Users node update ===');
+      if (snapshot.exists()) {
+        userData = snapshot.val();
+        console.log('User data received:', userData);
+        console.log('User data keys:', Object.keys(userData || {}));
+        console.log('User address field:', userData?.address);
+        console.log('User contactNumber field:', userData?.contactNumber);
+      } else {
+        userData = null;
+        console.log('Users node does not exist');
+      }
+      combineAndCallback();
+    });
+    
+    // Return function to unsubscribe from both listeners
+    return () => {
+      console.log('=== onPatientProfileChange: Cleaning up listeners ===');
+      unsubscribePatients();
+      unsubscribeUsers();
+    };
+  },
+
+  onSpecialistProfileChange(specialistId: string, callback: (profile: any) => void) {
+    // Listen to doctors node (primary) and users node (fallback)
+    const doctorsRef = ref(database, `doctors/${specialistId}`);
+    const usersRef = ref(database, `users/${specialistId}`);
+    
+    let doctorData: any = null;
+    let userData: any = null;
+    
+    const unsubscribeDoctors = onValue(doctorsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        doctorData = snapshot.val();
+        // Combine data and call callback
+        if (userData || doctorData) {
+          const combinedProfile = {
+            id: specialistId,
+            ...userData,
+            ...doctorData,
+          };
+          callback(combinedProfile);
+        }
+      } else {
+        doctorData = null;
+        // Still call callback with user data if available
+        if (userData) {
+          const combinedProfile = {
+            id: specialistId,
+            ...userData,
+          };
+          callback(combinedProfile);
+        } else {
+          callback(null);
+        }
+      }
+    });
+    
+    const unsubscribeUsers = onValue(usersRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        // Only include user data if it's a specialist
+        if (data.role === 'specialist') {
+          userData = data;
+          // Combine data and call callback
+          if (doctorData || userData) {
+            const combinedProfile = {
+              id: specialistId,
+              ...userData,
+              ...doctorData,
+            };
+            callback(combinedProfile);
+          }
+        } else {
+          userData = null;
+          // Still call callback with doctor data if available
+          if (doctorData) {
+            const combinedProfile = {
+              id: specialistId,
+              ...doctorData,
+            };
+            callback(combinedProfile);
+          } else {
+            callback(null);
+          }
+        }
+      } else {
+        userData = null;
+        // Still call callback with doctor data if available
+        if (doctorData) {
+          const combinedProfile = {
+            id: specialistId,
+            ...doctorData,
+          };
+          callback(combinedProfile);
+        } else {
+          callback(null);
+        }
+      }
+    });
+    
+    // Return function to unsubscribe from both listeners
+    return () => {
+      unsubscribeDoctors();
+      unsubscribeUsers();
+    };
   },
 
   // Generic document operations

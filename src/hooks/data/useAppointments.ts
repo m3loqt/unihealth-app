@@ -44,40 +44,63 @@ export const useAppointments = (): UseAppointmentsReturn => {
     try {
       setError(null);
       const appointmentId = await databaseService.createAppointment(appointmentData);
-      await loadAppointments(); // Refresh the list
+      // No need to manually refresh - real-time listener will handle this
       return appointmentId;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create appointment');
       console.error('Error creating appointment:', err);
       return null;
     }
-  }, [user, loadAppointments]);
+  }, [user]);
 
   const updateAppointment = useCallback(async (id: string, updates: Partial<Appointment>): Promise<void> => {
     try {
       setError(null);
       await databaseService.updateAppointment(id, updates);
-      await loadAppointments(); // Refresh the list
+      // No need to manually refresh - real-time listener will handle this
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update appointment');
       console.error('Error updating appointment:', err);
     }
-  }, [loadAppointments]);
+  }, []);
 
   const deleteAppointment = useCallback(async (id: string): Promise<void> => {
     try {
       setError(null);
       await databaseService.deleteAppointment(id);
-      await loadAppointments(); // Refresh the list
+      // No need to manually refresh - real-time listener will handle this
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete appointment');
       console.error('Error deleting appointment:', err);
     }
-  }, [loadAppointments]);
+  }, []);
 
+  // Set up real-time listener for appointments
   useEffect(() => {
-    loadAppointments();
-  }, [loadAppointments]);
+    if (!user) {
+      setAppointments([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    
+    // Subscribe to real-time updates
+    const unsubscribe = databaseService.onAppointmentsChange(
+      user.uid, 
+      'patient', 
+      (updatedAppointments) => {
+        setAppointments(updatedAppointments);
+        setLoading(false);
+        setError(null);
+      }
+    );
+
+    // Cleanup subscription on unmount or user change
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
 
   return {
     appointments,

@@ -29,6 +29,7 @@ import {
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
+import { useSpecialistProfile } from '../../../src/hooks/data/useSpecialistProfile';
 import { databaseService } from '../../../src/services/database/firebase';
 import { Input, Dropdown, DatePicker } from '../../../src/components/ui/Input';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
@@ -39,6 +40,7 @@ import { performanceUtils } from '../../../src/utils/performance';
 
 export default function SpecialistProfileScreen() {
   const { user, signOut } = useAuth();
+  const { profile, loading: profileLoading, error: profileError, updateProfile } = useSpecialistProfile();
   
   // Helper function to format date safely (avoiding timezone issues)
   const formatDateSafely = (dateString: string): string => {
@@ -62,7 +64,26 @@ export default function SpecialistProfileScreen() {
     
     return '';
   };
-  const [profileData, setProfileData] = useState({
+
+  // Transform profile data for display
+  const profileData = profile ? {
+    name: profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` : 'Unknown User',
+    email: profile.email || '',
+    phone: profile.contactNumber || '',
+    address: profile.address || '',
+    specialization: profile.specialty || '',
+    experience: profile.yearsOfExperience && profile.yearsOfExperience > 0 ? `${profile.yearsOfExperience} years` : '',
+    profileImage: '', // profileImage not available in current interface
+    medicalLicenseNumber: profile.medicalLicenseNumber || '',
+    prcId: profile.prcId || '',
+    prcExpiryDate: profile.prcExpiryDate || '',
+    professionalFee: profile.professionalFee ? `₱${profile.professionalFee}` : '',
+    gender: profile.gender || '',
+    dateOfBirth: profile.dateOfBirth || '',
+    civilStatus: profile.civilStatus || '',
+    status: profile.status || '',
+    clinicAffiliations: profile.clinicAffiliations || [],
+  } : {
     name: '',
     email: '',
     phone: '',
@@ -79,9 +100,8 @@ export default function SpecialistProfileScreen() {
     civilStatus: '',
     status: '',
     clinicAffiliations: [],
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  };
+
   const [refreshing, setRefreshing] = useState(false);
   const [showFullProfileModal, setShowFullProfileModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -101,6 +121,7 @@ export default function SpecialistProfileScreen() {
     civilStatus: '',
   });
   const [clinicNames, setClinicNames] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Performance optimization: memoize clinic names
   const memoizedClinicNames = performanceUtils.useDeepMemo(() => clinicNames, [clinicNames]);
@@ -122,27 +143,87 @@ export default function SpecialistProfileScreen() {
   // Load profile data from Firebase
   useEffect(() => {
     if (user && user.uid) {
-      loadProfileData();
+      // loadProfileData(); // This function is no longer needed
     }
   }, [user]);
 
-  const fetchClinicNames = async (clinicIds: string[]) => {
+  // Synchronize editableData when profile changes (for real-time updates)
+  useEffect(() => {
+    if (profile && isEditing) {
+      console.log('=== Specialist Profile Sync ===');
+      console.log('Profile data received:', profile);
+      console.log('Current editableData:', editableData);
+      
+      setEditableData(prev => {
+        const updated = {
+          ...prev,
+          name: profile.firstName && profile.lastName ? 
+            `${profile.firstName} ${profile.lastName}` : prev.name,
+          email: profile.email || prev.email,
+          phone: profile.contactNumber || prev.phone,
+          address: profile.address || prev.address,
+          specialization: profile.specialty || prev.specialization,
+          experience: profile.yearsOfExperience && profile.yearsOfExperience > 0 ? 
+            profile.yearsOfExperience.toString() : prev.experience,
+          medicalLicenseNumber: profile.medicalLicenseNumber || prev.medicalLicenseNumber,
+          prcId: profile.prcId || prev.prcId,
+          prcExpiryDate: profile.prcExpiryDate || prev.prcExpiryDate,
+          professionalFee: profile.professionalFee ? profile.professionalFee.toString() : prev.professionalFee,
+          gender: profile.gender || prev.gender,
+          dateOfBirth: profile.dateOfBirth || prev.dateOfBirth,
+          civilStatus: profile.civilStatus || prev.civilStatus,
+        };
+        
+        console.log('Updated editableData:', updated);
+        return updated;
+      });
+    }
+  }, [profile, isEditing]);
+
+  const fetchClinicNames = async (clinicIds: any) => {
     try {
+      console.log('=== Fetching Clinic Names ===');
+      console.log('Clinic IDs received:', clinicIds);
+      console.log('Type:', typeof clinicIds);
+      console.log('Is Array:', Array.isArray(clinicIds));
+      
+      // Handle both array and object formats
+      let clinicIdArray: string[] = [];
+      if (Array.isArray(clinicIds)) {
+        clinicIdArray = clinicIds;
+      } else if (typeof clinicIds === 'object' && clinicIds !== null) {
+        clinicIdArray = Object.values(clinicIds);
+      } else {
+        console.log('Invalid clinicIds format, clearing clinic names');
+        setClinicNames([]);
+        return;
+      }
+      
+      console.log('Processed clinic ID array:', clinicIdArray);
+      
       const names: string[] = [];
-      for (const clinicId of clinicIds) {
-        // Check if it's already a clinic name (string) or a clinic ID
-        if (typeof clinicId === 'string' && !clinicId.startsWith('-')) {
-          // It's already a clinic name
-          names.push(clinicId);
-        } else {
-          // It's a clinic ID, fetch the clinic data
+      for (const clinicId of clinicIdArray) {
+        try {
+          // Always treat as clinic ID and fetch from clinics node
+          console.log('Fetching clinic data for ID:', clinicId);
           const clinicData = await databaseService.getDocument(`clinics/${clinicId}`);
-          // Only include clinics with valid addresses
-          if (clinicData && clinicData.name && hasValidAddress(clinicData)) {
+          
+          if (clinicData && clinicData.name) {
+            console.log('Clinic data found:', clinicData.name);
             names.push(clinicData.name);
+          } else {
+            console.log('No clinic data found for ID:', clinicId);
+            // Fallback: show the ID if no name is available
+            names.push(`Clinic ${clinicId}`);
           }
+        } catch (clinicError) {
+          console.error(`Error fetching clinic ${clinicId}:`, clinicError);
+          // Fallback: show the ID if fetch fails
+          names.push(`Clinic ${clinicId}`);
         }
       }
+      
+      console.log('Final clinic names:', names);
       setClinicNames(names);
     } catch (error) {
       console.error('Error fetching clinic names:', error);
@@ -172,74 +253,78 @@ export default function SpecialistProfileScreen() {
     return hasNewFormat || hasOldFormat;
   };
 
-  const loadProfileData = async () => {
-    if (!user) return;
+  // const loadProfileData = async () => { // This function is no longer needed
+  //   if (!user) return;
     
-    try {
-      setLoading(true);
-      setError(null);
-      const specialistProfile = await databaseService.getSpecialistProfile(user.uid);
+  //   try {
+  //     setLoading(true);
+  //     setError(null);
+  //     const specialistProfile = await databaseService.getSpecialistProfile(user.uid);
       
-      if (specialistProfile) {
-        // Use specialist profile data directly
-        console.log('Specialist profile loaded:', specialistProfile);
+  //     if (specialistProfile) {
+  //       // Use specialist profile data directly
+  //       console.log('Specialist profile loaded:', specialistProfile);
         
-        setProfileData({
-          name: safeDataAccess.getUserFullName(specialistProfile, user.name || ''),
-          email: specialistProfile.email || user.email || '',
-          phone: safeDataAccess.getUserPhone(specialistProfile, ''),
-          address: specialistProfile.address || '',
-          specialization: specialistProfile.specialty || '',
-          experience: specialistProfile.yearsOfExperience && specialistProfile.yearsOfExperience > 0 ? `${specialistProfile.yearsOfExperience} years` : '',
-          profileImage: specialistProfile.profileImageUrl || '',
-          medicalLicenseNumber: specialistProfile.medicalLicenseNumber || '',
-          prcId: specialistProfile.prcId || '',
-          prcExpiryDate: specialistProfile.prcExpiryDate || '',
-          professionalFee: specialistProfile.professionalFee ? `₱${specialistProfile.professionalFee}` : '',
-          gender: safeDataAccess.getUserGender(specialistProfile, ''),
-          dateOfBirth: specialistProfile.dateOfBirth || '',
-          civilStatus: specialistProfile.civilStatus || '',
-          status: specialistProfile.status || '',
-          clinicAffiliations: specialistProfile.clinicAffiliations || [],
-        });
-      } else {
-        // Use basic user data if no specialist profile exists
-        setProfileData({
-          name: user.name || '',
-          email: user.email || '',
-          phone: '',
-          address: '',
-          specialization: '',
-          experience: '',
-          profileImage: '',
-          medicalLicenseNumber: '',
-          prcId: '',
-          prcExpiryDate: '',
-          professionalFee: '',
-          gender: '',
-          dateOfBirth: '',
-          civilStatus: '',
-          status: '',
-          clinicAffiliations: [],
-        });
-      }
-    } catch (error) {
-      console.error('Error loading profile data:', error);
-      setError('Failed to load profile data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  //       setProfileData({
+  //         name: safeDataAccess.getUserFullName(specialistProfile, user.name || ''),
+  //         email: specialistProfile.email || user.email || '',
+  //         phone: safeDataAccess.getUserPhone(specialistProfile, ''),
+  //         address: specialistProfile.address || '',
+  //         specialization: specialistProfile.specialty || '',
+  //         experience: specialistProfile.yearsOfExperience && specialistProfile.yearsOfExperience > 0 ? `${specialistProfile.yearsOfExperience} years` : '',
+  //         profileImage: specialistProfile.profileImageUrl || '',
+  //         medicalLicenseNumber: specialistProfile.medicalLicenseNumber || '',
+  //         prcId: specialistProfile.prcId || '',
+  //         prcExpiryDate: specialistProfile.prcExpiryDate || '',
+  //         professionalFee: specialistProfile.professionalFee ? `₱${specialistProfile.professionalFee}` : '',
+  //         gender: safeDataAccess.getUserGender(specialistProfile, ''),
+  //         dateOfBirth: specialistProfile.dateOfBirth || '',
+  //         civilStatus: specialistProfile.civilStatus || '',
+  //         status: specialistProfile.status || '',
+  //         clinicAffiliations: specialistProfile.clinicAffiliations || [],
+  //       });
+  //     } else {
+  //       // Use basic user data if no specialist profile exists
+  //       setProfileData({
+  //         name: user.name || '',
+  //         email: user.email || '',
+  //         phone: '',
+  //         address: '',
+  //         specialization: '',
+  //         experience: '',
+  //         profileImage: '',
+  //         medicalLicenseNumber: '',
+  //         prcId: '',
+  //         prcExpiryDate: '',
+  //         professionalFee: '',
+  //         gender: '',
+  //         dateOfBirth: '',
+  //         civilStatus: '',
+  //         status: '',
+  //         clinicAffiliations: [],
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error('Error loading profile data:', error);
+  //     setError('Failed to load profile data. Please try again.');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadProfileData();
+    // Refresh using the hook's refresh method
+    if (profile) {
+      // The real-time listener will automatically update the data
+      // No need to manually refresh
+    }
     setRefreshing(false);
   };
 
   const handleRetry = () => {
-    setError(null);
-    loadProfileData();
+    // The real-time listener will automatically retry
+    // No need to manually handle retry
   };
 
   const handleSignOut = async () => {
@@ -266,23 +351,36 @@ export default function SpecialistProfileScreen() {
   };
 
   const handleEditProfile = () => {
+    console.log('=== Starting Specialist Profile Edit ===');
+    console.log('Current profile:', profile);
+    console.log('Current profileData:', profileData);
+    
     setIsEditing(true);
-    // Initialize editable data with current profile data
-    setEditableData({
-      name: profileData.name,
-      email: profileData.email,
-      phone: profileData.phone,
-      address: profileData.address,
-      specialization: profileData.specialization,
-      experience: profileData.experience,
-      medicalLicenseNumber: profileData.medicalLicenseNumber,
-      prcId: profileData.prcId,
-      prcExpiryDate: profileData.prcExpiryDate || '2025-12-31', // Default expiry date if empty
-      professionalFee: profileData.professionalFee.replace('₱', ''),
-      gender: profileData.gender,
-      dateOfBirth: profileData.dateOfBirth || '2020-01-01', // Default date if empty
-      civilStatus: profileData.civilStatus,
-    });
+    // Ensure profile data is available before setting editable data
+    if (profile) {
+      const initialData = {
+        name: profile.firstName && profile.lastName ? 
+          `${profile.firstName} ${profile.lastName}` : '',
+        email: profile.email || '',
+        phone: profile.contactNumber || '',
+        address: profile.address || '',
+        specialization: profile.specialty || '',
+        experience: profile.yearsOfExperience && profile.yearsOfExperience > 0 ? 
+          profile.yearsOfExperience.toString() : '',
+        medicalLicenseNumber: profile.medicalLicenseNumber || '',
+        prcId: profile.prcId || '',
+        prcExpiryDate: profile.prcExpiryDate || '2025-12-31',
+        professionalFee: profile.professionalFee ? profile.professionalFee.toString() : '',
+        gender: profile.gender || '',
+        dateOfBirth: profile.dateOfBirth || '2020-01-01',
+        civilStatus: profile.civilStatus || '',
+      };
+      
+      console.log('Initializing editableData with:', initialData);
+      setEditableData(initialData);
+    } else {
+      console.log('No profile data available for editing');
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -291,6 +389,32 @@ export default function SpecialistProfileScreen() {
       return;
     }
 
+    // Validate required fields
+    if (!editableData.name || !editableData.email) {
+      Alert.alert('Error', 'Please fill in all required fields (Name and Email are required).');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editableData.email)) {
+      Alert.alert('Error', 'Please enter a valid email address.');
+      return;
+    }
+
+    // Validate experience field if provided
+    if (editableData.experience && (isNaN(parseInt(editableData.experience)) || parseInt(editableData.experience) < 0)) {
+      Alert.alert('Error', 'Please enter a valid number of years of experience.');
+      return;
+    }
+
+    // Validate professional fee if provided
+    if (editableData.professionalFee && (isNaN(parseInt(editableData.professionalFee)) || parseInt(editableData.professionalFee) < 0)) {
+      Alert.alert('Error', 'Please enter a valid professional fee amount.');
+      return;
+    }
+
+    setIsSaving(true);
     try {
       // Prepare the updates for the database
       const updates = {
@@ -301,7 +425,7 @@ export default function SpecialistProfileScreen() {
         contactNumber: editableData.phone,
         address: editableData.address,
         specialty: editableData.specialization,
-        yearsOfExperience: editableData.experience ? parseInt(editableData.experience.replace(' years', '')) : 0,
+        yearsOfExperience: editableData.experience ? parseInt(editableData.experience) : 0,
         medicalLicenseNumber: editableData.medicalLicenseNumber,
         prcId: editableData.prcId,
         prcExpiryDate: editableData.prcExpiryDate,
@@ -313,36 +437,48 @@ export default function SpecialistProfileScreen() {
       };
 
       // Update the specialist profile in the database
-      await databaseService.updateDocument(`doctors/${user.uid}`, updates);
-
-      // Update local state
-      setProfileData(prev => ({
-        ...prev,
-        name: editableData.name,
-        email: editableData.email,
-        phone: editableData.phone,
-        address: editableData.address,
-        specialization: editableData.specialization,
-        experience: editableData.experience,
-        medicalLicenseNumber: editableData.medicalLicenseNumber,
-        prcId: editableData.prcId,
-        prcExpiryDate: editableData.prcExpiryDate,
-        professionalFee: editableData.professionalFee ? `₱${editableData.professionalFee}` : '',
-        gender: editableData.gender,
-        dateOfBirth: editableData.dateOfBirth,
-        civilStatus: editableData.civilStatus,
-      }));
+      await updateProfile(updates);
       
       setIsEditing(false);
       Alert.alert('Success', 'Profile updated successfully!');
     } catch (error) {
       console.error('Error saving profile:', error);
       Alert.alert('Error', 'Failed to save profile. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleCancelEdit = () => {
-    setIsEditing(false);
+    // Check if any data has been modified
+    const hasChanges = profile && (
+      editableData.name !== (profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` : '') ||
+      editableData.email !== (profile.email || '') ||
+      editableData.phone !== (profile.contactNumber || '') ||
+      editableData.address !== (profile.address || '') ||
+      editableData.specialization !== (profile.specialty || '') ||
+      editableData.experience !== (profile.yearsOfExperience ? profile.yearsOfExperience.toString() : '') ||
+      editableData.medicalLicenseNumber !== (profile.medicalLicenseNumber || '') ||
+      editableData.prcId !== (profile.prcId || '') ||
+      editableData.prcExpiryDate !== (profile.prcExpiryDate || '') ||
+      editableData.professionalFee !== (profile.professionalFee ? profile.professionalFee.toString() : '') ||
+      editableData.gender !== (profile.gender || '') ||
+      editableData.dateOfBirth !== (profile.dateOfBirth || '') ||
+      editableData.civilStatus !== (profile.civilStatus || '')
+    );
+
+    if (hasChanges) {
+      Alert.alert(
+        'Discard Changes?',
+        'You have unsaved changes. Are you sure you want to discard them?',
+        [
+          { text: 'Keep Editing', style: 'cancel' },
+          { text: 'Discard', style: 'destructive', onPress: () => setIsEditing(false) }
+        ]
+      );
+    } else {
+      setIsEditing(false);
+    }
   };
 
   const quickActions = [
@@ -407,13 +543,52 @@ export default function SpecialistProfileScreen() {
    } = profileData;
 
    // Fetch clinic names when clinic affiliations change
-   useEffect(() => {
-     if (clinicAffiliations && Object.keys(clinicAffiliations).length > 0) {
-       fetchClinicNames(Object.values(clinicAffiliations));
-     } else {
-       setClinicNames([]);
-     }
-   }, [clinicAffiliations]);
+  useEffect(() => {
+    if (clinicAffiliations) {
+      console.log('=== ClinicAffiliations Change Debug ===');
+      console.log('ClinicAffiliations from profileData:', clinicAffiliations);
+      console.log('Type:', typeof clinicAffiliations);
+      console.log('Is Array:', Array.isArray(clinicAffiliations));
+      
+      if (Array.isArray(clinicAffiliations) && clinicAffiliations.length > 0) {
+        console.log('Array format, fetching clinic names for:', clinicAffiliations);
+        fetchClinicNames(clinicAffiliations);
+      } else if (typeof clinicAffiliations === 'object' && clinicAffiliations !== null && Object.keys(clinicAffiliations).length > 0) {
+        console.log('Object format, fetching clinic names for:', Object.values(clinicAffiliations));
+        fetchClinicNames(clinicAffiliations);
+      } else {
+        console.log('No clinic affiliations, clearing clinic names');
+        setClinicNames([]);
+      }
+    } else {
+      console.log('No clinicAffiliations, clearing clinic names');
+      setClinicNames([]);
+    }
+  }, [clinicAffiliations]);
+
+  // Also fetch clinic names when profile changes (for real-time updates)
+  useEffect(() => {
+    if (profile && profile.clinicAffiliations) {
+      console.log('=== Profile Clinic Affiliations Debug ===');
+      console.log('Profile clinicAffiliations:', profile.clinicAffiliations);
+      console.log('Type:', typeof profile.clinicAffiliations);
+      console.log('Is Array:', Array.isArray(profile.clinicAffiliations));
+      
+      if (Array.isArray(profile.clinicAffiliations) && profile.clinicAffiliations.length > 0) {
+        console.log('Array format, fetching clinic names for:', profile.clinicAffiliations);
+        fetchClinicNames(profile.clinicAffiliations);
+      } else if (typeof profile.clinicAffiliations === 'object' && profile.clinicAffiliations !== null && Object.keys(profile.clinicAffiliations).length > 0) {
+        console.log('Object format, fetching clinic names for:', Object.values(profile.clinicAffiliations));
+        fetchClinicNames(profile.clinicAffiliations);
+      } else {
+        console.log('No clinic affiliations in profile, clearing clinic names');
+        setClinicNames([]);
+      }
+    } else if (profile) {
+      console.log('Profile has no clinicAffiliations, clearing clinic names');
+      setClinicNames([]);
+    }
+  }, [profile]);
 
    return (
     <ErrorBoundary>
@@ -436,15 +611,15 @@ export default function SpecialistProfileScreen() {
         </View>
 
         {/* Loading and Error States */}
-        {loading ? (
+        {profileLoading ? (
           <LoadingState
             message="Loading profile..."
             variant="inline"
             size="large"
           />
-        ) : error ? (
+        ) : profileError ? (
           <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={styles.errorText}>{profileError}</Text>
             <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
@@ -638,6 +813,7 @@ export default function SpecialistProfileScreen() {
                         )}
                       </View>
                       <View style={styles.modalProfileInfo}>
+                        <Text style={styles.modalEditModeIndicator}>✏️ Edit Mode</Text>
                         <Input
                           value={editableData.name}
                           onChangeText={(text) => setEditableData(prev => ({ ...prev, name: text }))}
@@ -943,8 +1119,11 @@ export default function SpecialistProfileScreen() {
                 <TouchableOpacity 
                   style={styles.saveButton}
                   onPress={handleSaveProfile}
+                  disabled={isSaving}
                 >
-                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                  <Text style={styles.saveButtonText}>
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -1343,6 +1522,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+  },
+  modalEditModeIndicator: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1E40AF',
+    marginBottom: 8,
+    textAlign: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
   },
   modalSection: {
     marginBottom: 32,
