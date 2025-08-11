@@ -15,7 +15,6 @@ export default function TabLayout() {
         <Tabs.Screen name="appointments" />
         <Tabs.Screen name="prescriptions" />
         <Tabs.Screen name="certificates" />
-        <Tabs.Screen name="notifications" />
         <Tabs.Screen name="profile" />
       </Tabs>
 
