@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -147,40 +147,7 @@ export default function SpecialistProfileScreen() {
     }
   }, [user]);
 
-  // Synchronize editableData when profile changes (for real-time updates)
-  useEffect(() => {
-    if (profile && isEditing) {
-      console.log('=== Specialist Profile Sync ===');
-      console.log('Profile data received:', profile);
-      console.log('Current editableData:', editableData);
-      
-      setEditableData(prev => {
-        const updated = {
-          ...prev,
-          name: profile.firstName && profile.lastName ? 
-            `${profile.firstName} ${profile.lastName}` : prev.name,
-          email: profile.email || prev.email,
-          phone: profile.contactNumber || prev.phone,
-          address: profile.address || prev.address,
-          specialization: profile.specialty || prev.specialization,
-          experience: profile.yearsOfExperience && profile.yearsOfExperience > 0 ? 
-            profile.yearsOfExperience.toString() : prev.experience,
-          medicalLicenseNumber: profile.medicalLicenseNumber || prev.medicalLicenseNumber,
-          prcId: profile.prcId || prev.prcId,
-          prcExpiryDate: profile.prcExpiryDate || prev.prcExpiryDate,
-          professionalFee: profile.professionalFee ? profile.professionalFee.toString() : prev.professionalFee,
-          gender: profile.gender || prev.gender,
-          dateOfBirth: profile.dateOfBirth || prev.dateOfBirth,
-          civilStatus: profile.civilStatus || prev.civilStatus,
-        };
-        
-        console.log('Updated editableData:', updated);
-        return updated;
-      });
-    }
-  }, [profile, isEditing]);
-
-  const fetchClinicNames = async (clinicIds: any) => {
+  const fetchClinicNames = useCallback(async (clinicIds: any) => {
     try {
       console.log('=== Fetching Clinic Names ===');
       console.log('Clinic IDs received:', clinicIds);
@@ -229,7 +196,64 @@ export default function SpecialistProfileScreen() {
       console.error('Error fetching clinic names:', error);
       setClinicNames([]);
     }
-  };
+  }, []); // Empty dependency array since it doesn't depend on any props or state
+
+  // Synchronize editableData when profile changes (for real-time updates)
+  useEffect(() => {
+    if (profile && isEditing) {
+      console.log('=== Specialist Profile Sync ===');
+      console.log('Profile data received:', profile);
+      console.log('Current editableData:', editableData);
+      
+      setEditableData(prev => {
+        const updated = {
+          ...prev,
+          name: profile.firstName && profile.lastName ? 
+            `${profile.firstName} ${profile.lastName}` : prev.name,
+          email: profile.email || prev.email,
+          phone: profile.contactNumber || prev.phone,
+          address: profile.address || prev.address,
+          specialization: profile.specialty || prev.specialization,
+          experience: profile.yearsOfExperience && profile.yearsOfExperience > 0 ? 
+            profile.yearsOfExperience.toString() : prev.experience,
+          medicalLicenseNumber: profile.medicalLicenseNumber || prev.medicalLicenseNumber,
+          prcId: profile.prcId || prev.prcId,
+          prcExpiryDate: profile.prcExpiryDate || prev.prcExpiryDate,
+          professionalFee: profile.professionalFee ? profile.professionalFee.toString() : prev.professionalFee,
+          gender: profile.gender || prev.gender,
+          dateOfBirth: profile.dateOfBirth || prev.dateOfBirth,
+          civilStatus: profile.civilStatus || prev.civilStatus,
+        };
+        
+        console.log('Updated editableData:', updated);
+        return updated;
+      });
+    }
+  }, [profile, isEditing]);
+
+  // Consolidated effect for fetching clinic names - only run when profile changes
+  useEffect(() => {
+    if (profile && profile.clinicAffiliations) {
+      console.log('=== Profile Clinic Affiliations Debug ===');
+      console.log('Profile clinicAffiliations:', profile.clinicAffiliations);
+      console.log('Type:', typeof profile.clinicAffiliations);
+      console.log('Is Array:', Array.isArray(profile.clinicAffiliations));
+      
+      if (Array.isArray(profile.clinicAffiliations) && profile.clinicAffiliations.length > 0) {
+        console.log('Array format, fetching clinic names for:', profile.clinicAffiliations);
+        fetchClinicNames(profile.clinicAffiliations);
+      } else if (typeof profile.clinicAffiliations === 'object' && profile.clinicAffiliations !== null && Object.keys(profile.clinicAffiliations).length > 0) {
+        console.log('Object format, fetching clinic names for:', Object.values(profile.clinicAffiliations));
+        fetchClinicNames(profile.clinicAffiliations);
+      } else {
+        console.log('No clinic affiliations in profile, clearing clinic names');
+        setClinicNames([]);
+      }
+    } else if (profile) {
+      console.log('Profile has no clinicAffiliations, clearing clinic names');
+      setClinicNames([]);
+    }
+  }, [profile, fetchClinicNames]); // Depend on profile and fetchClinicNames
 
   // Helper function to check if clinic has a valid address
   const hasValidAddress = (clinicData: any): boolean => {
@@ -543,52 +567,52 @@ export default function SpecialistProfileScreen() {
    } = profileData;
 
    // Fetch clinic names when clinic affiliations change
-  useEffect(() => {
-    if (clinicAffiliations) {
-      console.log('=== ClinicAffiliations Change Debug ===');
-      console.log('ClinicAffiliations from profileData:', clinicAffiliations);
-      console.log('Type:', typeof clinicAffiliations);
-      console.log('Is Array:', Array.isArray(clinicAffiliations));
+  // useEffect(() => {
+  //   if (clinicAffiliations) {
+  //     console.log('=== ClinicAffiliations Change Debug ===');
+  //     console.log('ClinicAffiliations from profileData:', clinicAffiliations);
+  //     console.log('Type:', typeof clinicAffiliations);
+  //     console.log('Is Array:', Array.isArray(clinicAffiliations));
       
-      if (Array.isArray(clinicAffiliations) && clinicAffiliations.length > 0) {
-        console.log('Array format, fetching clinic names for:', clinicAffiliations);
-        fetchClinicNames(clinicAffiliations);
-      } else if (typeof clinicAffiliations === 'object' && clinicAffiliations !== null && Object.keys(clinicAffiliations).length > 0) {
-        console.log('Object format, fetching clinic names for:', Object.values(clinicAffiliations));
-        fetchClinicNames(clinicAffiliations);
-      } else {
-        console.log('No clinic affiliations, clearing clinic names');
-        setClinicNames([]);
-      }
-    } else {
-      console.log('No clinicAffiliations, clearing clinic names');
-      setClinicNames([]);
-    }
-  }, [clinicAffiliations]);
+  //     if (Array.isArray(clinicAffiliations) && clinicAffiliations.length > 0) {
+  //       console.log('Array format, fetching clinic names for:', clinicAffiliations);
+  //       fetchClinicNames(clinicAffiliations);
+  //     } else if (typeof clinicAffiliations === 'object' && clinicAffiliations !== null && Object.keys(clinicAffiliations).length > 0) {
+  //       console.log('Object format, fetching clinic names for:', Object.values(clinicAffiliations));
+  //       fetchClinicNames(clinicAffiliations);
+  //     } else {
+  //       console.log('No clinic affiliations, clearing clinic names');
+  //       setClinicNames([]);
+  //     }
+  //   } else {
+  //     console.log('No clinicAffiliations, clearing clinic names');
+  //     setClinicNames([]);
+  //   }
+  // }, [clinicAffiliations]);
 
   // Also fetch clinic names when profile changes (for real-time updates)
-  useEffect(() => {
-    if (profile && profile.clinicAffiliations) {
-      console.log('=== Profile Clinic Affiliations Debug ===');
-      console.log('Profile clinicAffiliations:', profile.clinicAffiliations);
-      console.log('Type:', typeof profile.clinicAffiliations);
-      console.log('Is Array:', Array.isArray(profile.clinicAffiliations));
+  // useEffect(() => {
+  //   if (profile && profile.clinicAffiliations) {
+  //     console.log('=== Profile Clinic Affiliations Debug ===');
+  //     console.log('Profile clinicAffiliations:', profile.clinicAffiliations);
+  //     console.log('Type:', typeof profile.clinicAffiliations);
+  //     console.log('Is Array:', Array.isArray(profile.clinicAffiliations));
       
-      if (Array.isArray(profile.clinicAffiliations) && profile.clinicAffiliations.length > 0) {
-        console.log('Array format, fetching clinic names for:', profile.clinicAffiliations);
-        fetchClinicNames(profile.clinicAffiliations);
-      } else if (typeof profile.clinicAffiliations === 'object' && profile.clinicAffiliations !== null && Object.keys(profile.clinicAffiliations).length > 0) {
-        console.log('Object format, fetching clinic names for:', Object.values(profile.clinicAffiliations));
-        fetchClinicNames(profile.clinicAffiliations);
-      } else {
-        console.log('No clinic affiliations in profile, clearing clinic names');
-        setClinicNames([]);
-      }
-    } else if (profile) {
-      console.log('Profile has no clinicAffiliations, clearing clinic names');
-      setClinicNames([]);
-    }
-  }, [profile]);
+  //     if (Array.isArray(profile.clinicAffiliations) && profile.clinicAffiliations.length > 0) {
+  //       console.log('Array format, fetching clinic names for:', profile.clinicAffiliations);
+  //       fetchClinicNames(profile.clinicAffiliations);
+  //     } else if (typeof profile.clinicAffiliations === 'object' && profile.clinicAffiliations !== null && Object.keys(profile.clinicAffiliations).length > 0) {
+  //       console.log('Object format, fetching clinic names for:', Object.values(profile.clinicAffiliations));
+  //       fetchClinicNames(profile.clinicAffiliations);
+  //     } else {
+  //       console.log('No clinic affiliations in profile, clearing clinic names');
+  //       setClinicNames([]);
+  //     }
+  //   } else if (profile) {
+  //     console.log('Profile has no clinicAffiliations, clearing clinic names');
+  //     setClinicNames([]);
+  //   }
+  // }, [profile]);
 
    return (
     <ErrorBoundary>

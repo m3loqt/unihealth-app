@@ -255,12 +255,12 @@ export default function SpecialistAppointmentsScreen() {
     if (!selectedAppointment || !selectedAppointment.id) return;
     
     try {
-      // Update the appointment status to confirmed
-      await databaseService.updateAppointmentStatus(selectedAppointment.id, 'confirmed');
-      
-      // If this is a referral, also update the referral status
+      // If this is a referral, only update the referral status
       if (isReferral(selectedAppointment) && selectedAppointment.relatedReferralId) {
         await databaseService.updateReferralStatus(selectedAppointment.relatedReferralId, 'accepted');
+      } else {
+        // If it's a regular appointment, update the appointment status
+        await databaseService.updateAppointmentStatus(selectedAppointment.id, 'confirmed');
       }
       
       Alert.alert('Success', 'Referral accepted successfully!');
@@ -288,12 +288,12 @@ export default function SpecialistAppointmentsScreen() {
     }
 
     try {
-      // Update the appointment status to canceled
-      await databaseService.updateAppointmentStatus(selectedAppointment.id, 'canceled', finalReason);
-      
-      // If this is a referral, also update the referral status
+      // If this is a referral, only update the referral status
       if (isReferral(selectedAppointment) && selectedAppointment.relatedReferralId) {
         await databaseService.updateReferralStatus(selectedAppointment.relatedReferralId, 'declined', finalReason);
+      } else {
+        // If it's a regular appointment, update the appointment status
+        await databaseService.updateAppointmentStatus(selectedAppointment.id, 'canceled', finalReason);
       }
       
       Alert.alert('Success', 'Referral declined successfully!');

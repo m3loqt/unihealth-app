@@ -7,7 +7,10 @@ import {
   remove, 
   query, 
   onValue,
-  off
+  off,
+  orderByChild,
+  limitToLast,
+  endBefore
 } from 'firebase/database';
 import { database } from '../../config/firebase';
 
@@ -203,6 +206,19 @@ export interface Referral {
   status: 'pending_acceptance' | 'accepted' | 'declined' | 'completed';
   declineReason?: string;
   specialistNotes?: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: 'appointment' | 'referral' | 'prescription' | 'certificate';
+  title: string;
+  message: string;
+  timestamp: number; // Use timestamp for better indexing
+  read: boolean;
+  relatedId: string;
+  priority: 'low' | 'medium' | 'high';
+  expiresAt?: number; // Auto-cleanup old notifications
 }
 
 export const databaseService = {
@@ -1296,14 +1312,130 @@ export const databaseService = {
 
   async updateAppointmentStatus(id: string, status: string, reason?: string): Promise<void> {
     try {
+      console.log('🔔 Starting updateAppointmentStatus for appointment:', id, 'with status:', status);
+      
       const appointmentRef = ref(database, `appointments/${id}`);
-      const updates: any = { status, lastUpdated: new Date().toISOString() };
+      const snapshot = await get(appointmentRef);
+      
+      if (!snapshot.exists()) {
+        throw new Error('Appointment not found');
+      }
+
+      const appointment = snapshot.val();
+      console.log('📋 Appointment data:', appointment);
+      
+      const updates: any = {
+        status,
+        lastUpdated: new Date().toISOString()
+      };
+
       if (reason) {
         updates.declineReason = reason;
       }
+
       await update(appointmentRef, updates);
+      console.log('✅ Appointment status updated successfully');
+
+      // Send notifications to both patient and doctor
+      try {
+        console.log('🔔 Attempting to import notification service...');
+        const { notificationService } = await import('../notificationService');
+        console.log('✅ Notification service imported successfully');
+        
+        // Send to patient
+        console.log('🔔 Creating patient notification for:', appointment.patientId);
+        const patientNotificationId = await notificationService.createAppointmentStatusNotification(
+          appointment.patientId,
+          id,
+          status,
+          {
+            date: appointment.appointmentDate,
+            time: appointment.appointmentTime,
+            doctorName: `${appointment.doctorFirstName} ${appointment.doctorLastName}`,
+            clinicName: appointment.clinicName
+          }
+        );
+        console.log('✅ Patient notification created with ID:', patientNotificationId);
+
+        // Send to doctor
+        console.log('🔔 Creating doctor notification for:', appointment.doctorId);
+        const doctorNotificationId = await notificationService.createDoctorNotification(
+          appointment.doctorId,
+          id,
+          status,
+          {
+            date: appointment.appointmentDate,
+            time: appointment.appointmentTime,
+            patientName: `${appointment.patientFirstName} ${appointment.patientLastName}`,
+            clinicName: appointment.clinicName
+          }
+        );
+        console.log('✅ Doctor notification created with ID:', doctorNotificationId);
+
+      } catch (notificationError) {
+        console.error('❌ Error creating notifications:', notificationError);
+        
+        // Fallback: Create notifications directly using database service
+        console.log('🔄 Attempting fallback notification creation...');
+        try {
+          await this.createFallbackNotification(
+            appointment.patientId,
+            'appointment',
+            id,
+            status,
+            `Your appointment status has been updated to: ${status}`
+          );
+          
+          await this.createFallbackNotification(
+            appointment.doctorId,
+            'appointment',
+            id,
+            status,
+            `Appointment status updated to: ${status}`
+          );
+          
+          console.log('✅ Fallback notifications created successfully');
+        } catch (fallbackError) {
+          console.error('❌ Fallback notification creation also failed:', fallbackError);
+        }
+      }
+
     } catch (error) {
-      console.error('Update appointment status error:', error);
+      console.error('❌ Update appointment status error:', error);
+      throw error;
+    }
+  },
+
+  // Fallback notification creation method
+  async createFallbackNotification(
+    userId: string,
+    type: string,
+    relatedId: string,
+    status: string,
+    message: string
+  ): Promise<string> {
+    try {
+      const notificationRef = ref(database, `notifications/${userId}`);
+      const newNotificationRef = push(notificationRef);
+      
+      const notification: Notification = {
+        id: newNotificationRef.key!,
+        userId,
+        type: type as any,
+        title: `Appointment ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+        message,
+        timestamp: Date.now(),
+        read: false,
+        relatedId,
+        priority: 'medium',
+        expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000)
+      };
+
+      await set(newNotificationRef, notification);
+      console.log('✅ Fallback notification created for user:', userId);
+      return newNotificationRef.key!;
+    } catch (error) {
+      console.error('❌ Error creating fallback notification:', error);
       throw error;
     }
   },
@@ -1518,7 +1650,18 @@ export const databaseService = {
 
   async updateReferralStatus(referralId: string, status: 'accepted' | 'declined', declineReason?: string, specialistNotes?: string): Promise<void> {
     try {
+      console.log('🔔 Starting updateReferralStatus for referral:', referralId, 'with status:', status);
+      
       const referralRef = ref(database, `referrals/${referralId}`);
+      const snapshot = await get(referralRef);
+      
+      if (!snapshot.exists()) {
+        throw new Error('Referral not found');
+      }
+
+      const referral = snapshot.val();
+      console.log('📋 Referral data:', referral);
+      
       const updates: any = { 
         status, 
         lastUpdated: new Date().toISOString() 
@@ -1532,26 +1675,61 @@ export const databaseService = {
         updates.specialistNotes = specialistNotes;
       }
       
+      // Update the referral
       await update(referralRef, updates);
+      console.log('✅ Referral status updated successfully');
       
-      // Create notification for the referral status change
+      // Create notifications for the referral status change
       try {
-        const { notificationService } = await import('./notificationService');
-        const referral = await this.getReferralById(referralId);
-        if (referral) {
-          await notificationService.createReferralNotification(
-            referral.assignedSpecialistId,
+        console.log('🔔 Creating notifications for referral status change...');
+        
+        if (status === 'accepted') {
+          // Create patient notification
+          await this.createFallbackNotification(
+            referral.patientId,
+            'referral',
             referralId,
-            status,
-            referral
+            'accepted',
+            `Your referral to ${referral.practiceLocation.roomOrUnit || 'Specialist'} at ${referral.referringClinicName} has been accepted.`
+          );
+          
+          // Create specialist notification
+          await this.createFallbackNotification(
+            referral.assignedSpecialistId,
+            'referral',
+            referralId,
+            'accepted',
+            `You have accepted a referral for ${referral.patientFirstName} ${referral.patientLastName}.`
+          );
+        } else if (status === 'declined') {
+          // Create patient notification
+          await this.createFallbackNotification(
+            referral.patientId,
+            'referral',
+            referralId,
+            'declined',
+            `Your referral to ${referral.practiceLocation.roomOrUnit || 'Specialist'} at ${referral.referringClinicName} has been declined.`
+          );
+          
+          // Create specialist notification
+          await this.createFallbackNotification(
+            referral.referringGeneralistId,
+            'referral',
+            referralId,
+            'declined',
+            `Referral for ${referral.patientFirstName} ${referral.patientLastName} has been declined by specialist.`
           );
         }
+        
+        console.log('✅ Notifications created successfully');
+        
       } catch (notificationError) {
-        console.warn('Failed to create referral notification:', notificationError);
-        // Don't fail the referral update if notification fails
+        console.warn('⚠️ Failed to create notifications for referral status change:', notificationError);
+        // Don't fail the referral update if notifications fail
       }
+      
     } catch (error) {
-      console.error('Update referral status error:', error);
+      console.error('❌ Update referral status error:', error);
       throw error;
     }
   },
@@ -1984,6 +2162,235 @@ export const databaseService = {
       return newRef.key!;
     } catch (error) {
       console.error(`Push document error (${path}):`, error);
+      throw error;
+    }
+  },
+
+  // Batch update notifications (more efficient)
+  async markNotificationsAsRead(userId: string, notificationIds: string[]): Promise<void> {
+    try {
+      const updates: Record<string, any> = {};
+      
+      notificationIds.forEach(id => {
+        updates[`notifications/${userId}/${id}/read`] = true;
+        updates[`notifications/${userId}/${id}/readAt`] = Date.now();
+      });
+
+      await update(ref(database), updates);
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+      throw error;
+    }
+  },
+
+  // Paginated notifications with limits
+  async getNotificationsPaginated(
+    userId: string, 
+    limit: number = 20, 
+    lastTimestamp?: number
+  ): Promise<Notification[]> {
+    try {
+      // Try indexed query first (requires .indexOn rule)
+      try {
+        let notificationsQuery = query(
+          ref(database, `notifications/${userId}`),
+          orderByChild('timestamp'),
+          limitToLast(limit)
+        );
+
+        if (lastTimestamp) {
+          notificationsQuery = query(
+            notificationsQuery,
+            endBefore(lastTimestamp)
+          );
+        }
+
+        const snapshot = await get(notificationsQuery);
+        
+        if (snapshot.exists()) {
+          const notifications = snapshot.val();
+          return Object.values(notifications)
+            .sort((a: any, b: any) => b.timestamp - a.timestamp);
+        }
+        
+        return [];
+      } catch (indexError) {
+        // Fallback to non-indexed approach if indexing fails
+        console.log('Indexed query failed, using fallback method:', indexError);
+        
+        const notificationsRef = ref(database, `notifications/${userId}`);
+        const snapshot = await get(notificationsRef);
+        
+        if (!snapshot.exists()) return [];
+        
+        const notifications = snapshot.val();
+        const notificationArray = Object.values(notifications) as Notification[];
+        
+        // Sort by timestamp (newest first)
+        const sortedNotifications = notificationArray.sort((a, b) => b.timestamp - a.timestamp);
+        
+        // Apply pagination manually
+        if (lastTimestamp) {
+          const startIndex = sortedNotifications.findIndex(n => n.timestamp < lastTimestamp);
+          if (startIndex === -1) return [];
+          return sortedNotifications.slice(startIndex, startIndex + limit);
+        }
+        
+        return sortedNotifications.slice(0, limit);
+      }
+    } catch (error) {
+      console.error('Error getting paginated notifications:', error);
+      throw error;
+    }
+  },
+
+  // Cleanup old notifications
+  async cleanupOldNotifications(userId: string, daysOld: number = 30): Promise<void> {
+    try {
+      const cutoffTime = Date.now() - (daysOld * 24 * 60 * 60 * 1000);
+      
+      const notificationsRef = ref(database, `notifications/${userId}`);
+      const snapshot = await get(notificationsRef);
+      
+      if (snapshot.exists()) {
+        const notifications = snapshot.val();
+        const updates: Record<string, any> = {};
+        
+        Object.entries(notifications).forEach(([id, notification]: [string, any]) => {
+          if (notification.timestamp < cutoffTime) {
+            updates[`notifications/${userId}/${id}`] = null; // Delete
+          }
+        });
+        
+        if (Object.keys(updates).length > 0) {
+          await update(ref(database), updates);
+        }
+      }
+    } catch (error) {
+      console.error('Error cleaning up old notifications:', error);
+    }
+  },
+
+  // Create notification (for testing and manual creation)
+  async createNotification(notification: Omit<Notification, 'id'>): Promise<string> {
+    try {
+      const notificationRef = ref(database, `notifications/${notification.userId}`);
+      const newNotificationRef = push(notificationRef);
+      
+      const notificationWithId: Notification = {
+        ...notification,
+        id: newNotificationRef.key!,
+        timestamp: notification.timestamp || Date.now(),
+        read: false
+      };
+
+      await set(newNotificationRef, notificationWithId);
+      return newNotificationRef.key!;
+    } catch (error) {
+      console.error('Error creating notification:', error);
+      throw error;
+    }
+  },
+
+  // Get notification count for badge
+  async getNotificationCount(userId: string, unreadOnly: boolean = false): Promise<number> {
+    try {
+      const notificationsRef = ref(database, `notifications/${userId}`);
+      const snapshot = await get(notificationsRef);
+      
+      if (!snapshot.exists()) return 0;
+      
+      const notifications = snapshot.val();
+      
+      if (unreadOnly) {
+        return Object.values(notifications).filter((n: any) => !n.read).length;
+      }
+      
+      return Object.keys(notifications).length;
+    } catch (error) {
+      console.error('Error getting notification count:', error);
+      return 0;
+    }
+  },
+
+  // Simple method to get all notifications (no pagination, no indexing required)
+  async getNotifications(userId: string): Promise<Notification[]> {
+    try {
+      const notificationsRef = ref(database, `notifications/${userId}`);
+      const snapshot = await get(notificationsRef);
+      
+      if (!snapshot.exists()) return [];
+      
+      const notifications = snapshot.val();
+      const notificationArray = Object.values(notifications) as Notification[];
+      
+      // Sort by timestamp (newest first)
+      return notificationArray.sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('Error getting notifications:', error);
+      return [];
+    }
+  },
+
+  // Test function to create sample notifications
+  async createTestNotifications(userId: string): Promise<void> {
+    try {
+      console.log('🧪 Creating test notifications for user:', userId);
+      
+      // Create sample appointment notification
+      const appointmentNotificationId = await this.createFallbackNotification(
+        userId,
+        'appointment',
+        'test-appointment-1',
+        'confirmed',
+        'Your appointment with Dr. Smith on 2024-01-15 at 2:00 PM has been confirmed.'
+      );
+
+      // Create sample referral notification
+      const referralNotificationId = await this.createFallbackNotification(
+        userId,
+        'referral',
+        'test-referral-1',
+        'accepted',
+        'Your referral to Cardiology at Heart Institute has been accepted.'
+      );
+
+      // Create sample prescription notification
+      const prescriptionNotificationId = await this.createFallbackNotification(
+        userId,
+        'prescription',
+        'test-prescription-1',
+        'active',
+        'Dr. Johnson has prescribed Amoxicillin 500mg for you.'
+      );
+
+      console.log('✅ Test notifications created successfully:');
+      console.log('  - Appointment:', appointmentNotificationId);
+      console.log('  - Referral:', referralNotificationId);
+      console.log('  - Prescription:', prescriptionNotificationId);
+      
+    } catch (error) {
+      console.error('❌ Error creating test notifications:', error);
+    }
+  },
+
+  // Simple test function to create one notification
+  async createSimpleTestNotification(userId: string, message: string): Promise<string> {
+    try {
+      console.log('🧪 Creating simple test notification for user:', userId);
+      
+      const notificationId = await this.createFallbackNotification(
+        userId,
+        'appointment',
+        'test-simple',
+        'test',
+        message
+      );
+      
+      console.log('✅ Simple test notification created with ID:', notificationId);
+      return notificationId;
+    } catch (error) {
+      console.error('❌ Error creating simple test notification:', error);
       throw error;
     }
   }
