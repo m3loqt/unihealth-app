@@ -134,6 +134,7 @@ export const sanitizeObject = <T extends Record<string, any>>(
 // Export validation utilities
 export const dataValidation = {
   isValidUser,
+  isValidPatient,
   isValidAppointment,
   isValidPrescription,
   isValidCertificate,

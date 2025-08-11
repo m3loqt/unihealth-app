@@ -27,7 +27,6 @@ import {
   User,
   X,
   Star,
-  Eye,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -46,6 +45,28 @@ export default function AppointmentsScreen() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [showModal, setShowModal] = useState(false);
   const [modalAppointment, setModalAppointment] = useState<Appointment | null>(null);
+  
+  // Function to open modal and load medical history if needed
+  const openAppointmentModal = (appointment: Appointment) => {
+    setModalAppointment(appointment);
+    setShowModal(true);
+    
+    // Clear any previous medical history
+    setMedicalHistory(null);
+    
+    // Auto-load medical history for completed or confirmed appointments
+    if (appointment.status === 'completed' || appointment.status === 'confirmed') {
+      loadMedicalHistory(appointment, 'appointment');
+    }
+    
+    // Also check if this is a referral and load medical history if completed
+    if (appointment.relatedReferralId) {
+      const referral = referrals[appointment.relatedReferralId];
+      if (referral?.status === 'completed') {
+        loadMedicalHistory(appointment, 'referral');
+      }
+    }
+  };
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,8 +79,7 @@ export default function AppointmentsScreen() {
   const [feedbackReason, setFeedbackReason] = useState('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
-  // --- Medical History modal state ---
-  const [showMedicalHistoryModal, setShowMedicalHistoryModal] = useState(false);
+  // --- Medical History state ---
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistory | null>(null);
   const [loadingMedicalHistory, setLoadingMedicalHistory] = useState(false);
 
@@ -151,7 +171,6 @@ export default function AppointmentsScreen() {
 
     try {
       setLoadingMedicalHistory(true);
-      setShowMedicalHistoryModal(true);
       
       // Get the actual patientId string value
       const patientIdString = appointment.patientId;
@@ -179,7 +198,6 @@ export default function AppointmentsScreen() {
         } else {
           console.log('No consultationId found in referral object - consultation may not be completed');
           Alert.alert('No Medical History', 'Medical history is only available for completed consultations.');
-          setShowMedicalHistoryModal(false);
           return;
         }
       } else {
@@ -195,7 +213,6 @@ export default function AppointmentsScreen() {
         } else {
           console.log('No consultationId found in appointment - consultation may not be completed');
           Alert.alert('No Medical History', 'Medical history is only available for completed consultations.');
-          setShowMedicalHistoryModal(false);
           return;
         }
       }
@@ -227,7 +244,6 @@ export default function AppointmentsScreen() {
         name: error.name
       });
       Alert.alert('Error', 'Failed to load medical history. Please try again.');
-      setShowMedicalHistoryModal(false);
     } finally {
       setLoadingMedicalHistory(false);
       console.log('=== MEDICAL HISTORY DEBUG END ===');
@@ -377,7 +393,7 @@ export default function AppointmentsScreen() {
               <Text style={styles.referralCardIcon}>📋</Text>
             </View>
             {/* Medical History Button - Only show if referral is completed */}
-            {referral?.status === 'completed' && (
+            {/* {referral?.status === 'completed' && (
               <TouchableOpacity
                 style={styles.medicalHistoryButton}
                 onPress={() => {
@@ -386,9 +402,9 @@ export default function AppointmentsScreen() {
                   loadMedicalHistory(appointment, 'referral');
                 }}
               >
-                <Eye size={16} color="#059669" />
+                <Text style={styles.medicalHistoryButtonText}>View History</Text>
               </TouchableOpacity>
-            )}
+            )} */}
           </View>
           <View style={styles.referralCardDetails}>
             <Text style={styles.referralCardTitle}>Referral</Text>
@@ -435,8 +451,8 @@ export default function AppointmentsScreen() {
           <TouchableOpacity
             style={styles.secondaryButton}
             onPress={() => {
-              setModalAppointment(appointment);
-              setShowModal(true);
+              // Always show modal - medical history will be loaded automatically for completed referrals
+              openAppointmentModal(appointment);
             }}
           >
             <Text style={styles.secondaryButtonText}>View Details</Text>
@@ -501,19 +517,6 @@ export default function AppointmentsScreen() {
             </View>
           </View>
           <View style={styles.appointmentHeaderRight}>
-            {/* Medical History Button - Only show if appointment is completed */}
-            {isCompleted && (
-              <TouchableOpacity
-                style={styles.medicalHistoryButton}
-                onPress={() => {
-                  console.log('🔍 MEDICAL HISTORY BUTTON PRESSED (REGULAR APPOINTMENT)!');
-                  console.log('Appointment being passed:', appointment);
-                  loadMedicalHistory(appointment, 'appointment');
-                }}
-              >
-                <Eye size={16} color="#059669" />
-              </TouchableOpacity>
-            )}
             <View style={styles.statusBadge}>
               {getStatusIcon(appointment.status)}
               <Text style={styles.statusText}>{capitalize(appointment.status)}</Text>
@@ -561,29 +564,32 @@ export default function AppointmentsScreen() {
               <TouchableOpacity
                 style={styles.secondaryButton}
                 onPress={() => {
-                  console.log('🔍 VIEW MEDICAL HISTORY BUTTON PRESSED!');
+                  console.log('🔍 VIEW DETAILS BUTTON PRESSED (COMPLETED APPOINTMENT)!');
                   console.log('Appointment being passed:', appointment);
-                  loadMedicalHistory(appointment, 'appointment');
+                  // For completed appointments, show medical history modal
+                  openAppointmentModal(appointment);
                 }}
-              >
-                <Text style={styles.secondaryButtonText}>View Medical History</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => router.push({
-                  pathname: '/visit-overview',
-                  params: { id: appointment.id }
-                })}
               >
                 <Text style={styles.secondaryButtonText}>View Details</Text>
               </TouchableOpacity>
             </>
+          ) : appointment.status === 'confirmed' ? (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => {
+                console.log('🔍 VIEW DETAILS BUTTON PRESSED (CONFIRMED APPOINTMENT)!');
+                console.log('Appointment being passed:', appointment);
+                // For confirmed appointments, show medical history modal
+                openAppointmentModal(appointment);
+              }}
+            >
+              <Text style={styles.secondaryButtonText}>View Details</Text>
+              </TouchableOpacity>
           ) : (
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={ () => {
-                setModalAppointment(appointment);
-                setShowModal(true);
+                openAppointmentModal(appointment);
               }}
             >
               <Text style={styles.secondaryButtonText}>View Details</Text>
@@ -594,54 +600,7 @@ export default function AppointmentsScreen() {
     );
   };
 
-  // === Medical History Modal ===
-  const renderMedicalHistoryModal = () => {
-    return (
-      <Modal
-        visible={showMedicalHistoryModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowMedicalHistoryModal(false)}
-      >
-        <SafeAreaView style={styles.medicalHistoryModalContainer}>
-          <StatusBar barStyle="dark-content" />
-          
-          {/* Header */}
-          <View style={styles.medicalHistoryModalHeader}>
-            <TouchableOpacity
-              style={styles.medicalHistoryModalBackButton}
-              onPress={() => setShowMedicalHistoryModal(false)}
-            >
-              <Text style={styles.medicalHistoryModalBackText}>← Back</Text>
-            </TouchableOpacity>
-            <Text style={styles.medicalHistoryModalTitle}>Medical History</Text>
-            <View style={styles.medicalHistoryModalSpacer} />
-          </View>
 
-          {/* Content */}
-          <ScrollView 
-            style={styles.medicalHistoryModalContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {loadingMedicalHistory ? (
-              <View style={styles.medicalHistoryLoadingContainer}>
-                <Text style={styles.medicalHistoryLoadingText}>Loading medical history...</Text>
-              </View>
-            ) : medicalHistory ? (
-              <MedicalHistoryView medicalHistory={medicalHistory} />
-            ) : (
-              <View style={styles.medicalHistoryEmptyContainer}>
-                <Text style={styles.medicalHistoryEmptyTitle}>No Medical History Available</Text>
-                <Text style={styles.medicalHistoryEmptyText}>
-                  Medical history for this appointment has not been recorded yet.
-                </Text>
-              </View>
-            )}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-    );
-  };
 
   // Get filtered appointments from memoized value
 
@@ -675,13 +634,14 @@ export default function AppointmentsScreen() {
         const displayHour = hour % 12 || 12;
         return `${displayHour}:${minutes} ${ampm}`;
       } catch (error) {
-        return 'Invalid time';
+        return timeString;
       }
     };
 
     // Check if this is a referral appointment
     const isReferral = a.relatedReferralId && referrals[a.relatedReferralId];
     const referral = isReferral ? referrals[a.relatedReferralId] : null;
+    const isCompleted = a.status === 'completed';
 
     // Modal data using correct Appointment properties
     const fields = isReferral ? [
@@ -804,10 +764,16 @@ export default function AppointmentsScreen() {
           <View style={styles.card}>
             {/* Modal Header */}
             <View style={styles.header}>
-              <Text style={styles.title}>Appointment Details</Text>
+              <Text style={styles.title}>
+                {(isCompleted || a.status === 'confirmed') ? 'Appointment & Medical History' : 'Appointment Details'}
+              </Text>
               <TouchableOpacity
                 style={styles.closeBtn}
-                onPress={() => setShowModal(false)}
+                onPress={() => {
+                  setShowModal(false);
+                  // Clear medical history when modal is closed
+                  setMedicalHistory(null);
+                }}
                 hitSlop={{ top: 12, left: 12, right: 12, bottom: 12 }}
               >
                 <Text style={styles.closeX}>×</Text>
@@ -824,6 +790,46 @@ export default function AppointmentsScreen() {
                 />
               ))}
             </View>
+
+            {/* Show Medical History for completed and confirmed appointments */}
+            {(isCompleted || a.status === 'confirmed') && medicalHistory && (
+              <>
+                <View style={styles.modalDivider} />
+                <View style={styles.medicalHistorySection}>
+                  <Text style={styles.medicalHistoryTitle}>Medical History</Text>
+                  <MedicalHistoryView medicalHistory={medicalHistory} />
+                </View>
+              </>
+            )}
+
+            {/* Show loading state for medical history */}
+            {(isCompleted || a.status === 'confirmed') && loadingMedicalHistory && (
+              <>
+                <View style={styles.modalDivider} />
+                <View style={styles.medicalHistorySection}>
+                  <Text style={styles.medicalHistoryTitle}>Medical History</Text>
+                  <View style={styles.medicalHistoryLoadingContainer}>
+                    <Text style={styles.medicalHistoryLoadingText}>Loading medical history...</Text>
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Show empty state for medical history */}
+            {(isCompleted || a.status === 'confirmed') && !loadingMedicalHistory && !medicalHistory && (
+              <>
+                <View style={styles.modalDivider} />
+                <View style={styles.medicalHistorySection}>
+                  <Text style={styles.medicalHistoryTitle}>Medical History</Text>
+                  <View style={styles.medicalHistoryEmptyContainer}>
+                    <Text style={styles.medicalHistoryEmptyTitle}>No Medical History Available</Text>
+                    <Text style={styles.medicalHistoryEmptyText}>
+                      Medical history for this appointment has not been recorded yet.
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -851,7 +857,11 @@ export default function AppointmentsScreen() {
               <Text style={styles.modalTitle}>Give Feedback</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
-                onPress={() => setShowFeedbackModal(false)}
+                onPress={() => {
+                  setShowFeedbackModal(false);
+                  // Clear medical history when feedback modal is closed
+                  setMedicalHistory(null);
+                }}
               >
                 <X size={20} color="#1E40AF" />
               </TouchableOpacity>
@@ -1035,7 +1045,6 @@ export default function AppointmentsScreen() {
       </ScrollView>
       {renderAppointmentModal()}
       {renderFeedbackModal()}
-      {renderMedicalHistoryModal()}
     </SafeAreaView>
     </ErrorBoundary>
   );
@@ -1150,9 +1159,14 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  medicalHistoryButtonText: {
+    fontSize: 12,
+    color: '#2563EB',
+    fontFamily: 'Inter-SemiBold',
   },
   doctorInfo: {
     flexDirection: 'row',
@@ -1347,43 +1361,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  // Medical History Modal Styles
-  medicalHistoryModalContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  medicalHistoryModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  medicalHistoryModalBackButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  medicalHistoryModalBackText: {
-    fontSize: 16,
-    color: '#1E40AF',
-    fontFamily: 'Inter-SemiBold',
-  },
-  medicalHistoryModalTitle: {
-    fontSize: 18,
-    color: '#1F2937',
-    fontFamily: 'Inter-Bold',
-    textAlign: 'center',
-    flex: 1,
-  },
-  medicalHistoryModalSpacer: {
-    width: 60,
-  },
-  medicalHistoryModalContent: {
-    flex: 1,
-  },
+
   medicalHistoryLoadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1552,12 +1530,12 @@ feedbackModalButton: {
 
   // Referral Section Styles
   referralSection: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#EFF6FF',
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: '#BFDBFE',
   },
   referralHeader: {
     flexDirection: 'row',
@@ -1571,12 +1549,12 @@ feedbackModalButton: {
   referralTitle: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
-    color: '#166534',
+    color: '#1E40AF',
   },
   referralText: {
     fontSize: 12,
     fontFamily: 'Inter-Regular',
-    color: '#166534',
+    color: '#1E40AF',
     lineHeight: 16,
     marginBottom: 8,
   },
@@ -1588,20 +1566,20 @@ feedbackModalButton: {
   referralStatusLabel: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    color: '#166534',
+    color: '#1E40AF',
   },
   referralStatusValue: {
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
   },
   referralStatusConfirmed: {
-    color: '#059669',
+    color: '#2563EB',
   },
   referralStatusPending: {
     color: '#D97706',
   },
   referralStatusCompleted: {
-    color: '#059669',
+    color: '#2563EB',
   },
   referralStatusCanceled: {
     color: '#DC2626',
@@ -1609,36 +1587,36 @@ feedbackModalButton: {
   referralDoctor: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    color: '#166534',
+    color: '#1E40AF',
     marginTop: 4,
   },
   referralDate: {
     fontSize: 12,
     fontFamily: 'Inter-Regular',
-    color: '#166534',
+    color: '#1E40AF',
     marginTop: 2,
   },
   referralClinic: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    color: '#166534',
+    color: '#1E40AF',
     marginTop: 2,
   },
   referralNotes: {
     fontSize: 12,
     fontFamily: 'Inter-Regular',
-    color: '#166534',
+    color: '#1E40AF',
     marginTop: 4,
     fontStyle: 'italic',
   },
 
   // Referral Card Styles
   referralCard: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#EFF6FF',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: '#BFDBFE',
     marginBottom: 16,
   },
   referralCardHeader: {
@@ -1656,7 +1634,7 @@ feedbackModalButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#BBF7D0',
+    backgroundColor: '#BFDBFE',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1670,11 +1648,11 @@ feedbackModalButton: {
   referralCardTitle: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
-    color: '#166534',
+    color: '#1E40AF',
   },
   referralCardSubtitle: {
     fontSize: 14,
-    color: '#059669',
+    color: '#2563EB',
     marginTop: 2,
   },
   referralStatusBadge: {
@@ -1682,18 +1660,18 @@ feedbackModalButton: {
     paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#059669',
-    backgroundColor: '#D1FAE5',
+    borderColor: '#2563EB',
+    backgroundColor: '#DBEAFE',
   },
   referralStatusText: {
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
-    color: '#059669',
+    color: '#2563EB',
   },
   referralCardText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#166534',
+    color: '#1E40AF',
     lineHeight: 20,
   },
   referralCardActions: {
@@ -1768,5 +1746,16 @@ feedbackModalButton: {
     maxWidth: '49%',
     flex: 1,
     textAlign: 'right',
+  },
+  medicalHistorySection: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  medicalHistoryTitle: {
+    fontSize: 16,
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 12,
   },
 });

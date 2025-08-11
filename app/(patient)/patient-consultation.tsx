@@ -23,6 +23,9 @@ import {
   Pill,
   FileText,
   Eye,
+  User,
+  Search,
+  Edit,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useVoiceToText } from '../../src/hooks/useVoiceToText';
@@ -54,37 +57,52 @@ export default function PatientConsultationScreen() {
   // Voice availability - always true since we have fallbacks
   const isVoiceAvailable = true;
 
-  // Form state
+  // Form state - Updated for 6-step flow
   const [formData, setFormData] = useState<{
+    // Step 1: Patient History
+    presentIllnessHistory: string;
+    reviewOfSymptoms: string;
+    
+    // Step 2: Findings
+    labResults: string;
+    medications: string;
+    
+    // Step 3: Diagnoses
     diagnosis: string;
     differentialDiagnosis: string;
-    reviewOfSymptoms: string;
-    presentIllnessHistory: string;
+    
+    // Step 4: SOAP Notes
     subjective: string;
     objective: string;
     assessment: string;
     plan: string;
-    labResults: string;
-    allergies: string;
-    medications: string;
-    vitals: string;
+    
+    // Step 5: Treatment & Wrap-Up
+    treatmentPlan: string;
+    clinicalSummary: string;
+    
+    // Step 6: Supplementary Docs
     prescriptions: any[];
     certificates: any[];
+    allergies: string;
+    vitals: string;
   }>({
+    presentIllnessHistory: '',
+    reviewOfSymptoms: '',
+    labResults: '',
+    medications: '',
     diagnosis: '',
     differentialDiagnosis: '',
-    reviewOfSymptoms: '',
-    presentIllnessHistory: '',
     subjective: '',
     objective: '',
     assessment: '',
     plan: '',
-    labResults: '',
-    allergies: '',
-    medications: '',
-    vitals: '',
+    treatmentPlan: '',
+    clinicalSummary: '',
     prescriptions: [],
     certificates: [],
+    allergies: '',
+    vitals: '',
   });
 
   // Load consultation data from Firebase
@@ -149,20 +167,33 @@ export default function PatientConsultationScreen() {
       }
 
       setFormData({
+        // Step 1: Patient History
+        presentIllnessHistory: medicalHistory?.presentIllnessHistory || '',
+        reviewOfSymptoms: medicalHistory?.reviewOfSymptoms || referral?.initialReasonForReferral || '',
+        
+        // Step 2: Findings
+        labResults: medicalHistory?.labResults || '',
+        medications: medicalHistory?.medications || '',
+        
+        // Step 3: Diagnoses
         diagnosis: medicalHistory?.diagnosis?.[0]?.description || '',
         differentialDiagnosis: medicalHistory?.differentialDiagnosis || '',
-        reviewOfSymptoms: medicalHistory?.reviewOfSymptoms || referral?.initialReasonForReferral || '',
-        presentIllnessHistory: medicalHistory?.presentIllnessHistory || '',
+        
+        // Step 4: SOAP Notes
         subjective: medicalHistory?.soapNotes?.subjective || '',
         objective: medicalHistory?.soapNotes?.objective || '',
         assessment: medicalHistory?.soapNotes?.assessment || '',
         plan: medicalHistory?.soapNotes?.plan || '',
-        labResults: medicalHistory?.labResults || '',
-        allergies: medicalHistory?.allergies || '',
-        medications: medicalHistory?.medications || '',
-        vitals: medicalHistory?.vitals || '',
+        
+        // Step 5: Treatment & Wrap-Up
+        treatmentPlan: medicalHistory?.treatmentPlan || '',
+        clinicalSummary: medicalHistory?.clinicalSummary || '',
+        
+        // Step 6: Supplementary Docs
         prescriptions: medicalHistory?.prescriptions || [],
         certificates: medicalHistory?.certificates || [],
+        allergies: medicalHistory?.allergies || '',
+        vitals: medicalHistory?.vitals || '',
       });
     } catch (error) {
       console.error('Error loading consultation data:', error);
@@ -176,6 +207,10 @@ export default function PatientConsultationScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showAddPrescription, setShowAddPrescription] = useState(false);
   const [showAddCertificate, setShowAddCertificate] = useState(false);
+  
+  // Step navigation state
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 5;
   const [newPrescription, setNewPrescription] = useState({
     medication: '',
     dosage: '',
@@ -516,6 +551,25 @@ export default function PatientConsultationScreen() {
     );
   };
 
+  // --- STEP NAVIGATION ---
+  const goToNextStep = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const goToPreviousStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const goToStep = (step: number) => {
+    if (step >= 1 && step <= totalSteps) {
+      setCurrentStep(step);
+    }
+  };
+
   // --- LOAD MEDICAL HISTORY ---
   const loadMedicalHistory = async () => {
     if (!patientId) {
@@ -581,22 +635,36 @@ export default function PatientConsultationScreen() {
       if (!consultationIdToUse) {
         // Generate a new consultationId using Firebase push key
         const medicalHistoryData = {
+          // Step 1: Patient History
+          presentIllnessHistory: formData.presentIllnessHistory,
+          reviewOfSymptoms: formData.reviewOfSymptoms,
+          
+          // Step 2: Findings
+          labResults: formData.labResults,
+          medications: formData.medications,
+          
+          // Step 3: Diagnoses
           diagnosis: formData.diagnosis ? [{ code: 'DIAG001', description: formData.diagnosis }] : [],
           differentialDiagnosis: formData.differentialDiagnosis,
-          reviewOfSymptoms: formData.reviewOfSymptoms,
-          presentIllnessHistory: formData.presentIllnessHistory,
+          
+          // Step 4: SOAP Notes
           soapNotes: {
             subjective: formData.subjective,
             objective: formData.objective,
             assessment: formData.assessment,
             plan: formData.plan,
           },
-          labResults: formData.labResults,
-          allergies: formData.allergies,
-          medications: formData.medications,
-          vitals: formData.vitals,
+          
+          // Step 5: Treatment & Wrap-Up
+          treatmentPlan: formData.treatmentPlan,
+          clinicalSummary: formData.clinicalSummary,
+          
+          // Step 6: Supplementary Docs
           prescriptions: formData.prescriptions,
           certificates: formData.certificates,
+          allergies: formData.allergies,
+          vitals: formData.vitals,
+          
           consultationDate: new Date().toISOString(),
           consultationTime: new Date().toLocaleTimeString(),
           patientId: patientId as string,
@@ -608,8 +676,6 @@ export default function PatientConsultationScreen() {
             sourceSystem: 'unihealth',
           },
           type: 'consultation',
-          clinicalSummary: formData.diagnosis,
-          treatmentPlan: formData.plan,
         };
 
         // Use Firebase push to generate the consultationId
@@ -925,6 +991,70 @@ export default function PatientConsultationScreen() {
     );
   };
 
+  // --- STEP INDICATOR ---
+  const renderStepIndicator = () => {
+    const steps = [
+      { id: 1, title: 'History', icon: 'User' },
+      { id: 2, title: 'Findings', icon: 'Search' },
+      { id: 3, title: 'SOAP', icon: 'FileText' },
+      { id: 4, title: 'Treatment', icon: 'Edit' },
+      { id: 5, title: 'Additional', icon: 'Plus' },
+    ];
+
+    return (
+      <View style={styles.stepIndicatorContainer}>
+        <View style={styles.stepProgressBar}>
+          <View style={styles.stepProgressText}>
+            <Text style={styles.stepProgressLabel}>Step {currentStep} of {totalSteps}</Text>
+            <Text style={styles.stepProgressPercentage}>{Math.round((currentStep / totalSteps) * 100)}% Complete</Text>
+          </View>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: `${(currentStep / totalSteps) * 100}%` }]} />
+          </View>
+        </View>
+        
+        <View style={styles.stepTabs}>
+          {steps.map((step) => (
+            <TouchableOpacity
+              key={step.id}
+              style={[
+                styles.stepTab,
+                currentStep === step.id && styles.stepTabActive,
+                currentStep > step.id && styles.stepTabCompleted,
+              ]}
+              onPress={() => goToStep(step.id)}
+            >
+              <View style={[
+                styles.stepIcon,
+                currentStep === step.id && styles.stepIconActive,
+                currentStep > step.id && styles.stepIconCompleted,
+              ]}>
+                {currentStep > step.id ? (
+                  <Text style={styles.stepCheckmark}>✓</Text>
+                ) : (
+                  <View style={styles.stepIconContainer}>
+                    {step.icon === 'User' && <User size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
+                    {step.icon === 'Search' && <Search size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
+                    {step.icon === 'FileText' && <FileText size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
+                    {step.icon === 'Edit' && <Edit size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
+                    {step.icon === 'Plus' && <Plus size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
+                  </View>
+                )}
+              </View>
+              <Text style={[
+                styles.stepTitle,
+                currentStep === step.id && styles.stepTitleActive,
+                currentStep > step.id && styles.stepTitleCompleted,
+              ]}>
+                {step.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
   // --- FIELD RENDERING WITH MIC ---
   const renderFieldWithSpeech = (label: string, field: string, multiline = false) => (
     <View style={styles.fieldContainer}>
@@ -1031,6 +1161,349 @@ export default function PatientConsultationScreen() {
     </View>
   );
 
+  // --- STEP CONTENT RENDERING ---
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <View style={styles.stepContent}>
+            <View style={styles.stepHeader}>
+              <View style={styles.stepHeaderIconContainer}>
+                <User size={32} color="#1E40AF" />
+              </View>
+              <View>
+                <Text style={styles.stepContentTitle}>Patient History</Text>
+                <Text style={styles.stepSubtitle}>Context gathering and patient conversation</Text>
+              </View>
+            </View>
+            
+            {/* History of Present Illnesses */}
+            {renderFieldWithSpeech('History of Present Illnesses', 'presentIllnessHistory', true)}
+            
+            {/* Review of Symptoms */}
+            {renderFieldWithSpeech('Review of Symptoms', 'reviewOfSymptoms', true)}
+          </View>
+        );
+        
+      case 2:
+        return (
+          <View style={styles.stepContent}>
+            <View style={styles.stepHeader}>
+              <View style={styles.stepHeaderIconContainer}>
+                <Search size={32} color="#1E40AF" />
+              </View>
+              <View>
+                <Text style={styles.stepContentTitle}>Findings</Text>
+                <Text style={styles.stepSubtitle}>Evidence collection, diagnoses, and objective findings</Text>
+              </View>
+            </View>
+            
+            {/* Lab Results */}
+            {renderFieldWithSpeech('Lab Results', 'labResults', true)}
+            
+            {/* Medications */}
+            {renderFieldWithSpeech('Medications', 'medications', true)}
+            
+            {/* Diagnosis */}
+            {renderFieldWithSpeech('Diagnosis', 'diagnosis')}
+            
+            {/* Differential Diagnosis */}
+            {renderFieldWithSpeech('Differential Diagnosis', 'differentialDiagnosis', true)}
+          </View>
+        );
+        
+      case 3:
+        return (
+          <View style={styles.stepContent}>
+            <View style={styles.stepHeader}>
+              <View style={styles.stepHeaderIconContainer}>
+                <FileText size={32} color="#1E40AF" />
+              </View>
+              <View>
+                <Text style={styles.stepContentTitle}>SOAP Notes</Text>
+                <Text style={styles.stepSubtitle}>Detailed clinical documentation</Text>
+              </View>
+            </View>
+            
+            {/* SOAP Notes */}
+            {renderFieldWithSpeech('Subjective', 'subjective', true)}
+            {renderFieldWithSpeech('Objective', 'objective', true)}
+            {renderFieldWithSpeech('Assessment', 'assessment', true)}
+            {renderFieldWithSpeech('Plan', 'plan', true)}
+          </View>
+        );
+        
+      case 4:
+        return (
+          <View style={styles.stepContent}>
+            <View style={styles.stepHeader}>
+              <View style={styles.stepHeaderIconContainer}>
+                <Edit size={32} color="#1E40AF" />
+              </View>
+              <View>
+                <Text style={styles.stepContentTitle}>Treatment</Text>
+                <Text style={styles.stepSubtitle}>Action plan and clinical summary</Text>
+              </View>
+            </View>
+            
+            {/* Treatment Plan */}
+            {renderFieldWithSpeech('Treatment Plan', 'treatmentPlan', true)}
+            
+            {/* Clinical Summary */}
+            {renderFieldWithSpeech('Clinical Summary', 'clinicalSummary', true)}
+          </View>
+        );
+        
+      case 5:
+        return (
+          <View style={styles.stepContent}>
+            <View style={styles.stepHeader}>
+              <View style={styles.stepHeaderIconContainer}>
+                <Plus size={32} color="#1E40AF" />
+              </View>
+              <View>
+                <Text style={styles.stepContentTitle}>Additional</Text>
+                <Text style={styles.stepSubtitle}>Post-consultation attachments</Text>
+              </View>
+            </View>
+            
+            {/* Prescriptions Section */}
+            <View style={styles.subsection}>
+              <View style={styles.sectionHeaderWithButton}>
+                <Text style={styles.subsectionTitle}>Prescriptions</Text>
+                <TouchableOpacity
+                  style={styles.addButton}
+                  onPress={() => setShowAddPrescription(true)}
+                >
+                  <Plus size={16} color="#1E40AF" />
+                  <Text style={styles.addButtonText}>Add</Text>
+                </TouchableOpacity>
+              </View>
+              {formData.prescriptions.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No prescriptions added yet</Text>
+                </View>
+              ) : (
+                formData.prescriptions.map((prescription) => (
+                  <View key={prescription.id} style={styles.prescriptionCard}>
+                    <View style={styles.prescriptionHeader}>
+                      <View style={styles.medicationIcon}>
+                        <Pill size={20} color="#1E40AF" />
+                      </View>
+                      <View style={styles.prescriptionDetails}>
+                        <Text style={styles.medicationName}>{prescription.medication}</Text>
+                        <Text style={styles.medicationDosage}>
+                          {prescription.dosage} • {prescription.frequency}
+                        </Text>
+                        <Text style={styles.prescriptionDescription}>{prescription.description}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.removeButton}
+                        onPress={() => handleRemovePrescription(prescription.id)}
+                      >
+                        <Trash2 size={16} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.prescriptionMeta}>
+                      <View style={styles.metaRow}>
+                        <Text style={styles.metaLabel}>Duration:</Text>
+                        <Text style={styles.metaValue}>{prescription.duration || 'Not specified'}</Text>
+                      </View>
+                      <View style={styles.metaRow}>
+                        <Text style={styles.metaLabel}>Prescribed by:</Text>
+                        <Text style={styles.metaValue}>{prescription.prescribedBy}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))
+              )}
+
+              {/* Add Prescription Form */}
+              {showAddPrescription && (
+                <View style={styles.addForm}>
+                  <Text style={styles.addFormTitle}>Add New Prescription</Text>
+                  <TextInput
+                    style={styles.addFormInput}
+                    placeholder="Medication name"
+                    value={newPrescription.medication}
+                    onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, medication: value }))}
+                  />
+                  <View style={styles.addFormRow}>
+                    <TextInput
+                      style={[styles.addFormInput, styles.addFormInputHalf]}
+                      placeholder="Dosage (e.g., 10mg)"
+                      value={newPrescription.dosage}
+                      onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, dosage: value }))}
+                    />
+                    <TextInput
+                      style={[styles.addFormInput, styles.addFormInputHalf]}
+                      placeholder="Frequency"
+                      value={newPrescription.frequency}
+                      onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, frequency: value }))}
+                    />
+                  </View>
+                  <TextInput
+                    style={styles.addFormInput}
+                    placeholder="Duration (e.g., 7 days)"
+                    value={newPrescription.duration}
+                    onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, duration: value }))}
+                  />
+                  <TextInput
+                    style={[styles.addFormInput, styles.addFormTextArea]}
+                    placeholder="Description/Instructions"
+                    value={newPrescription.description}
+                    onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, description: value }))}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                  <View style={styles.addFormActions}>
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={() => {
+                        setShowAddPrescription(false);
+                        setNewPrescription({
+                          medication: '',
+                          dosage: '',
+                          frequency: '',
+                          duration: '',
+                          description: '',
+                        });
+                      }}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.addFormSubmitButton}
+                      onPress={handleAddPrescription}
+                    >
+                      <Text style={styles.addFormSubmitButtonText}>Add Prescription</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Medical Certificates Section */}
+            <View style={styles.subsection}>
+              <View style={styles.sectionHeaderWithButton}>
+                <Text style={styles.subsectionTitle}>Medical Certificates</Text>
+                <TouchableOpacity
+                  style={styles.addButton}
+                  onPress={() => setShowAddCertificate(true)}
+                >
+                  <Plus size={16} color="#1E40AF" />
+                  <Text style={styles.addButtonText}>Issue</Text>
+                </TouchableOpacity>
+              </View>
+              {formData.certificates.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No certificates issued yet</Text>
+                </View>
+              ) : (
+                formData.certificates.map((certificate) => (
+                  <View key={certificate.id} style={styles.certificateCard}>
+                    <View style={styles.certificateHeader}>
+                      <View style={styles.certificateIcon}>
+                        <FileText size={20} color="#1E40AF" />
+                      </View>
+                      <View style={styles.certificateDetails}>
+                        <Text style={styles.certificateType}>{certificate.type}</Text>
+                        <Text style={styles.certificateDescription}>{certificate.description}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.removeButton}
+                        onPress={() => handleRemoveCertificate(certificate.id)}
+                      >
+                        <Trash2 size={16} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.certificateMeta}>
+                      <View style={styles.metaRow}>
+                        <Text style={styles.metaLabel}>Issued:</Text>
+                        <Text style={styles.metaValue}>{certificate.issuedDate}</Text>
+                      </View>
+                      {certificate.validUntil && (
+                        <View style={styles.metaRow}>
+                          <Text style={styles.metaLabel}>Valid until:</Text>
+                          <Text style={styles.metaValue}>{certificate.validUntil}</Text>
+                        </View>
+                      )}
+                      {certificate.restrictions && (
+                        <View style={styles.metaRow}>
+                          <Text style={styles.metaLabel}>Restrictions:</Text>
+                          <Text style={styles.metaValue}>{certificate.restrictions}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ))
+              )}
+
+              {/* Add Certificate Form */}
+              {showAddCertificate && (
+                <View style={styles.addForm}>
+                  <Text style={styles.addFormTitle}>Issue New Certificate</Text>
+                  <TextInput
+                    style={styles.addFormInput}
+                    placeholder="Certificate type (e.g., Fit to Work)"
+                    value={newCertificate.type}
+                    onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, type: value }))}
+                  />
+                  <TextInput
+                    style={[styles.addFormInput, styles.addFormTextArea]}
+                    placeholder="Description/Medical findings"
+                    value={newCertificate.description}
+                    onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, description: value }))}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                  <TextInput
+                    style={styles.addFormInput}
+                    placeholder="Valid until (optional)"
+                    value={newCertificate.validUntil}
+                    onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, validUntil: value }))}
+                  />
+                  <TextInput
+                    style={[styles.addFormInput, styles.addFormTextArea]}
+                    placeholder="Restrictions (optional)"
+                    value={newCertificate.restrictions}
+                    onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, restrictions: value }))}
+                  />
+                  <View style={styles.addFormActions}>
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={() => {
+                        setShowAddCertificate(false);
+                        setNewCertificate({
+                          type: '',
+                          description: '',
+                          validUntil: '',
+                          restrictions: '',
+                        });
+                      }}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.addFormSubmitButton}
+                      onPress={handleAddCertificate}
+                    >
+                      <Text style={styles.addFormSubmitButtonText}>Issue Certificate</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        );
+        
+      default:
+        return null;
+    }
+  };
+
   // --- UI ---
   return (
     <SafeAreaView style={styles.container}>
@@ -1055,306 +1528,61 @@ export default function PatientConsultationScreen() {
         </View>
       </View>
 
+      {/* Step Indicator */}
+      {renderStepIndicator()}
+
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
       >
-        {/* Clinical Summary */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Clinical Summary</Text>
-
-          {/* Diagnosis Section */}
-          <View style={styles.subsection}>
-            <Text style={styles.subsectionTitle}>Diagnosis</Text>
-            {renderFieldWithSpeech('Diagnosis', 'diagnosis', true)}
-            {renderFieldWithSpeech('Differential Diagnosis', 'differentialDiagnosis', true)}
-          </View>
-
-          {/* History Section */}
-          <View style={styles.subsection}>
-            <Text style={styles.subsectionTitle}>History</Text>
-            {renderFieldWithSpeech('History of Present Illness', 'presentIllnessHistory', true)}
-            {renderFieldWithSpeech('Review of Symptoms', 'reviewOfSymptoms', true)}
-          </View>
-
-          {/* SOAP Notes Section */}
-          <View style={styles.subsection}>
-            <Text style={styles.subsectionTitle}>SOAP Notes</Text>
-            {renderFieldWithSpeech('Subjective', 'subjective', true)}
-            {renderFieldWithSpeech('Objective', 'objective', true)}
-            {renderFieldWithSpeech('Assessment', 'assessment', true)}
-            {renderFieldWithSpeech('Plan', 'plan', true)}
-          </View>
-
-          {/* Lab Results Section */}
-          <View style={styles.subsection}>
-            <Text style={styles.subsectionTitle}>Lab Results & Additional Info</Text>
-            {renderFieldWithSpeech('Lab Results', 'labResults', true)}
-            {renderFieldWithSpeech('Allergies', 'allergies')}
-            {renderFieldWithSpeech('Vitals', 'vitals')}
-          </View>
-
-          {/* Medications Section */}
-          <View style={styles.subsection}>
-            <Text style={styles.subsectionTitle}>Medications</Text>
-            {renderFieldWithSpeech('Medications', 'medications', true)}
-          </View>
-
-          {/* Prescriptions Section */}
-          <View style={styles.subsection}>
-            <View style={styles.sectionHeaderWithButton}>
-              <Text style={styles.subsectionTitle}>Prescriptions</Text>
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => setShowAddPrescription(true)}
-              >
-                <Plus size={16} color="#1E40AF" />
-                <Text style={styles.addButtonText}>Add</Text>
-              </TouchableOpacity>
-            </View>
-            {formData.prescriptions.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No prescriptions added yet</Text>
-              </View>
-            ) : (
-              formData.prescriptions.map((prescription) => (
-                <View key={prescription.id} style={styles.prescriptionCard}>
-                  <View style={styles.prescriptionHeader}>
-                    <View style={styles.medicationIcon}>
-                      <Pill size={20} color="#1E40AF" />
-                    </View>
-                    <View style={styles.prescriptionDetails}>
-                      <Text style={styles.medicationName}>{prescription.medication}</Text>
-                      <Text style={styles.medicationDosage}>
-                        {prescription.dosage} • {prescription.frequency}
-                      </Text>
-                      <Text style={styles.prescriptionDescription}>{prescription.description}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.removeButton}
-                      onPress={() => handleRemovePrescription(prescription.id)}
-                    >
-                      <Trash2 size={16} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.prescriptionMeta}>
-                    <View style={styles.metaRow}>
-                      <Text style={styles.metaLabel}>Duration:</Text>
-                      <Text style={styles.metaValue}>{prescription.duration || 'Not specified'}</Text>
-                    </View>
-                    <View style={styles.metaRow}>
-                      <Text style={styles.metaLabel}>Prescribed by:</Text>
-                      <Text style={styles.metaValue}>{prescription.prescribedBy}</Text>
-                    </View>
-                  </View>
-                </View>
-              ))
-            )}
-
-            {/* Add Prescription Form */}
-            {showAddPrescription && (
-              <View style={styles.addForm}>
-                <Text style={styles.addFormTitle}>Add New Prescription</Text>
-                <TextInput
-                  style={styles.addFormInput}
-                  placeholder="Medication name"
-                  value={newPrescription.medication}
-                  onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, medication: value }))}
-                />
-                <View style={styles.addFormRow}>
-                  <TextInput
-                    style={[styles.addFormInput, styles.addFormInputHalf]}
-                    placeholder="Dosage (e.g., 10mg)"
-                    value={newPrescription.dosage}
-                    onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, dosage: value }))}
-                  />
-                  <TextInput
-                    style={[styles.addFormInput, styles.addFormInputHalf]}
-                    placeholder="Frequency"
-                    value={newPrescription.frequency}
-                    onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, frequency: value }))}
-                  />
-                </View>
-                <TextInput
-                  style={styles.addFormInput}
-                  placeholder="Duration (e.g., 7 days)"
-                  value={newPrescription.duration}
-                  onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, duration: value }))}
-                />
-                <TextInput
-                  style={[styles.addFormInput, styles.addFormTextArea]}
-                  placeholder="Description/Instructions"
-                  value={newPrescription.description}
-                  onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, description: value }))}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
-                <View style={styles.addFormActions}>
-                  <TouchableOpacity
-                    style={styles.cancelButton}
-                    onPress={() => {
-                      setShowAddPrescription(false);
-                      setNewPrescription({
-                        medication: '',
-                        dosage: '',
-                        frequency: '',
-                        duration: '',
-                        description: '',
-                      });
-                    }}
-                  >
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.addFormSubmitButton}
-                    onPress={handleAddPrescription}
-                  >
-                    <Text style={styles.addFormSubmitButtonText}>Add Prescription</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Medical Certificates Section */}
-          <View style={styles.subsection}>
-            <View style={styles.sectionHeaderWithButton}>
-              <Text style={styles.subsectionTitle}>Medical Certificates</Text>
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => setShowAddCertificate(true)}
-              >
-                <Plus size={16} color="#1E40AF" />
-                <Text style={styles.addButtonText}>Issue</Text>
-              </TouchableOpacity>
-            </View>
-            {formData.certificates.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No certificates issued yet</Text>
-              </View>
-            ) : (
-              formData.certificates.map((certificate) => (
-                <View key={certificate.id} style={styles.certificateCard}>
-                  <View style={styles.certificateHeader}>
-                    <View style={styles.certificateIcon}>
-                      <FileText size={20} color="#1E40AF" />
-                    </View>
-                    <View style={styles.certificateDetails}>
-                      <Text style={styles.certificateType}>{certificate.type}</Text>
-                      <Text style={styles.certificateDescription}>{certificate.description}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.removeButton}
-                      onPress={() => handleRemoveCertificate(certificate.id)}
-                    >
-                      <Trash2 size={16} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.certificateMeta}>
-                    <View style={styles.metaRow}>
-                      <Text style={styles.metaLabel}>Issued:</Text>
-                      <Text style={styles.metaValue}>{certificate.issuedDate}</Text>
-                    </View>
-                    {certificate.validUntil && (
-                      <View style={styles.metaRow}>
-                        <Text style={styles.metaLabel}>Valid until:</Text>
-                        <Text style={styles.metaValue}>{certificate.validUntil}</Text>
-                      </View>
-                    )}
-                    {certificate.restrictions && (
-                      <View style={styles.metaRow}>
-                        <Text style={styles.metaLabel}>Restrictions:</Text>
-                        <Text style={styles.metaValue}>{certificate.restrictions}</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              ))
-            )}
-
-            {/* Add Certificate Form */}
-            {showAddCertificate && (
-              <View style={styles.addForm}>
-                <Text style={styles.addFormTitle}>Issue New Certificate</Text>
-                <TextInput
-                  style={styles.addFormInput}
-                  placeholder="Certificate type (e.g., Fit to Work)"
-                  value={newCertificate.type}
-                  onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, type: value }))}
-                />
-                <TextInput
-                  style={[styles.addFormInput, styles.addFormTextArea]}
-                  placeholder="Description/Medical findings"
-                  value={newCertificate.description}
-                  onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, description: value }))}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
-                <TextInput
-                  style={styles.addFormInput}
-                  placeholder="Valid until (optional)"
-                  value={newCertificate.validUntil}
-                  onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, validUntil: value }))}
-                />
-                <TextInput
-                  style={[styles.addFormInput, styles.addFormTextArea]}
-                  placeholder="Restrictions (optional)"
-                  value={newCertificate.restrictions}
-                  onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, restrictions: value }))}
-                  multiline
-                  numberOfLines={2}
-                  textAlignVertical="top"
-                />
-                <View style={styles.addFormActions}>
-                  <TouchableOpacity
-                    style={styles.cancelButton}
-                    onPress={() => {
-                      setShowAddCertificate(false);
-                      setNewCertificate({
-                        type: '',
-                        description: '',
-                        validUntil: '',
-                        restrictions: '',
-                      });
-                    }}
-                  >
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.addFormSubmitButton}
-                    onPress={handleAddCertificate}
-                  >
-                    <Text style={styles.addFormSubmitButtonText}>Issue Certificate</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
-        </View>
+                {/* Step Content */}
+        {renderStepContent()}
       </ScrollView>
 
       {/* Bottom Action Buttons */}
       <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={[styles.saveButton, !hasChanges && styles.saveButtonDisabled]}
-          onPress={handleSaveChanges}
-          disabled={!hasChanges}
-        >
-          <Save size={18} color={hasChanges ? "#1E40AF" : "#9CA3AF"} />
-          <Text style={[styles.saveButtonText, !hasChanges && styles.saveButtonTextDisabled]}>
-            Save Changes
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.completeButton}
-          onPress={handleCompleteConsultation}
-        >
-          <CheckCircle size={18} color="#FFFFFF" />
-          <Text style={styles.completeButtonText}>Complete Consultation</Text>
-        </TouchableOpacity>
+        {/* Step Navigation */}
+        <View style={styles.stepNavigation}>
+          {currentStep > 1 && (
+            <TouchableOpacity
+              style={styles.stepNavButton}
+              onPress={goToPreviousStep}
+            >
+              <Text style={styles.stepNavButtonText}>Previous</Text>
+            </TouchableOpacity>
+          )}
+          
+          <Text style={styles.stepIndicator}>{currentStep}/{totalSteps}</Text>
+          
+          {currentStep < totalSteps ? (
+            <TouchableOpacity
+              style={styles.stepNavButton}
+              onPress={goToNextStep}
+            >
+              <Text style={styles.stepNavButtonText}>Next</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.stepNavButton}
+              onPress={handleSaveChanges}
+              disabled={!hasChanges}
+            >
+              <Text style={styles.stepNavButtonText}>Save</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        {/* Complete Consultation Button - Only show on last step */}
+        {currentStep === totalSteps && (
+          <TouchableOpacity
+            style={styles.completeButton}
+            onPress={handleCompleteConsultation}
+          >
+            <CheckCircle size={18} color="#FFFFFF" />
+            <Text style={styles.completeButtonText}>Complete Consultation</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Medical History Modal */}
@@ -1578,11 +1806,12 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
+    position: 'relative',
   },
   backButton: {
     width: 40,
@@ -1593,11 +1822,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    position: 'absolute',
+    left: 24,
   },
   headerTitle: {
     fontSize: 20,
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
+    textAlign: 'center',
   },
   headerSpacer: {
     width: 40,
@@ -1606,6 +1838,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    position: 'absolute',
+    right: 24,
   },
   viewHistoryButton: {
     width: 40,
@@ -2148,6 +2382,161 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  
+  // Step Indicator Styles
+  stepIndicatorContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  stepProgressBar: {
+    marginBottom: 20,
+  },
+  stepProgressText: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  stepProgressLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+  },
+  stepProgressPercentage: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1E40AF',
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#1E40AF',
+    borderRadius: 3,
+  },
+  stepTabs: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  stepTab: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  stepTabActive: {
+    // Active state styling
+  },
+  stepTabCompleted: {
+    // Completed state styling
+  },
+  stepIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  stepIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepIconActive: {
+    backgroundColor: '#1E40AF',
+    borderColor: '#1E40AF',
+  },
+  stepIconCompleted: {
+    backgroundColor: '#1E40AF',
+    borderColor: '#1E40AF',
+  },
+  stepIconText: {
+    fontSize: 18,
+  },
+  stepCheckmark: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    fontFamily: 'Inter-Bold',
+  },
+  stepTitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  stepTitleActive: {
+    color: '#1E40AF',
+    fontFamily: 'Inter-SemiBold',
+  },
+  stepTitleCompleted: {
+    color: '#1E40AF',
+    fontFamily: 'Inter-SemiBold',
+  },
+  
+  // Step Content Styles
+  stepContent: {
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+  },
+  stepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 16,
+  },
+  stepHeaderIcon: {
+    fontSize: 32,
+  },
+  stepHeaderIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepContentTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  stepSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  
+  // Step Navigation Styles
+  stepNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  stepNavButton: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  stepNavButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+  },
+  stepIndicator: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
 });
-
-
