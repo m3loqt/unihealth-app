@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Users, Calendar, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNotifications } from '../../hooks/data/useNotifications';
 
 interface SpecialistTabBarProps {
   activeTab?: string;
@@ -12,6 +13,12 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const router = useRouter();
+  const { unreadCount } = useNotifications();
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔔 Specialist TabBar - Unread count:', unreadCount);
+  }, [unreadCount]);
 
   const TABS = [
     { name: 'index', icon: Home, route: '/(specialist)/tabs' },
@@ -32,6 +39,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
     <View style={[styles.tabContainer, {}]}>
       {TABS.map(({ name, icon: Icon, route }) => {
         const isFocused = currentActiveTab === name;
+        const showBadge = name === 'profile' && unreadCount > 0;
 
         return (
           <TouchableOpacity
@@ -46,6 +54,13 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
                 color={'#FFFFFF'}
                 strokeWidth={isFocused ? 2.5 : 2}
               />
+              {showBadge && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount > 99 ? '99+' : unreadCount.toString()}
+                  </Text>
+                </View>
+              )}
             </View>
           </TouchableOpacity>
         );
@@ -84,5 +99,22 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: 'red',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
