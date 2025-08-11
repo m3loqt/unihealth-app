@@ -1001,5 +1001,43 @@ export const authService = {
     }
   },
 
+          // Change password for authenticated user
+        async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+          try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) {
+              return { success: false, message: 'No authenticated user found' };
+            }
+
+            // Re-authenticate with current password before updating
+            try {
+              const credential = await signInWithEmailAndPassword(auth, currentUser.email!, currentPassword);
+              
+              // Now update the password
+              await updatePassword(credential.user, newPassword);
+              
+              console.log('Password updated successfully');
+              return { success: true, message: 'Password changed successfully' };
+            } catch (error: any) {
+              console.error('Password change error details:', error);
+              
+              if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                return { success: false, message: 'Current password is incorrect. Please verify your current password and try again.' };
+              } else if (error.code === 'auth/weak-password') {
+                return { success: false, message: 'New password is too weak. Please choose a stronger password with at least 6 characters.' };
+              } else if (error.code === 'auth/requires-recent-login') {
+                return { success: false, message: 'For security reasons, you need to sign in again before changing your password.' };
+              } else if (error.code === 'auth/user-mismatch') {
+                return { success: false, message: 'Authentication error. Please sign out and sign in again.' };
+              } else {
+                console.error('Password change error:', error);
+                return { success: false, message: `Failed to change password: ${error.message || 'Unknown error'}` };
+              }
+            }
+          } catch (error: any) {
+            console.error('Change password error:', error);
+            return { success: false, message: 'An unexpected error occurred' };
+          }
+        },
 
 }; 

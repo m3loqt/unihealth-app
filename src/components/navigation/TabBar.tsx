@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Home, FileText, Calendar, Pill, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNotifications } from '../../hooks/data/useNotifications';
 
 interface TabBarProps {
   activeTab?: string;
@@ -12,6 +13,7 @@ export default function TabBar({ activeTab }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const router = useRouter();
+  const { unreadCount } = useNotifications();
 
   const TABS = [
     { name: 'index', icon: Home, route: '/(patient)/tabs' },
@@ -33,6 +35,7 @@ export default function TabBar({ activeTab }: TabBarProps) {
     <View style={[styles.tabContainer, { }]}> 
       {TABS.map(({ name, icon: Icon, route }) => {
         const isFocused = currentActiveTab === name;
+        const showBadge = name === 'profile' && unreadCount > 0;
 
         return (
           <TouchableOpacity
@@ -47,6 +50,13 @@ export default function TabBar({ activeTab }: TabBarProps) {
                 color={'#FFFFFF'}
                 strokeWidth={isFocused ? 2.5 : 2}
               />
+              {showBadge && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount > 99 ? '99+' : unreadCount.toString()}
+                  </Text>
+                </View>
+              )}
             </View>
           </TouchableOpacity>
         );
@@ -86,5 +96,23 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative', // Add this for badge positioning
+  },
+  badge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '600',
   },
 });

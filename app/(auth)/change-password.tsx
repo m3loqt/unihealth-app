@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { ChevronLeft, Lock, Eye, EyeOff, Shield } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { authService } from '../../src/services/api/auth';
 
 export default function ChangePasswordScreen() {
   const [formData, setFormData] = useState({
@@ -52,6 +53,15 @@ export default function ChangePasswordScreen() {
       Alert.alert('Error', 'New password must be at least 6 characters');
       return false;
     }
+    // Firebase requires at least 6 characters, but let's encourage stronger passwords
+    if (formData.newPassword.length < 8) {
+      Alert.alert('Warning', 'For better security, consider using at least 8 characters');
+    }
+    // Check if new password is the same as current password
+    if (formData.newPassword === formData.currentPassword) {
+      Alert.alert('Error', 'New password must be different from current password');
+      return false;
+    }
     if (formData.newPassword !== formData.confirmPassword) {
       Alert.alert('Error', 'New passwords do not match');
       return false;
@@ -68,13 +78,27 @@ export default function ChangePasswordScreen() {
     
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const result = await authService.changePassword(formData.currentPassword, formData.newPassword);
+      
+      if (result.success) {
+        Alert.alert('Success', result.message, [
+          { text: 'OK', onPress: () => router.back() }
+        ]);
+      } else {
+        // Show error with more helpful guidance
+        let errorMessage = result.message;
+        if (result.message.includes('Current password is incorrect')) {
+          errorMessage += '\n\nPlease double-check your current password. If you continue having issues, you may need to use the "Forgot Password" option.';
+        }
+        Alert.alert('Password Change Failed', errorMessage);
+      }
+    } catch (error: any) {
+      console.error('Password change error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again or contact support if the problem persists.');
+    } finally {
       setIsLoading(false);
-      Alert.alert('Success', 'Password changed successfully!', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
-    }, 1500);
+    }
   };
 
   return (
@@ -95,16 +119,26 @@ export default function ChangePasswordScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
       >
-        {/* Security Notice */}
-        <View style={styles.securityNotice}>
-          <Shield size={24} color="#1E40AF" />
-          <View style={styles.noticeContent}>
-            <Text style={styles.noticeTitle}>Security Notice</Text>
-            <Text style={styles.noticeText}>
-              Choose a strong password with at least 6 characters including letters, numbers, and symbols.
-            </Text>
-          </View>
-        </View>
+                 {/* Security Notice */}
+         <View style={styles.securityNotice}>
+           <Shield size={24} color="#1E40AF" />
+           <View style={styles.noticeContent}>
+             <Text style={styles.noticeTitle}>Security Notice</Text>
+             <Text style={styles.noticeText}>
+               Choose a strong password with at least 6 characters including letters, numbers, and symbols.
+             </Text>
+           </View>
+         </View>
+
+         {/* Password Change Info */}
+         <View style={styles.infoBox}>
+           <Text style={styles.infoTitle}>Important Notes:</Text>
+           <Text style={styles.infoText}>
+             • You must enter your current password correctly to proceed{'\n'}
+             • The new password must be different from your current password{'\n'}
+             • For security, you may need to sign in again if your session is old
+           </Text>
+         </View>
 
         {/* Form Section */}
         <View style={styles.formSection}>
@@ -285,12 +319,33 @@ const styles = StyleSheet.create({
     color: '#1E40AF',
     marginBottom: 4,
   },
-  noticeText: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
-    color: '#1E40AF',
-    lineHeight: 18,
-  },
+     noticeText: {
+     fontSize: 13,
+     fontFamily: 'Inter-Regular',
+     color: '#1E40AF',
+     lineHeight: 18,
+   },
+   infoBox: {
+     backgroundColor: '#FEF3C7',
+     marginHorizontal: 24,
+     marginTop: 16,
+     padding: 16,
+     borderRadius: 12,
+     borderWidth: 1,
+     borderColor: '#F59E0B',
+   },
+   infoTitle: {
+     fontSize: 14,
+     fontFamily: 'Inter-SemiBold',
+     color: '#92400E',
+     marginBottom: 8,
+   },
+   infoText: {
+     fontSize: 13,
+     fontFamily: 'Inter-Regular',
+     color: '#92400E',
+     lineHeight: 18,
+   },
   formSection: {
     paddingHorizontal: 24,
     paddingTop: 32,
