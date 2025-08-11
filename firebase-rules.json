@@ -1,0 +1,57 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "appointments": {
+      "$appointmentId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "notifications": {
+      "$userId": {
+        ".indexOn": ["timestamp"],
+        ".read": "$userId === auth.uid",
+        ".write": "$userId === auth.uid"
+      }
+    },
+    "clinics": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "doctors": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "prescriptions": {
+      "$prescriptionId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "certificates": {
+      "$certificateId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "referrals": {
+      "$referralId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "medical_history": {
+      "$recordId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
+  }
+}
