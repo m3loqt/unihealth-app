@@ -39,20 +39,31 @@ interface VisitData extends Appointment {
   date?: string;
   time?: string;
   address?: string;
+  // Step 1: Patient History
+  presentIllnessHistory?: string;
+  reviewOfSymptoms?: string;
+  
+  // Step 2: Findings
+  labResults?: string;
+  medications?: string;
   diagnosis?: string;
   differentialDiagnosis?: string;
-  reviewOfSymptoms?: string;
-  presentIllnessHistory?: string;
+  
+  // Step 3: SOAP Notes
   soapNotes?: {
     subjective?: string;
     objective?: string;
     assessment?: string;
     plan?: string;
   };
-  labResults?: string;
+  
+  // Step 4: Treatment & Wrap-Up
+  treatmentPlan?: string;
+  clinicalSummary?: string;
+  
+  // Step 5: Supplementary Docs
   allergies?: string;
   vitals?: string;
-  medications?: string;
 }
 
 // Extended interface for prescriptions that includes additional properties
@@ -79,7 +90,11 @@ export default function VisitOverviewScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
-    clinicalSummary: true,
+    patientHistory: true,
+    findings: true,
+    soapNotes: true,
+    treatment: true,
+    supplementary: true,
     prescriptions: true,
     certificates: true,
   });
@@ -214,81 +229,6 @@ export default function VisitOverviewScreen() {
           </View>
         </View>
 
-        {/* --- CLINICAL SUMMARY --- */}
-        <View style={styles.sectionSpacing}>
-          <Text style={styles.sectionTitle}>Clinical Summary</Text>
-          <View style={styles.cardBoxClinical}>
-            {/* Clinical Summary fields will be loaded here from visitData */}
-            {/* For now, we'll show a placeholder or load dynamically */}
-            <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('clinicalSummary')}>
-              <Text style={styles.clinicalSectionLabel}>Clinical Summary</Text>
-              {expandedSections['clinicalSummary'] ? (
-                <ChevronDown size={23} color="#6B7280" />
-              ) : (
-                <ChevronRight size={23} color="#9CA3AF" />
-              )}
-            </TouchableOpacity>
-            {expandedSections['clinicalSummary'] && (
-              <View style={styles.clinicalSectionBody}>
-                {/* Placeholder for clinical summary fields */}
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Diagnosis:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.diagnosis || 'No diagnosis recorded'}</Text>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Differential Diagnosis:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.differentialDiagnosis || 'No differential diagnosis recorded'}</Text>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Review of Symptoms:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.reviewOfSymptoms || 'No symptoms reviewed'}</Text>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Present Illness History:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.presentIllnessHistory || 'No illness history recorded'}</Text>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>SOAP Notes:</Text>
-                  <View style={styles.soapNotesContainer}>
-                    <View style={styles.soapNotesSubRow}>
-                      <Text style={styles.soapNotesLabel}>Subjective:</Text>
-                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.subjective || 'No subjective notes'}</Text>
-                    </View>
-                    <View style={styles.soapNotesSubRow}>
-                      <Text style={styles.soapNotesLabel}>Objective:</Text>
-                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.objective || 'No objective notes'}</Text>
-                    </View>
-                    <View style={styles.soapNotesSubRow}>
-                      <Text style={styles.soapNotesLabel}>Assessment:</Text>
-                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.assessment || 'No assessment notes'}</Text>
-                    </View>
-                    <View style={styles.soapNotesSubRow}>
-                      <Text style={styles.soapNotesLabel}>Plan:</Text>
-                      <Text style={styles.soapNotesValue}>{visitData.soapNotes?.plan || 'No plan notes'}</Text>
-                    </View>
-                  </View>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Lab Results:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.labResults || 'No lab results recorded'}</Text>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Allergies:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.allergies || 'No allergies recorded'}</Text>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Vitals:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.vitals || 'No vitals recorded'}</Text>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Medications:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.medications || 'No medications recorded'}</Text>
-                </View>
-              </View>
-            )}
-          </View>
-        </View>
-
         {/* --- PRESCRIPTIONS --- */}
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Prescriptions</Text>
@@ -371,6 +311,138 @@ export default function VisitOverviewScreen() {
               <Text style={styles.emptyStateText}>No certificates were issued for this visit.</Text>
             </View>
           )}
+        </View>
+
+        {/* --- CLINICAL SUMMARY --- */}
+        <View style={styles.sectionSpacing}>
+          <Text style={styles.sectionTitle}>Clinical Summary</Text>
+          <View style={styles.cardBoxClinical}>
+            {/* Step 1: Patient History */}
+            <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('patientHistory')}>
+              <Text style={styles.clinicalSectionLabel}>Patient History</Text>
+              {expandedSections['patientHistory'] ? (
+                <ChevronDown size={23} color="#6B7280" />
+              ) : (
+                <ChevronRight size={23} color="#9CA3AF" />
+              )}
+            </TouchableOpacity>
+            {expandedSections['patientHistory'] && (
+              <View style={styles.clinicalSectionBody}>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>History of Present Illnesses:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.presentIllnessHistory || 'No illness history recorded'}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Review of Symptoms:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.reviewOfSymptoms || 'No symptoms reviewed'}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Step 2: Findings */}
+            <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('findings')}>
+              <Text style={styles.clinicalSectionLabel}>Findings</Text>
+              {expandedSections['findings'] ? (
+                <ChevronDown size={23} color="#6B7280" />
+              ) : (
+                <ChevronRight size={23} color="#9CA3AF" />
+              )}
+            </TouchableOpacity>
+            {expandedSections['findings'] && (
+              <View style={styles.clinicalSectionBody}>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Lab Results:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.labResults || 'No lab results recorded'}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Medications:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.medications || 'No medications recorded'}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Diagnosis:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.diagnosis || 'No diagnosis recorded'}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Differential Diagnosis:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.differentialDiagnosis || 'No differential diagnosis recorded'}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Step 3: SOAP Notes */}
+            <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('soapNotes')}>
+              <Text style={styles.clinicalSectionLabel}>SOAP Notes</Text>
+              {expandedSections['soapNotes'] ? (
+                <ChevronDown size={23} color="#6B7280" />
+              ) : (
+                <ChevronRight size={23} color="#9CA3AF" />
+              )}
+            </TouchableOpacity>
+            {expandedSections['soapNotes'] && (
+              <View style={styles.clinicalSectionBody}>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Subjective:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.soapNotes?.subjective || 'No subjective notes'}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Objective:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.soapNotes?.objective || 'No objective notes'}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Assessment:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.soapNotes?.assessment || 'No assessment notes'}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Plan:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.soapNotes?.plan || 'No plan notes'}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Step 4: Treatment & Wrap-Up */}
+            <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('treatment')}>
+              <Text style={styles.clinicalSectionLabel}>Treatment & Wrap-Up</Text>
+              {expandedSections['treatment'] ? (
+                <ChevronDown size={23} color="#6B7280" />
+              ) : (
+                <ChevronRight size={23} color="#9CA3AF" />
+              )}
+            </TouchableOpacity>
+            {expandedSections['treatment'] && (
+              <View style={styles.clinicalSectionBody}>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Treatment Plan:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.treatmentPlan || 'No treatment plan recorded'}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Clinical Summary:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.clinicalSummary || 'No clinical summary recorded'}</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Step 5: Supplementary Information */}
+            <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('supplementary')}>
+              <Text style={styles.clinicalSectionLabel}>Supplementary Information</Text>
+              {expandedSections['supplementary'] ? (
+                <ChevronDown size={23} color="#6B7280" />
+              ) : (
+                <ChevronRight size={23} color="#9CA3AF" />
+              )}
+            </TouchableOpacity>
+            {expandedSections['supplementary'] && (
+              <View style={styles.clinicalSectionBody}>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Allergies:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.allergies || 'No allergies recorded'}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Vitals:</Text>
+                  <Text style={styles.clinicalFieldValue}>{visitData.vitals || 'No vitals recorded'}</Text>
+                </View>
+              </View>
+            )}
+          </View>
         </View>
       </ScrollView>
 
@@ -771,26 +843,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#6B7280',
     fontFamily: 'Inter-Regular',
-  },
-  soapNotesContainer: {
-    marginTop: 5,
-    paddingLeft: 10,
-  },
-  soapNotesSubRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 3,
-  },
-  soapNotesLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
-  },
-  soapNotesValue: {
-    fontSize: 14,
-    color: '#23272F',
-    fontFamily: 'Inter-Medium',
-    textAlign: 'right',
   },
 
   // ------- BOTTOM BAR BUTTONS (VERTICAL, OUTLINED SECONDARY) --------
