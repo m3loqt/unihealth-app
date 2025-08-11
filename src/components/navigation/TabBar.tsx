@@ -15,6 +15,11 @@ export default function TabBar({ activeTab }: TabBarProps) {
   const router = useRouter();
   const { unreadCount } = useNotifications();
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔔 Patient TabBar - Unread count:', unreadCount);
+  }, [unreadCount]);
+
   const TABS = [
     { name: 'index', icon: Home, route: '/(patient)/tabs' },
     { name: 'appointments', icon: Calendar, route: '/(patient)/tabs/appointments' },
@@ -100,19 +105,19 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#FF3B30',
+    top: -5,
+    right: -5,
+    backgroundColor: 'red',
     borderRadius: 10,
     minWidth: 20,
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
+    zIndex: 1,
   },
   badgeText: {
     color: 'white',
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
