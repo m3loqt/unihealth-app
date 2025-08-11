@@ -66,7 +66,7 @@ export default function SpecialistAppointmentsScreen() {
   // ---- UI/STATE ----
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState(
-    filter ? String(filter).charAt(0).toUpperCase() + String(filter).slice(1) : 'All'
+    filter ? String(filter).charAt(0).toUpperCase() + String(filter).slice(1) : 'Confirmed'
   );
 
   // Accept/Decline Modals for Referrals
@@ -168,7 +168,7 @@ export default function SpecialistAppointmentsScreen() {
           const status = referral.status as string;
           if (status === 'pending_acceptance' || status === 'pending') {
             return 'pending';
-          } else if (status === 'accepted') {
+          } else if (status === 'confirmed') {
             return 'confirmed';
           } else if (status === 'completed') {
             return 'completed';
@@ -541,15 +541,67 @@ export default function SpecialistAppointmentsScreen() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return <CheckCircle size={14} color="#6B7280" />;
+        return <CheckCircle size={14} color="#1E40AF" />;
       case 'pending':
         return <Hourglass size={14} color="#6B7280" />;
       case 'completed':
-        return <CheckMark size={14} color="#6B7280" />;
+        return <CheckMark size={14} color="#1E40AF" />;
       case 'canceled':
-        return <XCircle size={14} color="#6B7280" />;
+        return <XCircle size={14} color="#EF4444" />;
       default:
         return null;
+    }
+  };
+
+  const getStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return [styles.statusBadge, styles.statusBadgeConfirmed];
+      case 'completed':
+        return [styles.statusBadge, styles.statusBadgeCompleted];
+      case 'canceled':
+        return [styles.statusBadge, styles.statusBadgeCanceled];
+      default:
+        return styles.statusBadge;
+    }
+  };
+
+  const getReferralStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return [styles.referralStatusBadge, styles.referralStatusBadgeConfirmed];
+      case 'completed':
+        return [styles.referralStatusBadge, styles.referralStatusBadgeCompleted];
+      case 'canceled':
+        return [styles.referralStatusBadge, styles.referralStatusBadgeCanceled];
+      default:
+        return styles.referralStatusBadge;
+    }
+  };
+
+  const getReferralStatusTextStyle = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return [styles.referralStatusText, styles.referralStatusTextConfirmed];
+      case 'completed':
+        return [styles.referralStatusText, styles.referralStatusTextCompleted];
+      case 'canceled':
+        return [styles.referralStatusText, styles.referralStatusTextCanceled];
+      default:
+        return styles.referralStatusText;
+    }
+  };
+
+  const getStatusTextStyle = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return [styles.statusText, styles.statusTextConfirmed];
+      case 'completed':
+        return [styles.statusText, styles.statusTextCompleted];
+      case 'canceled':
+        return [styles.statusText, styles.statusTextCanceled];
+      default:
+        return styles.statusText;
     }
   };
 
@@ -594,26 +646,32 @@ export default function SpecialistAppointmentsScreen() {
     const patientInitials = `${appointment.patientFirstName?.[0] || ''}${appointment.patientLastName?.[0] || ''}`;
 
     return (
-      <View key={referralData.id} style={styles.referralCard}>
+      <TouchableOpacity 
+        key={referralData.id} 
+        style={styles.referralCard}
+        onPress={() => handleViewReferralDetails(referralData)}
+        activeOpacity={0.7}
+      >
         <View style={styles.referralCardHeader}>
           <View style={styles.referralCardHeaderLeft}>
-            <TouchableOpacity
-              style={styles.viewButton}
-              onPress={() => handleViewReferralDetails(referralData)}
-            >
-              <Eye size={16} color="#1E40AF" />
-            </TouchableOpacity>
+            {/* Patient Initials Avatar */}
+            <View style={styles.patientAvatar}>
+              <Text style={styles.patientInitial}>
+                {patientInitials}
+              </Text>
+            </View>
             {/* Medical History Button - Only show if referral is completed */}
             {appointment.status === 'completed' && (
               <TouchableOpacity
                 style={styles.medicalHistoryButton}
-                onPress={() => {
+                onPress={(e) => {
+                  e.stopPropagation(); // Prevent card click
                   console.log('🔍 MEDICAL HISTORY EYE ICON PRESSED!');
                   console.log('Appointment being passed:', appointment);
                   loadMedicalHistory(appointment, 'referral');
                 }}
               >
-                <Eye size={16} color="#059669" />
+                <Eye size={16} color="#1E40AF" />
               </TouchableOpacity>
             )}
           </View>
@@ -623,8 +681,8 @@ export default function SpecialistAppointmentsScreen() {
               {patientName}
             </Text>
           </View>
-          <View style={styles.referralStatusBadge}>
-            <Text style={styles.referralStatusText}>
+          <View style={getReferralStatusBadgeStyle(appointment.status)}>
+            <Text style={getReferralStatusTextStyle(appointment.status)}>
               {appointment.status === 'confirmed' ? 'Accepted' :
                appointment.status === 'pending' || appointment.status === 'pending_acceptance' ? 'Pending' :
                appointment.status === 'completed' ? 'Completed' :
@@ -660,14 +718,20 @@ export default function SpecialistAppointmentsScreen() {
             <>
               <TouchableOpacity
                 style={styles.declineButton}
-                onPress={() => handleDeclineReferral(appointment)}
+                onPress={(e) => {
+                  e.stopPropagation(); // Prevent card click
+                  handleDeclineReferral(appointment);
+                }}
               >
                 <X size={16} color="#EF4444" />
                 <Text style={styles.declineButtonText}>Decline</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.acceptButton}
-                onPress={() => handleAcceptReferral(appointment)}
+                onPress={(e) => {
+                  e.stopPropagation(); // Prevent card click
+                  handleAcceptReferral(appointment);
+                }}
               >
                 <Check size={16} color="#FFFFFF" />
                 <Text style={styles.acceptButtonText}>Accept</Text>
@@ -676,14 +740,17 @@ export default function SpecialistAppointmentsScreen() {
           ) : appointment.status === 'confirmed' ? (
             <TouchableOpacity
               style={styles.diagnoseButton}
-              onPress={() => handleDiagnosePatient(appointment)}
+              onPress={(e) => {
+                e.stopPropagation(); // Prevent card click
+                handleDiagnosePatient(appointment);
+              }}
             >
               <Stethoscope size={16} color="#FFFFFF" />
               <Text style={styles.diagnoseButtonText}>Diagnose Patient</Text>
             </TouchableOpacity>
           ) : null}
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -695,7 +762,19 @@ export default function SpecialistAppointmentsScreen() {
     const patientInitials = safeDataAccess.getUserInitials(appointment, 'U');
 
     return (
-      <View key={appointment.id} style={styles.appointmentCard}>
+      <TouchableOpacity 
+        key={appointment.id} 
+        style={styles.appointmentCard}
+        onPress={() => {
+          // Handle card click for viewing appointment details
+          if (appointment.status === 'completed') {
+            loadMedicalHistory(appointment, 'appointment');
+          } else if (appointment.status === 'confirmed') {
+            handleDiagnosePatient(appointment);
+          }
+        }}
+        activeOpacity={0.7}
+      >
         <View style={styles.appointmentHeader}>
           <View style={styles.patientInfo}>
             <View style={styles.patientAvatar}>
@@ -716,9 +795,9 @@ export default function SpecialistAppointmentsScreen() {
               )}
             </View>
           </View>
-          <View style={styles.statusBadge}>
+          <View style={getStatusBadgeStyle(appointment.status)}>
             {getStatusIcon(appointment.status)}
-            <Text style={styles.statusText}>
+            <Text style={getStatusTextStyle(appointment.status)}>
               {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
             </Text>
           </View>
@@ -758,14 +837,20 @@ export default function SpecialistAppointmentsScreen() {
             <>
               <TouchableOpacity
                 style={styles.declineButton}
-                onPress={() => handleDeclineAppointment(appointment)}
+                onPress={(e) => {
+                  e.stopPropagation(); // Prevent card click
+                  handleDeclineAppointment(appointment);
+                }}
               >
                 <X size={16} color="#EF4444" />
                 <Text style={styles.declineButtonText}>Decline</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.acceptButton}
-                onPress={() => handleAcceptAppointment(appointment)}
+                onPress={(e) => {
+                  e.stopPropagation(); // Prevent card click
+                  handleAcceptAppointment(appointment);
+                }}
               >
                 <Check size={16} color="#FFFFFF" />
                 <Text style={styles.acceptButtonText}>Accept</Text>
@@ -775,7 +860,10 @@ export default function SpecialistAppointmentsScreen() {
             // Confirmed regular appointment - show diagnose button
             <TouchableOpacity
               style={styles.diagnoseButton}
-              onPress={() => handleDiagnosePatient(appointment)}
+              onPress={(e) => {
+                e.stopPropagation(); // Prevent card click
+                handleDiagnosePatient(appointment);
+              }}
             >
               <Stethoscope size={16} color="#FFFFFF" />
               <Text style={styles.diagnoseButtonText}>Diagnose Patient</Text>
@@ -784,18 +872,19 @@ export default function SpecialistAppointmentsScreen() {
             // Completed appointment - show medical history button
             <TouchableOpacity
               style={styles.medicalHistoryButton}
-              onPress={() => {
+              onPress={(e) => {
+                e.stopPropagation(); // Prevent card click
                 console.log('🔍 MEDICAL HISTORY BUTTON PRESSED (REGULAR APPOINTMENT)!');
                 console.log('Appointment being passed:', appointment);
                 loadMedicalHistory(appointment, 'appointment');
               }}
             >
-              <Eye size={16} color="#059669" />
+              <Eye size={16} color="#1E40AF" />
               <Text style={styles.medicalHistoryButtonText}>View History</Text>
             </TouchableOpacity>
           ) : null}
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -1956,26 +2045,17 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#E0F2FE',
     justifyContent: 'center',
     alignItems: 'center',
   },
   medicalHistoryButtonText: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
-    color: '#059669',
+    color: '#1E40AF',
     marginLeft: 8,
   },
   referralIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E0F2FE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  viewButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -2198,5 +2278,47 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
+  },
+  statusBadgeConfirmed: {
+    backgroundColor: '#E0F2FE',
+    borderColor: '#1E40AF',
+  },
+  statusBadgeCompleted: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  statusBadgeCanceled: {
+    backgroundColor: '#EF4444',
+    borderColor: '#EF4444',
+  },
+  referralStatusBadgeConfirmed: {
+    backgroundColor: '#E0F2FE',
+    borderColor: '#1E40AF',
+  },
+  referralStatusBadgeCompleted: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  referralStatusBadgeCanceled: {
+    backgroundColor: '#EF4444',
+    borderColor: '#EF4444',
+  },
+  referralStatusTextConfirmed: {
+    color: '#1E40AF',
+  },
+  referralStatusTextCompleted: {
+    color: '#10B981',
+  },
+  referralStatusTextCanceled: {
+    color: '#EF4444',
+  },
+  statusTextConfirmed: {
+    color: '#1E40AF',
+  },
+  statusTextCompleted: {
+    color: '#10B981',
+  },
+  statusTextCanceled: {
+    color: '#EF4444',
   },
 });
