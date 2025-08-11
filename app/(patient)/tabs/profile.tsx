@@ -25,6 +25,8 @@ import {
   CircleHelp as HelpCircle,
   Trash2,
   Fingerprint,
+  Check,
+  RefreshCw,
 } from 'lucide-react-native';
 import {
   checkBiometricSupport,
@@ -37,8 +39,10 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { usePatientProfile } from '@/hooks/data/usePatientProfile';
+import { useNotifications } from '@/hooks/data/useNotifications';
 import { safeDataAccess } from '@/utils/safeDataAccess';
 import { RealTimeTest } from '@/components/RealTimeTest';
+import { databaseService } from '@/services/database/firebase';
 
 // Default profile data
 const defaultProfileData = {
@@ -62,19 +66,58 @@ const LIGHT_BLUE = '#DBEAFE';
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { profile, loading: profileLoading, error: profileError } = usePatientProfile();
-  const [showNotificationModal, setShowNotificationModal] = useState(false);
-  const [notificationCenterVisible, setNotificationCenterVisible] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: 'Your appointment with Dr. Lee is confirmed for Aug 4, 2:30 PM.' },
-    { id: 2, text: 'Lab results are now available.' },
-    { id: 3, text: 'Prescription refill reminder: Lisinopril.' },
-  ]);
+  const { 
+    notifications, 
+    loading: notificationsLoading, 
+    error: notificationsError,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    refresh: refreshNotifications
+  } = useNotifications();
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔔 Patient Profile - Notifications state:', {
+      count: notifications.length,
+      loading: notificationsLoading,
+      error: notificationsError,
+      unreadCount: notifications.filter(n => !n.read).length
+    });
+  }, [notifications, notificationsLoading, notificationsError]);
 
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnrolled, setBiometricEnrolled] = useState(false);
   const [biometricCredentialsSaved, setBiometricCredentialsSaved] = useState(false);
   const [biometricUnavailableReason, setBiometricUnavailableReason] = useState('');
   const [showBiometricModal, setShowBiometricModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+
+  // Handle opening notification modal
+  const handleOpenNotifications = () => {
+    setShowNotificationModal(true);
+  };
+
+  // Handle marking notification as read
+  const handleMarkAsRead = async (notificationId: string) => {
+    await markAsRead(notificationId);
+  };
+
+  // Handle deleting notification
+  const handleDeleteNotification = async (notificationId: string) => {
+    await deleteNotification(notificationId);
+  };
+
+  // Handle marking all notifications as read
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead();
+  };
+
+  // const [notifications, setNotifications] = useState([
+  //   { id: 1, text: 'Your appointment with Dr. Lee is confirmed for Aug 4, 2:30 PM.', read: false },
+  //   { id: 2, text: 'Lab results are now available.', read: true },
+  //   { id: 3, text: 'Prescription refill reminder: Lisinopril.', read: false },
+  // ]);
 
   // Use real-time profile data from hook or fallback to default
   const profileData = profile ? {
@@ -279,7 +322,7 @@ export default function ProfileScreen() {
       icon: Bell,
       title: 'Notification Preferences',
       color: BLUE,
-      onPress: () => setShowNotificationModal(true),
+      onPress: () => Alert.alert('Notification Preferences', 'This feature is not yet implemented.', [{ text: 'OK' }]),
     },
     {
       icon: HelpCircle,
@@ -295,36 +338,8 @@ export default function ProfileScreen() {
     },
   ];
 
-  const handleDeleteNotification = (id: number) => setNotifications(notifications.filter((n) => n.id !== id));
-
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Notification Center Dropdown */}
-      {notificationCenterVisible && (
-        <View style={styles.notificationsDropdownBackdrop}>
-          <TouchableOpacity
-            style={styles.notificationsDropdownBackdropTouchable}
-            activeOpacity={1}
-            onPress={() => setNotificationCenterVisible(false)}
-          />
-          <View style={styles.notificationsDropdown}>
-            <Text style={styles.dropdownHeader}>Notifications</Text>
-            {notifications.length === 0 ? (
-              <Text style={styles.emptyNotifText}>No notifications</Text>
-            ) : (
-              notifications.map((notif) => (
-                <View key={notif.id} style={styles.dropdownNotifItem}>
-                  <Text style={styles.notifText}>{notif.text}</Text>
-                  <TouchableOpacity onPress={() => handleDeleteNotification(notif.id)}>
-                    <Trash2 size={18} color={BLUE} />
-                  </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </View>
-        </View>
-      )}
-
       {/* Biometric Setup Information Modal */}
       <Modal
         visible={showBiometricModal}
@@ -337,25 +352,100 @@ export default function ProfileScreen() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Fingerprint size={32} color={BLUE} />
-                <Text style={styles.modalTitle}>Biometric Login Unavailable</Text>
+                <Text style={styles.modalTitle}>Biometric Setup</Text>
                 <Text style={styles.modalText}>
-                  {biometricUnavailableReason}
-                </Text>
-                <Text style={styles.modalSubtext}>
-                  {biometricUnavailableReason.includes('not supported')
-                    ? 'Your device does not have fingerprint or Face ID capabilities.'
-                    : biometricUnavailableReason.includes('set up')
-                    ? 'Please set up biometric authentication in your device settings first.'
-                    : 'Please check your device settings and try again.'
-                  }
+                  {biometricUnavailableReason || 'Biometric authentication is not available on this device.'}
                 </Text>
               </View>
               <View style={styles.modalActions}>
                 <TouchableOpacity
-                  style={styles.modalPrimaryButton}
+                  style={styles.modalSecondaryButton}
                   onPress={() => setShowBiometricModal(false)}
                 >
-                  <Text style={styles.modalPrimaryButtonText}>OK</Text>
+                  <Text style={styles.modalSecondaryButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Notification Modal */}
+      <Modal
+        visible={showNotificationModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowNotificationModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Bell size={32} color={BLUE} />
+                <Text style={styles.modalTitle}>Notifications</Text>
+                <Text style={styles.modalSubtext}>
+                  {notifications.filter(n => !n.read).length} unread notification{notifications.filter(n => !n.read).length !== 1 ? 's' : ''}
+                </Text>
+              </View>
+              
+              {/* Action Buttons */}
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalActionButton}
+                  onPress={refreshNotifications}
+                >
+                  <RefreshCw size={20} color={BLUE} />
+                  <Text style={styles.modalActionButtonText}>Refresh</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalActionButton}
+                  onPress={handleMarkAllAsRead}
+                >
+                  <Check size={20} color={BLUE} />
+                  <Text style={styles.modalActionButtonText}>Mark All Read</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.notificationList}>
+                {notifications.length === 0 ? (
+                  <Text style={styles.emptyNotificationText}>No notifications yet</Text>
+                ) : (
+                  notifications.map((notification) => (
+                    <View key={notification.id} style={[styles.notificationItem, !notification.read && styles.unreadNotification]}>
+                      <View style={styles.notificationContent}>
+                        <Text style={[styles.notificationText, !notification.read && styles.unreadText]}>
+                          {notification.message}
+                        </Text>
+                        <Text style={styles.notificationTime}>
+                          {new Date(notification.timestamp).toLocaleString()}
+                        </Text>
+                      </View>
+                      <View style={styles.notificationActions}>
+                        {!notification.read && (
+                          <TouchableOpacity
+                            style={styles.notificationActionButton}
+                            onPress={() => handleMarkAsRead(notification.id)}
+                          >
+                            <Check size={16} color={BLUE} />
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          style={styles.notificationActionButton}
+                          onPress={() => handleDeleteNotification(notification.id)}
+                        >
+                          <Trash2 size={16} color="#DC2626" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))
+                )}
+              </View>
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalSecondaryButton}
+                  onPress={() => setShowNotificationModal(false)}
+                >
+                  <Text style={styles.modalSecondaryButtonText}>Close</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -373,10 +463,16 @@ export default function ProfileScreen() {
           <Text style={styles.headerTitle}>Profile</Text>
           <TouchableOpacity
             style={styles.bellButton}
-            onPress={() => setNotificationCenterVisible((v) => !v)}
+            onPress={handleOpenNotifications}
           >
             <Bell size={28} color={BLUE} />
-            {notifications.length > 0 && <View style={styles.notifDot} />}
+            {notifications.filter(n => !n.read).length > 0 && (
+              <View style={styles.notifDot}>
+                <Text style={styles.notifDotText}>
+                  {notifications.filter(n => !n.read).length > 9 ? '9+' : notifications.filter(n => !n.read).length.toString()}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -496,43 +592,7 @@ export default function ProfileScreen() {
       </ScrollView>
 
       {/* Notification Preferences Modal */}
-      <Modal
-        visible={showNotificationModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowNotificationModal(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Bell size={32} color={BLUE} />
-                <Text style={styles.modalTitle}>Enable Notifications</Text>
-                <Text style={styles.modalText}>
-                  Stay updated with appointment reminders, prescription refills, and important health updates.
-                </Text>
-              </View>
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.modalSecondaryButton}
-                  onPress={() => setShowNotificationModal(false)}
-                >
-                  <Text style={styles.modalSecondaryButtonText}>Not Now</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalPrimaryButton}
-                  onPress={() => {
-                    setShowNotificationModal(false);
-                    Alert.alert('Success', 'Notifications have been enabled!');
-                  }}
-                >
-                  <Text style={styles.modalPrimaryButtonText}>Enable</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* This section is removed as per the edit hint */}
     </SafeAreaView>
   );
 }
@@ -562,18 +622,6 @@ const styles = StyleSheet.create({
     padding: 7,
     borderRadius: 18,
     position: 'relative',
-  },
-  notifDot: {
-    position: 'absolute',
-    right: 2,
-    top: 5,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-    zIndex: 20,
-    borderWidth: 1.5,
-    borderColor: '#fff',
   },
   profileCard: {
     backgroundColor: '#F9FAFB',
@@ -790,61 +838,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     textAlign: 'center',
   },
-  // --- Notifications Dropdown ---
-  notificationsDropdownBackdrop: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    zIndex: 99,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-  },
-  notificationsDropdownBackdropTouchable: {
-    flex: 1,
-  },
-  notificationsDropdown: {
-    position: 'absolute',
-    top: 70,
-    right: 24,
-    width: 320,
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    shadowColor: '#1e2937',
-    shadowOpacity: 0.09,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 12,
-    elevation: 12,
-    padding: 18,
-    paddingBottom: 8,
-    zIndex: 100,
-  },
-  dropdownHeader: {
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  dropdownNotifItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    minHeight: 32,
-  },
-  notifText: {
-    flex: 1,
-    color: '#374151',
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-  },
-  emptyNotifText: {
-    textAlign: 'center',
-    color: '#9CA3AF',
-    paddingVertical: 18,
-    fontSize: 14,
-  },
   // Modal Styles
   modalBackdrop: {
     flex: 1,
@@ -953,6 +946,92 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+  },
+  notificationList: {
+    width: '100%',
+    maxHeight: 200, // Limit height for scrollability
+    marginBottom: 20,
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 5,
+    backgroundColor: '#F3F4F6',
+  },
+  unreadNotification: {
+    backgroundColor: '#E0F2FE',
+    borderColor: BLUE,
+    borderWidth: 1,
+  },
+  notificationContent: {
+    flex: 1,
+    marginRight: 10,
+  },
+  notificationText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+  },
+  unreadText: {
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+  },
+  notificationTime: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+  notificationActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  notificationActionButton: {
+    padding: 4,
+  },
+  emptyNotificationText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  modalActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalActionButtonText: {
+    color: BLUE,
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    marginLeft: 8,
+  },
+  notifDot: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#DC2626',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  notifDotText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontFamily: 'Inter-SemiBold',
   },
 });

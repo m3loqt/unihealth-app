@@ -26,10 +26,15 @@ import {
   LogOut,
   Edit,
   Building,
+  Bell,
+  RefreshCw,
+  Check,
+  Trash2,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { useSpecialistProfile } from '../../../src/hooks/data/useSpecialistProfile';
+import { useNotifications } from '../../../src/hooks/data/useNotifications';
 import { databaseService } from '../../../src/services/database/firebase';
 import { Input, Dropdown, DatePicker } from '../../../src/components/ui/Input';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
@@ -41,7 +46,26 @@ import { performanceUtils } from '../../../src/utils/performance';
 export default function SpecialistProfileScreen() {
   const { user, signOut } = useAuth();
   const { profile, loading: profileLoading, error: profileError, updateProfile } = useSpecialistProfile();
-  
+  const { 
+    notifications, 
+    loading: notificationsLoading, 
+    error: notificationsError,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    refresh: refreshNotifications
+  } = useNotifications();
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔔 Specialist Profile - Notifications state:', {
+      count: notifications.length,
+      loading: notificationsLoading,
+      error: notificationsError,
+      unreadCount: notifications.filter(n => !n.read).length
+    });
+  }, [notifications, notificationsLoading, notificationsError]);
+
   // Helper function to format date safely (avoiding timezone issues)
   const formatDateSafely = (dateString: string): string => {
     if (!dateString) return '';
@@ -122,6 +146,12 @@ export default function SpecialistProfileScreen() {
   });
   const [clinicNames, setClinicNames] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  // const [notifications, setNotifications] = useState([
+  //   { id: 1, text: 'New referral request from Dr. Smith for patient John Doe.', read: false },
+  //   { id: 2, text: 'Appointment with Sarah Johnson confirmed for tomorrow.', read: true },
+  //   { id: 3, text: 'Lab results for patient Mike Wilson are ready.', read: false },
+  // ]);
 
   // Performance optimization: memoize clinic names
   const memoizedClinicNames = performanceUtils.useDeepMemo(() => clinicNames, [clinicNames]);
@@ -614,6 +644,28 @@ export default function SpecialistProfileScreen() {
   //   }
   // }, [profile]);
 
+  // Handle opening notification modal
+  const handleOpenNotifications = () => {
+    setShowNotificationModal(true);
+  };
+
+  // Handle marking notification as read
+  const handleMarkAsRead = async (notificationId: string) => {
+    await markAsRead(notificationId);
+  };
+
+  // Handle deleting notification
+  const handleDeleteNotification = async (notificationId: string) => {
+    await deleteNotification(notificationId);
+  };
+
+  // Handle marking all notifications as read
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead();
+  };
+
+  // Helper function to format date safely (avoiding timezone issues)
+
    return (
     <ErrorBoundary>
       <SafeAreaView style={styles.safeArea}>
@@ -628,9 +680,18 @@ export default function SpecialistProfileScreen() {
         {/* Header */}
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity style={styles.bellButton}>
-            <User size={28} color="#1E40AF" />
-            {/* {notifications > 0 && <View style={styles.notifDot} />} */}
+          <TouchableOpacity
+            style={styles.bellButton}
+            onPress={handleOpenNotifications}
+          >
+            <Bell size={28} color="#1E40AF" />
+            {notifications.filter(n => !n.read).length > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>
+                  {notifications.filter(n => !n.read).length > 9 ? '9+' : notifications.filter(n => !n.read).length.toString()}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -1164,6 +1225,89 @@ export default function SpecialistProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Notification Modal */}
+      <Modal
+        visible={showNotificationModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowNotificationModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Bell size={32} color="#1E40AF" />
+                <Text style={styles.modalTitle}>Notifications</Text>
+                <Text style={styles.modalSubtext}>
+                  {notifications.filter(n => !n.read).length} unread notification{notifications.filter(n => !n.read).length !== 1 ? 's' : ''}
+                </Text>
+              </View>
+              
+              {/* Action Buttons */}
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalActionButton}
+                  onPress={refreshNotifications}
+                >
+                  <RefreshCw size={20} color="#1E40AF" />
+                  <Text style={styles.modalActionButtonText}>Refresh</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalActionButton}
+                  onPress={handleMarkAllAsRead}
+                >
+                  <Check size={20} color="#1E40AF" />
+                  <Text style={styles.modalActionButtonText}>Mark All Read</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.notificationList}>
+                {notifications.length === 0 ? (
+                  <Text style={styles.emptyNotificationText}>No notifications yet</Text>
+                ) : (
+                  notifications.map((notification) => (
+                    <View key={notification.id} style={[styles.notificationItem, !notification.read && styles.unreadNotification]}>
+                      <View style={styles.notificationContent}>
+                        <Text style={[styles.notificationText, !notification.read && styles.unreadText]}>
+                          {notification.message}
+                        </Text>
+                        <Text style={styles.notificationTime}>
+                          {new Date(notification.timestamp).toLocaleString()}
+                        </Text>
+                      </View>
+                      <View style={styles.notificationActions}>
+                        {!notification.read && (
+                          <TouchableOpacity
+                            style={styles.notificationActionButton}
+                            onPress={() => handleMarkAsRead(notification.id)}
+                          >
+                            <Check size={16} color="#1E40AF" />
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          style={styles.notificationActionButton}
+                          onPress={() => handleDeleteNotification(notification.id)}
+                        >
+                          <Trash2 size={16} color="#DC2626" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))
+                )}
+              </View>
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalSecondaryButton}
+                  onPress={() => setShowNotificationModal(false)}
+                >
+                  <Text style={styles.modalSecondaryButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
       </SafeAreaView>
     </ErrorBoundary>
   );
@@ -1189,23 +1333,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#1F2937',
     fontFamily: 'Inter-SemiBold',
-  },
-  bellButton: {
-    padding: 7,
-    borderRadius: 18,
-    position: 'relative',
-  },
-  notifDot: {
-    position: 'absolute',
-    right: 2,
-    top: 5,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-    zIndex: 20,
-    borderWidth: 1.5,
-    borderColor: '#fff',
   },
   profileCard: {
     backgroundColor: '#F9FAFB',
@@ -1768,5 +1895,125 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
+  },
+  // New styles for notification modal
+  modalSubtext: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  notificationList: {
+    maxHeight: Dimensions.get('window').height * 0.4, // Limit height for scrollability
+    marginTop: 16,
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  unreadNotification: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#1E40AF',
+  },
+  notificationText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    flex: 1,
+  },
+  unreadText: {
+    fontFamily: 'Inter-SemiBold',
+    color: '#1E40AF',
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#1E40AF',
+    marginLeft: 12,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  modalSecondaryButton: {
+    backgroundColor: '#E5E7EB',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  modalSecondaryButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+  },
+  bellButton: {
+    position: 'relative',
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#DC2626',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  notifBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+  },
+  // New styles for notification modal action buttons
+  modalActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    gap: 8,
+    marginHorizontal: 5,
+  },
+  modalActionButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1E40AF',
+  },
+  emptyNotificationText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  notificationContent: {
+    flex: 1,
+  },
+  notificationTime: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  notificationActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  notificationActionButton: {
+    padding: 8,
   },
 });

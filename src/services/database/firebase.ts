@@ -1887,25 +1887,27 @@ export const databaseService = {
   },
 
   onNotificationsChange(userId: string, callback: (notifications: any[]) => void) {
-    const notificationsRef = ref(database, 'notifications');
+    console.log('🔔 Setting up notifications listener for user:', userId);
+    const notificationsRef = ref(database, `notifications/${userId}`);
     
     const unsubscribe = onValue(notificationsRef, (snapshot) => {
+      console.log('🔔 Notifications update received for user:', userId);
       if (snapshot.exists()) {
         const notifications: any[] = [];
         
         snapshot.forEach((childSnapshot) => {
           const notificationData = childSnapshot.val();
-          // Filter notifications by userId
-          if (notificationData.userId === userId) {
-            notifications.push({
-              id: childSnapshot.key,
-              ...notificationData
-            });
-          }
+          notifications.push({
+            id: childSnapshot.key,
+            ...notificationData
+          });
         });
         
-        callback(notifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+        console.log('🔔 Found notifications:', notifications.length);
+        const sortedNotifications = notifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        callback(sortedNotifications);
       } else {
+        console.log('🔔 No notifications found for user:', userId);
         callback([]);
       }
     });
