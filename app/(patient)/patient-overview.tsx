@@ -420,7 +420,17 @@ export default function PatientOverviewScreen() {
                     <View style={styles.consultationInfo}>
                       <Text style={styles.consultationType}>{activeAppointments[0]?.type || 'Consultation'}</Text>
                       <Text style={styles.consultationDate}>
-                        {activeAppointments[0]?.appointmentDate || 'N/A'} at {activeAppointments[0]?.appointmentTime || 'N/A'}
+                        {activeAppointments[0]?.appointmentDate || 'N/A'} at {(() => {
+                          const timeString = activeAppointments[0]?.appointmentTime;
+                          if (!timeString) return 'N/A';
+                          // Handle time strings that already have AM/PM
+                          if (timeString.includes('AM') || timeString.includes('PM')) {
+                            // Remove any duplicate AM/PM and return clean format
+                            const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
+                            return cleanTime.trim();
+                          }
+                          return timeString;
+                        })()}
                       </Text>
                       <View style={styles.statusContainer}>
                         <View style={[
@@ -549,10 +559,20 @@ export default function PatientOverviewScreen() {
                         <View style={styles.appointmentInfo}>
                           <Text style={styles.appointmentType}>{appointment?.type || 'Appointment'}</Text>
                           <Text style={styles.appointmentDate}>
-                            {appointment?.appointmentDate || 'Date not specified'} at {appointment?.appointmentTime || 'Time not specified'}
+                            {appointment?.appointmentDate || 'Date not specified'} at {(() => {
+                              const timeString = appointment?.appointmentTime;
+                              if (!timeString) return 'Time not specified';
+                              // Handle time strings that already have AM/PM
+                              if (timeString.includes('AM') || timeString.includes('PM')) {
+                                // Remove any duplicate AM/PM and return clean format
+                                const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
+                                return cleanTime.trim();
+                              }
+                              return timeString;
+                            })()}
                           </Text>
                           <Text style={styles.appointmentDoctor}>
-                            Dr. {safeDataAccess.getUserFullName(appointment, 'Unknown Doctor')}
+                            {safeDataAccess.getAppointmentDoctorName(appointment, 'Dr. Unknown Doctor')}
                           </Text>
                         </View>
                         <View style={styles.appointmentStatus}>

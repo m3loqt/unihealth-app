@@ -32,6 +32,7 @@ import {
 import { router } from 'expo-router';
 import { databaseService } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
+import { formatClinicAddress } from '../../../src/utils/formatting';
 
 // Map services to icons
 const SERVICE_ICONS = {
@@ -135,27 +136,6 @@ export default function BookVisitScreen() {
       'medical_center': 'Medical Center',
     };
     return typeMap[type] || 'Clinic';
-  };
-
-  const formatClinicAddress = (clinic: Clinic) => {
-    // Check for new address format (address, city, province)
-    if (clinic.address && clinic.city && clinic.province) {
-      const parts = [
-        clinic.address,
-        clinic.city,
-        clinic.province,
-        clinic.zipCode
-      ].filter(Boolean);
-      return parts.join(', ');
-    }
-    
-    // Check for old address format (addressLine)
-    if (clinic.addressLine) {
-      return clinic.addressLine;
-    }
-    
-    // Fallback
-    return 'Address not available';
   };
 
   if (loading) {

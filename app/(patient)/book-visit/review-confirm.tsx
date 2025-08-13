@@ -12,12 +12,13 @@ import {
   Pressable,
   Alert,
 } from 'react-native';
-import { ChevronLeft, Calendar, Clock, FileText, MapPin, CircleCheck as CheckCircle, X, Building } from 'lucide-react-native';
+import { ChevronLeft, Calendar, Clock, FileText, MapPin, CircleCheck as CheckCircle, X, Building, User } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
+import { formatClinicAddress } from '../../../src/utils/formatting';
 
 // Color constants (match previous screens)
 const BLUE = '#2563EB';
@@ -58,6 +59,7 @@ export default function ReviewConfirmScreen() {
       lastName: parts.slice(1).join(' ') || 'General'
     };
   };
+
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
 
@@ -101,26 +103,23 @@ export default function ReviewConfirmScreen() {
     try {
       // Create appointment data matching your database structure
       const doctorNameParts = getDoctorNameParts(doctorName);
+      
+      // Get patient name from user profile (using the new structure)
+      const patientFirstName = user.name ? user.name.split(' ')[0] : '';
+      const patientLastName = user.name ? user.name.split(' ').slice(1).join(' ') : '';
+      
       const appointmentData = {
         appointmentDate: selectedDate as string,
         appointmentTime: selectedTime as string,
-        bookedByUserFirstName: user.name ? user.name.split(' ')[0] : '',
-        bookedByUserId: user.uid,
-        bookedByUserLastName: user.name ? user.name.split(' ').slice(1).join(' ') : '',
         clinicId: clinicId as string,
         clinicName: clinicName as string,
         createdAt: new Date().toISOString(),
-        doctorFirstName: doctorNameParts.firstName,
         doctorId: doctorId as string,
-        doctorLastName: doctorNameParts.lastName,
         lastUpdated: new Date().toISOString(),
-        notes: (notes as string) || '',
-        patientComplaint: [selectedPurpose as string],
-        patientFirstName: user.name ? user.name.split(' ')[0] : '',
+        appointmentPurpose: selectedPurpose as string,
+        additionalNotes: (notes as string) || '',
         patientId: user.uid,
-        patientLastName: user.name ? user.name.split(' ').slice(1).join(' ') : '',
         sourceSystem: 'UniHealth_Patient_App',
-        specialty: doctorSpecialty as string,
         status: 'pending' as const,
         type: 'general_consultation'
       };
@@ -196,10 +195,17 @@ export default function ReviewConfirmScreen() {
             </View>
             <View style={styles.clinicInfo}>
               <Text style={styles.clinicName}>{clinic.name}</Text>
-              {clinicData?.address && (
+              {clinicData && (
                 <View style={styles.locationContainer}>
                   <MapPin size={14} color="#6B7280" />
-                  <Text style={styles.locationText}>{clinicData.address}</Text>
+                  <Text style={styles.locationText}>{formatClinicAddress(clinicData)}</Text>
+                </View>
+              )}
+              {/* Add generalist name below address */}
+              {doctorName && (
+                <View style={styles.doctorContainer}>
+                  <User size={14} color="#6B7280" />
+                  <Text style={styles.doctorText}>{doctorName}</Text>
                 </View>
               )}
               {clinicData?.operatingHours && (
@@ -530,6 +536,17 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     flex: 1,
     lineHeight: 19,
+  },
+  doctorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  doctorText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginLeft: 5,
   },
   dividerSubtle: {
     height: 1,
