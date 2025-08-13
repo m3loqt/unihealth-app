@@ -7,7 +7,7 @@ export interface UseReferralsReturn {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  updateReferralStatus: (referralId: string, status: 'accepted' | 'declined', declineReason?: string, specialistNotes?: string) => Promise<void>;
+  updateReferralStatus: (referralId: string, status: 'confirmed' | 'cancelled', declineReason?: string, specialistNotes?: string) => Promise<void>;
   getReferralById: (referralId: string) => Promise<Referral | null>;
 }
 
@@ -39,7 +39,7 @@ export const useReferrals = (): UseReferralsReturn => {
 
   const updateReferralStatus = useCallback(async (
     referralId: string, 
-    status: 'accepted' | 'declined', 
+    status: 'confirmed' | 'cancelled', 
     declineReason?: string, 
     specialistNotes?: string
   ): Promise<void> => {

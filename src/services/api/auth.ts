@@ -85,13 +85,13 @@ export interface SignUpData {
 }
 
 export interface UserNode {
-  address?: string;
-  contactNumber?: string;
   createdAt: string;
   email: string;
   firstName: string;
+  middleName?: string;
   lastName: string;
   patientId?: string;
+  doctorId?: string;
   role: 'patient' | 'specialist';
   passwordResetPending?: boolean;
   pendingPassword?: string;
@@ -101,7 +101,9 @@ export interface UserNode {
 }
 
 export interface PatientNode {
+  address?: string;
   bloodType?: string;
+  contactNumber?: string;
   createdAt: string;
   dateOfBirth?: string;
   emergencyContact?: {
@@ -113,6 +115,31 @@ export interface PatientNode {
   gender?: string;
   lastName: string;
   lastUpdated?: string;
+  userId: string;
+}
+
+export interface DoctorNode {
+  address?: string;
+  civilStatus?: string;
+  clinicAffiliations?: string[];
+  contactNumber?: string;
+  createdAt: string;
+  dateOfBirth?: string;
+  email?: string;
+  firstName: string;
+  gender?: string;
+  isGeneralist?: boolean;
+  isSpecialist?: boolean;
+  lastLogin?: string;
+  lastName: string;
+  medicalLicenseNumber?: string;
+  middleName?: string;
+  prcExpiryDate?: string;
+  prcId?: string;
+  professionalFee?: number;
+  profileImageUrl?: string;
+  specialty?: string;
+  status?: string;
   userId: string;
 }
 
@@ -223,18 +250,15 @@ export const authService = {
                 
                 console.log('Password reset completed successfully');
                 
-                // Return the user profile with the new Firebase Auth UID
-                const userProfile: UserProfile = {
-                  uid: newUserCredential.user.uid, // Use new Firebase Auth UID
-                  email: userData.userData.email,
-                  role: userData.userData.role,
-                  name: `${userData.userData.firstName} ${userData.userData.lastName}`,
-                  phone: userData.userData.contactNumber || undefined,
-                  address: userData.userData.address || undefined,
-                  dateOfBirth: undefined, // Will be populated if needed
-                  gender: undefined, // Will be populated if needed
-                  emergencyContact: undefined, // Will be populated if needed
-                };
+                                 // Return the user profile with the new Firebase Auth UID
+                 const userProfile: UserProfile = {
+                   uid: newUserCredential.user.uid, // Use new Firebase Auth UID
+                   email: userData.userData.email,
+                   role: userData.userData.role,
+                   name: `${userData.userData.firstName} ${userData.userData.lastName}`,
+                   // Note: phone, address, dateOfBirth, gender, emergencyContact are in patients node
+                   // Will be populated if needed when accessing patient data
+                 };
                 
                 return userProfile;
                 
@@ -327,17 +351,17 @@ export const authService = {
           console.log('Patient data:', patientData);
         }
         
-        const userProfile: UserProfile = {
-          uid: user.uid, // Use Firebase Auth UID
-          email: userData.email,
-          role: userData.role,
-          name: `${userData.firstName} ${userData.lastName}`,
-          phone: userData.contactNumber || undefined,
-          address: userData.address || undefined,
-          dateOfBirth: patientData?.dateOfBirth || undefined,
-          gender: patientData?.gender || undefined,
-          emergencyContact: patientData?.emergencyContact || undefined,
-        };
+                 const userProfile: UserProfile = {
+           uid: user.uid, // Use Firebase Auth UID
+           email: userData.email,
+           role: userData.role,
+           name: `${userData.firstName} ${userData.lastName}`,
+           phone: patientData?.contactNumber || undefined,
+           address: patientData?.address || undefined,
+           dateOfBirth: patientData?.dateOfBirth || undefined,
+           gender: patientData?.gender || undefined,
+           emergencyContact: patientData?.emergencyContact || undefined,
+         };
         
         console.log('Created user profile from email lookup:', userProfile.name);
         return userProfile;
@@ -367,10 +391,8 @@ export const authService = {
       const patientId = user.uid;
       const currentTime = new Date().toISOString();
       
-      // Prepare user node data with null safety
+      // Prepare user node data with null safety (only immutable fields)
       const userNodeData: UserNode = {
-        address: signUpData.address || '',
-        contactNumber: signUpData.contactNumber || '',
         createdAt: currentTime,
         email: signUpData.email,
         firstName: signUpData.firstName,
@@ -379,8 +401,10 @@ export const authService = {
         role: 'patient'
       };
       
-      // Prepare patient node data with null safety
+      // Prepare patient node data with null safety (editable fields)
       const patientNodeData: PatientNode = {
+        address: signUpData.address || '',
+        contactNumber: signUpData.contactNumber || '',
         createdAt: currentTime,
         dateOfBirth: signUpData.dateOfBirth || '',
         emergencyContact: signUpData.emergencyContactName ? {
@@ -474,17 +498,15 @@ export const authService = {
       if (snapshot.exists()) {
         const userData = snapshot.val() as UserNode;
         
-        // Create UserProfile with null safety
-        const userProfile: UserProfile = {
-          uid: uid,
-          email: userData.email,
-          role: userData.role,
-          name: `${userData.firstName} ${userData.lastName}`,
-          phone: userData.contactNumber || undefined,
-          address: userData.address || undefined,
-          // Note: dateOfBirth and emergencyContact are in patients node
-          // We'll get those separately if needed
-        };
+                 // Create UserProfile with null safety
+         const userProfile: UserProfile = {
+           uid: uid,
+           email: userData.email,
+           role: userData.role,
+           name: `${userData.firstName} ${userData.lastName}`,
+           // Note: phone, address, dateOfBirth and emergencyContact are in patients node
+           // We'll get those separately if needed
+         };
         
         return userProfile;
       }
@@ -555,17 +577,17 @@ export const authService = {
           console.log('Patient data:', patientData);
         }
         
-        const userProfile: UserProfile = {
-          uid: uid,
-          email: userData.email,
-          role: userData.role,
-          name: `${userData.firstName} ${userData.lastName}`,
-          phone: userData.contactNumber || undefined,
-          address: userData.address || undefined,
-          dateOfBirth: patientData?.dateOfBirth || undefined,
-          gender: patientData?.gender || undefined,
-          emergencyContact: patientData?.emergencyContact || undefined,
-        };
+                 const userProfile: UserProfile = {
+           uid: uid,
+           email: userData.email,
+           role: userData.role,
+           name: `${userData.firstName} ${userData.lastName}`,
+           phone: patientData?.contactNumber || undefined,
+           address: patientData?.address || undefined,
+           dateOfBirth: patientData?.dateOfBirth || undefined,
+           gender: patientData?.gender || undefined,
+           emergencyContact: patientData?.emergencyContact || undefined,
+         };
         
         console.log('Created complete user profile:', userProfile.name);
         return userProfile;

@@ -83,7 +83,6 @@ export const formatAppointmentStatus = (status: string): string => {
     pending: 'Pending',
     confirmed: 'Confirmed',
     completed: 'Completed',
-    canceled: 'Canceled',
     cancelled: 'Cancelled',
   };
   
@@ -261,7 +260,7 @@ export const formatClinicInfo = (clinic: any): string => {
     ].filter(Boolean);
     addressInfo = parts.join(', ');
   }
-  // Check for old address format (addressLine)
+  // Check for old address format (addressLine) as fallback
   else if (clinic.addressLine) {
     addressInfo = clinic.addressLine;
   }
@@ -276,6 +275,34 @@ export const formatClinicInfo = (clinic: any): string => {
   ].filter(Boolean);
   
   return parts.join(' • ');
+};
+
+/**
+ * Format clinic address with fallback to addressLine
+ * @param clinic - Clinic object
+ * @returns Formatted address string
+ */
+export const formatClinicAddress = (clinic: any): string => {
+  if (!clinic) return 'Address not available';
+  
+  // Check for new address format (address, city, province)
+  if (clinic.address && clinic.city && clinic.province) {
+    const parts = [
+      clinic.address,
+      clinic.city,
+      clinic.province,
+      clinic.zipCode
+    ].filter(Boolean);
+    return parts.join(', ');
+  }
+  
+  // Check for old address format (addressLine) as fallback
+  if (clinic.addressLine) {
+    return clinic.addressLine;
+  }
+  
+  // Fallback
+  return 'Address not available';
 };
 
 /**

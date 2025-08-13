@@ -31,7 +31,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { databaseService, Appointment, MedicalHistory } from '@/services/database/firebase';
-import MedicalHistoryView from '../components/MedicalHistoryView';
+import { AppointmentDetailsModal } from '../../../src/components';
 import { safeDataAccess } from '@/utils/safeDataAccess';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
@@ -41,21 +41,24 @@ import { performanceUtils } from '@/utils/performance';
 export default function AppointmentsScreen() {
   const { filter } = useLocalSearchParams();
   const { user } = useAuth();
-  const filters = ['All', 'Pending', 'Confirmed', 'Completed', 'Canceled'];
+  const filters = ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
   const [activeFilter, setActiveFilter] = useState('All');
   const [showModal, setShowModal] = useState(false);
   const [modalAppointment, setModalAppointment] = useState<Appointment | null>(null);
   
   // Function to open modal and load medical history if needed
-  const openAppointmentModal = (appointment: Appointment) => {
+  const openAppointmentModal = async (appointment: Appointment) => {
     setModalAppointment(appointment);
     setShowModal(true);
     
     // Clear any previous medical history
     setMedicalHistory(null);
     
-    // Auto-load medical history for completed or confirmed appointments
-    if (appointment.status === 'completed' || appointment.status === 'confirmed') {
+    // Load clinic and specialist data for the appointment
+    await loadAppointmentData(appointment);
+    
+    // Auto-load medical history for completed appointments only
+    if (appointment.status === 'completed') {
       loadMedicalHistory(appointment, 'appointment');
     }
     
@@ -152,8 +155,26 @@ export default function AppointmentsScreen() {
     loadAppointments();
   };
 
+  // Load clinic and specialist data for an appointment
+  const loadAppointmentData = async (appointment: Appointment) => {
+    try {
+      // Load clinic data if not already loaded
+      if (appointment.clinicId && !clinicData[appointment.clinicId]) {
+        const clinic = await databaseService.getClinicById(appointment.clinicId);
+        setClinicData(prev => ({ ...prev, [appointment.clinicId]: clinic }));
+      }
+      
+      // Load specialist data if not already loaded
+      if (appointment.doctorId && !specialistData[appointment.doctorId]) {
+        const specialist = await databaseService.getDoctorById(appointment.doctorId);
+        setSpecialistData(prev => ({ ...prev, [appointment.doctorId]: specialist }));
+      }
+    } catch (error) {
+      console.error('Error loading appointment data:', error);
+    }
+  };
+
   const loadMedicalHistory = async (appointment: Appointment, source: 'appointment' | 'referral' = 'appointment') => {
-    Alert.alert('Debug', 'Medical History function called!');
     console.log('🚀 LOAD MEDICAL HISTORY FUNCTION CALLED!');
     console.log('=== MEDICAL HISTORY DEBUG START ===');
     console.log('Appointment object:', appointment);
@@ -369,7 +390,9 @@ export default function AppointmentsScreen() {
       try {
         // Handle time strings that already have AM/PM
         if (timeString.includes('AM') || timeString.includes('PM')) {
-          return timeString;
+          // Remove any duplicate AM/PM and return clean format
+          const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
+          return cleanTime.trim();
         }
         
         const [hours, minutes] = timeString.split(':');
@@ -414,10 +437,10 @@ export default function AppointmentsScreen() {
           </View>
           <View style={styles.referralStatusBadge}>
             <Text style={styles.referralStatusText}>
-              {referral?.status === 'accepted' ? 'Accepted' :
-               referral?.status === 'pending_acceptance' ? 'Pending' :
+              {referral?.status === 'confirmed' ? 'Confirmed' :
+               referral?.status === 'pending' ? 'Pending' :
                referral?.status === 'completed' ? 'Completed' :
-               referral?.status === 'declined' ? 'Declined' :
+               referral?.status === 'cancelled' ? 'Cancelled' :
                referral?.status === 'pending' ? 'Pending' :
                referral?.status === 'confirmed' ? 'Confirmed' :
                referral?.status === 'canceled' ? 'Canceled' : 'Unknown'}
@@ -485,6 +508,13 @@ export default function AppointmentsScreen() {
     const formatDisplayTime = (timeString: string) => {
       if (!timeString) return 'Time not specified';
       try {
+        // Handle time strings that already have AM/PM
+        if (timeString.includes('AM') || timeString.includes('PM')) {
+          // Remove any duplicate AM/PM and return clean format
+          const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
+          return cleanTime.trim();
+        }
+        
         const [hours, minutes] = timeString.split(':');
         const hour = parseInt(hours);
         const ampm = hour >= 12 ? 'PM' : 'AM';
@@ -495,8 +525,18 @@ export default function AppointmentsScreen() {
       }
     };
 
-    const doctorName = safeDataAccess.getUserFullName(appointment, 'Doctor not specified');
-    const doctorInitials = safeDataAccess.getUserInitials(appointment, 'DR');
+    const doctorName = safeDataAccess.getAppointmentDoctorName(appointment, 'Doctor not specified');
+    const doctorInitials = (() => {
+      const firstName = appointment.doctorFirstName || '';
+      const lastName = appointment.doctorLastName || '';
+      if (firstName && lastName) {
+        return `${firstName[0]}${lastName[0]}`.toUpperCase();
+      }
+      if (firstName) {
+        return firstName[0].toUpperCase();
+      }
+      return 'DR';
+    })();
 
     return (
       <View key={appointment.id} style={styles.appointmentCard}>
@@ -539,10 +579,10 @@ export default function AppointmentsScreen() {
           </View>
         </View>
 
-        {appointment.notes && (
+        {appointment.additionalNotes && (
           <View style={styles.notesSection}>
             <Text style={styles.notesLabel}>Notes:</Text>
-            <Text style={styles.notesText}>{appointment.notes}</Text>
+            <Text style={styles.notesText}>{appointment.additionalNotes}</Text>
           </View>
         )}
 
@@ -566,8 +606,8 @@ export default function AppointmentsScreen() {
                 onPress={() => {
                   console.log('🔍 VIEW DETAILS BUTTON PRESSED (COMPLETED APPOINTMENT)!');
                   console.log('Appointment being passed:', appointment);
-                  // For completed appointments, show medical history modal
-                  openAppointmentModal(appointment);
+                  // For completed appointments, route to visit overview
+                  router.push(`/(patient)/visit-overview?id=${appointment.id}`);
                 }}
               >
                 <Text style={styles.secondaryButtonText}>View Details</Text>
@@ -579,8 +619,8 @@ export default function AppointmentsScreen() {
               onPress={() => {
                 console.log('🔍 VIEW DETAILS BUTTON PRESSED (CONFIRMED APPOINTMENT)!');
                 console.log('Appointment being passed:', appointment);
-                // For confirmed appointments, show medical history modal
-                openAppointmentModal(appointment);
+                // For confirmed appointments, route to visit overview
+                router.push(`/(patient)/visit-overview?id=${appointment.id}`);
               }}
             >
               <Text style={styles.secondaryButtonText}>View Details</Text>
@@ -589,7 +629,8 @@ export default function AppointmentsScreen() {
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={ () => {
-                openAppointmentModal(appointment);
+                // For other appointment statuses, route to visit overview
+                router.push(`/(patient)/visit-overview?id=${appointment.id}`);
               }}
             >
               <Text style={styles.secondaryButtonText}>View Details</Text>
@@ -604,235 +645,23 @@ export default function AppointmentsScreen() {
 
   // Get filtered appointments from memoized value
 
-  // === Appointment Details Modal (Improved UI) ===
+  // === Appointment Details Modal (Unified with Tabs) ===
   const renderAppointmentModal = () => {
     if (!modalAppointment) return null;
-    const a = modalAppointment;
-
-    // Utility to render label-value row
-    const Row = ({ label, value, isLast }: { label: string; value: string; isLast: boolean }) => (
-      <View style={[
-        styles.row,
-        !isLast && styles.rowDivider
-      ]}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        <Text style={styles.rowValue} numberOfLines={2}>{value}</Text>
-      </View>
-    );
-
-    // Format time for display
-    const formatDisplayTime = (timeString: string) => {
-      try {
-        // Handle time strings that already have AM/PM
-        if (timeString.includes('AM') || timeString.includes('PM')) {
-          return timeString;
-        }
-        
-        const [hours, minutes] = timeString.split(':');
-        const hour = parseInt(hours);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        const displayHour = hour % 12 || 12;
-        return `${displayHour}:${minutes} ${ampm}`;
-      } catch (error) {
-        return timeString;
-      }
-    };
-
-    // Check if this is a referral appointment
-    const isReferral = a.relatedReferralId && referrals[a.relatedReferralId];
-    const referral = isReferral ? referrals[a.relatedReferralId] : null;
-    const isCompleted = a.status === 'completed';
-
-    // Modal data using correct Appointment properties
-    const fields = isReferral ? [
-      // Referral-specific fields
-      { label: "Referring Clinic", value: referral?.referringClinicName || 'Not specified' },
-      { 
-        label: "Practice Location", 
-        value: (() => {
-          const clinicId = referral?.referringClinicId;
-          const clinic = clinicId ? clinicData[clinicId] : null;
-          return clinic?.address || 'Address not specified';
-        })()
-      },
-      { 
-        label: "Specialist", 
-        value: (referral?.assignedSpecialistFirstName && referral?.assignedSpecialistLastName
-          ? `${referral.assignedSpecialistFirstName} ${referral.assignedSpecialistLastName}`
-          : 'Specialist not specified')
-      },
-      { 
-        label: "Specialty", 
-        value: (() => {
-                       const specialistId = referral?.assignedSpecialistId;
-             const specialist = specialistId ? specialistData[specialistId] : null;
-             console.log('Specialist ID:', specialistId);
-             console.log('Specialist Data:', specialist?.specialty);
-             return specialist?.specialty || specialist?.specialization || 'Not specified';
-        })()
-      },
-      { 
-        label: "Date", 
-        value: (() => {
-          try {
-            const date = new Date(a.appointmentDate);
-            return date.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            });
-          } catch (error) {
-            return a.appointmentDate || 'Not specified';
-          }
-        })()
-      },
-      { label: "Time", value: formatDisplayTime(a.appointmentTime) || 'Not specified' },
-      { label: "Purpose", value: referral?.initialReasonForReferral || 'Not specified' },
-      { 
-        label: "Status", 
-        value: (() => {
-          // Handle referral-specific statuses
-          if (isReferral && referral) {
-            switch (referral.status) {
-              case 'accepted':
-                return 'Accepted';
-              case 'pending_acceptance':
-                return 'Pending';
-              case 'completed':
-                return 'Completed';
-              case 'declined':
-                return 'Declined';
-              default:
-                return capitalize(referral.status || 'Unknown');
-            }
-          }
-          // Handle regular appointment statuses
-          switch (a.status) {
-            case 'confirmed':
-              return 'Confirmed';
-            case 'pending':
-              return 'Pending';
-            case 'completed':
-              return 'Completed';
-            case 'canceled':
-              return 'Canceled';
-            default:
-              return capitalize(a.status || 'Unknown');
-          }
-        })()
-      },
-    ] : [
-      // Regular appointment fields
-      { label: "Clinic Name", value: a.clinicName || 'Not specified' },
-      { 
-        label: "Doctor", 
-        value: `${a.doctorFirstName || ''} ${a.doctorLastName || ''}`.trim() || 'Not specified' 
-      },
-      { label: "Specialty", value: a.specialty || 'General Practice' },
-      { 
-        label: "Date", 
-        value: (() => {
-          try {
-            const date = new Date(a.appointmentDate);
-            return date.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            });
-          } catch (error) {
-            return a.appointmentDate || 'Not specified';
-          }
-        })()
-      },
-      { label: "Time", value: formatDisplayTime(a.appointmentTime) || 'Not specified' },
-      { label: "Purpose", value: a.patientComplaint?.join(', ') || 'Not specified' },
-      ...(a.notes ? [{ label: "Additional Notes", value: a.notes }] : []),
-      { 
-        label: "Status", 
-        value: capitalize(a.status) 
-      },
-    ];
-
+    
     return (
-      <Modal
+      <AppointmentDetailsModal
         visible={showModal}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setShowModal(false)}
-      >
-        <View style={styles.backdrop}>
-          <View style={styles.card}>
-            {/* Modal Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>
-                {(isCompleted || a.status === 'confirmed') ? 'Appointment & Medical History' : 'Appointment Details'}
-              </Text>
-              <TouchableOpacity
-                style={styles.closeBtn}
-                onPress={() => {
-                  setShowModal(false);
-                  // Clear medical history when modal is closed
-                  setMedicalHistory(null);
-                }}
-                hitSlop={{ top: 12, left: 12, right: 12, bottom: 12 }}
-              >
-                <Text style={styles.closeX}>×</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.contentWrap}>
-              {fields.map((f, i) => (
-                <Row
-                  key={i}
-                  label={f.label}
-                  value={f.value}
-                  isLast={i === fields.length - 1}
-                />
-              ))}
-            </View>
-
-            {/* Show Medical History for completed and confirmed appointments */}
-            {(isCompleted || a.status === 'confirmed') && medicalHistory && (
-              <>
-                <View style={styles.modalDivider} />
-                <View style={styles.medicalHistorySection}>
-                  <Text style={styles.medicalHistoryTitle}>Medical History</Text>
-                  <MedicalHistoryView medicalHistory={medicalHistory} />
-                </View>
-              </>
-            )}
-
-            {/* Show loading state for medical history */}
-            {(isCompleted || a.status === 'confirmed') && loadingMedicalHistory && (
-              <>
-                <View style={styles.modalDivider} />
-                <View style={styles.medicalHistorySection}>
-                  <Text style={styles.medicalHistoryTitle}>Medical History</Text>
-                  <View style={styles.medicalHistoryLoadingContainer}>
-                    <Text style={styles.medicalHistoryLoadingText}>Loading medical history...</Text>
-                  </View>
-                </View>
-              </>
-            )}
-
-            {/* Show empty state for medical history */}
-            {(isCompleted || a.status === 'confirmed') && !loadingMedicalHistory && !medicalHistory && (
-              <>
-                <View style={styles.modalDivider} />
-                <View style={styles.medicalHistorySection}>
-                  <Text style={styles.medicalHistoryTitle}>Medical History</Text>
-                  <View style={styles.medicalHistoryEmptyContainer}>
-                    <Text style={styles.medicalHistoryEmptyTitle}>No Medical History Available</Text>
-                    <Text style={styles.medicalHistoryEmptyText}>
-                      Medical history for this appointment has not been recorded yet.
-                    </Text>
-                  </View>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
+        onClose={() => {
+          setShowModal(false);
+          setMedicalHistory(null);
+        }}
+        appointment={modalAppointment}
+        medicalHistory={medicalHistory}
+        loadingMedicalHistory={loadingMedicalHistory}
+        clinicData={clinicData[modalAppointment.clinicId]}
+        doctorData={specialistData[modalAppointment.doctorId]}
+      />
     );
   };
 

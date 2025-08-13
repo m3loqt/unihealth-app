@@ -18,28 +18,28 @@ export interface Appointment {
   id?: string;
   appointmentDate: string;
   appointmentTime: string;
-  bookedByUserFirstName: string;
-  bookedByUserId: string;
-  bookedByUserLastName: string;
+  bookedByUserFirstName?: string; // Optional for walk-ins
+  bookedByUserId?: string; // Optional for walk-ins
+  bookedByUserLastName?: string; // Optional for walk-ins
   clinicId: string;
-  clinicName: string;
+  clinicName?: string; // Optional for walk-ins
   createdAt: string;
-  doctorFirstName: string;
+  doctorFirstName?: string; // Optional for walk-ins
   doctorId: string;
-  doctorLastName: string;
+  doctorLastName?: string; // Optional for walk-ins
   lastUpdated: string;
-  notes?: string;
-  patientComplaint?: string[];
-  patientFirstName: string;
+  appointmentPurpose?: string; // Changed from patientComplaint to appointmentPurpose
+  additionalNotes?: string; // Changed from notes
   patientId: string;
-  patientLastName: string;
-  relatedReferralId?: string;
+  patientFirstName?: string; // Added back for UI display
+  patientLastName?: string; // Added back for UI display
+  relatedReferralId?: string; // Added back for referral appointments
+  sourceSystem?: string; // Optional for walk-ins
+  specialty?: string; // Added back for UI display
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  type: 'general_consultation' | 'walk-in' | string;
   consultationId?: string;
   appointmentConsultationId?: string;
-  sourceSystem: string;
-  specialty: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'canceled';
-  type: string;
 }
 
 export interface MedicalHistory {
@@ -52,6 +52,7 @@ export interface MedicalHistory {
     code: string;
     description: string;
   }>;
+  differentialDiagnosis?: string;
   followUpInstructions?: string;
   lastUpdated: string;
   patientId: string;
@@ -64,6 +65,7 @@ export interface MedicalHistory {
     frequency: string;
     medication: string;
   }>;
+  presentIllnessHistory?: string;
   provider: {
     firstName: string;
     id: string;
@@ -75,6 +77,13 @@ export interface MedicalHistory {
     id: string;
     type: string;
   };
+  reviewOfSymptoms?: string;
+  soapNotes?: {
+    subjective?: string;
+    objective?: string;
+    assessment?: string;
+    plan?: string;
+  };
   treatmentPlan?: string;
   type: string;
   labResultsSummary?: Array<{
@@ -82,6 +91,8 @@ export interface MedicalHistory {
     value: string;
     notes?: string;
   }>;
+  allergies?: string;
+  vitals?: string;
 }
 
 export interface Prescription {
@@ -203,7 +214,7 @@ export interface Referral {
   scheduleSlotPath: string;
   sourceSystem: string;
   specialistScheduleId: string;
-  status: 'pending_acceptance' | 'accepted' | 'declined' | 'completed';
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   declineReason?: string;
   specialistNotes?: string;
 }
@@ -232,16 +243,23 @@ export const databaseService = {
         const appointments: Appointment[] = [];
         const field = role === 'patient' ? 'patientId' : 'doctorId';
         
+        // Process appointments sequentially to handle async normalization
+        const promises = [];
         snapshot.forEach((childSnapshot) => {
           const appointmentData = childSnapshot.val();
           // Filter appointments based on user role
           if (appointmentData[field] === userId) {
-            appointments.push({
+            // Handle both regular appointments and walk-in appointments
+            const promise = this.normalizeAppointmentData(appointmentData).then(normalizedAppointment => ({
               id: childSnapshot.key,
-              ...appointmentData
-            });
+              ...normalizedAppointment
+            }));
+            promises.push(promise);
           }
         });
+        
+        const resolvedAppointments = await Promise.all(promises);
+        appointments.push(...resolvedAppointments);
         
         return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
       }
@@ -254,6 +272,88 @@ export const databaseService = {
         console.error('Get appointments error:', error);
       }
       return [];
+    }
+  },
+
+  // Helper method to normalize appointment data from different structures
+  async normalizeAppointmentData(appointmentData: any): Promise<any> {
+    // Handle walk-in appointments that use 'date' and 'time' instead of 'appointmentDate' and 'appointmentTime'
+    if (appointmentData.date && appointmentData.time && !appointmentData.appointmentDate && !appointmentData.appointmentTime) {
+      const normalized = {
+        ...appointmentData,
+        appointmentDate: appointmentData.date,
+        appointmentTime: appointmentData.time,
+        // Remove the old field names to avoid confusion
+        date: undefined,
+        time: undefined
+      };
+
+      // Always enrich with data from respective nodes
+      const enrichedData = await this.enrichAppointmentData(normalized);
+      return enrichedData;
+    }
+    
+    // For regular appointments, always enrich with data from respective nodes
+    const enrichedData = await this.enrichAppointmentData(appointmentData);
+    return enrichedData;
+  },
+
+  // Helper method to fetch missing data from respective nodes
+  async enrichAppointmentData(appointmentData: any): Promise<any> {
+    const enriched = { ...appointmentData };
+
+    try {
+      // Always fetch clinic data if clinicId is available
+      if (appointmentData.clinicId) {
+        const clinicData = await this.getClinicById(appointmentData.clinicId);
+        if (clinicData) {
+          enriched.clinicName = clinicData.name; // Clinic interface uses 'name' field
+        }
+      }
+
+      // Always fetch doctor data if doctorId is available
+      if (appointmentData.doctorId) {
+        const doctorData = await this.getDoctorById(appointmentData.doctorId);
+        if (doctorData) {
+          enriched.doctorFirstName = doctorData.firstName; // Doctor interface uses 'firstName'
+          enriched.doctorLastName = doctorData.lastName; // Doctor interface uses 'lastName'
+        }
+      }
+
+      // Always fetch patient data if patientId is available
+      if (appointmentData.patientId) {
+        const patientData = await this.getPatientById(appointmentData.patientId);
+        if (patientData) {
+          // Patient data can come from either patients node (firstName/lastName) or users node (firstName/lastName)
+          // Both use the same field names in our new structure
+          enriched.patientFirstName = patientData.firstName;
+          enriched.patientLastName = patientData.lastName;
+        }
+      }
+
+      // For booked appointments, the patient is the one who booked it
+      if (appointmentData.patientId && appointmentData.type === 'general_consultation') {
+        enriched.bookedByUserId = appointmentData.patientId;
+        enriched.bookedByUserFirstName = enriched.patientFirstName;
+        enriched.bookedByUserLastName = enriched.patientLastName;
+      }
+
+    } catch (error) {
+      console.error('Error enriching appointment data:', error);
+    }
+
+    return enriched;
+  },
+
+  // Helper method to fetch user data by ID
+  async getUserById(userId: string): Promise<any> {
+    try {
+      const userRef = ref(database, `users/${userId}`);
+      const snapshot = await get(userRef);
+      return snapshot.exists() ? snapshot.val() : null;
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      return null;
     }
   },
 
@@ -826,15 +926,15 @@ export const databaseService = {
           if (appointment.doctorId === specialistId) {
             const patientKey = appointment.patientId;
             if (!patients.has(patientKey)) {
-              patients.set(patientKey, {
-                id: patientKey,
-                patientFirstName: appointment.patientFirstName,
-                patientLastName: appointment.patientLastName,
-                referredFrom: appointment.specialty,
-                status: appointment.status,
-                lastVisit: appointment.appointmentDate,
-                createdAt: appointment.createdAt,
-              });
+                          patients.set(patientKey, {
+              id: patientKey,
+              patientFirstName: appointment.patientFirstName || 'Unknown',
+              patientLastName: appointment.patientLastName || 'Patient',
+              referredFrom: appointment.specialty || 'General',
+              status: appointment.status,
+              lastVisit: appointment.appointmentDate,
+              createdAt: appointment.createdAt,
+            });
             }
           }
         });
@@ -854,15 +954,23 @@ export const databaseService = {
       
       if (snapshot.exists()) {
         const appointments: Appointment[] = [];
+        const promises = [];
+        
         snapshot.forEach((childSnapshot) => {
           const appointment = childSnapshot.val();
           if (appointment.doctorId === specialistId) {
-            appointments.push({
+            // Handle both regular appointments and walk-in appointments
+            const promise = this.normalizeAppointmentData(appointment).then(normalizedAppointment => ({
               id: childSnapshot.key,
-              ...appointment
-            });
+              ...normalizedAppointment
+            }));
+            promises.push(promise);
           }
         });
+        
+        const resolvedAppointments = await Promise.all(promises);
+        appointments.push(...resolvedAppointments);
+        
         return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
       }
       return [];
@@ -879,15 +987,23 @@ export const databaseService = {
       
       if (snapshot.exists()) {
         const appointments: Appointment[] = [];
+        const promises = [];
+        
         snapshot.forEach((childSnapshot) => {
           const appointment = childSnapshot.val();
           if (appointment.doctorId === specialistId && appointment.status === status) {
-            appointments.push({
+            // Handle both regular appointments and walk-in appointments
+            const promise = this.normalizeAppointmentData(appointment).then(normalizedAppointment => ({
               id: childSnapshot.key,
-              ...appointment
-            });
+              ...normalizedAppointment
+            }));
+            promises.push(promise);
           }
         });
+        
+        const resolvedAppointments = await Promise.all(promises);
+        appointments.push(...resolvedAppointments);
+        
         return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
       }
       return [];
@@ -984,26 +1100,30 @@ export const databaseService = {
 
   async getSpecialistProfile(specialistId: string): Promise<any> {
     try {
-      // First try doctors node (where specialist data is stored)
-      const specialistRef = ref(database, `doctors/${specialistId}`);
-      const specialistSnapshot = await get(specialistRef);
-      if (specialistSnapshot.exists()) {
-        return specialistSnapshot.val();
-      }
-      
-      // Fallback: try users node for backward compatibility
+      // Get data from both users and doctors nodes
       const userRef = ref(database, `users/${specialistId}`);
-      const snapshot = await get(userRef);
+      const doctorRef = ref(database, `doctors/${specialistId}`);
       
-      if (snapshot.exists()) {
-        const userData = snapshot.val();
-        // Check if this user is a specialist
-        if (userData.role === 'specialist') {
-          return userData;
-        }
+      const [userSnapshot, doctorSnapshot] = await Promise.all([
+        get(userRef),
+        get(doctorRef)
+      ]);
+      
+      let combinedProfile: any = { id: specialistId };
+      
+      // Add user data (immutable fields)
+      if (userSnapshot.exists()) {
+        const userData = userSnapshot.val();
+        combinedProfile = { ...combinedProfile, ...userData };
       }
       
-      return null;
+      // Add doctor data (editable fields)
+      if (doctorSnapshot.exists()) {
+        const doctorData = doctorSnapshot.val();
+        combinedProfile = { ...combinedProfile, ...doctorData };
+      }
+      
+      return combinedProfile;
     } catch (error) {
       console.error('Get specialist profile error:', error);
       return null;
@@ -1012,41 +1132,30 @@ export const databaseService = {
 
   async getPatientProfile(patientId: string): Promise<any> {
     try {
-      // First try to get from patients node
-      const patientRef = ref(database, `patients/${patientId}`);
-      const patientSnapshot = await get(patientRef);
-      if (patientSnapshot.exists()) {
-        return { id: patientId, ...patientSnapshot.val() };
-      }
-      
-      // If not found in patients, try users node
+      // Get data from both users and patients nodes
       const userRef = ref(database, `users/${patientId}`);
-      const userSnapshot = await get(userRef);
+      const patientRef = ref(database, `patients/${patientId}`);
+      
+      const [userSnapshot, patientSnapshot] = await Promise.all([
+        get(userRef),
+        get(patientRef)
+      ]);
+      
+      let combinedProfile: any = { id: patientId };
+      
+      // Add user data (immutable fields)
       if (userSnapshot.exists()) {
-        return { id: patientId, ...userSnapshot.val() };
+        const userData = userSnapshot.val();
+        combinedProfile = { ...combinedProfile, ...userData };
       }
       
-      // If not found in either, get from appointments data
-      const appointmentsRef = ref(database, 'appointments');
-      const appointmentsSnapshot = await get(appointmentsRef);
-      
-      if (appointmentsSnapshot.exists()) {
-        let patientData = null;
-        appointmentsSnapshot.forEach((childSnapshot) => {
-          const appointment = childSnapshot.val();
-          if (appointment.patientId === patientId && !patientData) {
-            patientData = {
-              id: patientId,
-              firstName: appointment.patientFirstName,
-              lastName: appointment.patientLastName,
-              email: appointment.bookedByUserId, // Using bookedByUserId as email
-            };
-          }
-        });
-        return patientData;
+      // Add patient data (editable fields)
+      if (patientSnapshot.exists()) {
+        const patientData = patientSnapshot.val();
+        combinedProfile = { ...combinedProfile, ...patientData };
       }
       
-      return null;
+      return combinedProfile;
     } catch (error) {
       console.error('Get patient profile error:', error);
       return null;
@@ -1065,20 +1174,20 @@ export const databaseService = {
       const userUpdates: any = {};
       const patientUpdates: any = {};
       
-      // Fields that go to users node
-      if (updates.contactNumber !== undefined) userUpdates.contactNumber = updates.contactNumber;
-      if (updates.address !== undefined) userUpdates.address = updates.address;
-      if (updates.name !== undefined) userUpdates.name = updates.name;
+      // Fields that go to users node (only immutable fields)
+      if (updates.firstName !== undefined) userUpdates.firstName = updates.firstName;
+      if (updates.lastName !== undefined) userUpdates.lastName = updates.lastName;
       if (updates.email !== undefined) userUpdates.email = updates.email;
-      if (updates.lastUpdated !== undefined) userUpdates.lastUpdated = updates.lastUpdated;
       
-      // Fields that go to patients node
+      // Fields that go to patients node (editable fields)
+      if (updates.contactNumber !== undefined) patientUpdates.contactNumber = updates.contactNumber;
+      if (updates.address !== undefined) patientUpdates.address = updates.address;
       if (updates.emergencyContact !== undefined) patientUpdates.emergencyContact = updates.emergencyContact;
       if (updates.lastUpdated !== undefined) patientUpdates.lastUpdated = updates.lastUpdated;
       
       console.log('User updates to be applied:', userUpdates);
       console.log('Patient updates to be applied:', patientUpdates);
-      console.log('Address will be written to users node:', userUpdates.address);
+      console.log('Address will be written to patients node:', patientUpdates.address);
       
       // Update users node if there are user-specific updates
       if (Object.keys(userUpdates).length > 0) {
@@ -1131,15 +1240,14 @@ export const databaseService = {
       const userUpdates: any = {};
       const doctorUpdates: any = {};
       
-      // Fields that go to users node
+      // Fields that go to users node (only immutable fields)
       if (updates.firstName !== undefined) userUpdates.firstName = updates.firstName;
       if (updates.lastName !== undefined) userUpdates.lastName = updates.lastName;
       if (updates.email !== undefined) userUpdates.email = updates.email;
-      if (updates.contactNumber !== undefined) userUpdates.contactNumber = updates.contactNumber;
-      if (updates.address !== undefined) userUpdates.address = updates.address;
-      if (updates.lastUpdated !== undefined) userUpdates.lastUpdated = updates.lastUpdated;
       
-      // Fields that go to doctors node
+      // Fields that go to doctors node (editable fields)
+      if (updates.contactNumber !== undefined) doctorUpdates.contactNumber = updates.contactNumber;
+      if (updates.address !== undefined) doctorUpdates.address = updates.address;
       if (updates.specialty !== undefined) doctorUpdates.specialty = updates.specialty;
       if (updates.yearsOfExperience !== undefined) doctorUpdates.yearsOfExperience = updates.yearsOfExperience;
       if (updates.medicalLicenseNumber !== undefined) doctorUpdates.medicalLicenseNumber = updates.medicalLicenseNumber;
@@ -1209,9 +1317,9 @@ export const databaseService = {
           if (appointment.patientId === patientId && !patientData) {
             patientData = {
               id: patientId,
-              firstName: appointment.patientFirstName,
-              lastName: appointment.patientLastName,
-              email: appointment.bookedByUserId, // Using bookedByUserId as email
+              firstName: appointment.patientFirstName || 'Unknown',
+              lastName: appointment.patientLastName || 'Patient',
+              email: appointment.bookedByUserId || '', // Using bookedByUserId as email
             };
           }
         });
@@ -1231,15 +1339,23 @@ export const databaseService = {
       
       if (snapshot.exists()) {
         const appointments: Appointment[] = [];
+        const promises = [];
+        
         snapshot.forEach((childSnapshot) => {
           const appointment = childSnapshot.val();
           if (appointment.patientId === patientId) {
-            appointments.push({
+            // Handle both regular appointments and walk-in appointments
+            const promise = this.normalizeAppointmentData(appointment).then(normalizedAppointment => ({
               id: childSnapshot.key,
-              ...appointment
-            });
+              ...normalizedAppointment
+            }));
+            promises.push(promise);
           }
         });
+        
+        const resolvedAppointments = await Promise.all(promises);
+        appointments.push(...resolvedAppointments);
+        
         return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
       }
       return [];
@@ -1351,8 +1467,8 @@ export const databaseService = {
           {
             date: appointment.appointmentDate,
             time: appointment.appointmentTime,
-            doctorName: `${appointment.doctorFirstName} ${appointment.doctorLastName}`,
-            clinicName: appointment.clinicName
+            doctorName: `${appointment.doctorFirstName || 'Dr.'} ${appointment.doctorLastName || 'Unknown'}`,
+            clinicName: appointment.clinicName || 'Clinic not specified'
           }
         );
         console.log('✅ Patient notification created with ID:', patientNotificationId);
@@ -1366,8 +1482,8 @@ export const databaseService = {
           {
             date: appointment.appointmentDate,
             time: appointment.appointmentTime,
-            patientName: `${appointment.patientFirstName} ${appointment.patientLastName}`,
-            clinicName: appointment.clinicName
+            patientName: `${appointment.patientFirstName || 'Unknown'} ${appointment.patientLastName || 'Patient'}`,
+            clinicName: appointment.clinicName || 'Clinic not specified'
           }
         );
         console.log('✅ Doctor notification created with ID:', doctorNotificationId);
@@ -1545,24 +1661,23 @@ export const databaseService = {
 
   async getMedicalHistoryByAppointment(appointmentId: string, patientId: string): Promise<MedicalHistory | null> {
     try {
-      const medicalHistoryRef = ref(database, `patientMedicalHistory/${patientId}/entries`);
+      // First, get the appointment to find the appointmentConsultationId
+      const appointment = await this.getAppointmentById(appointmentId);
+      if (!appointment || !appointment.appointmentConsultationId) {
+        console.log('No appointmentConsultationId found for appointment:', appointmentId);
+        return null;
+      }
+
+      // Use the appointmentConsultationId to get the medical history entry
+      const medicalHistoryRef = ref(database, `patientMedicalHistory/${patientId}/entries/${appointment.appointmentConsultationId}`);
       const snapshot = await get(medicalHistoryRef);
       
       if (snapshot.exists()) {
-        let foundEntry: MedicalHistory | null = null;
-        
-        snapshot.forEach((childSnapshot) => {
-          const entry = childSnapshot.val();
-          // Check if this entry is related to the specific appointment
-          if (entry.relatedAppointment && entry.relatedAppointment.id === appointmentId) {
-            foundEntry = {
-              id: childSnapshot.key!,
-              ...entry
-            };
-          }
-        });
-        
-        return foundEntry;
+        const entry = snapshot.val();
+        return {
+          id: appointment.appointmentConsultationId,
+          ...entry
+        };
       }
       return null;
     } catch (error) {
@@ -1648,7 +1763,7 @@ export const databaseService = {
     }
   },
 
-  async updateReferralStatus(referralId: string, status: 'accepted' | 'declined', declineReason?: string, specialistNotes?: string): Promise<void> {
+  async updateReferralStatus(referralId: string, status: 'confirmed' | 'cancelled', declineReason?: string, specialistNotes?: string): Promise<void> {
     try {
       console.log('🔔 Starting updateReferralStatus for referral:', referralId, 'with status:', status);
       
@@ -1683,14 +1798,14 @@ export const databaseService = {
       try {
         console.log('🔔 Creating notifications for referral status change...');
         
-        if (status === 'accepted') {
+        if (status === 'confirmed') {
           // Create patient notification
           await this.createFallbackNotification(
             referral.patientId,
             'referral',
             referralId,
-            'accepted',
-            `Your referral to ${referral.practiceLocation.roomOrUnit || 'Specialist'} at ${referral.referringClinicName} has been accepted.`
+                    'confirmed',
+        `Your referral to ${referral.practiceLocation.roomOrUnit || 'Specialist'} at ${referral.referringClinicName} has been confirmed.`
           );
           
           // Create specialist notification
@@ -1698,17 +1813,17 @@ export const databaseService = {
             referral.assignedSpecialistId,
             'referral',
             referralId,
-            'accepted',
-            `You have accepted a referral for ${referral.patientFirstName} ${referral.patientLastName}.`
+                    'confirmed',
+        `You have confirmed a referral for ${referral.patientFirstName} ${referral.patientLastName}.`
           );
-        } else if (status === 'declined') {
+        } else if (status === 'cancelled') {
           // Create patient notification
           await this.createFallbackNotification(
             referral.patientId,
             'referral',
             referralId,
-            'declined',
-            `Your referral to ${referral.practiceLocation.roomOrUnit || 'Specialist'} at ${referral.referringClinicName} has been declined.`
+                    'cancelled',
+        `Your referral to ${referral.practiceLocation.roomOrUnit || 'Specialist'} at ${referral.referringClinicName} has been cancelled.`
           );
           
           // Create specialist notification
@@ -1716,8 +1831,8 @@ export const databaseService = {
             referral.referringGeneralistId,
             'referral',
             referralId,
-            'declined',
-            `Referral for ${referral.patientFirstName} ${referral.patientLastName} has been declined by specialist.`
+                    'cancelled',
+        `Referral for ${referral.patientFirstName} ${referral.patientLastName} has been cancelled by specialist.`
           );
         }
         
@@ -1756,23 +1871,33 @@ export const databaseService = {
   onAppointmentsChange(userId: string, role: 'patient' | 'specialist', callback: (appointments: Appointment[]) => void) {
     const appointmentsRef = ref(database, 'appointments');
     
-    const unsubscribe = onValue(appointmentsRef, (snapshot) => {
+    const unsubscribe = onValue(appointmentsRef, async (snapshot) => {
       if (snapshot.exists()) {
         const appointments: Appointment[] = [];
         const field = role === 'patient' ? 'patientId' : 'doctorId';
+        const promises = [];
         
         snapshot.forEach((childSnapshot) => {
           const appointmentData = childSnapshot.val();
           // Filter appointments based on user role
           if (appointmentData[field] === userId) {
-            appointments.push({
+            // Handle both regular appointments and walk-in appointments
+            const promise = this.normalizeAppointmentData(appointmentData).then(normalizedAppointment => ({
               id: childSnapshot.key,
-              ...appointmentData
-            });
+              ...normalizedAppointment
+            }));
+            promises.push(promise);
           }
         });
         
-        callback(appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()));
+        try {
+          const resolvedAppointments = await Promise.all(promises);
+          appointments.push(...resolvedAppointments);
+          callback(appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()));
+        } catch (error) {
+          console.error('Error processing appointments in real-time listener:', error);
+          callback([]);
+        }
       } else {
         callback([]);
       }
@@ -1938,14 +2063,14 @@ export const databaseService = {
       if (userData || patientData) {
         const combinedProfile = {
           id: patientId,
-          // User data (basic info like name, email, contact, address)
+          // User data (immutable fields)
           firstName: userData?.firstName,
           lastName: userData?.lastName,
           email: userData?.email,
-          contactNumber: userData?.contactNumber,
-          address: userData?.address,
           role: userData?.role,
-          // Patient data (medical-specific info)
+          // Patient data (editable fields)
+          contactNumber: patientData?.contactNumber,
+          address: patientData?.address,
           dateOfBirth: patientData?.dateOfBirth,
           gender: patientData?.gender,
           bloodType: patientData?.bloodType,
@@ -2212,7 +2337,8 @@ export const databaseService = {
         if (snapshot.exists()) {
           const notifications = snapshot.val();
           return Object.values(notifications)
-            .sort((a: any, b: any) => b.timestamp - a.timestamp);
+            .map((n: any) => n as Notification)
+            .sort((a, b) => b.timestamp - a.timestamp);
         }
         
         return [];
@@ -2226,7 +2352,7 @@ export const databaseService = {
         if (!snapshot.exists()) return [];
         
         const notifications = snapshot.val();
-        const notificationArray = Object.values(notifications) as Notification[];
+        const notificationArray = Object.values(notifications).map((n: any) => n as Notification);
         
         // Sort by timestamp (newest first)
         const sortedNotifications = notificationArray.sort((a, b) => b.timestamp - a.timestamp);
@@ -2353,8 +2479,8 @@ export const databaseService = {
         userId,
         'referral',
         'test-referral-1',
-        'accepted',
-        'Your referral to Cardiology at Heart Institute has been accepted.'
+        'confirmed',
+        'Your referral to Cardiology at Heart Institute has been confirmed.'
       );
 
       // Create sample prescription notification
@@ -2395,5 +2521,45 @@ export const databaseService = {
       console.error('❌ Error creating simple test notification:', error);
       throw error;
     }
-  }
+  },
+
+  // Save consultation data with new structure
+  async saveConsultationData(
+    patientId: string, 
+    appointmentId: string, 
+    consultationData: Partial<MedicalHistory>
+  ): Promise<string> {
+    try {
+      // Generate consultation data with required fields
+      const medicalHistoryData = {
+        ...consultationData,
+        consultationDate: new Date().toISOString(),
+        consultationTime: new Date().toLocaleTimeString(),
+        patientId: patientId,
+        createdAt: Date.now(),
+        lastUpdated: Date.now(),
+        updatedAt: Date.now(),
+        relatedAppointment: {
+          id: appointmentId,
+          type: consultationData.type || 'General Consultation'
+        }
+      };
+
+      // Use Firebase push to generate the consultationId
+      const consultationId = await this.pushDocument(`patientMedicalHistory/${patientId}/entries`, medicalHistoryData);
+      console.log('Generated consultationId using Firebase push key:', consultationId);
+
+      // Update the appointment with the appointmentConsultationId
+      await this.updateAppointment(appointmentId, {
+        status: 'completed',
+        appointmentConsultationId: consultationId,
+      });
+
+      console.log('Appointment updated with appointmentConsultationId:', consultationId);
+      return consultationId;
+    } catch (error) {
+      console.error('Save consultation data error:', error);
+      throw new Error('Failed to save consultation data');
+    }
+  },
 };  

@@ -76,7 +76,7 @@ export const notificationService = {
   async createReferralNotification(
     specialistId: string,
     referralId: string,
-    action: 'received' | 'accepted' | 'declined',
+    action: 'received' | 'confirmed' | 'cancelled',
     referralData: any
   ): Promise<void> {
     const notifications = [];
@@ -89,19 +89,19 @@ export const notificationService = {
         userId: specialistId,
         relatedId: referralId,
       });
-    } else if (action === 'accepted') {
+    } else if (action === 'confirmed') {
       notifications.push({
         type: 'referral' as const,
-        title: 'Referral Accepted',
-        message: `Your referral to Dr. ${referralData.assignedSpecialistLastName} has been accepted.`,
+        title: 'Referral Confirmed',
+        message: `Your referral to Dr. ${referralData.assignedSpecialistLastName} has been confirmed.`,
         userId: referralData.patientId,
         relatedId: referralId,
       });
-    } else if (action === 'declined') {
+    } else if (action === 'cancelled') {
       notifications.push({
         type: 'referral' as const,
-        title: 'Referral Declined',
-        message: `Your referral to Dr. ${referralData.assignedSpecialistLastName} has been declined.`,
+        title: 'Referral Cancelled',
+        message: `Your referral to Dr. ${referralData.assignedSpecialistLastName} has been cancelled.`,
         userId: referralData.patientId,
         relatedId: referralId,
       });
