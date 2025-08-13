@@ -34,18 +34,20 @@ export interface SignUpData {
 }
 
 export interface UserNode {
-  address?: string;
-  contactNumber?: string;
   createdAt: string;
   email: string;
   firstName: string;
+  middleName?: string;
   lastName: string;
   patientId?: string;
+  doctorId?: string;
   role: 'patient' | 'specialist';
 }
 
 export interface PatientNode {
+  address?: string;
   bloodType?: string;
+  contactNumber?: string;
   createdAt: string;
   dateOfBirth?: string;
   emergencyContact?: {
@@ -57,6 +59,31 @@ export interface PatientNode {
   gender?: string;
   lastName: string;
   lastUpdated?: string;
+  userId: string;
+}
+
+export interface DoctorNode {
+  address?: string;
+  civilStatus?: string;
+  clinicAffiliations?: string[];
+  contactNumber?: string;
+  createdAt: string;
+  dateOfBirth?: string;
+  email?: string;
+  firstName: string;
+  gender?: string;
+  isGeneralist?: boolean;
+  isSpecialist?: boolean;
+  lastLogin?: string;
+  lastName: string;
+  medicalLicenseNumber?: string;
+  middleName?: string;
+  prcExpiryDate?: string;
+  prcId?: string;
+  professionalFee?: number;
+  profileImageUrl?: string;
+  specialty?: string;
+  status?: string;
   userId: string;
 }
 

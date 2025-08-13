@@ -2,26 +2,23 @@ export interface Appointment {
   id?: string;
   appointmentDate: string;
   appointmentTime: string;
-  bookedByUserFirstName: string;
-  bookedByUserId: string;
-  bookedByUserLastName: string;
   clinicId: string;
-  clinicName: string;
+  clinicName?: string; // Optional for walk-ins
   createdAt: string;
-  doctorFirstName: string;
   doctorId: string;
-  doctorLastName: string;
   lastUpdated: string;
-  notes?: string;
-  patientComplaint?: string[];
-  patientFirstName: string;
+  appointmentPurpose?: string; // Changed from patientComplaint to appointmentPurpose
+  additionalNotes?: string; // Changed from notes
   patientId: string;
-  patientLastName: string;
-  relatedReferralId?: string;
-  sourceSystem: string;
-  specialty: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'canceled';
-  type: string;
+  patientFirstName?: string; // Added back for UI display
+  patientLastName?: string; // Added back for UI display
+  doctorFirstName?: string; // Added back for UI display
+  doctorLastName?: string; // Added back for UI display
+  relatedReferralId?: string; // Added back for referral appointments
+  sourceSystem?: string; // Optional for walk-ins
+  specialty?: string; // Added back for UI display
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  type: 'general_consultation' | 'walk-in' | string;
   consultationId?: string;
   appointmentConsultationId?: string;
 }
@@ -29,24 +26,34 @@ export interface Appointment {
 export interface CreateAppointmentData {
   appointmentDate: string;
   appointmentTime: string;
-  bookedByUserFirstName: string;
-  bookedByUserId: string;
-  bookedByUserLastName: string;
   clinicId: string;
   clinicName: string;
-  doctorFirstName: string;
   doctorId: string;
-  doctorLastName: string;
-  notes?: string;
-  patientComplaint?: string[];
-  patientFirstName: string;
+  appointmentPurpose: string;
+  additionalNotes?: string;
   patientId: string;
-  patientLastName: string;
-  relatedReferralId?: string;
   sourceSystem: string;
-  specialty: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'canceled';
-  type: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  type: 'general_consultation' | string;
+}
+
+// New interface for walk-in appointments (read-only)
+export interface WalkInAppointment {
+  id?: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  clinicId: string;
+  createdAt: string;
+  doctorId: string;
+  lastUpdated: string;
+  appointmentPurpose?: string;
+  additionalNotes?: string;
+  patientId: string;
+  sourceSystem?: string;
+  status: 'confirmed' | 'completed' | 'cancelled';
+  type: 'walk-in';
+  consultationId?: string;
+  appointmentConsultationId?: string;
 }
 
 export interface Referral {
@@ -79,7 +86,7 @@ export interface Referral {
   scheduleSlotPath: string;
   sourceSystem: string;
   specialistScheduleId: string;
-  status: 'pending_acceptance' | 'accepted' | 'declined' | 'completed';
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   declineReason?: string;
   specialistNotes?: string;
 } 

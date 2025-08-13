@@ -229,7 +229,7 @@ export default function SpecialistHomeScreen() {
 
       // Get upcoming referrals
       const upcomingReferrals = referrals
-        .filter(ref => ref.status === 'accepted' || ref.status === 'pending_acceptance')
+        .filter(ref => ref.status === 'confirmed' || ref.status === 'pending')
         .sort((a, b) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime())
         .slice(0, 3);
 
@@ -547,8 +547,18 @@ export default function SpecialistHomeScreen() {
           <View style={styles.appointmentsContainer}>
             {nextAppointments.length > 0 ? (
               nextAppointments.map((appointment) => {
-                const patientName = safeDataAccess.getUserFullName(appointment.patient || appointment, 'Unknown Patient');
-                const patientInitials = safeDataAccess.getUserInitials(appointment.patient || appointment, 'U');
+                const patientName = safeDataAccess.getAppointmentPatientName(appointment, 'Unknown Patient');
+                const patientInitials = (() => {
+                  const firstName = appointment.patientFirstName || '';
+                  const lastName = appointment.patientLastName || '';
+                  if (firstName && lastName) {
+                    return `${firstName[0]}${lastName[0]}`.toUpperCase();
+                  }
+                  if (firstName) {
+                    return firstName[0].toUpperCase();
+                  }
+                  return 'U';
+                })();
                 
                 // Format appointment date
                 const formatAppointmentDate = (dateString: string) => {
@@ -597,7 +607,19 @@ export default function SpecialistHomeScreen() {
                         </Text>
                         <View style={styles.timeContainer}>
                           <Clock size={14} color="#6B7280" />
-                          <Text style={styles.timeText}>{appointment.appointmentTime || 'Time not specified'}</Text>
+                          <Text style={styles.timeText}>
+                            {(() => {
+                              const timeString = appointment.appointmentTime;
+                              if (!timeString) return 'Time not specified';
+                              // Handle time strings that already have AM/PM
+                              if (timeString.includes('AM') || timeString.includes('PM')) {
+                                // Remove any duplicate AM/PM and return clean format
+                                const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
+                                return cleanTime.trim();
+                              }
+                              return timeString;
+                            })()}
+                          </Text>
                         </View>
                       </View>
                     </View>

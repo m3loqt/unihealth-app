@@ -222,7 +222,7 @@ interface Appointment {
   doctorId: string;
   appointmentDate: string;
   appointmentTime: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'canceled';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
   // ... other fields
 }
 ```
