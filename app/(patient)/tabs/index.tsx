@@ -413,12 +413,22 @@ export default function HomeScreen() {
                   <View style={styles.appointmentHeader}>
                     <View style={styles.doctorAvatar}>
                       <Text style={styles.doctorInitial}>
-                        {safeDataAccess.getUserInitials(appt, 'DR')}
+                        {(() => {
+                          const firstName = appt.doctorFirstName || '';
+                          const lastName = appt.doctorLastName || '';
+                          if (firstName && lastName) {
+                            return `${firstName[0]}${lastName[0]}`.toUpperCase();
+                          }
+                          if (firstName) {
+                            return firstName[0].toUpperCase();
+                          }
+                          return 'DR';
+                        })()}
                       </Text>
                     </View>
                     <View style={styles.appointmentDetails}>
                       <Text style={styles.doctorName}>
-                        {safeDataAccess.getUserFullName(appt, 'Dr. General')}
+                        {safeDataAccess.getAppointmentDoctorName(appt, 'Dr. General')}
                       </Text>
                       <Text style={styles.doctorSpecialty}>{appt.specialty || 'General Medicine'}</Text>
                     </View>

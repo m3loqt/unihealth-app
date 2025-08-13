@@ -40,7 +40,7 @@ export const useNotifications = (): UseNotificationsReturn => {
   const [unreadCount, setUnreadCount] = useState(0);
   
   const pageSize = 20;
-  const lastTimestamp = useRef<number | undefined>();
+  const lastTimestamp = useRef<number | undefined>(undefined);
   const abortController = useRef<AbortController | null>(null);
 
   // Load notifications with real-time updates
