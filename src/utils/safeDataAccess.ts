@@ -93,10 +93,48 @@ export const safeDataAccess = {
     if (!user) return fallback;
     
     if (user.address) return user.address;
-    if (user.patientAddress) return user.patientAddress;
     if (user.profile?.address) return user.profile.address;
     
     return fallback;
+  },
+
+  /**
+   * Safely get appointment patient name
+   */
+  getAppointmentPatientName(appointment: any, fallback: string = 'Unknown Patient'): string {
+    if (!appointment) return fallback;
+    
+    if (appointment.patientFirstName && appointment.patientLastName) {
+      return `${appointment.patientFirstName} ${appointment.patientLastName}`;
+    }
+    if (appointment.patientFirstName) return appointment.patientFirstName;
+    if (appointment.patientLastName) return appointment.patientLastName;
+    
+    return fallback;
+  },
+
+  /**
+   * Safely get appointment doctor name
+   */
+  getAppointmentDoctorName(appointment: any, fallback: string = 'Dr. Unknown'): string {
+    if (!appointment) return fallback;
+    
+    if (appointment.doctorFirstName && appointment.doctorLastName) {
+      return `${appointment.doctorFirstName} ${appointment.doctorLastName}`;
+    }
+    if (appointment.doctorFirstName) return `Dr. ${appointment.doctorFirstName}`;
+    if (appointment.doctorLastName) return `Dr. ${appointment.doctorLastName}`;
+    
+    return fallback;
+  },
+
+  /**
+   * Safely get appointment clinic name
+   */
+  getAppointmentClinicName(appointment: any, fallback: string = 'Clinic not specified'): string {
+    if (!appointment) return fallback;
+    
+    return appointment.clinicName || fallback;
   },
 
   /**

@@ -34,17 +34,18 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
-import { databaseService, Appointment } from '../../../src/services/database/firebase';
+import { databaseService, Appointment, MedicalHistory } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { useDeepMemo } from '../../../src/utils/performance';
+import { AppointmentDetailsModal } from '../../../src/components';
 
 export default function SpecialistAppointmentsScreen() {
   const { filter } = useLocalSearchParams();
   const { user } = useAuth();
-  const filters = ['All', 'Pending', 'Confirmed', 'Completed', 'Declined'];
+  const filters = ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
 
   // ---- DATA STATE ----
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -86,9 +87,10 @@ export default function SpecialistAppointmentsScreen() {
   const [selectedReferralForDetails, setSelectedReferralForDetails] = useState<any>(null);
   const [clinicDetails, setClinicDetails] = useState<any>(null);
 
-  // Medical History Modal State
-  const [showMedicalHistoryModal, setShowMedicalHistoryModal] = useState(false);
-  const [medicalHistory, setMedicalHistory] = useState<any>(null);
+  // Unified Appointment Details Modal State
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [modalAppointment, setModalAppointment] = useState<Appointment | null>(null);
+  const [medicalHistory, setMedicalHistory] = useState<MedicalHistory | null>(null);
   const [loadingMedicalHistory, setLoadingMedicalHistory] = useState(false);
 
   const handleRetry = () => {
@@ -157,7 +159,7 @@ export default function SpecialistAppointmentsScreen() {
         doctorLastName: referral.assignedSpecialistLastName,
         lastUpdated: referral.lastUpdated,
         notes: referral.generalistNotes,
-        patientComplaint: [referral.initialReasonForReferral],
+        appointmentPurpose: referral.initialReasonForReferral,
         patientFirstName: referral.patientFirstName,
         patientId: referral.patientId,
         patientLastName: referral.patientLastName,
@@ -172,11 +174,11 @@ export default function SpecialistAppointmentsScreen() {
             return 'confirmed';
           } else if (status === 'completed') {
             return 'completed';
-          } else if (status === 'declined') {
-            return 'canceled';
+          } else if (status === 'cancelled') {
+            return 'cancelled';
           } else {
-            console.log('Unknown referral status, defaulting to canceled:', status);
-            return 'canceled';
+            console.log('Unknown referral status, defaulting to cancelled:', status);
+            return 'cancelled';
           }
         })(),
         type: 'Referral'
@@ -257,13 +259,13 @@ export default function SpecialistAppointmentsScreen() {
     try {
       // If this is a referral, only update the referral status
       if (isReferral(selectedAppointment) && selectedAppointment.relatedReferralId) {
-        await databaseService.updateReferralStatus(selectedAppointment.relatedReferralId, 'accepted');
+        await databaseService.updateReferralStatus(selectedAppointment.relatedReferralId, 'confirmed');
       } else {
         // If it's a regular appointment, update the appointment status
         await databaseService.updateAppointmentStatus(selectedAppointment.id, 'confirmed');
       }
       
-      Alert.alert('Success', 'Referral accepted successfully!');
+      Alert.alert('Success', 'Referral confirmed successfully!');
       setShowAcceptModal(false);
       setSelectedAppointment(null);
       loadAppointments(); // Refresh the list
@@ -290,10 +292,10 @@ export default function SpecialistAppointmentsScreen() {
     try {
       // If this is a referral, only update the referral status
       if (isReferral(selectedAppointment) && selectedAppointment.relatedReferralId) {
-        await databaseService.updateReferralStatus(selectedAppointment.relatedReferralId, 'declined', finalReason);
+        await databaseService.updateReferralStatus(selectedAppointment.relatedReferralId, 'cancelled', finalReason);
       } else {
         // If it's a regular appointment, update the appointment status
-        await databaseService.updateAppointmentStatus(selectedAppointment.id, 'canceled', finalReason);
+        await databaseService.updateAppointmentStatus(selectedAppointment.id, 'cancelled', finalReason);
       }
       
       Alert.alert('Success', 'Referral declined successfully!');
@@ -356,107 +358,69 @@ export default function SpecialistAppointmentsScreen() {
     }
   };
 
-  // --- LOAD MEDICAL HISTORY ---
-  const loadMedicalHistory = async (appointment: Appointment, source: 'appointment' | 'referral' = 'appointment') => {
-    Alert.alert('Debug', 'Medical History function called!');
-    console.log('🚀 LOAD MEDICAL HISTORY FUNCTION CALLED!');
-    console.log('=== MEDICAL HISTORY DEBUG START ===');
-    console.log('Appointment object:', appointment);
-    console.log('Appointment ID:', appointment.id);
-    console.log('Appointment patientId:', appointment.patientId);
-    console.log('Appointment type:', appointment.type);
-    console.log('Appointment relatedReferralId:', appointment.relatedReferralId);
-    console.log('Appointment status:', appointment.status);
-    
+  // --- LOAD APPOINTMENT DETAILS AND MEDICAL HISTORY ---
+  const loadAppointmentDetails = async (appointment: Appointment) => {
     if (!appointment.patientId) {
-      console.log('ERROR: No patient ID found in appointment');
       Alert.alert('Error', 'No patient ID found.');
       return;
     }
 
     try {
+      setModalAppointment(appointment);
+      setShowAppointmentModal(true);
       setLoadingMedicalHistory(true);
-      setShowMedicalHistoryModal(true);
       
-      // Get the actual patientId string value
-      const patientIdString = appointment.patientId;
-      
-      // Determine the correct consultationId to use based on source
-      let consultationIdToUse = '';
-      
-      if (source === 'referral') {
-        // This is a referral card click - use referralConsultationId
-        console.log('This is a referral card click');
-        console.log('Fetching referral data for referralId:', appointment.relatedReferralId);
-        
-        // Fetch the referral object to get the consultationId directly
-        const referral = await databaseService.getReferralById(appointment.relatedReferralId || '');
-        console.log('Fetched referral object:', referral);
-        
-        if (referral?.referralConsultationId) {
-          // For referrals, use the referralConsultationId from the referral object
-          consultationIdToUse = referral.referralConsultationId;
-          console.log('Using referralConsultationId from referral object:', consultationIdToUse);
-        } else if (referral?.consultationId) {
-          // Fallback to old consultationId field
-          consultationIdToUse = referral.consultationId;
-          console.log('Using fallback consultationId from referral object:', consultationIdToUse);
-        } else {
-          console.log('No consultationId found in referral object - consultation may not be completed');
-          Alert.alert('No Medical History', 'Medical history is only available for completed consultations.');
-          setShowMedicalHistoryModal(false);
-          return;
-        }
-      } else {
-        // This is a regular appointment card click - use appointmentConsultationId
-        console.log('This is a regular appointment card click');
-        if (appointment.appointmentConsultationId) {
-          consultationIdToUse = appointment.appointmentConsultationId;
-          console.log('Using appointment.appointmentConsultationId:', appointment.appointmentConsultationId);
-        } else if (appointment.consultationId) {
-          // Fallback for old appointments that might have the old consultationId field
-          consultationIdToUse = appointment.consultationId;
-          console.log('Using fallback appointment.consultationId:', appointment.consultationId);
-        } else {
-          console.log('No consultationId found in appointment - consultation may not be completed');
-          Alert.alert('No Medical History', 'Medical history is only available for completed consultations.');
-          setShowMedicalHistoryModal(false);
-          return;
+      // Load clinic and patient data if not already loaded
+      if (appointment.clinicId && !clinicData[appointment.clinicId]) {
+        try {
+          const clinic = await databaseService.getClinicById(appointment.clinicId);
+          setClinicData(prev => ({ ...prev, [appointment.clinicId]: clinic }));
+        } catch (error) {
+          console.error('Error loading clinic data:', error);
         }
       }
-      
-      console.log('Final patientIdString:', patientIdString);
-      console.log('Final consultationIdToUse:', consultationIdToUse);
-      
-      // Try to get medical history from the specific consultation
-      const medicalHistoryPath = `patientMedicalHistory/${patientIdString}/entries/${consultationIdToUse}`;
-      console.log('Full Firebase path being queried:', medicalHistoryPath);
-      
-      const history = await databaseService.getDocument(medicalHistoryPath);
-      console.log('Raw response from databaseService.getDocument:', history);
-      
-      if (history) {
-        console.log('Found medical history - Object keys:', Object.keys(history));
-        console.log('Found medical history - Full object:', history);
-        setMedicalHistory(history);
+
+      if (appointment.patientId && !patientData[appointment.patientId]) {
+        try {
+          const patient = await databaseService.getPatientById(appointment.patientId);
+          setPatientData(prev => ({ ...prev, [appointment.patientId]: patient }));
+        } catch (error) {
+          console.error('Error loading patient data:', error);
+        }
+      }
+
+      // Load medical history if appointment has consultation data
+      if (appointment.appointmentConsultationId) {
+        try {
+          const history = await databaseService.getMedicalHistoryByAppointment(
+            appointment.id,
+            appointment.patientId
+          );
+          setMedicalHistory(history);
+        } catch (error) {
+          console.error('Error loading medical history:', error);
+          setMedicalHistory(null);
+        }
       } else {
-        console.log('No medical history found for this consultation');
-        console.log('The databaseService.getDocument returned null/undefined');
         setMedicalHistory(null);
       }
     } catch (error) {
-      console.error('Error loading medical history:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      Alert.alert('Error', 'Failed to load medical history. Please try again.');
-      setShowMedicalHistoryModal(false);
+      console.error('Error loading appointment details:', error);
+      Alert.alert('Error', 'Failed to load appointment details. Please try again.');
     } finally {
       setLoadingMedicalHistory(false);
-      console.log('=== MEDICAL HISTORY DEBUG END ===');
     }
+  };
+
+  // --- START CONSULTATION FROM MODAL ---
+  const handleStartConsultation = (appointment: Appointment) => {
+    // Close the modal first
+    setShowAppointmentModal(false);
+    setModalAppointment(null);
+    setMedicalHistory(null);
+    
+    // Then navigate to consultation
+    handleDiagnosePatient(appointment);
   };
 
   // ---- FILTER ----
@@ -475,8 +439,8 @@ export default function SpecialistAppointmentsScreen() {
     let matchesFilter = false;
     if (activeFilter === 'All') {
       matchesFilter = true;
-    } else if (activeFilter === 'Declined') {
-      matchesFilter = appointment.status === 'canceled';
+            } else if (activeFilter === 'Cancelled') {
+          matchesFilter = appointment.status === 'cancelled';
     } else {
       matchesFilter = appointment.status === activeFilter.toLowerCase();
     }
@@ -501,8 +465,8 @@ export default function SpecialistAppointmentsScreen() {
         let matchesFilter = false;
         if (activeFilter === 'All') {
           matchesFilter = true;
-        } else if (activeFilter === 'Declined') {
-          matchesFilter = appointment.status === 'canceled';
+        } else if (activeFilter === 'Cancelled') {
+          matchesFilter = appointment.status === 'cancelled';
         } else {
           matchesFilter = appointment.status === activeFilter.toLowerCase();
         }
@@ -546,7 +510,7 @@ export default function SpecialistAppointmentsScreen() {
         return <Hourglass size={14} color="#6B7280" />;
       case 'completed':
         return <CheckMark size={14} color="#1E40AF" />;
-      case 'canceled':
+      case 'cancelled':
         return <XCircle size={14} color="#EF4444" />;
       default:
         return null;
@@ -559,7 +523,7 @@ export default function SpecialistAppointmentsScreen() {
         return [styles.statusBadge, styles.statusBadgeConfirmed];
       case 'completed':
         return [styles.statusBadge, styles.statusBadgeCompleted];
-      case 'canceled':
+      case 'cancelled':
         return [styles.statusBadge, styles.statusBadgeCanceled];
       default:
         return styles.statusBadge;
@@ -572,7 +536,7 @@ export default function SpecialistAppointmentsScreen() {
         return [styles.referralStatusBadge, styles.referralStatusBadgeConfirmed];
       case 'completed':
         return [styles.referralStatusBadge, styles.referralStatusBadgeCompleted];
-      case 'canceled':
+      case 'cancelled':
         return [styles.referralStatusBadge, styles.referralStatusBadgeCanceled];
       default:
         return styles.referralStatusBadge;
@@ -585,7 +549,7 @@ export default function SpecialistAppointmentsScreen() {
         return [styles.referralStatusText, styles.referralStatusTextConfirmed];
       case 'completed':
         return [styles.referralStatusText, styles.referralStatusTextCompleted];
-      case 'canceled':
+      case 'cancelled':
         return [styles.referralStatusText, styles.referralStatusTextCanceled];
       default:
         return styles.referralStatusText;
@@ -598,7 +562,7 @@ export default function SpecialistAppointmentsScreen() {
         return [styles.statusText, styles.statusTextConfirmed];
       case 'completed':
         return [styles.statusText, styles.statusTextCompleted];
-      case 'canceled':
+      case 'cancelled':
         return [styles.statusText, styles.statusTextCanceled];
       default:
         return styles.statusText;
@@ -628,7 +592,9 @@ export default function SpecialistAppointmentsScreen() {
       try {
         // Handle time strings that already have AM/PM
         if (timeString.includes('AM') || timeString.includes('PM')) {
-          return timeString;
+          // Remove any duplicate AM/PM and return clean format
+          const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
+          return cleanTime.trim();
         }
         
         const [hours, minutes] = timeString.split(':');
@@ -668,7 +634,7 @@ export default function SpecialistAppointmentsScreen() {
                   e.stopPropagation(); // Prevent card click
                   console.log('🔍 MEDICAL HISTORY EYE ICON PRESSED!');
                   console.log('Appointment being passed:', appointment);
-                  loadMedicalHistory(appointment, 'referral');
+                  loadAppointmentDetails(appointment);
                 }}
               >
                 <Eye size={16} color="#1E40AF" />
@@ -683,10 +649,10 @@ export default function SpecialistAppointmentsScreen() {
           </View>
           <View style={getReferralStatusBadgeStyle(appointment.status)}>
             <Text style={getReferralStatusTextStyle(appointment.status)}>
-              {appointment.status === 'confirmed' ? 'Accepted' :
+              {appointment.status === 'confirmed' ? 'Confirmed' :
                appointment.status === 'pending' || appointment.status === 'pending_acceptance' ? 'Pending' :
                appointment.status === 'completed' ? 'Completed' :
-               appointment.status === 'canceled' ? 'Declined' : 'Unknown'}
+               appointment.status === 'cancelled' ? 'Cancelled' : 'Unknown'}
             </Text>
           </View>
         </View>
@@ -758,8 +724,18 @@ export default function SpecialistAppointmentsScreen() {
   const renderAppointmentCard = (appointment: Appointment) => {
     const isPending = appointment.status === 'pending';
     const isReferralAppointment = isReferral(appointment);
-    const patientName = safeDataAccess.getUserFullName(appointment, 'Unknown Patient');
-    const patientInitials = safeDataAccess.getUserInitials(appointment, 'U');
+    const patientName = safeDataAccess.getAppointmentPatientName(appointment, 'Unknown Patient');
+    const patientInitials = (() => {
+      const firstName = appointment.patientFirstName || '';
+      const lastName = appointment.patientLastName || '';
+      if (firstName && lastName) {
+        return `${firstName[0]}${lastName[0]}`.toUpperCase();
+      }
+      if (firstName) {
+        return firstName[0].toUpperCase();
+      }
+      return 'U';
+    })();
 
     return (
       <TouchableOpacity 
@@ -768,7 +744,7 @@ export default function SpecialistAppointmentsScreen() {
         onPress={() => {
           // Handle card click for viewing appointment details
           if (appointment.status === 'completed') {
-            loadMedicalHistory(appointment, 'appointment');
+            loadAppointmentDetails(appointment);
           } else if (appointment.status === 'confirmed') {
             handleDiagnosePatient(appointment);
           }
@@ -807,7 +783,17 @@ export default function SpecialistAppointmentsScreen() {
           <View style={styles.metaRow}>
             <Clock size={16} color="#6B7280" />
             <Text style={styles.metaText}>
-              {appointment.appointmentDate || 'Date not specified'} at {appointment.appointmentTime || 'Time not specified'}
+              {appointment.appointmentDate || 'Date not specified'} at {(() => {
+                const timeString = appointment.appointmentTime;
+                if (!timeString) return 'Time not specified';
+                // Handle time strings that already have AM/PM
+                if (timeString.includes('AM') || timeString.includes('PM')) {
+                  // Remove any duplicate AM/PM and return clean format
+                  const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
+                  return cleanTime.trim();
+                }
+                return timeString;
+              })()}
             </Text>
           </View>
           <View style={styles.metaRow}>
@@ -816,14 +802,21 @@ export default function SpecialistAppointmentsScreen() {
           </View>
         </View>
 
-        {appointment.notes && (
+        {appointment.appointmentPurpose && (
           <View style={styles.notesSection}>
-            <Text style={styles.notesLabel}>Notes:</Text>
-            <Text style={styles.notesText}>{appointment.notes}</Text>
+            <Text style={styles.notesLabel}>Purpose:</Text>
+            <Text style={styles.notesText}>{appointment.appointmentPurpose}</Text>
           </View>
         )}
 
-        {appointment.status === 'canceled' && (
+        {appointment.additionalNotes && (
+          <View style={styles.notesSection}>
+            <Text style={styles.notesLabel}>Notes:</Text>
+            <Text style={styles.notesText}>{appointment.additionalNotes}</Text>
+          </View>
+        )}
+
+        {appointment.status === 'cancelled' && (
           <View style={styles.declineReasonSection}>
             <Text style={styles.declineReasonLabel}>Decline Reason:</Text>
             <Text style={styles.declineReasonText}>Appointment was declined</Text>
@@ -876,7 +869,7 @@ export default function SpecialistAppointmentsScreen() {
                 e.stopPropagation(); // Prevent card click
                 console.log('🔍 MEDICAL HISTORY BUTTON PRESSED (REGULAR APPOINTMENT)!');
                 console.log('Appointment being passed:', appointment);
-                loadMedicalHistory(appointment, 'appointment');
+                loadAppointmentDetails(appointment);
               }}
             >
               <Eye size={16} color="#1E40AF" />
@@ -899,7 +892,7 @@ export default function SpecialistAppointmentsScreen() {
     
     try {
       await databaseService.updateAppointmentStatus(selectedAppointment.id, 'confirmed');
-      Alert.alert('Success', 'Appointment accepted successfully!');
+      Alert.alert('Success', 'Appointment confirmed successfully!');
       setShowAcceptModal(false);
       setSelectedAppointment(null);
       loadAppointments(); // Refresh the list
@@ -924,7 +917,7 @@ export default function SpecialistAppointmentsScreen() {
     }
 
     try {
-      await databaseService.updateAppointmentStatus(selectedAppointment.id, 'canceled', finalReason);
+              await databaseService.updateAppointmentStatus(selectedAppointment.id, 'cancelled', finalReason);
       Alert.alert('Success', 'Appointment declined successfully!');
       setShowDeclineModal(false);
       setSelectedAppointment(null);
@@ -1082,204 +1075,28 @@ export default function SpecialistAppointmentsScreen() {
   // Remove Prescription Confirmation Modal
 
 
-  // Medical History Modal
-  const renderMedicalHistoryModal = () => (
-    <Modal
-      visible={showMedicalHistoryModal}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={() => {
-        setShowMedicalHistoryModal(false);
-        setMedicalHistory(null);
-      }}
-    >
-      <View style={styles.modalBackdrop}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Medical History</Text>
-            {loadingMedicalHistory ? (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Loading medical history...</Text>
-              </View>
-            ) : medicalHistory ? (
-              <ScrollView style={styles.medicalHistoryScroll}>
-                {/* Clinical Summary */}
-                <View style={styles.medicalHistorySection}>
-                  <Text style={styles.medicalHistorySectionTitle}>Clinical Summary</Text>
-                  <View style={styles.medicalHistoryCard}>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Diagnosis:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.diagnosis && medicalHistory.diagnosis.length > 0 
-                          ? medicalHistory.diagnosis[0].description 
-                          : 'Not specified'}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Differential Diagnosis:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.differentialDiagnosis || 'Not specified'}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Clinical Summary:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.clinicalSummary || 'Not specified'}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Treatment Plan:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.treatmentPlan || 'Not specified'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* SOAP Notes */}
-                <View style={styles.medicalHistorySection}>
-                  <Text style={styles.medicalHistorySectionTitle}>SOAP Notes</Text>
-                  <View style={styles.medicalHistoryCard}>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Subjective:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.soapNotes?.subjective || 'Not specified'}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Objective:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.soapNotes?.objective || 'Not specified'}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Assessment:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.soapNotes?.assessment || 'Not specified'}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Plan:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.soapNotes?.plan || 'Not specified'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Additional Information */}
-                <View style={styles.medicalHistorySection}>
-                  <Text style={styles.medicalHistorySectionTitle}>Additional Information</Text>
-                  <View style={styles.medicalHistoryCard}>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Lab Results:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.labResults || 'Not specified'}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Allergies:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.allergies || 'Not specified'}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Vitals:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.vitals || 'Not specified'}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Medications:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.medications || 'Not specified'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Prescriptions */}
-                {medicalHistory.prescriptions && medicalHistory.prescriptions.length > 0 && (
-                  <View style={styles.medicalHistorySection}>
-                    <Text style={styles.medicalHistorySectionTitle}>Prescriptions</Text>
-                    <View style={styles.medicalHistoryCard}>
-                      {medicalHistory.prescriptions.map((prescription: any, index: number) => (
-                        <View key={index} style={styles.prescriptionItemHistory}>
-                          <Text style={styles.prescriptionMedication}>{prescription.medication}</Text>
-                          <Text style={styles.prescriptionDetailsText}>
-                            {prescription.dosage} • {prescription.frequency}
-                          </Text>
-                          {prescription.description && (
-                            <Text style={styles.prescriptionDescriptionText}>{prescription.description}</Text>
-                          )}
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {/* Certificates */}
-                {medicalHistory.certificates && medicalHistory.certificates.length > 0 && (
-                  <View style={styles.medicalHistorySection}>
-                    <Text style={styles.medicalHistorySectionTitle}>Medical Certificates</Text>
-                    <View style={styles.medicalHistoryCard}>
-                      {medicalHistory.certificates.map((certificate: any, index: number) => (
-                        <View key={index} style={styles.certificateItem}>
-                          <Text style={styles.certificateTypeText}>{certificate.type}</Text>
-                          <Text style={styles.certificateDescriptionText}>{certificate.description}</Text>
-                          {certificate.validUntil && (
-                            <Text style={styles.certificateValidUntil}>Valid until: {certificate.validUntil}</Text>
-                          )}
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {/* Consultation Details */}
-                <View style={styles.medicalHistorySection}>
-                  <Text style={styles.medicalHistorySectionTitle}>Consultation Details</Text>
-                  <View style={styles.medicalHistoryCard}>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Consultation Date:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {new Date(medicalHistory.consultationDate).toLocaleDateString()}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Consultation Time:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.consultationTime}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Provider:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        Dr. {medicalHistory.provider?.firstName} {medicalHistory.provider?.lastName}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Last Updated:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {new Date(medicalHistory.lastUpdated).toLocaleDateString()}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </ScrollView>
-            ) : (
-              <View style={styles.medicalHistoryEmptyContainer}>
-                <Text style={styles.medicalHistoryEmptyTitle}>No Medical History Available</Text>
-                <Text style={styles.medicalHistoryEmptyText}>
-                  Medical history for this consultation has not been recorded yet.
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
+  // Unified Appointment Details Modal
+  const renderAppointmentDetailsModal = () => {
+    if (!modalAppointment) return null;
+    
+    return (
+      <AppointmentDetailsModal
+        visible={showAppointmentModal}
+        onClose={() => {
+          setShowAppointmentModal(false);
+          setModalAppointment(null);
+          setMedicalHistory(null);
+        }}
+        appointment={modalAppointment}
+        medicalHistory={medicalHistory}
+        loadingMedicalHistory={loadingMedicalHistory}
+        clinicData={clinicData[modalAppointment.clinicId]}
+        doctorData={patientData[modalAppointment.patientId]}
+        isSpecialist={true}
+        onStartConsultation={handleStartConsultation}
+      />
+    );
+  };
 
   // Cancel Diagnosis Confirmation Modal
   const renderReferralDetailsModal = () => (
@@ -1309,10 +1126,10 @@ export default function SpecialistAppointmentsScreen() {
                   <View style={styles.keyValueRow}>
                     <Text style={styles.label}>Status:</Text>
                     <Text style={styles.value}>
-                      {selectedReferralForDetails.appointment.status === 'confirmed' ? 'Accepted' :
+                      {selectedReferralForDetails.appointment.status === 'confirmed' ? 'Confirmed' :
                        selectedReferralForDetails.appointment.status === 'pending' ? 'Pending' :
                        selectedReferralForDetails.appointment.status === 'completed' ? 'Completed' :
-                       selectedReferralForDetails.appointment.status === 'canceled' ? 'Declined' : 'Unknown'}
+                       selectedReferralForDetails.appointment.status === 'cancelled' ? 'Cancelled' : 'Unknown'}
             </Text>
             </View>
             </View>
@@ -1531,7 +1348,7 @@ export default function SpecialistAppointmentsScreen() {
       {renderAcceptModal()}
       {renderDeclineModal()}
       {renderReferralDetailsModal()}
-      {renderMedicalHistoryModal()}
+      {renderAppointmentDetailsModal()}
     </SafeAreaView>
   );
 }

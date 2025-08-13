@@ -28,7 +28,7 @@ import {
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
-import { databaseService, Appointment, Prescription, Certificate } from '../../src/services/database/firebase';
+import { databaseService, Appointment, Prescription, Certificate, MedicalHistory } from '../../src/services/database/firebase';
 import { safeDataAccess } from '../../src/utils/safeDataAccess';
 
 // Extended interface for visit data that includes additional properties
@@ -81,6 +81,45 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const HORIZONTAL_MARGIN = 24;
 
+// Helper function to format date
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
+
+// Helper function to format time
+const formatTime = (timeString: string) => {
+  return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+// Helper function to get status color
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'completed':
+      return '#10B981';
+    case 'confirmed':
+      return '#3B82F6';
+    case 'pending':
+      return '#F59E0B';
+    case 'cancelled':
+      return '#EF4444';
+    default:
+      return '#6B7280';
+  }
+};
+
+// Helper function to get status text
+const getStatusText = (status: string) => {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+};
+
 export default function VisitOverviewScreen() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
@@ -107,7 +146,7 @@ export default function VisitOverviewScreen() {
   }, [id]);
 
   const loadVisitData = async () => {
-    if (!id) return;
+    if (!id || !user) return;
     
     try {
       setLoading(true);
@@ -115,8 +154,80 @@ export default function VisitOverviewScreen() {
       // Load appointment data
       const appointment = await databaseService.getAppointmentById(id as string);
       
-      if (appointment) {
-        setVisitData(appointment);
+              if (appointment) {
+          // Load clinic and doctor data for complete information
+          let clinicData = null;
+          let doctorData = null;
+          
+          try {
+            [clinicData, doctorData] = await Promise.all([
+              databaseService.getDocument(`clinics/${appointment.clinicId}`),
+              databaseService.getDocument(`specialists/${appointment.doctorId}`)
+            ]);
+          } catch (error) {
+            console.log('Could not fetch clinic or doctor data:', error);
+          }
+          
+          // Load medical history/consultation data if appointment is completed
+          let medicalHistory = null;
+          if (appointment.status.toLowerCase() === 'completed') {
+            try {
+              medicalHistory = await databaseService.getMedicalHistoryByAppointment(id as string, user.uid);
+            } catch (error) {
+              console.log('No medical history found for this appointment:', error);
+            }
+          }
+          
+          // Debug logging
+          console.log('🔍 APPOINTMENT DATA:', {
+            id: appointment.id,
+            doctorFirstName: appointment.doctorFirstName,
+            doctorLastName: appointment.doctorLastName,
+            clinicName: appointment.clinicName,
+            consultationId: appointment.consultationId,
+            appointmentDate: appointment.appointmentDate,
+            appointmentTime: appointment.appointmentTime
+          });
+          
+          console.log('🔍 CLINIC DATA:', clinicData);
+          console.log('🔍 DOCTOR DATA:', doctorData);
+          
+          // Combine appointment data with consultation data
+          const combinedVisitData: VisitData = {
+            ...appointment,
+            // Use appointment data first, then fallback to fetched data
+            doctorName: appointment.doctorFirstName && appointment.doctorLastName 
+              ? `${appointment.doctorFirstName} ${appointment.doctorLastName}` 
+              : doctorData 
+                ? `${doctorData.firstName} ${doctorData.lastName}`
+                : 'Unknown Doctor',
+            clinic: appointment.clinicName || clinicData?.name || 'Unknown Clinic',
+            date: appointment.appointmentDate,
+            time: appointment.appointmentTime,
+            address: clinicData?.address ? `${clinicData.address}, ${clinicData.city || ''}, ${clinicData.province || ''}`.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '') : (appointment.clinicName || 'Address not provided'),
+            // Use appointmentConsultationId if available, otherwise use consultationId
+            consultationId: appointment.appointmentConsultationId || appointment.consultationId || 'N/A',
+          
+          // Consultation fields from medical history
+          presentIllnessHistory: medicalHistory?.presentIllnessHistory || '',
+          reviewOfSymptoms: medicalHistory?.reviewOfSymptoms || '',
+          labResults: medicalHistory?.labResultsSummary ? medicalHistory.labResultsSummary.map(lab => `${lab.test}: ${lab.value}`).join(', ') : '',
+          medications: medicalHistory?.prescriptions ? medicalHistory.prescriptions.map(prescription => `${prescription.medication} ${prescription.dosage}`).join(', ') : '',
+          diagnosis: medicalHistory?.diagnosis ? medicalHistory.diagnosis.map(d => d.description).join(', ') : '',
+          differentialDiagnosis: medicalHistory?.differentialDiagnosis || '',
+          soapNotes: medicalHistory?.soapNotes || {
+            subjective: '',
+            objective: '',
+            assessment: '',
+            plan: ''
+          },
+          treatmentPlan: medicalHistory?.treatmentPlan || '',
+          clinicalSummary: medicalHistory?.clinicalSummary || '',
+          allergies: medicalHistory?.allergies || '',
+          vitals: medicalHistory?.vitals || ''
+        };
+        
+        setVisitData(combinedVisitData);
         
         // Load related prescriptions and certificates
         const [visitPrescriptions, visitCertificates] = await Promise.all([
@@ -194,6 +305,14 @@ export default function VisitOverviewScreen() {
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Consultation Details</Text>
           <View style={styles.cardBox}>
+            {/* Status Badge */}
+            <View style={styles.statusSection}>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(visitData.status) + '20' }]}>
+                <Text style={[styles.statusText, { color: getStatusColor(visitData.status) }]}>
+                  {getStatusText(visitData.status)}
+                </Text>
+              </View>
+            </View>
             <View style={styles.doctorRow}>
               <Text style={styles.doctorName}>{visitData.doctorName || 'Unknown Doctor'}</Text>
               {/* <Image 
@@ -215,11 +334,11 @@ export default function VisitOverviewScreen() {
               </View>
               <View style={styles.consultDetailsRow}>
                 <Text style={styles.consultLabel}>Date</Text>
-                <Text style={styles.consultValue}>{visitData.date || 'Not specified'}</Text>
+                <Text style={styles.consultValue}>{visitData.appointmentDate ? formatDate(visitData.appointmentDate) : 'Not specified'}</Text>
               </View>
               <View style={styles.consultDetailsRow}>
                 <Text style={styles.consultLabel}>Time</Text>
-                <Text style={styles.consultValue}>{visitData.time || 'Not specified'}</Text>
+                <Text style={styles.consultValue}>{visitData.appointmentTime ? formatTime(visitData.appointmentTime) : 'Not specified'}</Text>
               </View>
               <View style={styles.consultDetailsRowNoBorder}>
                 <Text style={styles.consultLabel}>Address</Text>
@@ -232,7 +351,7 @@ export default function VisitOverviewScreen() {
         {/* --- PRESCRIPTIONS --- */}
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Prescriptions</Text>
-          {prescriptions.length ? prescriptions.map((p) => (
+          {visitData.status.toLowerCase() === 'completed' && prescriptions.length ? prescriptions.map((p) => (
             <View key={p.id} style={styles.cardBox}>
               <View style={styles.prescriptionHeader}>
                 <View style={[styles.medicationIcon, { backgroundColor: `${p.color}15` }]}>
@@ -259,9 +378,13 @@ export default function VisitOverviewScreen() {
                 </View>
               </View>
             </View>
-          )) : (
+          )) : visitData.status.toLowerCase() === 'completed' ? (
             <View style={styles.emptyStateCard}>
               <Text style={styles.emptyStateText}>No prescriptions for this visit.</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyStateCard}>
+              <Text style={styles.emptyStateText}>Prescriptions will be available after the appointment is completed.</Text>
             </View>
           )}
         </View>
@@ -269,7 +392,7 @@ export default function VisitOverviewScreen() {
         {/* --- MEDICAL CERTIFICATES --- */}
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Medical Certificates</Text>
-          {certificates.length ? certificates.map((cert) => {
+          {visitData.status.toLowerCase() === 'completed' && certificates.length ? certificates.map((cert) => {
             const statusStyle = getCertStatusStyles(cert.status);
             return (
               <View key={cert.id} style={styles.cardBox}>
@@ -306,9 +429,13 @@ export default function VisitOverviewScreen() {
                 </View>
               </View>
             );
-          }) : (
+          }) : visitData.status.toLowerCase() === 'completed' ? (
             <View style={styles.emptyStateCard}>
               <Text style={styles.emptyStateText}>No certificates were issued for this visit.</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyStateCard}>
+              <Text style={styles.emptyStateText}>Certificates will be available after the appointment is completed.</Text>
             </View>
           )}
         </View>
@@ -316,7 +443,14 @@ export default function VisitOverviewScreen() {
         {/* --- CLINICAL SUMMARY --- */}
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Clinical Summary</Text>
-          <View style={styles.cardBoxClinical}>
+          {visitData.status.toLowerCase() !== 'completed' ? (
+            <View style={styles.emptyStateCard}>
+              <Text style={styles.emptyStateText}>
+                Consultation details will be available after the appointment is completed.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.cardBoxClinical}>
             {/* Step 1: Patient History */}
             <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('patientHistory')}>
               <Text style={styles.clinicalSectionLabel}>Patient History</Text>
@@ -443,32 +577,35 @@ export default function VisitOverviewScreen() {
               </View>
             )}
           </View>
+          )}
         </View>
       </ScrollView>
 
       {/* --- BOTTOM ACTION BAR (VERTICAL, OUTLINED SECONDARY) --- */}
-      <View style={styles.buttonBarVertical}>
-        <TouchableOpacity
-          style={styles.primaryBottomButton}
-          onPress={() => {
-            alert('Downloading record...');
-          }}
-          activeOpacity={0.8}
-        >
-          <Download size={18} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.primaryBottomButtonText}>Download Record</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.secondaryBottomButtonOutline}
-          onPress={() => {
-            alert('Visit details hidden');
-          }}
-          activeOpacity={0.8}
-        >
-          <Eye size={18} color="#1E40AF" style={{ marginRight: 8 }} />
-          <Text style={styles.secondaryBottomButtonOutlineText}>Hide Visit Details</Text>
-        </TouchableOpacity>
-      </View>
+      {visitData.status.toLowerCase() === 'completed' && (
+        <View style={styles.buttonBarVertical}>
+          <TouchableOpacity
+            style={styles.primaryBottomButton}
+            onPress={() => {
+              alert('Downloading record...');
+            }}
+            activeOpacity={0.8}
+          >
+            <Download size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.primaryBottomButtonText}>Download Record</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.secondaryBottomButtonOutline}
+            onPress={() => {
+              alert('Visit details hidden');
+            }}
+            activeOpacity={0.8}
+          >
+            <Eye size={18} color="#1E40AF" style={{ marginRight: 8 }} />
+            <Text style={styles.secondaryBottomButtonOutlineText}>Hide Visit Details</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -522,6 +659,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     marginBottom: 20,
     letterSpacing: 0.15,
+  },
+  statusSection: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  statusBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  statusText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
 
   // === Improved Card for Clinical Summary ===

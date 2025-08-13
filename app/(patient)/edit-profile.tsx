@@ -116,13 +116,11 @@ export default function EditProfileScreen() {
     try {
       // Prepare the update data
       const updateData = {
-        // Update name in both nodes for consistency
-        name: profileData.fullName,
-        // Update contact number in users node (this is where it's stored)
+        // Update contact number in patients node (editable field)
         contactNumber: profileData.phone,
-        // Update address in users node (this is where it's stored)
+        // Update address in patients node (editable field)
         address: profileData.address,
-        // Update emergency contact in patients node (this is where it's stored)
+        // Update emergency contact in patients node (editable field)
         emergencyContact: {
           name: profileData.emergencyContact.name.trim(),
           relationship: profileData.emergencyContact.relationship.trim(),

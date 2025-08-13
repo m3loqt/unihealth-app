@@ -31,7 +31,7 @@ class NotificationService {
         message: `Your appointment with Dr. ${appointmentDetails.doctorName} has been marked as completed.`,
         priority: 'medium' as const
       },
-      'canceled': {
+      'cancelled': {
         title: 'Appointment Cancelled',
         message: `Your appointment with Dr. ${appointmentDetails.doctorName} on ${appointmentDetails.date} has been cancelled.`,
         priority: 'high' as const
@@ -84,7 +84,7 @@ class NotificationService {
         message: `Appointment with ${appointmentDetails.patientName} has been marked as completed.`,
         priority: 'medium' as const
       },
-      'canceled': {
+      'cancelled': {
         title: 'Appointment Cancelled',
         message: `Appointment with ${appointmentDetails.patientName} on ${appointmentDetails.date} has been cancelled.`,
         priority: 'high' as const
@@ -120,13 +120,13 @@ class NotificationService {
       clinicName: string;
     }
   ): Promise<string> {
-    const statusMessages = {
-      'accepted': {
-        title: 'Referral Accepted',
-        message: `Your referral to ${referralDetails.specialty} at ${referralDetails.clinicName} has been accepted.`,
+        const statusMessages = {
+      'confirmed': {
+        title: 'Referral Confirmed',
+        message: `Your referral to ${referralDetails.specialty} at ${referralDetails.clinicName} has been confirmed.`,
         priority: 'high' as const
       },
-      'declined': {
+      'cancelled': {
         title: 'Referral Declined',
         message: `Your referral to ${referralDetails.specialty} at ${referralDetails.clinicName} has been declined.`,
         priority: 'high' as const
