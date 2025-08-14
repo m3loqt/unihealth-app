@@ -33,7 +33,7 @@ import { databaseService } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 
 // ---- Constants ----
-const BLUE = '#2563EB';
+const BLUE = '#1E40AF';
 const LIGHT_BLUE = '#DBEAFE';
 
 const SERVICE_ICONS = {
@@ -415,11 +415,11 @@ export default function SelectDateTimeScreen() {
       {/* Progress Bar */}
       <View style={styles.progressBarRoot}>
         <View style={styles.progressBarBg} />
-        <View style={[styles.progressBarActive, { width: '59%' }]} />
+        <View style={[styles.progressBarActive, { width: '105%' }]} />
         <View style={styles.progressDotsRow}>
           <View style={[styles.progressDotNew, styles.progressDotActiveNew, { left: 0 }]} />
           <View style={[styles.progressDotNew, styles.progressDotActiveNew, { left: '45%' }]} />
-          <View style={[styles.progressDotNew, styles.progressDotInactiveNew, { left: '90%' }]} />
+          <View style={[styles.progressDotNew, styles.progressDotActiveNew, { left: '90%' }]} />
         </View>
       </View>
 
