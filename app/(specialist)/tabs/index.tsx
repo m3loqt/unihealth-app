@@ -126,7 +126,7 @@ export default function SpecialistHomeScreen() {
         completedAppointments,
         allAppointments,
         referrals,
-        pendingReferrals
+        pendingAcceptanceReferrals
       ] = await Promise.all([
         databaseService.getPatientsBySpecialist(user.uid),
         databaseService.getAppointmentsBySpecialist(user.uid),
@@ -136,6 +136,11 @@ export default function SpecialistHomeScreen() {
         databaseService.getReferralsBySpecialist(user.uid),
         databaseService.getReferralsBySpecialistAndStatus(user.uid, 'pending_acceptance')
       ]);
+
+      // Get all pending referrals (both 'pending' and 'pending_acceptance' statuses)
+      const pendingReferrals = referrals.filter(ref => 
+        ref.status === 'pending' || ref.status === 'pending_acceptance'
+      );
 
       // Calculate today's appointments (including referrals)
       const today = new Date().toDateString();
@@ -179,31 +184,9 @@ export default function SpecialistHomeScreen() {
       });
 
       // Calculate patient growth (new patients this month vs last month)
-      // Include patients from both appointments and referrals
-      const allPatientIds = new Set();
-      
-      // Add patients from appointments
-      appointments.forEach(apt => {
-        if (apt.patientId) {
-          allPatientIds.add(apt.patientId);
-        }
-      });
-      
-      // Add patients from referrals
-      referrals.forEach(ref => {
-        if (ref.patientId) {
-          allPatientIds.add(ref.patientId);
-        }
-      });
-      
-      // Add patients from the patients list
-      patients.forEach(patient => {
-        if (patient.id) {
-          allPatientIds.add(patient.id);
-        }
-      });
-
-      const totalPatients = allPatientIds.size;
+      // Use the patients list from getPatientsBySpecialist which already includes
+      // unique patients from both appointments and referrals
+      const totalPatients = patients.length;
 
       const currentMonthPatients = patients.filter(patient => {
         if (!patient.createdAt) return false;
