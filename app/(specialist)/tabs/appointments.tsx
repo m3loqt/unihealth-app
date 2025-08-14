@@ -667,7 +667,10 @@ export default function SpecialistAppointmentsScreen() {
           <View style={styles.metaRow}>
             <MapPin size={16} color="#6B7280" />
             <Text style={styles.metaText}>
-              {referral?.referringClinicName || 'Clinic not specified'}
+              {(() => {
+                const clinic = referral?.referringClinicId ? clinicData[referral.referringClinicId] : null;
+                return clinic?.name || referral?.referringClinicName || 'Clinic not specified';
+              })()}
             </Text>
           </View>
         </View>
@@ -798,7 +801,12 @@ export default function SpecialistAppointmentsScreen() {
           </View>
           <View style={styles.metaRow}>
             <MapPin size={16} color="#6B7280" />
-            <Text style={styles.metaText}>{appointment.clinicName || 'Clinic not specified'}</Text>
+            <Text style={styles.metaText}>
+              {(() => {
+                const clinic = appointment.clinicId ? clinicData[appointment.clinicId] : null;
+                return clinic?.name || appointment.clinicName || 'Clinic not specified';
+              })()}
+            </Text>
           </View>
         </View>
 
@@ -1147,7 +1155,11 @@ export default function SpecialistAppointmentsScreen() {
                       <View style={styles.keyValueRow}>
                         <Text style={styles.label}>From Clinic:</Text>
                         <Text style={styles.value}>
-                          {selectedReferralForDetails.referral.referringClinicName || 'Clinic not specified'}
+                          {(() => {
+                            const clinic = selectedReferralForDetails.referral?.referringClinicId ? 
+                              clinicData[selectedReferralForDetails.referral.referringClinicId] : null;
+                            return clinic?.name || selectedReferralForDetails.referral.referringClinicName || 'Clinic not specified';
+                          })()}
                         </Text>
                   </View>
                       {clinicDetails && (

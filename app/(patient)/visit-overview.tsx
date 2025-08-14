@@ -35,6 +35,7 @@ import { safeDataAccess } from '../../src/utils/safeDataAccess';
 interface VisitData extends Appointment {
   doctorName?: string;
   doctorPhoto?: string;
+  doctorSpecialty?: string;
   clinic?: string;
   date?: string;
   time?: string;
@@ -120,6 +121,54 @@ const getStatusText = (status: string) => {
   return status.charAt(0).toUpperCase() + status.slice(1);
 };
 
+// Helper function to format clinic address with fallbacks
+const formatClinicAddress = (clinicData: any, fallbackClinicName?: string): string => {
+  if (!clinicData) {
+    return fallbackClinicName || 'Address not provided';
+  }
+
+  // Try to build address from individual components
+  const addressParts = [];
+  
+  // Add street address if available
+  if (clinicData.address) {
+    addressParts.push(clinicData.address);
+  }
+  
+  // Add city if available
+  if (clinicData.city) {
+    addressParts.push(clinicData.city);
+  }
+  
+  // Add province/state if available
+  if (clinicData.province) {
+    addressParts.push(clinicData.province);
+  }
+  
+  // Add zip code if available
+  if (clinicData.zipCode) {
+    addressParts.push(clinicData.zipCode);
+  }
+  
+  // If we have address parts, join them
+  if (addressParts.length > 0) {
+    return addressParts.join(', ');
+  }
+  
+  // Fallback to addressLine if available
+  if (clinicData.addressLine) {
+    return clinicData.addressLine;
+  }
+  
+  // Fallback to clinic name
+  if (clinicData.name) {
+    return clinicData.name;
+  }
+  
+  // Final fallback
+  return fallbackClinicName || 'Address not provided';
+};
+
 export default function VisitOverviewScreen() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
@@ -201,17 +250,18 @@ export default function VisitOverviewScreen() {
               : doctorData 
                 ? `${doctorData.firstName} ${doctorData.lastName}`
                 : 'Unknown Doctor',
-            clinic: appointment.clinicName || clinicData?.name || 'Unknown Clinic',
+            doctorSpecialty: appointment.doctorSpecialty || doctorData?.specialty || 'General Medicine',
+            clinic: clinicData?.name || appointment.clinicName || 'Unknown Clinic',
             date: appointment.appointmentDate,
             time: appointment.appointmentTime,
-            address: clinicData?.address ? `${clinicData.address}, ${clinicData.city || ''}, ${clinicData.province || ''}`.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '') : (appointment.clinicName || 'Address not provided'),
+            address: formatClinicAddress(clinicData, clinicData?.name || appointment.clinicName),
             // Use appointmentConsultationId if available, otherwise use consultationId
             consultationId: appointment.appointmentConsultationId || appointment.consultationId || 'N/A',
           
           // Consultation fields from medical history
           presentIllnessHistory: medicalHistory?.presentIllnessHistory || '',
           reviewOfSymptoms: medicalHistory?.reviewOfSymptoms || '',
-          labResults: medicalHistory?.labResultsSummary ? medicalHistory.labResultsSummary.map(lab => `${lab.test}: ${lab.value}`).join(', ') : '',
+          labResults: medicalHistory?.labResults || '',
           medications: medicalHistory?.prescriptions ? medicalHistory.prescriptions.map(prescription => `${prescription.medication} ${prescription.dosage}`).join(', ') : '',
           diagnosis: medicalHistory?.diagnosis ? medicalHistory.diagnosis.map(d => d.description).join(', ') : '',
           differentialDiagnosis: medicalHistory?.differentialDiagnosis || '',
@@ -314,7 +364,10 @@ export default function VisitOverviewScreen() {
               </View>
             </View>
             <View style={styles.doctorRow}>
-              <Text style={styles.doctorName}>{visitData.doctorName || 'Unknown Doctor'}</Text>
+              <View style={styles.doctorInfo}>
+                <Text style={styles.doctorName}>{visitData.doctorName || 'Unknown Doctor'}</Text>
+                <Text style={styles.doctorSpecialty}>{visitData.doctorSpecialty || 'General Medicine'}</Text>
+              </View>
               {/* <Image 
                 source={{ uri: visitData.doctorPhoto || undefined }} 
                 style={styles.doctorImage} 
@@ -323,27 +376,35 @@ export default function VisitOverviewScreen() {
               /> */}
             </View>
             <View style={styles.consultDivider} />
-            <View style={styles.consultDetailsTable}>
-              <View style={styles.consultDetailsRow}>
-                <Text style={styles.consultLabel}>Consultation ID</Text>
-                <Text style={styles.consultValue}>{visitData.consultationId || 'N/A'}</Text>
-              </View>
-              <View style={styles.consultDetailsRow}>
-                <Text style={styles.consultLabel}>Clinic</Text>
-                <Text style={styles.consultValue}>{visitData.clinic || 'Unknown Clinic'}</Text>
-              </View>
-              <View style={styles.consultDetailsRow}>
-                <Text style={styles.consultLabel}>Date</Text>
-                <Text style={styles.consultValue}>{visitData.appointmentDate ? formatDate(visitData.appointmentDate) : 'Not specified'}</Text>
-              </View>
-              <View style={styles.consultDetailsRow}>
-                <Text style={styles.consultLabel}>Time</Text>
-                <Text style={styles.consultValue}>{visitData.appointmentTime ? formatTime(visitData.appointmentTime) : 'Not specified'}</Text>
-              </View>
-              <View style={styles.consultDetailsRowNoBorder}>
-                <Text style={styles.consultLabel}>Address</Text>
-                <Text style={styles.consultValue}>{visitData.address || 'Address not provided'}</Text>
-              </View>
+                         <View style={styles.consultDetailsTable}>
+               <View style={styles.consultDetailsRow}>
+                 <Text style={styles.consultLabel}>Clinic</Text>
+                 <Text style={styles.consultValue}>{visitData.clinic || 'Unknown Clinic'}</Text>
+               </View>
+               <View style={styles.consultDetailsRow}>
+                 <Text style={styles.consultLabel}>Address</Text>
+                 <Text style={styles.consultValue}>{visitData.address || 'Address not provided'}</Text>
+               </View>
+               <View style={styles.consultDetailsRow}>
+                 <Text style={styles.consultLabel}>Date</Text>
+                 <Text style={styles.consultValue}>{visitData.appointmentDate ? formatDate(visitData.appointmentDate) : 'Not specified'}</Text>
+               </View>
+               <View style={styles.consultDetailsRow}>
+                 <Text style={styles.consultLabel}>Time</Text>
+                 <Text style={styles.consultValue}>{visitData.appointmentTime}</Text>
+               </View>
+               <View style={styles.consultDetailsRow}>
+                 <Text style={styles.consultLabel}>Purpose</Text>
+                 <Text style={styles.consultValue}>{visitData.appointmentPurpose || 'Not specified'}</Text>
+               </View>
+               {visitData.additionalNotes && (
+                 <View style={styles.consultDetailsRowNoBorder}>
+                   <Text style={styles.consultLabel}>Notes</Text>
+                   <Text style={styles.consultValue}>{visitData.additionalNotes}</Text>
+                 </View>
+               )}
+              
+              
             </View>
           </View>
         </View>
@@ -754,7 +815,7 @@ const styles = StyleSheet.create({
   },
   doctorRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 13,
     justifyContent: 'space-between',
   },
@@ -762,6 +823,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1F2937',
     fontFamily: 'Inter-SemiBold',
+  },
+  doctorInfo: {
+    flex: 1,
+  },
+  doctorSpecialty: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    marginTop: 2,
   },
   doctorImage: {
     width: 42,

@@ -27,6 +27,7 @@ export interface Appointment {
   doctorFirstName?: string; // Optional for walk-ins
   doctorId: string;
   doctorLastName?: string; // Optional for walk-ins
+  doctorSpecialty?: string; // Optional for walk-ins
   lastUpdated: string;
   appointmentPurpose?: string; // Changed from patientComplaint to appointmentPurpose
   additionalNotes?: string; // Changed from notes
@@ -134,11 +135,12 @@ export interface Patient {
   id?: string;
   patientFirstName?: string;
   patientLastName?: string;
-  referredFrom?: string;
+  address?: string;
+  phoneNumber?: string;
   status?: string;
   lastVisit?: string;
   createdAt?: string;
-  specialty?: string;
+  isScheduledVisit?: boolean;
 }
 
 export interface Clinic {
@@ -317,6 +319,7 @@ export const databaseService = {
         if (doctorData) {
           enriched.doctorFirstName = doctorData.firstName; // Doctor interface uses 'firstName'
           enriched.doctorLastName = doctorData.lastName; // Doctor interface uses 'lastName'
+          enriched.doctorSpecialty = doctorData.specialty; // Doctor interface uses 'specialty'
         }
       }
 
@@ -828,9 +831,14 @@ export const databaseService = {
       const snapshot = await get(appointmentRef);
       
       if (snapshot.exists()) {
+        const appointmentData = snapshot.val();
+        
+        // Normalize and enrich the appointment data (same as getAppointments)
+        const normalizedAppointment = await this.normalizeAppointmentData(appointmentData);
+        
         return {
           id: snapshot.key,
-          ...snapshot.val()
+          ...normalizedAppointment
         };
       }
       return null;
@@ -916,34 +924,357 @@ export const databaseService = {
   // Specialist-specific methods
   async getPatientsBySpecialist(specialistId: string): Promise<Patient[]> {
     try {
-      const appointmentsRef = ref(database, 'appointments');
-      const snapshot = await get(appointmentsRef);
+      console.log('🔍 getPatientsBySpecialist called with specialistId:', specialistId);
+      const patients = new Map();
+      const patientPromises: Promise<void>[] = [];
       
-      if (snapshot.exists()) {
-        const patients = new Map();
-        snapshot.forEach((childSnapshot) => {
+      // Get patients from appointments
+      const appointmentsRef = ref(database, 'appointments');
+      const appointmentsSnapshot = await get(appointmentsRef);
+      
+      if (appointmentsSnapshot.exists()) {
+        console.log('📋 Found appointments, checking for specialist:', specialistId);
+        let appointmentCount = 0;
+        let matchingAppointments = 0;
+        
+        appointmentsSnapshot.forEach((childSnapshot) => {
           const appointment = childSnapshot.val();
-          if (appointment.doctorId === specialistId) {
-            const patientKey = appointment.patientId;
-            if (!patients.has(patientKey)) {
-                          patients.set(patientKey, {
-              id: patientKey,
-              patientFirstName: appointment.patientFirstName || 'Unknown',
-              patientLastName: appointment.patientLastName || 'Patient',
-              referredFrom: appointment.specialty || 'General',
+          appointmentCount++;
+          
+          console.log(`📅 Appointment ${appointmentCount}:`, {
+            doctorId: appointment.doctorId,
+            specialistId: appointment.specialistId,
+            patientId: appointment.patientId,
+            status: appointment.status,
+            patientFirstName: appointment.patientFirstName,
+            patientLastName: appointment.patientLastName
+          });
+          
+          // Only include confirmed or completed appointments
+          // Check for both doctorId and specialistId (fallback)
+          const appointmentDoctorId = appointment.doctorId || appointment.specialistId;
+          if (appointmentDoctorId === specialistId && 
+              (appointment.status === 'confirmed' || appointment.status === 'completed')) {
+            matchingAppointments++;
+            console.log(`✅ Found matching appointment ${matchingAppointments}:`, {
+              patientId: appointment.patientId,
               status: appointment.status,
-              lastVisit: appointment.appointmentDate,
-              createdAt: appointment.createdAt,
+              patientName: `${appointment.patientFirstName} ${appointment.patientLastName}`,
+              doctorId: appointment.doctorId,
+              specialistId: appointment.specialistId
             });
+            
+            const patientKey = appointment.patientId;
+            
+            if (!patients.has(patientKey)) {
+              console.log(`👤 Fetching patient details for: ${patientKey}`);
+              // Fetch patient details from patients node
+              const patientPromise = this.getPatientById(patientKey).then(async (patientData) => {
+                if (patientData) {
+                  console.log(`✅ Patient data fetched for ${patientKey}:`, patientData);
+                  // Get the most recent appointment for this patient
+                  const recentAppointment = this.getMostRecentAppointmentForPatient(appointmentsSnapshot, patientKey, specialistId);
+                  
+                  // Get the most recent consultation date from medical history
+                  const lastConsultationResult = await this.getMostRecentConsultationDate(patientKey);
+                  console.log(`📅 Last consultation result for ${patientKey}:`, lastConsultationResult);
+                  
+                  // Format the last visit date and track if it's from scheduled visit
+                  let formattedLastVisit: string;
+                  let isScheduledVisit = false;
+                  
+                  if (lastConsultationResult.date) {
+                    formattedLastVisit = this.formatDateToReadable(lastConsultationResult.date);
+                    isScheduledVisit = lastConsultationResult.isScheduledVisit;
+                  } else if (recentAppointment?.appointmentDate) {
+                    formattedLastVisit = this.formatDateToReadable(recentAppointment.appointmentDate);
+                    isScheduledVisit = true;
+                  } else {
+                    formattedLastVisit = 'No visits yet';
+                  }
+                  
+                  const patientInfo = {
+                    id: patientKey,
+                    patientFirstName: patientData.firstName || patientData.patientFirstName || 'Unknown',
+                    patientLastName: patientData.lastName || patientData.patientLastName || 'Patient',
+                    address: patientData.address || patientData.homeAddress || 'Address not available',
+                    phoneNumber: patientData.phoneNumber || patientData.contactNumber || patientData.phone || 'Phone not available',
+                    status: recentAppointment?.status || 'confirmed',
+                    lastVisit: formattedLastVisit,
+                    createdAt: patientData.createdAt || recentAppointment?.createdAt,
+                    isScheduledVisit: isScheduledVisit,
+                  };
+                  
+                  console.log(`👤 Setting patient info for ${patientKey}:`, patientInfo);
+                  patients.set(patientKey, patientInfo);
+                } else {
+                  console.log(`❌ No patient data found for ${patientKey}`);
+                }
+              }).catch(error => {
+                console.error(`❌ Error fetching patient ${patientKey}:`, error);
+                // Fallback to appointment data if patient fetch fails
+                const recentAppointment = this.getMostRecentAppointmentForPatient(appointmentsSnapshot, patientKey, specialistId);
+                
+                // Format the last visit date for fallback
+                const formattedFallbackLastVisit = recentAppointment?.appointmentDate 
+                  ? this.formatDateToReadable(recentAppointment.appointmentDate)
+                  : 'No visits yet';
+                
+                const fallbackPatientInfo = {
+                  id: patientKey,
+                  patientFirstName: appointment.patientFirstName || 'Unknown',
+                  patientLastName: appointment.patientLastName || 'Patient',
+                  address: 'Address not available',
+                  phoneNumber: 'Phone not available',
+                  status: recentAppointment?.status || 'confirmed',
+                  lastVisit: formattedFallbackLastVisit,
+                  createdAt: recentAppointment?.createdAt,
+                  isScheduledVisit: !!recentAppointment?.appointmentDate,
+                };
+                
+                console.log(`🔄 Using fallback patient info for ${patientKey}:`, fallbackPatientInfo);
+                patients.set(patientKey, fallbackPatientInfo);
+              });
+              
+              patientPromises.push(patientPromise);
+            } else {
+              console.log(`👤 Patient ${patientKey} already being processed`);
             }
           }
         });
-        return Array.from(patients.values());
+        
+        console.log(`📊 Appointments Summary: ${appointmentCount} total appointments, ${matchingAppointments} matching appointments`);
+      } else {
+        console.log('❌ No appointments found in database');
       }
-      return [];
+      
+      // Get patients from referrals
+      const referralsRef = ref(database, 'referrals');
+      const referralsSnapshot = await get(referralsRef);
+      
+      if (referralsSnapshot.exists()) {
+        console.log('📋 Found referrals, checking for specialist:', specialistId);
+        let referralCount = 0;
+        let matchingReferrals = 0;
+        
+        referralsSnapshot.forEach((childSnapshot) => {
+          const referral = childSnapshot.val();
+          referralCount++;
+          
+          console.log(`📋 Referral ${referralCount}:`, {
+            assignedSpecialistId: referral.assignedSpecialistId,
+            patientId: referral.patientId,
+            status: referral.status,
+            patientFirstName: referral.patientFirstName,
+            patientLastName: referral.patientLastName
+          });
+          
+          // Only include confirmed or completed referrals
+          if (referral.assignedSpecialistId === specialistId && 
+              (referral.status === 'confirmed' || referral.status === 'completed')) {
+            matchingReferrals++;
+            console.log(`✅ Found matching referral ${matchingReferrals}:`, {
+              patientId: referral.patientId,
+              status: referral.status,
+              patientName: `${referral.patientFirstName} ${referral.patientLastName}`,
+              assignedSpecialistId: referral.assignedSpecialistId
+            });
+            
+            const patientKey = referral.patientId;
+            
+            if (!patients.has(patientKey)) {
+              console.log(`👤 Fetching patient details for referral: ${patientKey}`);
+              // Fetch patient details from patients node
+              const patientPromise = this.getPatientById(patientKey).then(async (patientData) => {
+                if (patientData) {
+                  console.log(`✅ Patient data fetched for referral ${patientKey}:`, patientData);
+                  
+                  // Get the consultation date from medical history using referralId
+                  const lastConsultationResult = await this.getMostRecentConsultationDate(patientKey, childSnapshot.key);
+                  console.log(`📅 Last consultation result for referral ${patientKey}:`, lastConsultationResult);
+                  
+                  // Format the last visit date for referrals and track if it's from scheduled visit
+                  let formattedReferralLastVisit: string;
+                  let isScheduledVisit = false;
+                  
+                  if (lastConsultationResult.date) {
+                    formattedReferralLastVisit = this.formatDateToReadable(lastConsultationResult.date);
+                    isScheduledVisit = lastConsultationResult.isScheduledVisit;
+                  } else if (referral.appointmentDate) {
+                    formattedReferralLastVisit = this.formatDateToReadable(referral.appointmentDate);
+                    isScheduledVisit = true;
+                  } else {
+                    formattedReferralLastVisit = 'No visits yet';
+                  }
+                  
+                  const patientInfo = {
+                    id: patientKey,
+                    patientFirstName: patientData.firstName || patientData.patientFirstName || referral.patientFirstName || 'Unknown',
+                    patientLastName: patientData.lastName || patientData.patientLastName || referral.patientLastName || 'Patient',
+                    address: patientData.address || patientData.homeAddress || 'Address not available',
+                    phoneNumber: patientData.phoneNumber || patientData.contactNumber || patientData.phone || 'Phone not available',
+                    status: referral.status || 'confirmed',
+                    lastVisit: formattedReferralLastVisit,
+                    createdAt: patientData.createdAt || referral.referralTimestamp,
+                    isScheduledVisit: isScheduledVisit,
+                  };
+                  
+                  console.log(`👤 Setting patient info for referral ${patientKey}:`, patientInfo);
+                  patients.set(patientKey, patientInfo);
+                } else {
+                  console.log(`❌ No patient data found for referral ${patientKey}`);
+                }
+              }).catch(error => {
+                console.error(`❌ Error fetching patient for referral ${patientKey}:`, error);
+                // Fallback to referral data if patient fetch fails
+                const formattedReferralFallbackLastVisit = referral.appointmentDate 
+                  ? this.formatDateToReadable(referral.appointmentDate)
+                  : 'No visits yet';
+                
+                const fallbackPatientInfo = {
+                  id: patientKey,
+                  patientFirstName: referral.patientFirstName || 'Unknown',
+                  patientLastName: referral.patientLastName || 'Patient',
+                  address: 'Address not available',
+                  phoneNumber: 'Phone not available',
+                  status: referral.status || 'confirmed',
+                  lastVisit: formattedReferralFallbackLastVisit,
+                  createdAt: referral.referralTimestamp,
+                  isScheduledVisit: !!referral.appointmentDate,
+                };
+                
+                console.log(`🔄 Using fallback patient info for referral ${patientKey}:`, fallbackPatientInfo);
+                patients.set(patientKey, fallbackPatientInfo);
+              });
+              
+              patientPromises.push(patientPromise);
+            } else {
+              console.log(`👤 Patient ${patientKey} from referral already being processed`);
+            }
+          }
+        });
+        
+        console.log(`📊 Referrals Summary: ${referralCount} total referrals, ${matchingReferrals} matching referrals`);
+      } else {
+        console.log('❌ No referrals found in database');
+      }
+      
+      // Wait for all patient data to be fetched
+      await Promise.all(patientPromises);
+      const result = Array.from(patients.values());
+      console.log(`🎯 Final result: ${result.length} patients returned:`, result);
+      return result;
     } catch (error) {
-      console.error('Get patients by specialist error:', error);
+      console.error('❌ Get patients by specialist error:', error);
       return [];
+    }
+  },
+
+  // Helper method to get the most recent appointment for a patient
+  getMostRecentAppointmentForPatient(appointmentsSnapshot: any, patientId: string, specialistId: string): any {
+    let mostRecentAppointment = null;
+    let mostRecentDate = null;
+    
+    appointmentsSnapshot.forEach((childSnapshot: any) => {
+      const appointment = childSnapshot.val();
+      // Check for both doctorId and specialistId (fallback)
+      const appointmentDoctorId = appointment.doctorId || appointment.specialistId;
+      if (appointment.patientId === patientId && 
+          appointmentDoctorId === specialistId &&
+          (appointment.status === 'confirmed' || appointment.status === 'completed')) {
+        
+        const appointmentDate = new Date(appointment.appointmentDate);
+        if (!mostRecentDate || appointmentDate > mostRecentDate) {
+          mostRecentDate = appointmentDate;
+          mostRecentAppointment = appointment;
+        }
+      }
+    });
+    
+    return mostRecentAppointment;
+  },
+
+  // Helper method to get the most recent consultation date from medical history
+  async getMostRecentConsultationDate(patientId: string, referralId?: string): Promise<{ date: string | null; isScheduledVisit: boolean }> {
+    try {
+      // If we have a referralId, follow the specific path to get consultationDate
+      if (referralId) {
+        console.log(`🔍 Fetching consultation date for referral: ${referralId}`);
+        
+        // Step 1: Get referralConsultationId from referrals node of that referralId
+        const referralRef = ref(database, `referrals/${referralId}`);
+        const referralSnapshot = await get(referralRef);
+        
+        if (referralSnapshot.exists()) {
+          const referral = referralSnapshot.val();
+          const referralConsultationId = referral.referralConsultationId;
+          
+          console.log(`📋 Found referral ${referralId}, referralConsultationId:`, referralConsultationId);
+          
+          if (referralConsultationId) {
+            // Step 2: Go to patientMedicalHistory > patientId > entries > referralConsultationId > consultationDate
+            const consultationRef = ref(database, `patientMedicalHistory/${patientId}/entries/${referralConsultationId}`);
+            const consultationSnapshot = await get(consultationRef);
+            
+            if (consultationSnapshot.exists()) {
+              const consultation = consultationSnapshot.val();
+              const consultationDate = consultation.consultationDate;
+              
+              console.log(`✅ Found consultation for referral ${referralId}:`, consultationDate);
+              return { date: consultationDate, isScheduledVisit: false };
+            } else {
+              console.log(`❌ No consultation found for referralConsultationId ${referralConsultationId}`);
+            }
+          } else {
+            console.log(`⚠️ No referralConsultationId found in referral ${referralId}`);
+          }
+          
+          // Step 3: If consultationDate is null, look for appointmentDate inside referrals node of that referralId
+          const appointmentDate = referral.appointmentDate;
+          if (appointmentDate) {
+            console.log(`📅 Using appointmentDate from referral ${referralId}:`, appointmentDate);
+            return { date: appointmentDate, isScheduledVisit: true };
+          } else {
+            console.log(`❌ No appointmentDate found in referral ${referralId}`);
+          }
+        } else {
+          console.log(`❌ No referral found for referralId ${referralId}`);
+        }
+      }
+      
+      // Fallback to getting the most recent consultation from all entries
+      const medicalHistory = await this.getMedicalHistoryByPatient(patientId);
+      if (medicalHistory.length > 0) {
+        // Medical history is already sorted by consultation date (most recent first)
+        const mostRecent = medicalHistory[0];
+        console.log(`📅 Using most recent consultation date: ${mostRecent.consultationDate}`);
+        return { date: mostRecent.consultationDate, isScheduledVisit: false };
+      }
+      return { date: null, isScheduledVisit: false };
+    } catch (error) {
+      console.error(`Error fetching medical history for patient ${patientId}:`, error);
+      return { date: null, isScheduledVisit: false };
+    }
+  },
+
+  // Helper method to format date to "May 16, 2025" format
+  formatDateToReadable(dateString: string): string {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+      
+      const options: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      };
+      
+      return date.toLocaleDateString('en-US', options);
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid date';
     }
   },
 

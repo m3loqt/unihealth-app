@@ -458,7 +458,10 @@ export default function AppointmentsScreen() {
           <View style={styles.metaRow}>
             <MapPin size={16} color="#6B7280" />
             <Text style={styles.metaText}>
-              {referral?.referringClinicName || 'Clinic not specified'}
+              {(() => {
+                const clinic = referral?.referringClinicId ? clinicData[referral.referringClinicId] : null;
+                return clinic?.name || referral?.referringClinicName || 'Clinic not specified';
+              })()}
             </Text>
           </View>
         </View>
@@ -574,7 +577,10 @@ export default function AppointmentsScreen() {
           <View style={styles.metaRow}>
             <MapPin size={16} color="#6B7280" />
             <Text style={styles.metaText}>
-              {appointment.clinicName || 'Clinic not available'}
+              {(() => {
+                const clinic = appointment.clinicId ? clinicData[appointment.clinicId] : null;
+                return clinic?.name || appointment.clinicName || 'Clinic not available';
+              })()}
             </Text>
           </View>
         </View>
