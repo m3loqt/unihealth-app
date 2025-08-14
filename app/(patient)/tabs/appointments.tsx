@@ -339,7 +339,7 @@ export default function AppointmentsScreen() {
         const isLoading = loadingReferrals[appointment.relatedReferralId];
         
         referralCards.push({
-          id: appointment.id || `referral-${appointment.relatedReferralId}`, // Use appointment.id as unique key, fallback to referral ID
+          id: appointment.id || appointment.relatedReferralId, // Use appointment.id as unique key, fallback to referral ID (Firebase push key)
           type: 'referral',
           appointment,
           referral,

@@ -212,12 +212,13 @@ export default function ReferralDetailsScreen() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
   const [referralData, setReferralData] = useState<ReferralData | null>(null);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [certificates, setCertificates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
-    patientInfo: true,
-    referralInfo: true,
-    clinicalNotes: true,
+    patientHistory: true,
+    findings: true,
     soapNotes: true,
     treatment: true,
     supplementary: true,
@@ -304,15 +305,25 @@ export default function ReferralDetailsScreen() {
           }
         }
         
-        // Load medical history/consultation data if referral is completed
-        let medicalHistory = null;
-        if (referral.status.toLowerCase() === 'completed') {
-          try {
-            medicalHistory = await databaseService.getMedicalHistoryByAppointment(referral.clinicAppointmentId, referral.patientId);
-          } catch (error) {
-            console.log('No medical history found for this referral:', error);
-          }
-        }
+                 // Load medical history/consultation data if referral is completed
+         let medicalHistory = null;
+         if (referral.status.toLowerCase() === 'completed' && referral.referralConsultationId) {
+           try {
+             // Fetch medical history from patientMedicalHistory > patientId > entries > referralConsultationId
+             medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${referral.patientId}/entries/${referral.referralConsultationId}`);
+             console.log('🔍 Fetched medical history from referralConsultationId:', referral.referralConsultationId, medicalHistory);
+           } catch (error) {
+             console.log('No medical history found for this referral consultation:', error);
+             
+             // Fallback: try the old method if referralConsultationId approach fails
+             try {
+               medicalHistory = await databaseService.getMedicalHistoryByAppointment(referral.clinicAppointmentId, referral.patientId);
+               console.log('🔍 Fallback: Fetched medical history using appointment method:', medicalHistory);
+             } catch (fallbackError) {
+               console.log('Fallback method also failed:', fallbackError);
+             }
+           }
+         }
         
         // Debug logging
         console.log('🔍 REFERRAL DATA:', {
@@ -394,6 +405,34 @@ export default function ReferralDetailsScreen() {
         console.log('🔍 FINAL REFERRAL DATA:', combinedReferralData);
         
         setReferralData(combinedReferralData);
+        
+                 // Load related prescriptions and certificates
+         let referralPrescriptions = [];
+         let referralCertificates = [];
+         
+         if (referral.referralConsultationId && medicalHistory) {
+           // Extract prescriptions and certificates from the medical history data
+           referralPrescriptions = medicalHistory.prescriptions || [];
+           referralCertificates = medicalHistory.certificates || [];
+           console.log('🔍 Extracted prescriptions and certificates from medical history:', {
+             prescriptions: referralPrescriptions.length,
+             certificates: referralCertificates.length
+           });
+         } else {
+           // Fallback: try using appointment method
+           try {
+             [referralPrescriptions, referralCertificates] = await Promise.all([
+               databaseService.getPrescriptionsByAppointment(referral.clinicAppointmentId),
+               databaseService.getCertificatesByAppointment(referral.clinicAppointmentId)
+             ]);
+             console.log('🔍 Fallback: Fetched prescriptions and certificates using appointment method');
+           } catch (fallbackError) {
+             console.log('Fallback method also failed for prescriptions/certificates:', fallbackError);
+           }
+         }
+         
+         setPrescriptions(referralPrescriptions);
+         setCertificates(referralCertificates);
       }
     } catch (error) {
       console.error('Error loading referral data:', error);
@@ -514,6 +553,98 @@ export default function ReferralDetailsScreen() {
           </View>
         </View>
 
+        {/* --- PRESCRIPTIONS --- */}
+        <View style={styles.sectionSpacing}>
+          <Text style={styles.sectionTitle}>Prescriptions</Text>
+          {referralData.status.toLowerCase() === 'completed' && prescriptions.length ? prescriptions.map((p) => (
+            <View key={p.id} style={styles.cardBox}>
+              <View style={styles.prescriptionHeader}>
+                <View style={[styles.medicationIcon, { backgroundColor: `${p.color}15` }]}>
+                  <Pill size={20} color={p.color} />
+                </View>
+                <View style={styles.prescriptionDetails}>
+                  <Text style={styles.medicationName}>{p.medication || 'Unknown Medication'}</Text>
+                  <Text style={styles.medicationDosage}>{p.dosage || 'N/A'} • {p.frequency || 'N/A'}</Text>
+                  <Text style={styles.prescriptionDescription}>{p.description || 'No description provided'}</Text>
+                </View>
+                <View style={styles.prescriptionStatus}>
+                  <Text style={styles.remainingDays}>{p.remaining}</Text>
+                  <Text style={styles.remainingLabel}>remaining</Text>
+                </View>
+              </View>
+              <View style={styles.prescriptionMeta}>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Prescribed by:</Text>
+                  <Text style={styles.metaValue}>{p.prescribedBy || 'Unknown Doctor'}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Next refill:</Text>
+                  <Text style={styles.metaValue}>{p.nextRefill || 'Not specified'}</Text>
+                </View>
+              </View>
+            </View>
+          )) : referralData.status.toLowerCase() === 'completed' ? (
+            <View style={styles.emptyStateCard}>
+              <Text style={styles.emptyStateText}>No prescriptions for this referral.</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyStateCard}>
+              <Text style={styles.emptyStateText}>Prescriptions will be available after the referral is completed.</Text>
+            </View>
+          )}
+        </View>
+
+        {/* --- MEDICAL CERTIFICATES --- */}
+        <View style={styles.sectionSpacing}>
+          <Text style={styles.sectionTitle}>Medical Certificates</Text>
+          {referralData.status.toLowerCase() === 'completed' && certificates.length ? certificates.map((cert) => {
+            const statusStyle = getCertStatusStyles(cert.status);
+            return (
+              <View key={cert.id} style={styles.cardBox}>
+                <View style={styles.certificateIconTitleRow}>
+                  <View style={styles.uniformIconCircle}>
+                    <FileText size={20} color="#1E3A8A" />
+                  </View>
+                  <Text style={styles.certificateType}>{cert.type || 'Unknown Type'}</Text>
+                  <View style={[styles.certificateStatus, statusStyle.container]}>
+                    {statusStyle.icon}
+                    <Text style={[styles.certificateStatusText, statusStyle.text]}>
+                      {statusStyle.label}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.certificateDivider} />
+                <View style={styles.certificateInfoRow}>
+                  <Text style={styles.certificateLabel}>Issued by:</Text>
+                  <Text style={styles.certificateInfoValue}>{cert.doctor || 'Unknown Doctor'}</Text>
+                </View>
+                <View style={styles.certificateInfoRow}>
+                  <Text style={styles.certificateLabel}>Issued on:</Text>
+                  <Text style={styles.certificateInfoValue}>{cert.issuedDate || 'Date not specified'}</Text>
+                </View>
+                <View style={styles.certificateActions}>
+                  <TouchableOpacity style={[styles.secondaryButton, { marginRight: 9 }]}>
+                    <Eye size={18} color="#374151" />
+                    <Text style={styles.secondaryButtonText}>View</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.primaryButton}>
+                    <Download size={18} color="#FFFFFF" />
+                    <Text style={styles.primaryButtonText}>Download</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          }) : referralData.status.toLowerCase() === 'completed' ? (
+            <View style={styles.emptyStateCard}>
+              <Text style={styles.emptyStateText}>No certificates were issued for this referral.</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyStateCard}>
+              <Text style={styles.emptyStateText}>Certificates will be available after the referral is completed.</Text>
+            </View>
+          )}
+        </View>
+
         {/* --- CLINICAL SUMMARY --- */}
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Clinical Summary</Text>
@@ -525,97 +656,57 @@ export default function ReferralDetailsScreen() {
             </View>
           ) : (
             <View style={styles.cardBoxClinical}>
-              {/* Patient Information */}
-              <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('patientInfo')}>
-                <Text style={styles.clinicalSectionLabel}>Patient Information</Text>
-                {expandedSections['patientInfo'] ? (
-                  <ChevronDown size={23} color="#6B7280" />
-                ) : (
-                  <ChevronRight size={23} color="#9CA3AF" />
-                )}
-              </TouchableOpacity>
-              {expandedSections['patientInfo'] && (
-                <View style={styles.clinicalSectionBody}>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Patient Name:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.patientName || 'Unknown Patient'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Patient ID:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.patientId || 'Not available'}</Text>
-                  </View>
-                </View>
+            {/* Step 1: Patient History */}
+            <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('patientHistory')}>
+              <Text style={styles.clinicalSectionLabel}>Patient History</Text>
+              {expandedSections['patientHistory'] ? (
+                <ChevronDown size={23} color="#6B7280" />
+              ) : (
+                <ChevronRight size={23} color="#9CA3AF" />
               )}
+            </TouchableOpacity>
+            {expandedSections['patientHistory'] && (
+              <View style={styles.clinicalSectionBody}>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>History of Present Illnesses:</Text>
+                  <Text style={styles.clinicalFieldValue}>{referralData.presentIllnessHistory || 'No illness history recorded'}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Review of Symptoms:</Text>
+                  <Text style={styles.clinicalFieldValue}>{referralData.reviewOfSymptoms || 'No symptoms reviewed'}</Text>
+                </View>
+              </View>
+            )}
 
-              {/* Referral Information */}
-              <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('referralInfo')}>
-                <Text style={styles.clinicalSectionLabel}>Referral Information</Text>
-                {expandedSections['referralInfo'] ? (
-                  <ChevronDown size={23} color="#6B7280" />
-                ) : (
-                  <ChevronRight size={23} color="#9CA3AF" />
-                )}
-              </TouchableOpacity>
-              {expandedSections['referralInfo'] && (
-                <View style={styles.clinicalSectionBody}>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Reason for Referral:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.initialReasonForReferral || 'No reason specified'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Referring Doctor:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.referringDoctorName || 'Unknown Doctor'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Referring Clinic:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.clinic || 'Unknown Clinic'}</Text>
-                  </View>
-                  {referralData.generalistNotes && (
-                    <View style={styles.clinicalFieldRow}>
-                      <Text style={styles.clinicalFieldLabel}>Generalist Notes:</Text>
-                      <Text style={styles.clinicalFieldValue}>{referralData.generalistNotes}</Text>
-                    </View>
-                  )}
-                </View>
+            {/* Step 2: Findings */}
+            <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('findings')}>
+              <Text style={styles.clinicalSectionLabel}>Findings</Text>
+              {expandedSections['findings'] ? (
+                <ChevronDown size={23} color="#6B7280" />
+              ) : (
+                <ChevronRight size={23} color="#9CA3AF" />
               )}
-
-              {/* Clinical Notes */}
-              <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('clinicalNotes')}>
-                <Text style={styles.clinicalSectionLabel}>Clinical Notes</Text>
-                {expandedSections['clinicalNotes'] ? (
-                  <ChevronDown size={23} color="#6B7280" />
-                ) : (
-                  <ChevronRight size={23} color="#9CA3AF" />
-                )}
-              </TouchableOpacity>
-              {expandedSections['clinicalNotes'] && (
-                <View style={styles.clinicalSectionBody}>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>History of Present Illness:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.presentIllnessHistory || 'No illness history recorded'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Review of Symptoms:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.reviewOfSymptoms || 'No symptoms reviewed'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Lab Results:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.labResults || 'No lab results recorded'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Medications:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.medications || 'No medications recorded'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Diagnosis:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.diagnosis || 'No diagnosis recorded'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Differential Diagnosis:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.differentialDiagnosis || 'No differential diagnosis recorded'}</Text>
-                  </View>
+            </TouchableOpacity>
+            {expandedSections['findings'] && (
+              <View style={styles.clinicalSectionBody}>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Lab Results:</Text>
+                  <Text style={styles.clinicalFieldValue}>{referralData.labResults || 'No lab results recorded'}</Text>
                 </View>
-              )}
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Medications:</Text>
+                  <Text style={styles.clinicalFieldValue}>{referralData.medications || 'No medications recorded'}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Diagnosis:</Text>
+                  <Text style={styles.clinicalFieldValue}>{referralData.diagnosis || 'No diagnosis recorded'}</Text>
+                </View>
+                <View style={styles.clinicalFieldRow}>
+                  <Text style={styles.clinicalFieldLabel}>Differential Diagnosis:</Text>
+                  <Text style={styles.clinicalFieldValue}>{referralData.differentialDiagnosis || 'No differential diagnosis recorded'}</Text>
+                </View>
+              </View>
+            )}
 
               {/* SOAP Notes */}
               <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('soapNotes')}>
@@ -680,7 +771,6 @@ export default function ReferralDetailsScreen() {
               </TouchableOpacity>
               {expandedSections['supplementary'] && (
                 <View style={styles.clinicalSectionBody}>
-
                 </View>
               )}
             </View>
@@ -990,4 +1080,193 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     letterSpacing: 0.2,
   },
+
+  // ---- Prescription styles ----
+  prescriptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  medicationIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  prescriptionDetails: { flex: 1 },
+  medicationName: {
+    fontSize: 16,
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 2,
+  },
+  medicationDosage: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 1,
+    fontFamily: 'Inter-Regular',
+  },
+  prescriptionDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  prescriptionStatus: {
+    alignItems: 'flex-end',
+  },
+  remainingDays: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+  },
+  remainingLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  prescriptionMeta: {
+    marginBottom: 6,
+    paddingTop: 7,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 5,
+  },
+  metaLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  metaValue: {
+    fontSize: 13,
+    color: '#374151',
+    fontFamily: 'Inter-Regular',
+  },
+
+  // ---- Certificate styles ----
+  certificateIconTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  uniformIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  certificateType: {
+    fontSize: 16,
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    flex: 1,
+  },
+  certificateStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginLeft: 7,
+    minWidth: 76,
+    justifyContent: 'center',
+  },
+  certificateStatusText: {
+    fontSize: 13,
+    fontFamily: 'Inter-SemiBold',
+  },
+  certificateDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 9,
+  },
+  certificateInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  certificateLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    minWidth: 80,
+  },
+  certificateInfoValue: {
+    fontSize: 13,
+    color: '#1F2937',
+    flex: 1,
+    textAlign: 'right',
+    fontFamily: 'Inter-Regular',
+  },
+  certificateActions: {
+    flexDirection: 'row',
+    marginTop: 13,
+  },
+  primaryButton: {
+    flex: 1,
+    backgroundColor: '#1E40AF',
+    paddingVertical: 13,
+    borderRadius: 10,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginLeft: 9,
+  },
+  secondaryButton: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 13,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginRight: 0,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    marginLeft: 3,
+  },
+  secondaryButtonText: {
+    color: '#374151',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    marginLeft: 3,
+  },
 });
+
+function getCertStatusStyles(status: string) {
+  const mainBlue = '#1E3A8A';
+  if (status === 'Valid') {
+    return {
+      container: {
+        backgroundColor: '#EFF6FF',
+        borderColor: mainBlue,
+      },
+      icon: <CheckCircle size={17} color={mainBlue} style={{ marginRight: 4 }} />,
+      text: { color: mainBlue },
+      label: 'Valid',
+    };
+  }
+  return {
+    container: {
+      backgroundColor: '#FEF2F2',
+      borderColor: '#EF4444',
+    },
+    icon: <XCircle size={17} color="#EF4444" style={{ marginRight: 4 }} />,
+    text: { color: '#EF4444' },
+    label: 'Expired',
+  };
+}
