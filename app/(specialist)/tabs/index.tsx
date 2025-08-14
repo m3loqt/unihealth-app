@@ -69,6 +69,7 @@ export default function SpecialistHomeScreen() {
   });
   const [nextAppointments, setNextAppointments] = useState<any[]>([]);
   const [newPatients, setNewPatients] = useState<any[]>([]);
+  const [clinicData, setClinicData] = useState<{[key: string]: any}>({});
   
   // Performance optimization: memoize filtered data
   const validNextAppointments = useDeepMemo(() => {
@@ -261,6 +262,32 @@ export default function SpecialistHomeScreen() {
 
       setNextAppointments(allUpcoming);
       setNewPatients(recentPatients);
+
+      // Load clinic data for appointments
+      const clinicIds = new Set<string>();
+      allUpcoming.forEach(appointment => {
+        // Check if it's an appointment (has clinicId) or referral (has referringClinicId)
+        const clinicId = 'clinicId' in appointment ? appointment.clinicId : 
+                        'referringClinicId' in appointment ? appointment.referringClinicId : null;
+        if (clinicId) {
+          clinicIds.add(clinicId);
+        }
+      });
+
+      // Fetch clinic data for all unique clinic IDs
+      const clinicDataPromises = Array.from(clinicIds).map(async (clinicId) => {
+        try {
+          const clinic = await databaseService.getClinicById(clinicId);
+          return { [clinicId]: clinic };
+        } catch (error) {
+          console.error(`Error loading clinic ${clinicId}:`, error);
+          return { [clinicId]: null };
+        }
+      });
+
+      const clinicDataResults = await Promise.all(clinicDataPromises);
+      const newClinicData = clinicDataResults.reduce((acc, result) => ({ ...acc, ...result }), {});
+      setClinicData(prev => ({ ...prev, ...newClinicData }));
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -598,7 +625,13 @@ export default function SpecialistHomeScreen() {
                           {appointment.specialty || appointment.type || 'General Consultation'}
                         </Text>
                         <Text style={styles.clinicName}>
-                          {appointment.clinicName || 'Clinic not specified'}
+                          {(() => {
+                            // Check if it's an appointment (has clinicId) or referral (has referringClinicId)
+                            const clinicId = 'clinicId' in appointment ? appointment.clinicId : 
+                                            'referringClinicId' in appointment ? appointment.referringClinicId : null;
+                            const clinic = clinicId ? clinicData[clinicId] : null;
+                            return clinic?.name || appointment.clinicName || 'Clinic not specified';
+                          })()}
                         </Text>
                       </View>
                       <View style={styles.appointmentTime}>
