@@ -28,11 +28,16 @@ import {
   MapPin,
   Phone,
   Mail,
+  AlertTriangle,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { databaseService } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 import { formatClinicAddress } from '../../../src/utils/formatting';
+
+// Color constants (match booking process screens)
+const BLUE = '#1E40AF';
+const LIGHT_BLUE = '#DBEAFE';
 
 // Map services to icons
 const SERVICE_ICONS = {
@@ -104,8 +109,15 @@ export default function BookVisitScreen() {
     clinic.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (clinic.address && clinic.address.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (clinic.city && clinic.city.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (clinic.addressLine && clinic.addressLine.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+    (clinic.addressLine && clinic.addressLine.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (clinic.phone && clinic.phone.toLowerCase().includes(searchQuery.toLowerCase()))
+  ).sort((a, b) => {
+    // Sort by availability: available generalist doctors first, then others
+    if (a.hasGeneralistDoctors && !b.hasGeneralistDoctors) return -1;
+    if (!a.hasGeneralistDoctors && b.hasGeneralistDoctors) return 1;
+    // If both have same availability status, sort alphabetically by name
+    return a.name.localeCompare(b.name);
+  });
 
   const handleClinicSelect = (clinic: Clinic) => {
     setSelectedClinic(clinic);
@@ -146,11 +158,11 @@ export default function BookVisitScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <ChevronLeft size={24} color="#1F2937" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Book Visit</Text>
-          <View style={styles.headerRight} />
+          <Text style={styles.headerTitle}>Select Clinic</Text>
+          <View style={styles.headerSpacer} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1E40AF" />
+          <ActivityIndicator size="large" color={BLUE} />
           <Text style={styles.loadingText}>Loading clinics...</Text>
         </View>
       </SafeAreaView>
@@ -166,7 +178,7 @@ export default function BookVisitScreen() {
             <ChevronLeft size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Book Visit</Text>
-          <View style={styles.headerRight} />
+          <View style={styles.headerSpacer} />
         </View>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
@@ -180,15 +192,26 @@ export default function BookVisitScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ChevronLeft size={24} color="#1F2937" />
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <ChevronLeft size={24} color={BLUE} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Book Visit</Text>
-        <View style={styles.headerRight} />
+        <View style={styles.headerSpacer} />
+      </View>
+
+      {/* Progress Bar */}
+      <View style={styles.progressBarRoot}>
+        <View style={styles.progressBarBg} />
+        <View style={[styles.progressBarActive, { width: '17%' }]} />
+        <View style={styles.progressDotsRow}>
+          <View style={[styles.progressDotNew, styles.progressDotActiveNew, { left: 0 }]} />
+          <View style={[styles.progressDotNew, styles.progressDotInactiveNew, { left: '45%' }]} />
+          <View style={[styles.progressDotNew, styles.progressDotInactiveNew, { left: '90%' }]} />
+        </View>
       </View>
 
       {/* Search Bar */}
@@ -197,7 +220,7 @@ export default function BookVisitScreen() {
           <Search size={20} color="#6B7280" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search clinics..."
+            placeholder="Search a clinic"
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="#9CA3AF"
@@ -216,6 +239,7 @@ export default function BookVisitScreen() {
 
         {filteredClinics.length === 0 ? (
           <View style={styles.emptyContainer}>
+            <Stethoscope size={48} color="#E5E7EB" />
             <Text style={styles.emptyText}>No clinics found</Text>
             <Text style={styles.emptySubtext}>
               Try adjusting your search terms
@@ -230,35 +254,44 @@ export default function BookVisitScreen() {
                   key={clinic.id}
                   style={styles.clinicCard}
                   onPress={() => handleClinicSelect(clinic)}
+                  activeOpacity={0.7}
                 >
                   <View style={styles.clinicHeader}>
                     <View style={styles.clinicIconContainer}>
-                      <IconComponent size={24} color="#1E40AF" />
+                      <IconComponent size={24} color={BLUE} />
                     </View>
                     <View style={styles.clinicInfo}>
                       <Text style={styles.clinicName}>{clinic.name || 'Unknown Clinic'}</Text>
                       <Text style={styles.clinicType}>{getClinicTypeDisplay(clinic.type || 'Unknown')}</Text>
                     </View>
-                    <ChevronRight size={20} color="#9CA3AF" />
+                    <ChevronRight size={20} color={BLUE} />
                   </View>
                   
                   <View style={styles.clinicDetails}>
                     <View style={styles.detailRow}>
-                      <MapPin size={16} color="#6B7280" />
-                      <Text style={styles.detailText}>
+                      <Text style={styles.detailLabel}>Contact:</Text>
+                      <Text style={styles.detailValue}>{clinic.phone || 'Phone not available'}</Text>
+                    </View>
+                    
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Address:</Text>
+                      <Text style={styles.detailValue}>
                         {formatClinicAddress(clinic) || 'Address not available'}
                       </Text>
                     </View>
                     
-                    <View style={styles.detailRow}>
-                      <Phone size={16} color="#6B7280" />
-                      <Text style={styles.detailText}>{clinic.phone || 'Phone not available'}</Text>
-                    </View>
-                    
-                    {clinic.hasGeneralistDoctors === false && (
+                    {clinic.hasGeneralistDoctors === false ? (
                       <View style={styles.warningRow}>
+                        <AlertTriangle size={16} color={BLUE} />
                         <Text style={styles.warningText}>
-                          ⚠️ No generalist doctors currently available
+                          No generalist doctors currently available
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.availableRow}>
+                        <Check size={16} color={BLUE} />
+                        <Text style={styles.availableText}>
+                          Generalist doctors available
                         </Text>
                       </View>
                     )}
@@ -276,31 +309,38 @@ export default function BookVisitScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 10,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
   },
-  headerRight: {
+  headerSpacer: {
     width: 40,
   },
   searchContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 16,
     backgroundColor: '#FFFFFF',
   },
@@ -321,68 +361,70 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#1F2937',
+    fontFamily: 'Inter-Regular',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
   section: {
-    marginTop: 24,
+    marginTop: 16,
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
     marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: 14,
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
   clinicsList: {
     gap: 16,
   },
   clinicCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: 18,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3.84,
-    elevation: 2,
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
   },
   clinicHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   clinicIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: LIGHT_BLUE,
   },
   clinicInfo: {
     flex: 1,
   },
   clinicName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   clinicType: {
     fontSize: 14,
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
   clinicDetails: {
@@ -390,26 +432,61 @@ const styles = StyleSheet.create({
   },
   detailRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+    marginBottom: 4,
   },
-  detailText: {
+  detailLabel: {
     fontSize: 14,
+    fontFamily: 'Inter-Medium',
     color: '#6B7280',
-    marginLeft: 8,
+    minWidth: 60,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    textAlign: 'right',
     flex: 1,
+    lineHeight: 20,
+    marginLeft: 12,
   },
   warningRow: {
-    backgroundColor: '#FFFBEB',
+    backgroundColor: '#F8FAFC',
     borderRadius: 8,
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     marginTop: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   warningText: {
     fontSize: 13,
-    color: '#964B00',
-    fontWeight: '500',
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
+    marginLeft: 8,
+  },
+  availableRow: {
+    backgroundColor: LIGHT_BLUE,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: BLUE,
+  },
+  availableText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: BLUE,
+    marginLeft: 8,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -418,12 +495,14 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
     color: '#6B7280',
+    marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
+    fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
     textAlign: 'center',
   },
@@ -431,10 +510,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 20,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
   errorContainer: {
@@ -445,19 +526,83 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#DC2626',
+    fontFamily: 'Inter-Regular',
+    color: '#EF4444',
     textAlign: 'center',
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: '#1E40AF',
+    backgroundColor: BLUE,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+  },
+
+  // Progress Bar (matching booking process screens)
+  progressBarRoot: {
+    height: 26,
+    justifyContent: 'center',
+    marginBottom: 16,
+    marginTop: -6,
+    paddingHorizontal: 36,
+    position: 'relative',
+  },
+  progressBarBg: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#E5E7EB',
+    top: '50%',
+    marginTop: -2,
+  },
+  progressBarActive: {
+    position: 'absolute',
+    left: 0,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: BLUE,
+    top: '50%',
+    marginTop: -2,
+    zIndex: 1,
+  },
+  progressDotsRow: {
+    position: 'absolute',
+    top: '50%',
+    left: 50,
+    right: 0,
+    height: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 2,
+    marginTop: -9,
+    pointerEvents: 'none',
+    paddingHorizontal: 16,
+  },
+  progressDotNew: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    position: 'absolute',
+  },
+  progressDotActiveNew: {
+    backgroundColor: BLUE,
+    borderColor: BLUE,
+    zIndex: 10,
+  },
+  progressDotInactiveNew: {
+    backgroundColor: '#E5E7EB',
+    borderColor: '#E5E7EB',
+    zIndex: 10,
   },
 });

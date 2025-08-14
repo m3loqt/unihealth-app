@@ -27,6 +27,7 @@ import {
   Fingerprint,
   Check,
   RefreshCw,
+  DoorOpen,
 } from 'lucide-react-native';
 import {
   checkBiometricSupport,
@@ -92,6 +93,7 @@ export default function ProfileScreen() {
   const [biometricUnavailableReason, setBiometricUnavailableReason] = useState('');
   const [showBiometricModal, setShowBiometricModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Handle opening notification modal
   const handleOpenNotifications = () => {
@@ -283,25 +285,19 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut();
-            setTimeout(() => {
-              Alert.alert('Success', 'You have been logged out successfully.', [
-                { text: 'OK', onPress: () => router.replace('/') },
-              ]);
-            }, 100);
-          } catch {
-            Alert.alert('Error', 'Failed to logout. Please try again.');
-          }
-        },
-      },
-    ]);
+    setShowLogoutModal(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    try {
+      await signOut();
+      setShowLogoutModal(false);
+      setTimeout(() => {
+        router.replace('/');
+      }, 100);
+    } catch {
+      Alert.alert('Error', 'Failed to logout. Please try again.');
+    }
   };
 
   const settingsItems = [
@@ -453,6 +449,43 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+                             <View style={styles.modalHeader}>
+                 <DoorOpen size={36} color={BLUE} />
+                 <Text style={styles.modalTitle}>Confirm Logout</Text>
+                 <Text style={styles.modalSubtext}>
+                   Are you sure you want to logout? You will need to sign in again to access your account.
+                 </Text>
+               </View>
+              
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalSecondaryButton}
+                  onPress={() => setShowLogoutModal(false)}
+                >
+                  <Text style={styles.modalSecondaryButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalPrimaryButton}
+                  onPress={handleConfirmLogout}
+                >
+                  <Text style={styles.modalPrimaryButtonText}>Logout</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -465,7 +498,7 @@ export default function ProfileScreen() {
             style={styles.bellButton}
             onPress={handleOpenNotifications}
           >
-            <Bell size={28} color={BLUE} />
+            <Bell size={24} color="#6B7280" />
             {notifications.filter(n => !n.read).length > 0 && (
               <View style={styles.notifDot}>
                 <Text style={styles.notifDotText}>
@@ -616,7 +649,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     color: '#1F2937',
-    fontFamily: 'Inter-SemiBold',
+  
   },
   bellButton: {
     padding: 7,
@@ -842,18 +875,20 @@ const styles = StyleSheet.create({
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.42)',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
   },
   modalContainer: {
-    width: '85%',
-    maxWidth: 400,
+    width: '100%',
+    maxWidth: '100%',
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     padding: 24,
     alignItems: 'center',
+    paddingBottom: 40,
   },
   modalHeader: {
     alignItems: 'center',
@@ -876,17 +911,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   modalSubtext: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
     marginBottom: 24,
   },
   modalActions: {
     flexDirection: 'row',
     gap: 12,
     width: '100%',
+    justifyContent: 'center',
   },
   modalPrimaryButton: {
     flex: 1,

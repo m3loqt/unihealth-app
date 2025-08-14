@@ -46,6 +46,9 @@ export default function RootLayout() {
     <AuthProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="splash" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="signin" />
         <Stack.Screen name="(auth)/forgot-password" />
         <Stack.Screen name="(auth)/reset-password" />
         <Stack.Screen name="(auth)/signup/step1" />
