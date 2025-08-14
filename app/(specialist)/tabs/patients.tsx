@@ -45,14 +45,36 @@ export default function SpecialistPatientsScreen() {
     try {
       setLoading(true);
       setError(null);
+      console.log('🔄 Loading patients for specialist:', user.uid);
       const specialistPatients = await databaseService.getPatientsBySpecialist(user.uid);
+      
+      console.log('📋 Raw patients from database:', specialistPatients);
       
       // Validate patients data
       const validPatients = dataValidation.validateArray(specialistPatients, dataValidation.isValidPatient);
-      console.log('Loaded patients:', validPatients.length);
+      console.log('✅ Valid patients after validation:', validPatients.length, validPatients);
+      
+      // Debug: Check what's being filtered out
+      if (specialistPatients.length !== validPatients.length) {
+        console.log('⚠️ Some patients were filtered out by validation:');
+        specialistPatients.forEach((patient: any, index) => {
+          if (!dataValidation.isValidPatient(patient)) {
+            console.log(`❌ Invalid patient ${index}:`, patient);
+            console.log('❌ Validation issues:', {
+              hasId: !!patient?.id,
+              idType: typeof patient?.id,
+              hasFirstName: !!patient?.patientFirstName,
+              firstNameType: typeof patient?.patientFirstName,
+              hasLastName: !!patient?.patientLastName,
+              lastNameType: typeof patient?.patientLastName
+            });
+          }
+        });
+      }
+      
       setPatients(validPatients);
     } catch (error) {
-      console.error('Error loading patients:', error);
+      console.error('❌ Error loading patients:', error);
       setError('Failed to load patients. Please try again.');
     } finally {
       setLoading(false);
@@ -75,25 +97,36 @@ export default function SpecialistPatientsScreen() {
     return patients.filter((patient) => {
       const matchesSearch =
         safeDataAccess.getUserFullName(patient, '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        patient.referredFrom?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesFilter = activeFilter === 'All' || patient.status === activeFilter;
+        patient.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        patient.phoneNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Map filter names to appointment statuses
+      let matchesFilter = true;
+      if (activeFilter === 'Active') {
+        matchesFilter = patient.status === 'confirmed';
+      } else if (activeFilter === 'Completed') {
+        matchesFilter = patient.status === 'completed';
+      } else if (activeFilter !== 'All') {
+        matchesFilter = patient.status === activeFilter;
+      }
+      
       return matchesSearch && matchesFilter;
     });
   }, [patients, searchQuery, activeFilter]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Active':
+      case 'confirmed':
         return {
           bg: '#EFF6FF',
           text: '#1E40AF',
           border: '#DBEAFE',
         };
-      case 'Completed':
+      case 'completed':
         return {
-          bg: '#F3F4F6',
-          text: '#6B7280',
-          border: '#E5E7EB',
+          bg: '#F0FDF4',
+          text: '#166534',
+          border: '#DCFCE7',
         };
       default:
         return {
@@ -105,9 +138,11 @@ export default function SpecialistPatientsScreen() {
   };
 
   const renderPatientCard = (patient: Patient) => {
-    const statusColors = getStatusColor(patient.status || 'Active');
+    const statusColors = getStatusColor(patient.status || 'confirmed');
     const patientName = safeDataAccess.getUserFullName(patient, 'Unknown Patient');
     const initials = safeDataAccess.getUserInitials(patient, 'U');
+    const statusDisplay = patient.status === 'confirmed' ? 'Active' : 
+                         patient.status === 'completed' ? 'Completed' : 'Active';
 
     return (
       <TouchableOpacity
@@ -116,6 +151,7 @@ export default function SpecialistPatientsScreen() {
         activeOpacity={0.87}
         onPress={() => router.push(`/patient-overview?id=${patient.id}`)}
       >
+        {/* First row: Avatar, Name, Status Badge */}
         <View style={styles.patientHeader}>
           <View style={styles.patientAvatar}>
             <Text style={styles.patientInitial}>
@@ -124,29 +160,45 @@ export default function SpecialistPatientsScreen() {
           </View>
           <View style={styles.patientInfo}>
             <Text style={styles.patientName}>{patientName || 'Unknown Patient'}</Text>
-            <Text style={styles.referredFrom}>
-              Referred from {patient.referredFrom || 'General Medicine'}
-            </Text>
-            <Text style={styles.condition}>{patient.specialty || 'General Consultation'}</Text>
           </View>
-          <View style={styles.patientMeta}>
-            <View
-              style={[
-                styles.statusBadge,
-                {
-                  backgroundColor: statusColors.bg,
-                  borderColor: statusColors.border,
-                },
-              ]}
-            >
-              <Text style={[styles.statusText, { color: statusColors.text }]}>
-                {patient.status || 'Active'}
-              </Text>
-            </View>
-            <Text style={styles.lastVisit}>
-              {patient.lastVisit ? `Last visit: ${patient.lastVisit}` : 'No visits yet'}
+          <View
+            style={[
+              styles.statusBadge,
+              {
+                backgroundColor: statusColors.bg,
+                borderColor: statusColors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.statusText, { color: statusColors.text }]}>
+              {statusDisplay}
             </Text>
           </View>
+        </View>
+
+        {/* Second row: Last visit or scheduled visit */}
+        <View style={styles.visitInfo}>
+          <Text style={styles.visitText}>
+            {patient.lastVisit && patient.lastVisit !== 'No visits yet' 
+              ? patient.isScheduledVisit 
+                ? `Scheduled visit: ${patient.lastVisit}` 
+                : `Last visit: ${patient.lastVisit}` 
+              : 'No visits yet'}
+          </Text>
+        </View>
+
+        {/* Third row: Address */}
+        <View style={styles.contactInfo}>
+          <Text style={styles.contactText}>
+            {patient.address || 'Address not available'}
+          </Text>
+        </View>
+
+        {/* Fourth row: Phone */}
+        <View style={styles.contactInfo}>
+          <Text style={styles.contactText}>
+            {patient.phoneNumber || 'Phone not available'}
+          </Text>
         </View>
       </TouchableOpacity>
     );
@@ -174,7 +226,7 @@ export default function SpecialistPatientsScreen() {
           <Search size={18} color="#9CA3AF" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search patients by name or referral source"
+            placeholder="Search patients by name, address, or phone"
             placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -244,8 +296,10 @@ export default function SpecialistPatientsScreen() {
               </Text>
               <Text style={styles.emptyStateText}>
                 {activeFilter === 'All' 
-                  ? "You haven't added any patients yet."
-                  : `You don't have any ${activeFilter.toLowerCase()} patients at the moment.`
+                  ? "You don't have any confirmed or completed appointments with patients yet."
+                  : activeFilter === 'Active'
+                  ? "You don't have any confirmed appointments with patients at the moment."
+                  : "You don't have any completed appointments with patients at the moment."
                 }
               </Text>
             </View>
@@ -383,29 +437,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
-    marginBottom: 3,
-  },
-  referredFrom: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  condition: {
-    fontSize: 13,
-    fontFamily: 'Inter-Medium',
-    color: '#374151',
-  },
-  patientMeta: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
   },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 8,
     minWidth: 56,
     alignItems: 'center',
   },
@@ -413,11 +450,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
   },
-  lastVisit: {
-    fontSize: 11,
+  visitInfo: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  visitText: {
+    fontSize: 13,
     fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
-    textAlign: 'right',
+    color: '#6B7280',
+  },
+  contactInfo: {
+    marginBottom: 4,
+  },
+  contactText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
   },
   emptyState: {
     alignItems: 'center',
