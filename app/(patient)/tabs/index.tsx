@@ -28,6 +28,9 @@ import {
   Share,
   X,
   User,
+  RefreshCw,
+  Check,
+  Trash2,
 } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { BlurView } from 'expo-blur';
@@ -38,6 +41,7 @@ import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing'; // Added for more robust sharing
 
 import { useAuth } from '@/hooks/auth/useAuth';
+import { useNotifications } from '@/hooks/data/useNotifications';
 import { databaseService } from '@/services/database/firebase';
 import { Appointment, Prescription } from '@/services/database/firebase';
 import { getGreeting } from '@/utils/greeting';
@@ -79,11 +83,21 @@ const healthTips = [
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const { 
+    notifications, 
+    loading: notificationsLoading, 
+    error: notificationsError,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    refresh: refreshNotifications
+  } = useNotifications();
   const [activeTip, setActiveTip] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const qrCodeRef = useRef<any>(null);
   const qrCodeViewShotRef = useRef<any>(null);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [activePrescriptions, setActivePrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,6 +177,25 @@ export default function HomeScreen() {
 
   // QR Modal Actions
   const handleCloseQRModal = () => setShowQRModal(false);
+
+  // Notification Modal Actions
+  const handleOpenNotifications = () => setShowNotificationModal(true);
+  const handleCloseNotificationModal = () => setShowNotificationModal(false);
+  
+  // Handle marking notification as read
+  const handleMarkAsRead = async (notificationId: string) => {
+    await markAsRead(notificationId);
+  };
+
+  // Handle deleting notification
+  const handleDeleteNotification = async (notificationId: string) => {
+    await deleteNotification(notificationId);
+  };
+
+  // Handle marking all notifications as read
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead();
+  };
 
   // --- Improved Download QR as Image ---
   const handleDownload = async () => {
@@ -282,13 +315,23 @@ export default function HomeScreen() {
         >
         {/* Header */}
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerContent}>
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.userName}>{user?.name || ''}</Text>
           </View>
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconButton}>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={handleOpenNotifications}
+            >
               <Bell size={24} color="#6B7280" />
+              {notifications.filter(n => !n.read).length > 0 && (
+                <View style={styles.notifDot}>
+                  <Text style={styles.notifDotText}>
+                    {notifications.filter(n => !n.read).length > 9 ? '9+' : notifications.filter(n => !n.read).length.toString()}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/(patient)/tabs/profile')}>
               <Image
@@ -363,14 +406,14 @@ export default function HomeScreen() {
           <View style={styles.quickActions}>
             <TouchableOpacity style={styles.quickActionButton} onPress={() => setShowQRModal(true)}>
               <QrCode size={24} color="#1E40AF" />
-              <Text style={styles.quickActionText}>Generate {'\n'} QR Code</Text>
+              <Text style={styles.quickActionText}>Generate{'\n'}QR Code</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickActionButton}
               onPress={() => router.push('/(patient)/tabs/appointments?filter=completed')}
             >
               <FileText size={24} color="#1E40AF" />
-              <Text style={styles.quickActionText}>View Medical {'\n'} History</Text>
+              <Text style={styles.quickActionText}>View Med{'\n'} History</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -428,7 +471,10 @@ export default function HomeScreen() {
                     </View>
                     <View style={styles.appointmentDetails}>
                       <Text style={styles.doctorName}>
-                        {safeDataAccess.getAppointmentDoctorName(appt, 'Dr. General')}
+                        {(() => {
+                          const doctorName = safeDataAccess.getAppointmentDoctorName(appt, 'General');
+                          return doctorName.startsWith('Dr.') ? doctorName : `Dr. ${doctorName}`;
+                        })()}
                       </Text>
                       <Text style={styles.doctorSpecialty}>{appt.specialty || 'General Medicine'}</Text>
                     </View>
@@ -439,12 +485,15 @@ export default function HomeScreen() {
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.appointmentFooter}>
-                    <Text style={styles.appointmentType}>{appt.type || 'Consultation'}</Text>
-                    <TouchableOpacity style={styles.joinButton}>
-                      <Text style={styles.joinButtonText}>View details</Text>
-                    </TouchableOpacity>
-                  </View>
+                                     <View style={styles.appointmentFooter}>
+                     <Text style={styles.appointmentType}>{appt.appointmentPurpose || 'Consultation'}</Text>
+                     <TouchableOpacity 
+                       style={styles.joinButton}
+                       onPress={() => router.push(`/visit-overview?id=${appt.id}`)}
+                     >
+                       <Text style={styles.joinButtonText}>View details</Text>
+                     </TouchableOpacity>
+                   </View>
                 </TouchableOpacity>
               ))
             )}
@@ -597,6 +646,89 @@ export default function HomeScreen() {
           </SafeAreaView>
         </View>
       </Modal>
+
+      {/* === NOTIFICATION MODAL === */}
+      <Modal
+        visible={showNotificationModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCloseNotificationModal}
+      >
+        <View style={notificationModalStyles.modalBackdrop}>
+          <View style={notificationModalStyles.modalContainer}>
+            <View style={notificationModalStyles.modalContent}>
+              <View style={notificationModalStyles.modalHeader}>
+                <Bell size={32} color="#1E40AF" />
+                <Text style={notificationModalStyles.modalTitle}>Notifications</Text>
+                <Text style={notificationModalStyles.modalSubtext}>
+                  {notifications.filter(n => !n.read).length} unread notification{notifications.filter(n => !n.read).length !== 1 ? 's' : ''}
+                </Text>
+              </View>
+              
+              {/* Action Buttons */}
+              <View style={notificationModalStyles.modalActions}>
+                <TouchableOpacity
+                  style={notificationModalStyles.modalActionButton}
+                  onPress={refreshNotifications}
+                >
+                  <RefreshCw size={20} color="#1E40AF" />
+                  <Text style={notificationModalStyles.modalActionButtonText}>Refresh</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={notificationModalStyles.modalActionButton}
+                  onPress={handleMarkAllAsRead}
+                >
+                  <Check size={20} color="#1E40AF" />
+                  <Text style={notificationModalStyles.modalActionButtonText}>Mark All Read</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={notificationModalStyles.notificationList}>
+                {notifications.length === 0 ? (
+                  <Text style={notificationModalStyles.emptyNotificationText}>No notifications yet</Text>
+                ) : (
+                  notifications.map((notification) => (
+                    <View key={notification.id} style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}>
+                      <View style={notificationModalStyles.notificationContent}>
+                        <Text style={[notificationModalStyles.notificationText, !notification.read && notificationModalStyles.unreadText]}>
+                          {notification.message}
+                        </Text>
+                        <Text style={notificationModalStyles.notificationTime}>
+                          {new Date(notification.timestamp).toLocaleString()}
+                        </Text>
+                      </View>
+                      <View style={notificationModalStyles.notificationActions}>
+                        {!notification.read && (
+                          <TouchableOpacity
+                            style={notificationModalStyles.notificationActionButton}
+                            onPress={() => handleMarkAsRead(notification.id)}
+                          >
+                            <Check size={16} color="#1E40AF" />
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          style={notificationModalStyles.notificationActionButton}
+                          onPress={() => handleDeleteNotification(notification.id)}
+                        >
+                          <Trash2 size={16} color="#DC2626" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))
+                )}
+              </View>
+              <View style={notificationModalStyles.modalActions}>
+                <TouchableOpacity
+                  style={notificationModalStyles.modalSecondaryButton}
+                  onPress={handleCloseNotificationModal}
+                >
+                  <Text style={notificationModalStyles.modalSecondaryButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
     </ErrorBoundary>
   );
@@ -643,6 +775,10 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 24,
     backgroundColor: '#FFFFFF',
+  },
+  headerContent: {
+    flex: 1,
+    marginRight: 10,
   },
   greeting: { fontSize: 16, color: '#6B7280' },
   userName: { fontSize: 24, color: '#1F2937', marginTop: 4 },
@@ -739,8 +875,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E40AF',
     width: 16,
   },
-  quickActionsContainer: { padding: 24, backgroundColor: '#FFFFFF', marginTop: 8 },
-  quickActions: { flexDirection: 'row', justifyContent: 'space-between' },
+  quickActionsContainer: { 
+    padding: 24, 
+    backgroundColor: '#FFFFFF', 
+    marginTop: 8 
+  },
+  quickActions: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between'
+  },
   quickActionButton: {
     alignItems: 'center',
     padding: 16,
@@ -751,7 +894,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  quickActionText: { fontSize: 12, color: '#374151', marginTop: 8, textAlign: 'center' },
+  quickActionText: { 
+    fontSize: 12, 
+    color: '#374151', 
+    marginTop: 8, 
+    textAlign: 'center' 
+  },
   appointmentsContainer: { gap: 12 },
   appointmentCard: {
     padding: 16,
@@ -761,7 +909,11 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     marginBottom: 12,
   },
-  appointmentHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  appointmentHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 12 
+  },
   doctorAvatar: {
     width: 40,
     height: 40,
@@ -771,27 +923,94 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  doctorInitial: { color: '#FFFFFF', fontSize: 14 },
+  doctorInitial: { 
+    color: '#FFFFFF', 
+    fontSize: 14 
+  },
   appointmentDetails: { flex: 1 },
-  doctorName: { fontSize: 16, color: '#1F2937' },
-  doctorSpecialty: { fontSize: 14, color: '#6B7280', marginTop: 2 },
-  appointmentTime: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  appointmentDate: { fontSize: 12, color: '#6B7280' },
-  appointmentFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  appointmentType: { fontSize: 14, color: '#374151' },
-  joinButton: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#1E40AF', borderRadius: 8 },
-  joinButtonText: { color: '#FFFFFF', fontSize: 14 },
+  doctorName: { 
+    fontSize: 16, 
+    color: '#1F2937' 
+  },
+  doctorSpecialty: { 
+    fontSize: 14, 
+    color: '#6B7280', 
+    marginTop: 2 
+  },
+  appointmentTime: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 4 
+  },
+  appointmentDate: { 
+    fontSize: 12, 
+    color: '#6B7280' 
+  },
+  appointmentFooter: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center' 
+  },
+  appointmentType: { 
+    fontSize: 14, 
+    color: '#374151' 
+  },
+  joinButton: { 
+    paddingHorizontal: 16, 
+    paddingVertical: 8, 
+    backgroundColor: '#1E40AF', 
+    borderRadius: 8 
+  },
+  joinButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 14 
+  },
   prescriptionsContainer: { gap: 12 },
-  prescriptionCard: { padding: 16, backgroundColor: '#F9FAFB', borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' },
-  prescriptionHeader: { flexDirection: 'row', alignItems: 'center' },
-  medicationIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  prescriptionCard: { 
+    padding: 16, 
+    backgroundColor: '#F9FAFB', 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: '#E5E7EB' 
+  },
+  prescriptionHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  medicationIcon: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 12 
+  },
   prescriptionDetails: { flex: 1 },
-  medicationName: { fontSize: 16, color: '#1F2937' },
-  medicationDosage: { fontSize: 14, color: '#6B7280', marginTop: 2 },
-  prescriptionDescription: { fontSize: 14, color: '#6B7280', marginTop: 4 },
-  prescriptionStatus: { alignItems: 'flex-end' },
-  remainingDays: { fontSize: 14, color: '#1F2937' },
-  remainingLabel: { fontSize: 12, color: '#6B7280' },
+  medicationName: { 
+    fontSize: 16, 
+    color: '#1F2937' 
+  },
+  medicationDosage: { 
+    fontSize: 14, 
+    color: '#6B7280', 
+    marginTop: 2 
+  },
+  prescriptionDescription: { 
+    fontSize: 14, 
+    color: '#6B7280', 
+    marginTop: 4 
+  },
+  prescriptionStatus: { 
+    alignItems: 'flex-end' 
+  },
+  remainingDays: { 
+    fontSize: 14, 
+    color: '#1F2937' 
+  },
+  remainingLabel: { 
+    fontSize: 12, 
+    color: '#6B7280' 
+  },
   // Empty state styles
   emptyStateCard: {
     backgroundColor: '#F9FAFB',
@@ -837,6 +1056,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+  },
+  notifDot: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#DC2626',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  notifDotText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
   },
 });
 
@@ -978,7 +1214,138 @@ const qrModalStyles = StyleSheet.create({
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+  },
+});
+
+// Notification Modal Styles
+const notificationModalStyles = StyleSheet.create({
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.42)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: '100%',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginTop: 8,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtext: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  modalActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalActionButtonText: {
+    color: '#1E40AF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    marginLeft: 8,
+  },
+  modalSecondaryButton: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalSecondaryButtonText: {
+    color: '#374151',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+  },
+  notificationList: {
+    width: '100%',
+    maxHeight: 200,
+    marginBottom: 20,
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 5,
+    backgroundColor: '#F3F4F6',
+  },
+  unreadNotification: {
+    backgroundColor: '#E0F2FE',
+    borderColor: '#1E40AF',
+    borderWidth: 1,
+  },
+  notificationContent: {
+    flex: 1,
+    marginRight: 10,
+  },
+  notificationText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+  },
+  unreadText: {
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+  },
+  notificationTime: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+  notificationActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  notificationActionButton: {
+    padding: 4,
+  },
+  emptyNotificationText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });
  
