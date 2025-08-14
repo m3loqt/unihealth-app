@@ -63,8 +63,7 @@ interface VisitData extends Appointment {
   clinicalSummary?: string;
   
   // Step 5: Supplementary Docs
-  allergies?: string;
-  vitals?: string;
+
 }
 
 // Extended interface for prescriptions that includes additional properties
@@ -273,8 +272,7 @@ export default function VisitOverviewScreen() {
           },
           treatmentPlan: medicalHistory?.treatmentPlan || '',
           clinicalSummary: medicalHistory?.clinicalSummary || '',
-          allergies: medicalHistory?.allergies || '',
-          vitals: medicalHistory?.vitals || ''
+          
         };
         
         setVisitData(combinedVisitData);
@@ -627,14 +625,7 @@ export default function VisitOverviewScreen() {
             </TouchableOpacity>
             {expandedSections['supplementary'] && (
               <View style={styles.clinicalSectionBody}>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Allergies:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.allergies || 'No allergies recorded'}</Text>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Vitals:</Text>
-                  <Text style={styles.clinicalFieldValue}>{visitData.vitals || 'No vitals recorded'}</Text>
-                </View>
+                
               </View>
             )}
           </View>

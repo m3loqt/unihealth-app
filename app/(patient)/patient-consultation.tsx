@@ -68,7 +68,7 @@ export default function PatientConsultationScreen() {
     medications: string;
     
     // Step 3: Diagnoses
-    diagnosis: string;
+    diagnoses: Array<{ code: string; description: string }>;
     differentialDiagnosis: string;
     
     // Step 4: SOAP Notes
@@ -84,14 +84,12 @@ export default function PatientConsultationScreen() {
     // Step 6: Supplementary Docs
     prescriptions: any[];
     certificates: any[];
-    allergies: string;
-    vitals: string;
   }>({
     presentIllnessHistory: '',
     reviewOfSymptoms: '',
     labResults: '',
     medications: '',
-    diagnosis: '',
+    diagnoses: [],
     differentialDiagnosis: '',
     subjective: '',
     objective: '',
@@ -101,8 +99,7 @@ export default function PatientConsultationScreen() {
     clinicalSummary: '',
     prescriptions: [],
     certificates: [],
-    allergies: '',
-    vitals: '',
+    
   });
 
   // Load consultation data from Firebase
@@ -169,14 +166,14 @@ export default function PatientConsultationScreen() {
       setFormData({
         // Step 1: Patient History
         presentIllnessHistory: medicalHistory?.presentIllnessHistory || '',
-        reviewOfSymptoms: medicalHistory?.reviewOfSymptoms || referral?.initialReasonForReferral || '',
+        reviewOfSymptoms: medicalHistory?.reviewOfSymptoms || '',
         
         // Step 2: Findings
         labResults: medicalHistory?.labResults || '',
         medications: medicalHistory?.medications || '',
         
         // Step 3: Diagnoses
-        diagnosis: medicalHistory?.diagnosis?.[0]?.description || '',
+        diagnoses: medicalHistory?.diagnosis || [],
         differentialDiagnosis: medicalHistory?.differentialDiagnosis || '',
         
         // Step 4: SOAP Notes
@@ -192,8 +189,7 @@ export default function PatientConsultationScreen() {
         // Step 6: Supplementary Docs
         prescriptions: medicalHistory?.prescriptions || [],
         certificates: medicalHistory?.certificates || [],
-        allergies: medicalHistory?.allergies || '',
-        vitals: medicalHistory?.vitals || '',
+
       });
     } catch (error) {
       console.error('Error loading consultation data:', error);
@@ -234,6 +230,10 @@ export default function PatientConsultationScreen() {
   const [appointmentData, setAppointmentData] = useState<any>(null);
   const [referralData, setReferralData] = useState<any>(null);
   const [isCompleted, setIsCompleted] = useState(false);
+
+  // Diagnosis input state
+  const [newDiagnosisCode, setNewDiagnosisCode] = useState('');
+  const [newDiagnosisDescription, setNewDiagnosisDescription] = useState('');
 
   // Update completion status when appointment or referral data changes
   useEffect(() => {
@@ -284,6 +284,30 @@ export default function PatientConsultationScreen() {
       }, 500);
     }
   }, [transcript, activeField]);
+
+  // -- Diagnosis Management --
+  const addDiagnosis = () => {
+    if (newDiagnosisCode.trim() && newDiagnosisDescription.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        diagnoses: [...prev.diagnoses, {
+          code: newDiagnosisCode.trim(),
+          description: newDiagnosisDescription.trim()
+        }]
+      }));
+      setNewDiagnosisCode('');
+      setNewDiagnosisDescription('');
+      setHasChanges(true);
+    }
+  };
+
+  const removeDiagnosis = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      diagnoses: prev.diagnoses.filter((_, i) => i !== index)
+    }));
+    setHasChanges(true);
+  };
 
   // -- Microphone Press/Release --
   const handleStartRecording = async (fieldName: string) => {
@@ -644,7 +668,7 @@ export default function PatientConsultationScreen() {
           medications: formData.medications,
           
           // Step 3: Diagnoses
-          diagnosis: formData.diagnosis ? [{ code: 'DIAG001', description: formData.diagnosis }] : [],
+          diagnosis: formData.diagnoses,
           differentialDiagnosis: formData.differentialDiagnosis,
           
           // Step 4: SOAP Notes
@@ -662,8 +686,6 @@ export default function PatientConsultationScreen() {
           // Step 6: Supplementary Docs
           prescriptions: formData.prescriptions,
           certificates: formData.certificates,
-          allergies: formData.allergies,
-          vitals: formData.vitals,
           
           consultationDate: new Date().toISOString(),
           consultationTime: new Date().toLocaleTimeString(),
@@ -684,7 +706,7 @@ export default function PatientConsultationScreen() {
       } else {
         // Save consultation data to medical history with existing consultationId
         const medicalHistoryData = {
-          diagnosis: formData.diagnosis ? [{ code: 'DIAG001', description: formData.diagnosis }] : [],
+          diagnosis: formData.diagnoses,
           differentialDiagnosis: formData.differentialDiagnosis,
           reviewOfSymptoms: formData.reviewOfSymptoms,
           presentIllnessHistory: formData.presentIllnessHistory,
@@ -695,9 +717,7 @@ export default function PatientConsultationScreen() {
             plan: formData.plan,
           },
           labResults: formData.labResults,
-          allergies: formData.allergies,
           medications: formData.medications,
-          vitals: formData.vitals,
           prescriptions: formData.prescriptions,
           certificates: formData.certificates,
           consultationDate: new Date().toISOString(),
@@ -715,7 +735,7 @@ export default function PatientConsultationScreen() {
             type: 'consultation',
           },
           type: 'consultation',
-          clinicalSummary: formData.diagnosis,
+          clinicalSummary: formData.diagnoses.length > 0 ? formData.diagnoses[0].description : '',
           treatmentPlan: formData.plan,
           lastUpdated: new Date().toISOString(),
         };
@@ -757,7 +777,7 @@ export default function PatientConsultationScreen() {
               
               // Prepare consultation data
               const consultationData = {
-                diagnosis: formData.diagnosis ? [{ code: 'DIAG001', description: formData.diagnosis }] : [],
+                diagnosis: formData.diagnoses,
                 differentialDiagnosis: formData.differentialDiagnosis,
                 reviewOfSymptoms: formData.reviewOfSymptoms,
                 presentIllnessHistory: formData.presentIllnessHistory,
@@ -768,9 +788,7 @@ export default function PatientConsultationScreen() {
                   plan: formData.plan,
                 },
                 labResults: formData.labResults,
-                allergies: formData.allergies,
                 medications: formData.medications,
-                vitals: formData.vitals,
                 prescriptions: formData.prescriptions,
                 certificates: formData.certificates,
                 clinicalSummary: formData.clinicalSummary,
@@ -1040,7 +1058,55 @@ export default function PatientConsultationScreen() {
             {renderFieldWithSpeech('Medications', 'medications', true)}
             
             {/* Diagnosis */}
-            {renderFieldWithSpeech('Diagnosis', 'diagnosis')}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.fieldLabel}>Diagnoses</Text>
+              
+              {/* Existing Diagnoses */}
+              {formData.diagnoses.map((diagnosis, index) => (
+                <View key={index} style={styles.diagnosisItem}>
+                  <View style={styles.diagnosisContent}>
+                    <Text style={styles.diagnosisCode}>{diagnosis.code}</Text>
+                    <Text style={styles.diagnosisDescription}>{diagnosis.description}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.removeDiagnosisButton}
+                    onPress={() => removeDiagnosis(index)}
+                  >
+                    <Trash2 size={16} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              
+              {/* Add New Diagnosis */}
+              <View style={styles.addDiagnosisContainer}>
+                <View style={styles.diagnosisInputRow}>
+                  <TextInput
+                    style={[styles.textInput, styles.diagnosisCodeInput]}
+                    value={newDiagnosisCode}
+                    onChangeText={setNewDiagnosisCode}
+                    placeholder="Code (e.g., DIAG001)"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                  <TextInput
+                    style={[styles.textInput, styles.diagnosisDescriptionInput]}
+                    value={newDiagnosisDescription}
+                    onChangeText={setNewDiagnosisDescription}
+                    placeholder="Description"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.addDiagnosisButton,
+                      { backgroundColor: (!newDiagnosisCode.trim() || !newDiagnosisDescription.trim()) ? '#9CA3AF' : '#1E40AF' }
+                    ]}
+                    onPress={addDiagnosis}
+                    disabled={!newDiagnosisCode.trim() || !newDiagnosisDescription.trim()}
+                  >
+                    <Plus size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
             
             {/* Differential Diagnosis */}
             {renderFieldWithSpeech('Differential Diagnosis', 'differentialDiagnosis', true)}
@@ -1458,12 +1524,17 @@ export default function PatientConsultationScreen() {
                   <Text style={styles.medicalHistorySectionTitle}>Clinical Summary</Text>
                   <View style={styles.medicalHistoryCard}>
                     <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Diagnosis:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.diagnosis && medicalHistory.diagnosis.length > 0 
-                          ? medicalHistory.diagnosis[0].description 
-                          : 'Not specified'}
-                      </Text>
+                      <Text style={styles.medicalHistoryFieldLabel}>Diagnoses:</Text>
+                      {medicalHistory.diagnosis && medicalHistory.diagnosis.length > 0 ? (
+                        medicalHistory.diagnosis.map((diagnosis: any, index: number) => (
+                          <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, paddingVertical: 4 }}>
+                            <Text style={{ fontSize: 14, fontFamily: 'Inter-SemiBold', color: '#1E40AF', marginRight: 8, minWidth: 80 }}>{diagnosis.code}</Text>
+                            <Text style={{ fontSize: 14, fontFamily: 'Inter-Regular', color: '#374151', flex: 1 }}>{diagnosis.description}</Text>
+                          </View>
+                        ))
+                      ) : (
+                        <Text style={styles.medicalHistoryFieldValue}>Not specified</Text>
+                      )}
                     </View>
                     <View style={styles.medicalHistoryField}>
                       <Text style={styles.medicalHistoryFieldLabel}>Differential Diagnosis:</Text>
@@ -1527,18 +1598,7 @@ export default function PatientConsultationScreen() {
                         {medicalHistory.labResults || 'Not specified'}
                       </Text>
                     </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Allergies:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.allergies || 'Not specified'}
-                      </Text>
-                    </View>
-                    <View style={styles.medicalHistoryField}>
-                      <Text style={styles.medicalHistoryFieldLabel}>Vitals:</Text>
-                      <Text style={styles.medicalHistoryFieldValue}>
-                        {medicalHistory.vitals || 'Not specified'}
-                      </Text>
-                    </View>
+
                     <View style={styles.medicalHistoryField}>
                       <Text style={styles.medicalHistoryFieldLabel}>Medications:</Text>
                       <Text style={styles.medicalHistoryFieldValue}>
@@ -2373,5 +2433,83 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: '#6B7280',
+  },
+  
+  // Diagnosis Styles
+  diagnosisItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  diagnosisContent: {
+    flex: 1,
+  },
+  diagnosisCode: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1E40AF',
+    marginBottom: 2,
+  },
+  diagnosisDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+  },
+  removeDiagnosisButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  addDiagnosisContainer: {
+    marginTop: 12,
+  },
+  diagnosisInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  diagnosisCodeInput: {
+    flex: 1,
+    minWidth: 100,
+  },
+  diagnosisDescriptionInput: {
+    flex: 2,
+  },
+  addDiagnosisButton: {
+    backgroundColor: '#1E40AF',
+    padding: 12,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 44,
+  },
+  addDiagnosisButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  
+  // Medical History Diagnosis Styles
+  medicalHistoryDiagnosisItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    paddingVertical: 4,
+  },
+  medicalHistoryDiagnosisCode: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1E40AF',
+    marginRight: 8,
+    minWidth: 80,
+  },
+  medicalHistoryDiagnosisDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    flex: 1,
   },
 });

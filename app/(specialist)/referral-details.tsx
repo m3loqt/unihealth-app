@@ -70,9 +70,7 @@ interface ReferralData extends Referral {
   treatmentPlan?: string;
   clinicalSummary?: string;
   
-  // Supplementary Docs
-  allergies?: string;
-  vitals?: string;
+
 }
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -389,9 +387,7 @@ export default function ReferralDetailsScreen() {
             plan: ''
           },
           treatmentPlan: medicalHistory?.treatmentPlan || '',
-          clinicalSummary: medicalHistory?.clinicalSummary || '',
-          allergies: medicalHistory?.allergies || '',
-          vitals: medicalHistory?.vitals || ''
+          clinicalSummary: medicalHistory?.clinicalSummary || ''
         };
         
         console.log('🔍 FINAL PATIENT NAME:', combinedReferralData.patientName);
@@ -684,14 +680,7 @@ export default function ReferralDetailsScreen() {
               </TouchableOpacity>
               {expandedSections['supplementary'] && (
                 <View style={styles.clinicalSectionBody}>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Allergies:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.allergies || 'No allergies recorded'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Vitals:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.vitals || 'No vitals recorded'}</Text>
-                  </View>
+
                 </View>
               )}
             </View>
