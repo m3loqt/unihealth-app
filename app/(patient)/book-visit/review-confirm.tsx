@@ -12,7 +12,7 @@ import {
   Pressable,
   Alert,
 } from 'react-native';
-import { ChevronLeft, Calendar, Clock, FileText, MapPin, CircleCheck as CheckCircle, X, Building, User } from 'lucide-react-native';
+import { ChevronLeft, Calendar, Clock, FileText, MapPin, CircleCheck as CheckCircle, X, User } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
@@ -21,7 +21,7 @@ import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 import { formatClinicAddress } from '../../../src/utils/formatting';
 
 // Color constants (match previous screens)
-const BLUE = '#2563EB';
+const BLUE = '#1E40AF';
 const LIGHT_BLUE = '#DBEAFE';
 
 export default function ReviewConfirmScreen() {
@@ -190,22 +190,11 @@ export default function ReviewConfirmScreen() {
           
           {/* Clinic Info */}
           <View style={styles.clinicSection}>
-            <View style={styles.clinicIconContainer}>
-              <Building size={26} color={BLUE} />
-            </View>
             <View style={styles.clinicInfo}>
               <Text style={styles.clinicName}>{clinic.name}</Text>
               {clinicData && (
                 <View style={styles.locationContainer}>
-                  <MapPin size={14} color="#6B7280" />
                   <Text style={styles.locationText}>{formatClinicAddress(clinicData)}</Text>
-                </View>
-              )}
-              {/* Add generalist name below address */}
-              {doctorName && (
-                <View style={styles.doctorContainer}>
-                  <User size={14} color="#6B7280" />
-                  <Text style={styles.doctorText}>{doctorName}</Text>
                 </View>
               )}
               {clinicData?.operatingHours && (
@@ -219,12 +208,17 @@ export default function ReviewConfirmScreen() {
 
           <View style={styles.dividerSubtle} />
 
+          {/* Doctor Information */}
+          {doctorName && (
+            <View style={styles.doctorRow}>
+              <Text style={styles.doctorLabel}>Doctor:</Text>
+              <Text style={styles.doctorValue}>Dr. {doctorName}</Text>
+            </View>
+          )}
+
           {/* Appointment Details */}
           <View style={styles.detailsSection}>
             <View style={styles.detailRow}>
-              <View style={styles.detailIcon}>
-                <Calendar size={20} color={BLUE} />
-              </View>
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Date</Text>
                 <Text style={styles.detailValue}>{formatDate(selectedDate as string)}</Text>
@@ -232,9 +226,6 @@ export default function ReviewConfirmScreen() {
             </View>
 
             <View style={styles.detailRow}>
-              <View style={styles.detailIcon}>
-                <Clock size={20} color={BLUE} />
-              </View>
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Time</Text>
                 <Text style={styles.detailValue}>{selectedTime}</Text>
@@ -242,9 +233,6 @@ export default function ReviewConfirmScreen() {
             </View>
 
             <View style={styles.detailRow}>
-              <View style={styles.detailIcon}>
-                <FileText size={20} color={BLUE} />
-              </View>
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Purpose of Visit</Text>
                 <Text style={styles.detailValue}>{selectedPurpose}</Text>
@@ -253,9 +241,6 @@ export default function ReviewConfirmScreen() {
 
             {notes ? (
               <View style={styles.detailRow}>
-                <View style={styles.detailIcon}>
-                  <FileText size={20} color={BLUE} />
-                </View>
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Additional Notes</Text>
                   <Text style={styles.detailValue}>{notes}</Text>
@@ -319,58 +304,54 @@ export default function ReviewConfirmScreen() {
       <Modal
         visible={showSuccessModal}
         transparent={true}
-        animationType="fade"
+        animationType="slide"
         onRequestClose={handleCloseModal}
       >
         <Pressable style={styles.modalBackdrop} onPress={handleCloseModal}>
-          <BlurView intensity={20} style={styles.blurView}>
-            <View style={styles.modalOverlay} />
-          </BlurView>
+          <View style={styles.modalOverlay} />
         </Pressable>
         
         <View style={styles.modalContainer}>
-          <SafeAreaView style={styles.modalSafeArea}>
-            <View style={styles.modalContent}>
-              <View style={styles.successIconContainer}>
-                <CheckCircle size={64} color="#10B981" />
-              </View>
-              <Text style={styles.successTitle}>Appointment Requested!</Text>
-              <Text style={styles.successMessage}>
-                Your appointment request has been submitted to {clinic.name}. 
-                You'll receive a confirmation notification once the clinic reviews and approves your request.
-              </Text>
-              <View style={styles.modalDetailsCard}>
-                <View style={styles.modalDetailRow}>
-                  <Text style={styles.modalDetailLabel}>Clinic:</Text>
-                  <Text style={styles.modalDetailValue}>{clinic.name}</Text>
-                </View>
-                <View style={styles.modalDetailRow}>
-                  <Text style={styles.modalDetailLabel}>Date:</Text>
-                  <Text style={styles.modalDetailValue}>{formatDate(selectedDate as string)}</Text>
-                </View>
-                <View style={styles.modalDetailRow}>
-                  <Text style={styles.modalDetailLabel}>Time:</Text>
-                  <Text style={styles.modalDetailValue}>{selectedTime}</Text>
-                </View>
-                <View style={styles.modalDetailRow}>
-                  <Text style={styles.modalDetailLabel}>Purpose:</Text>
-                  <Text style={styles.modalDetailValue}>{selectedPurpose}</Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                style={styles.modalCloseButton}
-                onPress={handleCloseModal}
-              >
-                <Text style={styles.modalCloseButtonText}>Return to homepage</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalXButton}
-                onPress={handleCloseModal}
-              >
-                <X size={24} color="#6B7280" />
-              </TouchableOpacity>
+          <View style={styles.modalContent}>
+            <View style={styles.successIconContainer}>
+              <CheckCircle size={64} color="#2563EB" />
             </View>
-          </SafeAreaView>
+            <Text style={styles.successTitle}>Appointment Requested!</Text>
+            <Text style={styles.successMessage}>
+              Your appointment request has been submitted to {clinic.name}. 
+              You'll receive a confirmation notification once the clinic approves your request.
+            </Text>
+            <View style={styles.modalDetailsCard}>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Clinic:</Text>
+                <Text style={styles.modalDetailValue}>{clinic.name}</Text>
+              </View>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Date:</Text>
+                <Text style={styles.modalDetailValue}>{formatDate(selectedDate as string)}</Text>
+              </View>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Time:</Text>
+                <Text style={styles.modalDetailValue}>{selectedTime}</Text>
+              </View>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Purpose:</Text>
+                <Text style={styles.modalDetailValue}>{selectedPurpose}</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={handleCloseModal}
+            >
+              <Text style={styles.modalCloseButtonText}>View Appointment</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalXButton}
+              onPress={handleCloseModal}
+            >
+              <X size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -481,6 +462,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
   },
   summaryTitle: {
     fontSize: 18,
@@ -490,20 +476,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   clinicSection: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     marginBottom: 18,
-  },
-  clinicIconContainer: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-    borderWidth: 1,
-    borderColor: LIGHT_BLUE,
   },
   clinicInfo: { flex: 1 },
   clinicName: {
@@ -521,7 +494,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
-    marginLeft: 5,
     flex: 1,
     lineHeight: 19,
   },
@@ -551,57 +523,79 @@ const styles = StyleSheet.create({
   dividerSubtle: {
     height: 1,
     backgroundColor: '#F3F4F6',
-    marginBottom: 17,
+    marginBottom: 16,
   },
   detailsSection: {
-    gap: 13,
+    gap: 16,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 4,
-  },
-  detailIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: LIGHT_BLUE,
+    justifyContent: 'space-between',
   },
   detailContent: {
     flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   detailLabel: {
     fontSize: 13,
     fontFamily: 'Inter-Medium',
     color: '#6B7280',
     marginBottom: 2,
+    minWidth: 100,
   },
   detailValue: {
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
     lineHeight: 22,
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 12,
+  },
+  doctorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    justifyContent: 'space-between',
+  },
+  doctorLabel: {
+    fontSize: 13,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    minWidth: 100,
+  },
+  doctorValue: {
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 12,
   },
 
   // Info Card
   infoCard: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F0F9FF',
     borderRadius: 16,
     padding: 20,
     marginHorizontal: 24,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: '#BAE6FD',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
   },
   infoTitle: {
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
-    color: '#92400E',
+    color: '#0C4A6E',
     marginBottom: 10,
   },
   infoList: {
@@ -610,7 +604,7 @@ const styles = StyleSheet.create({
   infoItem: {
     fontSize: 13,
     fontFamily: 'Inter-Regular',
-    color: '#92400E',
+    color: '#0C4A6E',
     lineHeight: 18,
   },
   // Next Steps
@@ -621,6 +615,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     borderWidth: 1,
     borderColor: '#BAE6FD',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
   },
   nextStepsTitle: {
     fontSize: 15,
@@ -636,13 +635,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   stepNumber: {
-    width: 24,
-    height: 24,
+    width: 20,
+    height: 20,
     borderRadius: 12,
     backgroundColor: BLUE,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
   stepNumberText: {
     fontSize: 12,
@@ -667,6 +666,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
   },
   bookButton: {
     backgroundColor: BLUE,
@@ -700,13 +704,9 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     zIndex: 2,
-  },
-  modalSafeArea: {
-    width: '90%',
-    maxWidth: 400,
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
@@ -714,6 +714,16 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     position: 'relative',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    width: '100%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   successIconContainer: {
     marginBottom: 20,
@@ -726,7 +736,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   successMessage: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     textAlign: 'center',
@@ -741,6 +751,11 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
   },
   modalDetailRow: {
     flexDirection: 'row',
@@ -749,12 +764,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalDetailLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: '#6B7280',
   },
   modalDetailValue: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
     textAlign: 'right',

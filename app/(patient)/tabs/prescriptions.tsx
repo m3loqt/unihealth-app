@@ -15,6 +15,7 @@ import {
   Pill,
   CircleCheck as CheckCircle,
   User,
+  Search,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -230,35 +231,53 @@ export default function PrescriptionsScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.filtersContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filtersContent}
-          >
-            {['All', 'Active', 'Past'].map((filter) => (
-              <TouchableOpacity
-                key={filter}
-                style={[
-                  styles.filterButton,
-                  activeTab === filter && styles.activeFilterButton,
-                ]}
-                onPress={() => setActiveTab(filter)}
-              >
-                <Text
-                  style={[
-                    styles.filterText,
-                    activeTab === filter && styles.activeFilterText,
-                  ]}
-                >
-                  {filter}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        {/* Search Bar */}
+        <View style={styles.searchRow}>
+          <View style={styles.searchInputContainer}>
+            <Search size={18} color="#9CA3AF" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search prescriptions"
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
         </View>
 
-        <ScrollView
+        <View style={styles.filtersContainer}>
+          <View style={styles.filtersBarRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filtersContent}
+            >
+              <View style={styles.filtersLeft}>
+                {['All', 'Active', 'Past'].map((filter) => (
+                  <TouchableOpacity
+                    key={filter}
+                    style={[
+                      styles.filterButton,
+                      activeTab === filter && styles.activeFilterButton,
+                    ]}
+                    onPress={() => setActiveTab(filter)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterText,
+                        activeTab === filter && styles.activeFilterText,
+                      ]}
+                    >
+                      {filter}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+                         </ScrollView>
+           </View>
+         </View>
+
+         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 95 }}
@@ -338,15 +357,57 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  searchRow: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11.5,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minHeight: 36,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    paddingVertical: 0,
+  },
   filtersContainer: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    paddingBottom: 12,
+    paddingTop: 0,
+  },
+  filtersBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    gap: 10,
+    position: 'relative',
+    zIndex: 1,
   },
   filtersContent: {
-    paddingHorizontal: 24,
-    gap: 12,
+    gap: 10,
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  filtersLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   filterButton: {
     paddingHorizontal: 16,
@@ -355,6 +416,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    marginRight: 6,
   },
   activeFilterButton: {
     backgroundColor: '#1E40AF',
