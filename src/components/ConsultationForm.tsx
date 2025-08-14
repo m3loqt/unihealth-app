@@ -55,8 +55,7 @@ interface ConsultationFormData {
   // Step 6: Supplementary Docs
   prescriptions: any[];
   certificates: any[];
-  allergies: string;
-  vitals: string;
+
 }
 
 interface ConsultationFormProps {
@@ -89,8 +88,7 @@ export default function ConsultationForm({
     clinicalSummary: '',
     prescriptions: [],
     certificates: [],
-    allergies: '',
-    vitals: '',
+
     ...initialData,
   });
 
@@ -304,8 +302,7 @@ export default function ConsultationForm({
         return (
           <View style={styles.stepContent}>
             <Text style={styles.stepTitle}>Additional Information</Text>
-            {renderField('Allergies', 'allergies', 'List any allergies...', true, 2)}
-            {renderField('Vitals', 'vitals', 'Vital signs...', true, 2)}
+            
             {/* Prescriptions and certificates would be handled separately */}
           </View>
         );

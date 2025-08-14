@@ -54,7 +54,6 @@ export interface MedicalHistory {
     description: string;
   }>;
   differentialDiagnosis?: string;
-  followUpInstructions?: string;
   lastUpdated: string;
   patientId: string;
   practiceLocation?: {
@@ -87,13 +86,6 @@ export interface MedicalHistory {
   };
   treatmentPlan?: string;
   type: string;
-  labResultsSummary?: Array<{
-    test: string;
-    value: string;
-    notes?: string;
-  }>;
-  allergies?: string;
-  vitals?: string;
 }
 
 export interface Prescription {

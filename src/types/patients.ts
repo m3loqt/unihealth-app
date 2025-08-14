@@ -26,7 +26,6 @@ export interface PatientMedicalHistory {
     code: string;
     description: string;
   }>;
-  followUpInstructions?: string;
   lastUpdated: string;
   patientId: string;
   practiceLocation?: {
