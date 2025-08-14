@@ -163,6 +163,10 @@ export default function PatientConsultationScreen() {
         }
       }
 
+      console.log('🔍 Loading medical history:', medicalHistory);
+      console.log('🔍 Medical history diagnosis field:', medicalHistory?.diagnosis);
+      console.log('🔍 Number of diagnoses in medical history:', medicalHistory?.diagnosis?.length || 0);
+      
       setFormData({
         // Step 1: Patient History
         presentIllnessHistory: medicalHistory?.presentIllnessHistory || '',
@@ -191,6 +195,9 @@ export default function PatientConsultationScreen() {
         certificates: medicalHistory?.certificates || [],
 
       });
+      
+      console.log('🔍 Form data set with diagnoses:', medicalHistory?.diagnosis || []);
+      console.log('🔍 Number of diagnoses in form data after setting:', (medicalHistory?.diagnosis || []).length);
     } catch (error) {
       console.error('Error loading consultation data:', error);
       Alert.alert('Error', 'Failed to load consultation data. Please try again.');
@@ -252,6 +259,12 @@ export default function PatientConsultationScreen() {
     checkCompletionStatus();
   }, [appointmentData, referralData]);
 
+  // Monitor formData changes for debugging
+  useEffect(() => {
+    console.log('🔍 FormData diagnoses changed:', formData.diagnoses);
+    console.log('🔍 Number of diagnoses in formData:', formData.diagnoses.length);
+  }, [formData.diagnoses]);
+
   // Animation for pulsing mic
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -288,13 +301,21 @@ export default function PatientConsultationScreen() {
   // -- Diagnosis Management --
   const addDiagnosis = () => {
     if (newDiagnosisCode.trim() && newDiagnosisDescription.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        diagnoses: [...prev.diagnoses, {
+      console.log('Adding diagnosis:', { code: newDiagnosisCode.trim(), description: newDiagnosisDescription.trim() });
+      
+      setFormData(prev => {
+        const newDiagnoses = [...prev.diagnoses, {
           code: newDiagnosisCode.trim(),
           description: newDiagnosisDescription.trim()
-        }]
-      }));
+        }];
+        console.log('Updated diagnoses array:', newDiagnoses);
+        console.log('Number of diagnoses after adding:', newDiagnoses.length);
+        
+        return {
+          ...prev,
+          diagnoses: newDiagnoses
+        };
+      });
       setNewDiagnosisCode('');
       setNewDiagnosisDescription('');
       setHasChanges(true);
@@ -611,15 +632,21 @@ export default function PatientConsultationScreen() {
       // Determine the correct consultationId to use
       let consultationIdToUse = '';
       
-      if (referralData && referralData.status === 'completed' && referralData.consultationId) {
-        // Use consultationId from completed referral
+      if (referralData && referralData.status === 'completed' && referralData.referralConsultationId) {
+        // Use referralConsultationId from completed referral (this is the Firebase push key)
+        consultationIdToUse = referralData.referralConsultationId;
+      } else if (appointmentData && appointmentData.status === 'completed' && appointmentData.appointmentConsultationId) {
+        // Use appointmentConsultationId from completed appointment (this is the Firebase push key)
+        consultationIdToUse = appointmentData.appointmentConsultationId;
+      } else if (referralData && referralData.status === 'completed' && referralData.consultationId) {
+        // Fallback to old consultationId format
         consultationIdToUse = referralData.consultationId;
       } else if (appointmentData && appointmentData.status === 'completed' && appointmentData.consultationId) {
-        // Use consultationId from completed appointment
+        // Fallback to old consultationId format
         consultationIdToUse = appointmentData.consultationId;
       } else {
         // Fallback to the original consultationIdString
-        consultationIdToUse = (consultationIdString as string) || `consultation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        consultationIdToUse = (consultationIdString as string) || '';
       }
       
       console.log('Loading medical history for patientId:', patientIdString);
@@ -776,6 +803,9 @@ export default function PatientConsultationScreen() {
               setIsLoading(true);
               
               // Prepare consultation data
+              console.log('Form data diagnoses before saving:', formData.diagnoses);
+              console.log('Number of diagnoses:', formData.diagnoses.length);
+              
               const consultationData = {
                 diagnosis: formData.diagnoses,
                 differentialDiagnosis: formData.differentialDiagnosis,
@@ -803,8 +833,56 @@ export default function PatientConsultationScreen() {
                 type: 'General Consultation',
               };
 
-              // Handle original appointment consultation
-              if (consultationIdString) {
+                             // Handle consultation - prioritize referral if both exist
+               if (referralIdString) {
+                 console.log('Saving consultation for referral:', referralIdString);
+                 console.log('Referral ID format check:', {
+                   referralId: referralIdString,
+                   isFirebaseKey: referralIdString.startsWith('-'),
+                   length: referralIdString.length
+                 });
+                 
+                 const referralConsultationId = await databaseService.saveReferralConsultationData(
+                   patientIdString,
+                   referralIdString as string,
+                   {
+                     ...consultationData,
+                     type: 'Referral Consultation'
+                   }
+                 );
+                 console.log('Referral consultation saved with ID:', referralConsultationId);
+                 
+                 // Update referral with the referralConsultationId to create the link
+                 try {
+                   // Check if referral exists before trying to update it
+                   const referralExists = await databaseService.getReferralById(referralIdString as string);
+                   if (referralExists) {
+                     await databaseService.updateReferral(referralIdString as string, {
+                       status: 'completed',
+                       referralConsultationId: referralConsultationId,
+                     });
+                     console.log('Referral updated with referralConsultationId:', referralConsultationId);
+                   } else {
+                     console.warn('Referral not found with ID:', referralIdString);
+                     console.log('This might be because the referral ID is in a custom format. Consultation data is still saved.');
+                   }
+                 } catch (error) {
+                   console.error('Error updating referral with consultation ID:', error);
+                   console.log('Referral update failed, but consultation data is still saved successfully.');
+                   // Don't fail the consultation completion if referral update fails
+                 }
+                
+                // If there's also an appointment ID, update its status to completed
+                if (consultationIdString) {
+                  try {
+                    await databaseService.updateAppointmentStatus(consultationIdString as string, 'completed');
+                    console.log('Appointment status updated to completed');
+                  } catch (error) {
+                    console.error('Error updating appointment status:', error);
+                    // Don't fail the consultation completion if appointment status update fails
+                  }
+                }
+              } else if (consultationIdString) {
                 console.log('Saving consultation for appointment:', consultationIdString);
                 const consultationId = await databaseService.saveConsultationData(
                   patientIdString,
@@ -812,22 +890,20 @@ export default function PatientConsultationScreen() {
                   consultationData
                 );
                 console.log('Consultation saved with ID:', consultationId);
+                
+                // Update appointment status to completed
+                try {
+                  await databaseService.updateAppointmentStatus(consultationIdString as string, 'completed');
+                  console.log('Appointment status updated to completed');
+                } catch (error) {
+                  console.error('Error updating appointment status:', error);
+                  // Don't fail the consultation completion if appointment status update fails
+                }
               }
 
-              // Handle referral consultation if applicable
-              if (referralIdString) {
-                console.log('Saving consultation for referral:', referralIdString);
-                const referralConsultationId = await databaseService.saveConsultationData(
-                  patientIdString,
-                  referralIdString as string,
-                  {
-                    ...consultationData,
-                    type: 'Referral Consultation'
-                  }
-                );
-                console.log('Referral consultation saved with ID:', referralConsultationId);
-              }
-
+              // Update local state to reflect completion
+              setIsCompleted(true);
+              
               Alert.alert('Success', 'Consultation completed successfully!');
               router.back();
             } catch (error) {

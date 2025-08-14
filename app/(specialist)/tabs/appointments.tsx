@@ -114,8 +114,8 @@ export default function SpecialistAppointmentsScreen() {
   // Load referrals for appointments that have relatedReferralId
   useEffect(() => {
     appointments.forEach(appointment => {
-      const referralId = appointment.relatedReferralId || 
-                        (appointment.type === 'Referral' ? appointment.id?.replace('referral-', '') : null);
+            const referralId = appointment.relatedReferralId ||
+        (appointment.type === 'Referral' ? appointment.id : null);
       if (referralId && !referrals[referralId]) {
         loadReferral(referralId);
       }
@@ -142,7 +142,7 @@ export default function SpecialistAppointmentsScreen() {
       
       // Convert referrals to appointments format for display
       const referralAppointments = specialistReferrals.map(referral => ({
-        id: `referral-${referral.id}`,
+        id: referral.id, // Use the Firebase push key directly instead of custom format
         appointmentDate: referral.appointmentDate,
         appointmentTime: referral.appointmentTime,
         bookedByUserFirstName: referral.referringGeneralistFirstName,
@@ -312,7 +312,7 @@ export default function SpecialistAppointmentsScreen() {
     
     // Check if this is a referral appointment and fetch the referralId
     if (appointment.relatedReferralId || appointment.type === 'Referral') {
-      referralId = appointment.relatedReferralId || appointment.id?.replace('referral-', '');
+              referralId = appointment.relatedReferralId || appointment.id;
       
       // If we don't have the referral data loaded yet, fetch it
       if (referralId && !referrals[referralId]) {
@@ -466,12 +466,12 @@ export default function SpecialistAppointmentsScreen() {
         
         // Only include referral cards that match the current filter and search
         if (matchesSearch && matchesFilter) {
-          const referralId = appointment.relatedReferralId || appointment.id?.replace('referral-', '');
+          const referralId = appointment.relatedReferralId || appointment.id;
           const referral = referralId ? referrals[referralId] : null;
           const isLoading = referralId ? loadingReferrals[referralId] : false;
         
         referralCards.push({
-            id: appointment.id || `referral-${referralId}`, // Use appointment.id as unique key, fallback to referral ID
+            id: appointment.id || referralId, // Use appointment.id as unique key, fallback to referral ID (Firebase push key)
           type: 'referral',
           appointment,
           referral,
@@ -502,7 +502,7 @@ export default function SpecialistAppointmentsScreen() {
       case 'pending':
         return <Hourglass size={14} color="#6B7280" />;
       case 'completed':
-        return <CheckMark size={14} color="#1E40AF" />;
+        return <CheckMark size={14} color="#10B981" />;
       case 'cancelled':
         return <XCircle size={14} color="#EF4444" />;
       default:
@@ -619,20 +619,6 @@ export default function SpecialistAppointmentsScreen() {
                 {patientInitials}
               </Text>
             </View>
-            {/* Medical History Button - Only show if referral is completed */}
-            {appointment.status === 'completed' && (
-              <TouchableOpacity
-                style={styles.medicalHistoryButton}
-                onPress={(e) => {
-                  e.stopPropagation(); // Prevent card click
-                  console.log('🔍 MEDICAL HISTORY EYE ICON PRESSED!');
-                  console.log('Appointment being passed:', appointment);
-                  loadAppointmentDetails(appointment);
-                }}
-              >
-                <Eye size={16} color="#1E40AF" />
-              </TouchableOpacity>
-            )}
           </View>
           <View style={styles.referralCardDetails}>
             <Text style={styles.referralCardTitle}>Referral Request</Text>
@@ -862,21 +848,7 @@ export default function SpecialistAppointmentsScreen() {
               <Stethoscope size={16} color="#FFFFFF" />
               <Text style={styles.diagnoseButtonText}>Diagnose Patient</Text>
             </TouchableOpacity>
-          ) : appointment.status === 'completed' ? (
-            // Completed appointment - show medical history button
-            <TouchableOpacity
-              style={styles.medicalHistoryButton}
-              onPress={(e) => {
-                e.stopPropagation(); // Prevent card click
-                console.log('🔍 MEDICAL HISTORY BUTTON PRESSED (REGULAR APPOINTMENT)!');
-                console.log('Appointment being passed:', appointment);
-                loadAppointmentDetails(appointment);
-              }}
-            >
-              <Eye size={16} color="#1E40AF" />
-              <Text style={styles.medicalHistoryButtonText}>View History</Text>
-            </TouchableOpacity>
-          ) : null}
+                     ) : null}
         </View>
       </TouchableOpacity>
     );
@@ -1395,7 +1367,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     borderRadius: 8,
     padding: 12,
-    marginBottom: 12,
+    marginBottom: 0,
   },
   notesLabel: {
     fontSize: 13,
@@ -1989,7 +1961,7 @@ const styles = StyleSheet.create({
     color: '#1E40AF',
   },
   referralStatusTextCompleted: {
-    color: '#10B981',
+    color: '#FFFFFF',
   },
   referralStatusTextCanceled: {
     color: '#EF4444',
@@ -1998,7 +1970,7 @@ const styles = StyleSheet.create({
     color: '#1E40AF',
   },
   statusTextCompleted: {
-    color: '#10B981',
+    color: '#FFFFFF',
   },
   statusTextCanceled: {
     color: '#EF4444',

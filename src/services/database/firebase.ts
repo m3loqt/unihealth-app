@@ -2190,6 +2190,35 @@ export const databaseService = {
     }
   },
 
+  async updateReferral(referralId: string, updates: Partial<Referral>): Promise<void> {
+    try {
+      console.log('🔔 Starting updateReferral for referral:', referralId, 'with updates:', updates);
+      
+      const referralRef = ref(database, `referrals/${referralId}`);
+      const snapshot = await get(referralRef);
+      
+      if (!snapshot.exists()) {
+        throw new Error('Referral not found');
+      }
+
+      const currentReferral = snapshot.val();
+      console.log('📋 Current referral data:', currentReferral);
+      
+      const updatedData = {
+        ...updates,
+        lastUpdated: new Date().toISOString()
+      };
+      
+      // Update the referral
+      await update(referralRef, updatedData);
+      console.log('✅ Referral updated successfully');
+      
+    } catch (error) {
+      console.error('❌ Update referral error:', error);
+      throw error;
+    }
+  },
+
   // Real-time listeners
   onAppointmentsChange(userId: string, role: 'patient' | 'specialist', callback: (appointments: Appointment[]) => void) {
     const appointmentsRef = ref(database, 'appointments');
@@ -2883,6 +2912,72 @@ export const databaseService = {
     } catch (error) {
       console.error('Save consultation data error:', error);
       throw new Error('Failed to save consultation data');
+    }
+  },
+
+  // Save referral consultation data with new structure
+  async saveReferralConsultationData(
+    patientId: string, 
+    referralId: string, 
+    consultationData: Partial<MedicalHistory>
+  ): Promise<string> {
+    try {
+      console.log('🔍 saveReferralConsultationData - Input consultationData:', consultationData);
+      console.log('🔍 Number of diagnoses in consultationData:', consultationData.diagnosis?.length || 0);
+      console.log('🔍 Diagnoses array:', consultationData.diagnosis);
+      
+      // Generate consultation data with required fields
+      const medicalHistoryData = {
+        ...consultationData,
+        consultationDate: new Date().toISOString(),
+        consultationTime: new Date().toLocaleTimeString(),
+        patientId: patientId,
+        createdAt: Date.now(),
+        lastUpdated: Date.now(),
+        updatedAt: Date.now(),
+        relatedReferral: {
+          id: referralId,
+          type: consultationData.type || 'Referral Consultation'
+        }
+      };
+      
+      console.log('🔍 medicalHistoryData to be saved:', medicalHistoryData);
+      console.log('🔍 Number of diagnoses in medicalHistoryData:', medicalHistoryData.diagnosis?.length || 0);
+
+      // Use Firebase push to generate the consultationId
+      const consultationId = await this.pushDocument(`patientMedicalHistory/${patientId}/entries`, medicalHistoryData);
+      console.log('Generated referral consultationId using Firebase push key:', consultationId);
+
+      console.log('Referral consultation saved with ID:', consultationId);
+      return consultationId;
+    } catch (error) {
+      console.error('Save referral consultation data error:', error);
+      throw new Error('Failed to save referral consultation data');
+    }
+  },
+
+  // Create referral with Firebase push key
+  async createReferral(referralData: Partial<Referral>): Promise<string> {
+    try {
+      console.log('🔔 Creating referral with Firebase push key...');
+      
+      // Prepare referral data with required fields
+      const completeReferralData = {
+        ...referralData,
+        referralTimestamp: new Date().toISOString(),
+        createdAt: Date.now(),
+        lastUpdated: Date.now(),
+        status: referralData.status || 'pending_acceptance'
+      };
+
+      // Use Firebase push to generate the referralId
+      const referralId = await this.pushDocument('referrals', completeReferralData);
+      console.log('✅ Referral created with Firebase push key:', referralId);
+      
+      return referralId;
+    } catch (error) {
+      console.error('❌ Create referral error:', error);
+      throw new Error('Failed to create referral');
     }
   },
 };  
