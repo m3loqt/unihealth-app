@@ -871,6 +871,15 @@ export default function PatientConsultationScreen() {
                    console.log('Referral update failed, but consultation data is still saved successfully.');
                    // Don't fail the consultation completion if referral update fails
                  }
+
+                 // Clean up temporary referral data that was saved with referralId as the key
+                 try {
+                   await databaseService.cleanupTemporaryReferralData(patientIdString, referralIdString as string);
+                   console.log('Temporary referral data cleaned up successfully');
+                 } catch (cleanupError) {
+                   console.error('Error cleaning up temporary referral data:', cleanupError);
+                   // Don't fail the consultation completion if cleanup fails
+                 }
                 
                 // If there's also an appointment ID, update its status to completed
                 if (consultationIdString) {

@@ -2956,6 +2956,31 @@ export const databaseService = {
     }
   },
 
+  // Clean up temporary referral consultation data
+  async cleanupTemporaryReferralData(
+    patientId: string,
+    referralId: string
+  ): Promise<void> {
+    try {
+      console.log('🧹 Cleaning up temporary referral data for patient:', patientId, 'referral:', referralId);
+      
+      // Check if temporary data exists before trying to remove it
+      const temporaryDataPath = `patientMedicalHistory/${patientId}/entries/${referralId}`;
+      const temporaryData = await this.getDocument(temporaryDataPath);
+      
+      if (temporaryData) {
+        // Remove the temporary data saved with referralId as the key
+        await this.removeDocument(temporaryDataPath);
+        console.log('✅ Temporary referral data cleaned up successfully');
+      } else {
+        console.log('ℹ️ No temporary referral data found to clean up');
+      }
+    } catch (error) {
+      console.error('❌ Error cleaning up temporary referral data:', error);
+      // Don't throw error - cleanup failure shouldn't break the main flow
+    }
+  },
+
   // Create referral with Firebase push key
   async createReferral(referralData: Partial<Referral>): Promise<string> {
     try {
