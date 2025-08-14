@@ -245,10 +245,10 @@ export default function VisitOverviewScreen() {
             ...appointment,
             // Use appointment data first, then fallback to fetched data
             doctorName: appointment.doctorFirstName && appointment.doctorLastName 
-              ? `${appointment.doctorFirstName} ${appointment.doctorLastName}` 
+              ? `Dr. ${appointment.doctorFirstName} ${appointment.doctorLastName}` 
               : doctorData 
-                ? `${doctorData.firstName} ${doctorData.lastName}`
-                : 'Unknown Doctor',
+                ? `Dr. ${doctorData.firstName} ${doctorData.lastName}`
+                : 'Dr. Unknown Doctor',
             doctorSpecialty: appointment.doctorSpecialty || doctorData?.specialty || 'General Medicine',
             clinic: clinicData?.name || appointment.clinicName || 'Unknown Clinic',
             date: appointment.appointmentDate,
@@ -335,7 +335,7 @@ export default function VisitOverviewScreen() {
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: 130 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -353,25 +353,17 @@ export default function VisitOverviewScreen() {
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Consultation Details</Text>
           <View style={styles.cardBox}>
-            {/* Status Badge */}
-            <View style={styles.statusSection}>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(visitData.status) + '20' }]}>
-                <Text style={[styles.statusText, { color: getStatusColor(visitData.status) }]}>
-                  {getStatusText(visitData.status)}
-                </Text>
-              </View>
-            </View>
             <View style={styles.doctorRow}>
               <View style={styles.doctorInfo}>
                 <Text style={styles.doctorName}>{visitData.doctorName || 'Unknown Doctor'}</Text>
                 <Text style={styles.doctorSpecialty}>{visitData.doctorSpecialty || 'General Medicine'}</Text>
               </View>
-              {/* <Image 
-                source={{ uri: visitData.doctorPhoto || undefined }} 
-                style={styles.doctorImage} 
-                resizeMode="cover"
-                defaultSource={require('../../assets/default-avatar.png')}
-              /> */}
+              {/* Status Badge - Fixed to right-top */}
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(visitData.status) + '20' }]}>
+                <Text style={[styles.statusText, { color: getStatusColor(visitData.status) }]}>
+                  {getStatusText(visitData.status)}
+                </Text>
+              </View>
             </View>
             <View style={styles.consultDivider} />
                          <View style={styles.consultDetailsTable}>
@@ -439,10 +431,12 @@ export default function VisitOverviewScreen() {
             </View>
           )) : visitData.status.toLowerCase() === 'completed' ? (
             <View style={styles.emptyStateCard}>
+              <Pill size={36} color="#9CA3AF" />
               <Text style={styles.emptyStateText}>No prescriptions for this visit.</Text>
             </View>
           ) : (
             <View style={styles.emptyStateCard}>
+              <Pill size={36} color="#9CA3AF" />
               <Text style={styles.emptyStateText}>Prescriptions will be available after the appointment is completed.</Text>
             </View>
           )}
@@ -488,12 +482,14 @@ export default function VisitOverviewScreen() {
                 </View>
               </View>
             );
-          }) : visitData.status.toLowerCase() === 'completed' ? (
+          }          ) : visitData.status.toLowerCase() === 'completed' ? (
             <View style={styles.emptyStateCard}>
+              <FileText size={36} color="#9CA3AF" />
               <Text style={styles.emptyStateText}>No certificates were issued for this visit.</Text>
             </View>
           ) : (
             <View style={styles.emptyStateCard}>
+              <FileText size={36} color="#9CA3AF" />
               <Text style={styles.emptyStateText}>Certificates will be available after the appointment is completed.</Text>
             </View>
           )}
@@ -504,6 +500,7 @@ export default function VisitOverviewScreen() {
           <Text style={styles.sectionTitle}>Clinical Summary</Text>
           {visitData.status.toLowerCase() !== 'completed' ? (
             <View style={styles.emptyStateCard}>
+              <FileText size={36} color="#9CA3AF" />
               <Text style={styles.emptyStateText}>
                 Consultation details will be available after the appointment is completed.
               </Text>
@@ -712,14 +709,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     letterSpacing: 0.15,
   },
-  statusSection: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
   statusBadge: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+    alignSelf: 'flex-start',
   },
   statusText: {
     fontSize: 14,
@@ -1030,9 +1024,9 @@ const styles = StyleSheet.create({
     marginLeft: 3,
   },
   emptyStateCard: {
-    padding: 18,
+    padding: 24,
     backgroundColor: '#F3F4F6',
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     alignItems: 'center',
@@ -1043,6 +1037,9 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 14,
     fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    marginTop: 12,
+    lineHeight: 20,
   },
   loadingContainer: {
     flex: 1,

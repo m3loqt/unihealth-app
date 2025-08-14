@@ -514,6 +514,8 @@ export default function SpecialistAppointmentsScreen() {
     switch (status) {
       case 'confirmed':
         return [styles.statusBadge, styles.statusBadgeConfirmed];
+      case 'pending':
+        return [styles.statusBadge, styles.statusBadgePending];
       case 'completed':
         return [styles.statusBadge, styles.statusBadgeCompleted];
       case 'cancelled':
@@ -553,6 +555,8 @@ export default function SpecialistAppointmentsScreen() {
     switch (status) {
       case 'confirmed':
         return [styles.statusText, styles.statusTextConfirmed];
+      case 'pending':
+        return [styles.statusText, styles.statusTextPending];
       case 'completed':
         return [styles.statusText, styles.statusTextCompleted];
       case 'cancelled':
@@ -1440,7 +1444,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#10B981',
+    backgroundColor: '#1E40AF',
     paddingVertical: 12,
     borderRadius: 8,
     gap: 6,
@@ -1937,6 +1941,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0F2FE',
     borderColor: '#1E40AF',
   },
+  statusBadgePending: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
+  },
   statusBadgeCompleted: {
     backgroundColor: '#10B981',
     borderColor: '#10B981',
@@ -1968,6 +1976,9 @@ const styles = StyleSheet.create({
   },
   statusTextConfirmed: {
     color: '#1E40AF',
+  },
+  statusTextPending: {
+    color: '#F59E0B',
   },
   statusTextCompleted: {
     color: '#FFFFFF',

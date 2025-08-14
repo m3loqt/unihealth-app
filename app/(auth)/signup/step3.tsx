@@ -12,6 +12,8 @@ import {
   Alert,
   StatusBar,
   Modal,
+  Pressable,
+  Dimensions,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
@@ -26,6 +28,8 @@ import {
 } from 'lucide-react-native';
 import { authService, SignUpData } from '../../../src/services/api/auth';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // ---- MAIN COMPONENT ----
 export default function SignUpStep3Screen() {
@@ -520,26 +524,43 @@ export default function SignUpStep3Screen() {
         <Modal
           visible={showSuccessModal}
           transparent={true}
-          animationType="fade"
+          animationType="slide"
+          onRequestClose={handleGoToLogin}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.successModalContent}>
-              <View style={styles.successIconContainer}>
-                <View style={styles.successIcon}>
-                  <Check size={32} color="#FFFFFF" />
+          <Pressable style={styles.successModalBackdrop} onPress={handleGoToLogin}>
+            <View style={styles.successModalBackdropOverlay} />
+          </Pressable>
+          <View style={styles.successModalContainer}>
+            <SafeAreaView style={styles.successModalSafeArea}>
+              <View style={styles.successModalContent}>
+                {/* Success Content */}
+                <View style={styles.successModalSuccessContent}>
+                  {/* Success Icon */}
+                  <View style={styles.successModalSuccessIcon}>
+                    <Check size={48} color="#1E40AF" />
+                  </View>
+                  
+                  {/* Success Message */}
+                  <Text style={styles.successModalSuccessTitle}>
+                    Account Created Successfully!
+                  </Text>
+                  
+                  <Text style={styles.successModalSuccessSubtitle}>
+                    Welcome to UniHEALTH, {userProfile?.name}! Your account has been created and you can now sign in.
+                  </Text>
+                </View>
+                
+                {/* Action Button */}
+                <View style={styles.successModalActions}>
+                  <TouchableOpacity
+                    style={styles.successModalPrimaryButton}
+                    onPress={handleGoToLogin}
+                  >
+                    <Text style={styles.successModalPrimaryButtonText}>Continue to Sign In</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-              <Text style={styles.successTitle}>Account Created Successfully!</Text>
-              <Text style={styles.successSubtitle}>
-                Welcome to UniHEALTH, {userProfile?.name}! Your account has been created and you can now sign in.
-              </Text>
-              <TouchableOpacity
-                style={styles.successButton}
-                onPress={handleGoToLogin}
-              >
-                <Text style={styles.successButtonText}>Continue to Sign In</Text>
-              </TouchableOpacity>
-            </View>
+            </SafeAreaView>
           </View>
         </Modal>
       </KeyboardAvoidingView>
@@ -854,63 +875,81 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     textAlign: 'center',
   },
-  // Success Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
+  // Success Modal Styles - Matching Signin Screen
+  successModalBackdrop: {
+    position: 'absolute', 
+    top: 0, 
+    left: 0, 
+    right: 0, 
+    bottom: 0, 
+    zIndex: 1,
+  },
+  successModalBackdropOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)' 
+  },
+  successModalContainer: {
+    flex: 1, 
+    justifyContent: 'flex-end', 
+    zIndex: 2,
+  },
+  successModalSafeArea: { 
+    width: '100%',
   },
   successModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 32,
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    alignItems: 'stretch',
+    minHeight: SCREEN_HEIGHT * 0.35,
+  },
+  successModalSuccessContent: {
     alignItems: 'center',
-    maxWidth: 320,
-    width: '100%',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+    paddingVertical: 16,
+    flex: 1,
+    justifyContent: 'center',
   },
-  successIconContainer: {
-    marginBottom: 24,
-  },
-  successIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#10B981',
+  successModalSuccessIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
-  successTitle: {
-    fontSize: 24,
+  successModalSuccessTitle: {
+    fontSize: 20,
     fontFamily: 'Inter-Bold',
     color: '#1F2937',
+    marginBottom: 4,
     textAlign: 'center',
-    marginBottom: 12,
   },
-  successSubtitle: {
-    fontSize: 16,
+  successModalSuccessSubtitle: {
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 32,
+    lineHeight: 20,
   },
-  successButton: {
+  successModalActions: { 
+    flexDirection: 'row', 
+    gap: 12,
+    marginTop: 32,
+  },
+  successModalPrimaryButton: {
+    flex: 1,
     backgroundColor: '#1E40AF',
+    paddingVertical: 14,
     borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    width: '100%',
+    alignItems: 'center',
   },
-  successButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    textAlign: 'center',
+  successModalPrimaryButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 16, 
+    fontFamily: 'Inter-SemiBold' 
   },
 });

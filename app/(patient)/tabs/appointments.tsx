@@ -450,14 +450,14 @@ export default function AppointmentsScreen() {
 
         <View style={styles.appointmentMeta}>
           <View style={styles.metaRow}>
-            <Clock size={16} color="#6B7280" />
-            <Text style={styles.metaText}>
+            <Text style={styles.metaLabel}>Date & Time:</Text>
+            <Text style={styles.metaValue}>
               {formatDisplayDate(referral?.appointmentDate || '')} at {formatDisplayTime(referral?.appointmentTime || '')}
             </Text>
           </View>
           <View style={styles.metaRow}>
-            <MapPin size={16} color="#6B7280" />
-            <Text style={styles.metaText}>
+            <Text style={styles.metaLabel}>Clinic:</Text>
+            <Text style={styles.metaValue}>
               {(() => {
                 const clinic = referral?.referringClinicId ? clinicData[referral.referringClinicId] : null;
                 return clinic?.name || referral?.referringClinicName || 'Clinic not specified';
@@ -552,7 +552,7 @@ export default function AppointmentsScreen() {
             </View>
             <View style={styles.doctorDetails}>
               <Text style={styles.doctorName}>
-                {doctorName || 'Doctor not specified'}
+                {doctorName ? `Dr. ${doctorName}` : 'Dr. Unknown'}
               </Text>
               <Text style={styles.doctorSpecialty}>
                 {appointment.specialty || 'General Medicine'}
@@ -569,14 +569,14 @@ export default function AppointmentsScreen() {
 
         <View style={styles.appointmentMeta}>
           <View style={styles.metaRow}>
-            <Clock size={16} color="#6B7280" />
-            <Text style={styles.metaText}>
+            <Text style={styles.metaLabel}>Date & Time:</Text>
+            <Text style={styles.metaValue}>
               {formatDisplayDate(appointment.appointmentDate)} at {formatDisplayTime(appointment.appointmentTime)}
             </Text>
           </View>
           <View style={styles.metaRow}>
-            <MapPin size={16} color="#6B7280" />
-            <Text style={styles.metaText}>
+            <Text style={styles.metaLabel}>Clinic:</Text>
+            <Text style={styles.metaValue}>
               {(() => {
                 const clinic = appointment.clinicId ? clinicData[appointment.clinicId] : null;
                 return clinic?.name || appointment.clinicName || 'Clinic not available';
@@ -587,7 +587,7 @@ export default function AppointmentsScreen() {
 
         {appointment.additionalNotes && (
           <View style={styles.notesSection}>
-            <Text style={styles.notesLabel}>Notes:</Text>
+            <Text style={styles.notesLabel}>Additional Notes:</Text>
             <Text style={styles.notesText}>{appointment.additionalNotes}</Text>
           </View>
         )}
@@ -1118,7 +1118,7 @@ const styles = StyleSheet.create({
   },
   // Appointment Meta Section
   appointmentMeta: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   metaRow: {
     flexDirection: 'row',
@@ -1131,21 +1131,43 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginLeft: 8,
   },
+  metaLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    flex: 1,
+  },
+  metaValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'right',
+    flex: 1,
+  },
   // Notes Section
   notesSection: {
-    marginBottom: 12,
+    marginBottom: 16,
+
   },
   notesLabel: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: '#374151',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   notesText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     lineHeight: 20,
+    textAlign: 'left',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    minHeight: 40,
   },
   emptyState: {
     alignItems: 'center',
