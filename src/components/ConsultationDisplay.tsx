@@ -45,8 +45,6 @@ interface ConsultationData {
   // Additional Info
   prescriptions?: any[];
   certificates?: any[];
-  allergies?: string;
-  vitals?: string;
   
   // Metadata
   consultationDate?: string;
@@ -257,13 +255,11 @@ export default function ConsultationDisplay({
           )}
 
         {/* Additional Information */}
-        {(consultation.allergies || consultation.vitals || consultation.prescriptions?.length > 0) &&
+        {consultation.prescriptions?.length > 0 &&
           renderSection(
             'Additional Information',
             <AlertTriangle size={20} color="#1E40AF" />,
             <View>
-              {renderField('Allergies', consultation.allergies, true)}
-              {renderField('Vitals', consultation.vitals, true)}
               {renderPrescriptions()}
             </View>
           )}

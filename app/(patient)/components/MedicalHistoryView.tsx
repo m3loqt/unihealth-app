@@ -33,8 +33,6 @@ export default function MedicalHistoryView({ medicalHistory }: MedicalHistoryVie
     diagnosis: true,
     treatmentPlan: true,
     prescriptions: true,
-    labResults: true,
-    followUp: true,
   });
 
   const toggleSection = (key: string) => {
@@ -213,72 +211,9 @@ export default function MedicalHistoryView({ medicalHistory }: MedicalHistoryVie
         </View>
       )}
 
-      {/* Lab Results Section */}
-      {medicalHistory.labResultsSummary && medicalHistory.labResultsSummary.length > 0 && (
-        <View style={styles.sectionSpacing}>
-          <View style={styles.cardBoxClinical}>
-            <TouchableOpacity 
-              style={styles.clinicalSectionHeader} 
-              onPress={() => toggleSection('labResults')}
-            >
-              <View style={styles.sectionHeaderLeft}>
-                <AlertCircle size={20} color="#1E40AF" />
-                <Text style={styles.clinicalSectionLabel}>Lab Results</Text>
-              </View>
-              {expandedSections['labResults'] ? (
-                <ChevronDown size={23} color="#6B7280" />
-              ) : (
-                <ChevronRight size={23} color="#9CA3AF" />
-              )}
-            </TouchableOpacity>
-            {expandedSections['labResults'] && (
-              <View style={styles.clinicalSectionBody}>
-                {medicalHistory.labResultsSummary.map((lab, index) => (
-                  <View key={index} style={styles.labItem}>
-                    <View style={styles.labHeader}>
-                      <Text style={styles.labTest}>{lab.test}</Text>
-                      <Text style={styles.labValue}>{lab.value}</Text>
-                    </View>
-                    {lab.notes && (
-                      <Text style={styles.labNotes}>{lab.notes}</Text>
-                    )}
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        </View>
-      )}
 
-      {/* Follow-up Instructions Section */}
-      {medicalHistory.followUpInstructions && (
-        <View style={styles.sectionSpacing}>
-          <View style={styles.cardBoxClinical}>
-            <TouchableOpacity 
-              style={styles.clinicalSectionHeader} 
-              onPress={() => toggleSection('followUp')}
-            >
-              <View style={styles.sectionHeaderLeft}>
-                <CheckCircle size={20} color="#1E40AF" />
-                <Text style={styles.clinicalSectionLabel}>Follow-up Instructions</Text>
-              </View>
-              {expandedSections['followUp'] ? (
-                <ChevronDown size={23} color="#6B7280" />
-              ) : (
-                <ChevronRight size={23} color="#9CA3AF" />
-              )}
-            </TouchableOpacity>
-            {expandedSections['followUp'] && (
-              <View style={styles.clinicalSectionBody}>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Instructions:</Text>
-                  <Text style={styles.clinicalFieldValue}>{medicalHistory.followUpInstructions}</Text>
-                </View>
-              </View>
-            )}
-          </View>
-        </View>
-      )}
+
+
     </View>
   );
 }
