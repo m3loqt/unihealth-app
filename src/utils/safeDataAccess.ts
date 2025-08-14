@@ -130,10 +130,41 @@ export const safeDataAccess = {
 
   /**
    * Safely get appointment clinic name
+   * @deprecated Use getAppointmentClinicNameAsync instead to fetch from clinics node
    */
   getAppointmentClinicName(appointment: any, fallback: string = 'Clinic not specified'): string {
     if (!appointment) return fallback;
     
+    return appointment.clinicName || fallback;
+  },
+
+  /**
+   * Safely get appointment clinic name by fetching from clinics node
+   * This is the preferred method as it ensures data consistency
+   */
+  async getAppointmentClinicNameAsync(appointment: any, clinicData: any = null, fallback: string = 'Clinic not specified'): Promise<string> {
+    if (!appointment) return fallback;
+    
+    // If clinicData is provided, use it
+    if (clinicData && clinicData.name) {
+      return clinicData.name;
+    }
+    
+    // If appointment has clinicId, we should fetch from clinics node
+    if (appointment.clinicId) {
+      try {
+        // Import here to avoid circular dependencies
+        const { databaseService } = await import('@/services/database/firebase');
+        const clinic = await databaseService.getClinicById(appointment.clinicId);
+        return clinic?.name || fallback;
+      } catch (error) {
+        console.error('Error fetching clinic name:', error);
+        // Fallback to clinicName if available
+        return appointment.clinicName || fallback;
+      }
+    }
+    
+    // Fallback to clinicName if no clinicId
     return appointment.clinicName || fallback;
   },
 
