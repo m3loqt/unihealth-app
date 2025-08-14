@@ -82,10 +82,7 @@ export default function SpecialistAppointmentsScreen() {
 
 
 
-  // Referral details modal
-  const [showReferralDetailsModal, setShowReferralDetailsModal] = useState(false);
-  const [selectedReferralForDetails, setSelectedReferralForDetails] = useState<any>(null);
-  const [clinicDetails, setClinicDetails] = useState<any>(null);
+
 
   // Unified Appointment Details Modal State
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
@@ -341,21 +338,17 @@ export default function SpecialistAppointmentsScreen() {
 
 
   const handleViewReferralDetails = async (referralData: any) => {
-    setSelectedReferralForDetails(referralData);
-    setShowReferralDetailsModal(true);
+    console.log('🔍 NAVIGATING TO REFERRAL DETAILS!');
+    console.log('Referral data:', referralData);
+    console.log('Referral ID:', referralData.referral?.id || referralData.appointment?.relatedReferralId);
     
-    // Fetch clinic details if referral has practiceLocation
-    if (referralData.referral?.practiceLocation?.clinicId) {
-      try {
-        const clinic = await databaseService.getClinicById(referralData.referral.practiceLocation.clinicId);
-        setClinicDetails(clinic);
-    } catch (error) {
-        console.error('Error fetching clinic details:', error);
-        setClinicDetails(null);
+    // Navigate to the new referral details screen
+    router.push({
+      pathname: '/referral-details',
+      params: {
+        id: referralData.referral?.id || referralData.appointment?.relatedReferralId,
       }
-    } else {
-      setClinicDetails(null);
-    }
+    });
   };
 
   // --- LOAD APPOINTMENT DETAILS AND MEDICAL HISTORY ---
@@ -1106,146 +1099,7 @@ export default function SpecialistAppointmentsScreen() {
     );
   };
 
-  // Cancel Diagnosis Confirmation Modal
-  const renderReferralDetailsModal = () => (
-    <Modal
-      visible={showReferralDetailsModal}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={() => {
-      setShowReferralDetailsModal(false);
-      setClinicDetails(null);
-    }}
-    >
-      <View style={styles.modalBackdrop}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Referral Details</Text>
-            {selectedReferralForDetails ? (
-              <ScrollView style={styles.referralDetailsScroll}>
-                <View style={styles.referralDetailsSection}>
-                  <Text style={styles.referralDetailsSectionTitle}>Patient Information</Text>
-                  <View style={styles.keyValueRow}>
-                    <Text style={styles.label}>Name:</Text>
-                    <Text style={styles.value}>
-                      {selectedReferralForDetails.appointment.patientFirstName} {selectedReferralForDetails.appointment.patientLastName}
-              </Text>
-                  </View>
-                  <View style={styles.keyValueRow}>
-                    <Text style={styles.label}>Status:</Text>
-                    <Text style={styles.value}>
-                      {selectedReferralForDetails.appointment.status === 'confirmed' ? 'Confirmed' :
-                       selectedReferralForDetails.appointment.status === 'pending' ? 'Pending' :
-                       selectedReferralForDetails.appointment.status === 'completed' ? 'Completed' :
-                       selectedReferralForDetails.appointment.status === 'cancelled' ? 'Cancelled' : 'Unknown'}
-            </Text>
-            </View>
-            </View>
 
-                {selectedReferralForDetails.referral && (
-                  <>
-                    <View style={styles.referralDetailsSection}>
-                      <Text style={styles.referralDetailsSectionTitle}>Referral Information</Text>
-                      <View style={styles.keyValueRow}>
-                        <Text style={styles.label}>Reason:</Text>
-                        <Text style={styles.value}>
-                          {selectedReferralForDetails.referral.initialReasonForReferral || 'Not specified'}
-                        </Text>
-              </View>
-                      <View style={styles.keyValueRow}>
-                        <Text style={styles.label}>From Clinic:</Text>
-                        <Text style={styles.value}>
-                          {(() => {
-                            const clinic = selectedReferralForDetails.referral?.referringClinicId ? 
-                              clinicData[selectedReferralForDetails.referral.referringClinicId] : null;
-                            return clinic?.name || selectedReferralForDetails.referral.referringClinicName || 'Clinic not specified';
-                          })()}
-                        </Text>
-                  </View>
-                      {clinicDetails && (
-                        <View style={styles.keyValueRow}>
-                          <Text style={styles.label}>Clinic Address:</Text>
-                          <Text style={styles.value}>
-                            {clinicDetails.address || 'Address not available'}
-                          </Text>
-                  </View>
-                      )}
-                      {selectedReferralForDetails.referral.practiceLocation?.roomOrUnit && (
-                        <View style={styles.keyValueRow}>
-                          <Text style={styles.label}>Room/Unit:</Text>
-                          <Text style={styles.value}>
-                            {selectedReferralForDetails.referral.practiceLocation.roomOrUnit}
-                          </Text>
-                </View>
-                      )}
-                      <View style={styles.keyValueRow}>
-                        <Text style={styles.label}>Date:</Text>
-                        <Text style={styles.value}>
-                          {(() => {
-                            try {
-                              const date = new Date(selectedReferralForDetails.referral.appointmentDate);
-                              return date.toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                              });
-                            } catch (error) {
-                              return 'Invalid date';
-                            }
-                          })()}
-                        </Text>
-            </View>
-                      <View style={styles.keyValueRow}>
-                        <Text style={styles.label}>Time:</Text>
-                        <Text style={styles.value}>
-                          {(() => {
-                            try {
-                              const timeString = selectedReferralForDetails.referral.appointmentTime;
-                              if (timeString.includes('AM') || timeString.includes('PM')) {
-                                return timeString;
-                              }
-                              const [hours, minutes] = timeString.split(':');
-                              const hour = parseInt(hours);
-                              const ampm = hour >= 12 ? 'PM' : 'AM';
-                              const displayHour = hour % 12 || 12;
-                              return `${displayHour}:${minutes} ${ampm}`;
-                            } catch (error) {
-                              return 'Invalid time';
-                            }
-                          })()}
-                        </Text>
-                      </View>
-                    </View>
-                  </>
-                )}
-
-                {!selectedReferralForDetails.referral && (
-                  <View style={styles.referralDetailsSection}>
-                    <Text style={styles.referralDetailsSectionTitle}>Referral Information</Text>
-                    <Text style={styles.referralCardText}>Referral details not available</Text>
-                  </View>
-                )}
-              </ScrollView>
-            ) : (
-              <Text style={styles.referralCardText}>Loading referral details...</Text>
-            )}
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => {
-                  setShowReferralDetailsModal(false);
-                  setClinicDetails(null);
-                }}
-              >
-                <Text style={styles.modalCancelText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
 
 
 
@@ -1359,7 +1213,6 @@ export default function SpecialistAppointmentsScreen() {
       {/* MODALS */}
       {renderAcceptModal()}
       {renderDeclineModal()}
-      {renderReferralDetailsModal()}
       {renderAppointmentDetailsModal()}
     </SafeAreaView>
   );
