@@ -16,7 +16,7 @@ import { ChevronLeft, Mail, Clock, ArrowRight } from 'lucide-react-native';
 import { authService } from '../../src/services/api/auth';
 
 export default function VerifyCodeScreen() {
-  const { email } = useLocalSearchParams();
+  const { email, devCode } = useLocalSearchParams();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
@@ -97,25 +97,16 @@ export default function VerifyCodeScreen() {
     }
   }, []);
 
-  const handleVerifyCode = async () => {
-    const codeString = code.join('');
-    
+  const performVerify = async (codeString: string) => {
     if (codeString.length !== 6) {
       Alert.alert('Error', 'Please enter the complete 6-digit code');
       return;
     }
-
     setIsLoading(true);
-
     try {
       const result = await authService.verifyPasswordResetCode(email as string, codeString);
-      
       if (result.success) {
-        // Navigate to reset password screen with email and code
-        router.push({
-          pathname: '/reset-password',
-          params: { email: email as string, code: codeString }
-        });
+        router.push({ pathname: '/reset-password', params: { email: email as string, code: codeString } });
       } else {
         Alert.alert('Error', result.message || 'Invalid or expired code. Please try again.');
       }
@@ -126,17 +117,28 @@ export default function VerifyCodeScreen() {
     }
   };
 
+  const handleVerifyCode = async () => {
+    const codeString = code.join('');
+    await performVerify(codeString);
+  };
+
   const handleResendCode = async () => {
     setIsLoading(true);
 
     try {
       const result = await authService.requestPasswordResetCode(email as string);
-      
       if (result.success) {
-        setTimeLeft(300); // Reset timer to 5 minutes
+        setTimeLeft(300);
         setCanResend(false);
-        setCode(['', '', '', '', '', '']); // Clear code inputs
-        Alert.alert('Success', 'A new verification code has been sent to your email.');
+        if (result.devCode) {
+          const digits = (result.devCode as string).slice(0, 6).split('');
+          setCode(digits);
+          Alert.alert('Dev', `Dev verification code: ${result.devCode}`);
+          await performVerify(result.devCode);
+        } else {
+          setCode(['', '', '', '', '', '']);
+          Alert.alert('Success', 'A new verification code has been sent to your email.');
+        }
       } else {
         Alert.alert('Error', result.message || 'Failed to send verification code. Please try again.');
       }
@@ -152,6 +154,17 @@ export default function VerifyCodeScreen() {
   };
 
   const isCodeComplete = code.every(digit => digit !== '');
+
+  // Autofill and auto-verify in dev mode when devCode param is provided
+  useEffect(() => {
+    const dc = (devCode as string) || '';
+    if (dc && dc.length === 6) {
+      setCode(dc.split(''));
+      // Auto-verify
+      performVerify(dc);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [devCode]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -180,13 +193,6 @@ export default function VerifyCodeScreen() {
               <Text style={styles.emailText}>{email}</Text>
             </View>
 
-            {/* Timer */}
-            <View style={styles.timerContainer}>
-              <Clock size={16} color="#6B7280" />
-              <Text style={styles.timerText}>
-                Code expires in {formatTime(timeLeft)}
-              </Text>
-            </View>
 
             {/* Code Input */}
             <View style={styles.codeContainer}>
@@ -246,7 +252,7 @@ export default function VerifyCodeScreen() {
 
             {/* Help Text */}
             <Text style={styles.helpText}>
-              Check your email for the verification code. If you don't see it, check your spam folder.
+              Check your email for the verification code{'\n'}If you don't see it, check your spam folder.
             </Text>
           </View>
         </View>
