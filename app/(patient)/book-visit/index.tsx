@@ -105,13 +105,18 @@ export default function BookVisitScreen() {
     }
   };
 
-  const filteredClinics = clinics.filter(clinic =>
-    clinic.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (clinic.address && clinic.address.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (clinic.city && clinic.city.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (clinic.addressLine && clinic.addressLine.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (clinic.phone && clinic.phone.toLowerCase().includes(searchQuery.toLowerCase()))
-  ).sort((a, b) => {
+  const filteredClinics = clinics
+    // Only show clinics that have generalist doctors available
+    .filter(clinic => clinic.hasGeneralistDoctors)
+    // Apply search filter
+    .filter(clinic =>
+      clinic.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (clinic.address && clinic.address.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (clinic.city && clinic.city.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (clinic.addressLine && clinic.addressLine.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (clinic.phone && clinic.phone.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    .sort((a, b) => {
     // Sort by availability: available generalist doctors first, then others
     if (a.hasGeneralistDoctors && !b.hasGeneralistDoctors) return -1;
     if (!a.hasGeneralistDoctors && b.hasGeneralistDoctors) return 1;
@@ -280,21 +285,10 @@ export default function BookVisitScreen() {
                       </Text>
                     </View>
                     
-                    {clinic.hasGeneralistDoctors === false ? (
-                      <View style={styles.warningRow}>
-                        <AlertTriangle size={16} color={BLUE} />
-                        <Text style={styles.warningText}>
-                          No generalist doctors currently available
-                        </Text>
-                      </View>
-                    ) : (
-                      <View style={styles.availableRow}>
-                        <Check size={16} color={BLUE} />
-                        <Text style={styles.availableText}>
-                          Generalist doctors available
-                        </Text>
-                      </View>
-                    )}
+                    <View style={styles.availableRow}>
+                      <Check size={16} color={BLUE} />
+                      <Text style={styles.availableText}>Generalist doctors available</Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
               );
