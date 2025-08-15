@@ -145,23 +145,22 @@ export class PasswordResetService {
       return false;
     }
 
-    let found = false;
+    let targetKey: string | null = null;
     snapshot.forEach((childSnapshot) => {
       const codeData = childSnapshot.val();
-      if (codeData.email === email && codeData.code === code && !codeData.used) {
-        console.log('Marking code as used:', { email, code, id: childSnapshot.key });
-        // Mark code as used - await the operation
-        set(ref(database, `${this.RESET_CODES_REF}/${childSnapshot.key}/used`), true);
-        found = true;
-        return; // Exit forEach when found
+      if (!targetKey && codeData.email === email && codeData.code === code && !codeData.used) {
+        targetKey = childSnapshot.key!;
       }
     });
 
-    if (!found) {
+    if (!targetKey) {
       console.log('No matching unused code found to mark as used:', { email, code });
+      return false;
     }
 
-    return found;
+    console.log('Marking code as used:', { email, code, id: targetKey });
+    await set(ref(database, `${this.RESET_CODES_REF}/${targetKey}/used`), true);
+    return true;
   }
 
   /**
