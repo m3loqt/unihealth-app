@@ -371,7 +371,8 @@ export const databaseService = {
                  affiliation.toLowerCase().includes(clinicId.toLowerCase()) ||
                  clinicId.toLowerCase().includes(affiliation.toLowerCase())
                )) &&
-              doctorData.isGeneralist === true) {
+              doctorData.isGeneralist === true &&
+              this.hasValidAvailability(doctorData)) {
             hasGeneralist = true;
           }
         });
