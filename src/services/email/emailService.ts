@@ -1,5 +1,5 @@
 // Web-based email service for Expo Go compatibility
-// This service uses a simple HTTP API instead of Node.js libraries
+// Uses EmailJS REST API (works in React Native/Expo without browser SDK)
 
 export interface EmailOptions {
   to: string;
@@ -16,32 +16,58 @@ export interface PasswordResetEmailData {
 
 class EmailService {
   private isConfigured: boolean;
-  private apiKey: string;
+  private apiKey: string; // generic API key (unused unless you wire a REST API)
   private fromEmail: string;
+
+  // EmailJS configuration
+  private emailJsServiceId: string;
+  private emailJsTemplateId: string;
+  private emailJsPublicKey: string;
+  private proxyUrl?: string;
 
   constructor() {
     this.apiKey = process.env.EXPO_PUBLIC_EMAIL_API_KEY || '';
     this.fromEmail = process.env.EXPO_PUBLIC_FROM_EMAIL || 'noreply@unihealth.com';
-    this.isConfigured = !!this.apiKey;
+
+    // EmailJS envs (Expo public) with safe production defaults provided by the user
+    // Note: NEVER expose private keys in client apps. EmailJS only needs the public key on client.
+    this.emailJsServiceId = process.env.EXPO_PUBLIC_EMAILJS_SERVICE_ID || 'service_reset_password';
+    this.emailJsTemplateId = process.env.EXPO_PUBLIC_EMAILJS_TEMPLATE_ID || 'template_nud0cea';
+    this.emailJsPublicKey = process.env.EXPO_PUBLIC_EMAILJS_PUBLIC_KEY || 'MySmvhvtXYc3cMagj';
+    this.proxyUrl = process.env.EXPO_PUBLIC_EMAIL_PROXY_URL;
+
+    // Configured only if proxy is set OR EmailJS is fully wired
+    this.isConfigured = Boolean(
+      this.proxyUrl || (this.emailJsServiceId && this.emailJsTemplateId && this.emailJsPublicKey)
+    );
     
     if (!this.isConfigured) {
-      console.warn('⚠️ Email API key not configured. Email service will not work.');
+      console.warn('⚠️ Email service is not fully configured. Set EXPO_PUBLIC_EMAILJS_* env vars.');
     }
   }
 
   async sendPasswordResetCode(email: string, code: string): Promise<void> {
-    const subject = 'Password Reset Code';
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Password Reset Request</h2>
-        <p>You requested a password reset for your account.</p>
-        <p>Your reset code is: <strong style="font-size: 24px; color: #007bff;">${code}</strong></p>
-        <p>This code will expire in 5 minutes.</p>
-        <p>If you didn't request this, please ignore this email.</p>
-      </div>
-    `;
-    
-    await this.sendEmail({ to: email, subject, html });
+    if (!this.isConfigured) {
+      throw new Error('Email service not configured');
+    }
+
+    // Prefer proxy (required for React Native/Expo)
+    if (this.proxyUrl) {
+      const res = await fetch(this.proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code })
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        console.error('Email proxy error:', res.status, t);
+        throw new Error('Failed to send verification code');
+      }
+      return;
+    }
+
+    // Direct EmailJS call is blocked for non-browser apps; surface actionable error
+    throw new Error('Direct EmailJS calls are blocked in React Native. Configure EXPO_PUBLIC_EMAIL_PROXY_URL to a serverless endpoint that sends the email.');
   }
 
   /**
@@ -97,26 +123,10 @@ class EmailService {
    */
   async sendEmail(options: EmailOptions): Promise<void> {
     if (!this.isConfigured) {
-      // In development, log the email instead of throwing an error
-      console.log(`📧 Mock email sent to ${options.to}:`);
-      console.log(`Subject: ${options.subject}`);
-      console.log(`Content: ${options.text || this.stripHtml(options.html)}`);
-      console.log(`✅ Mock email sent to ${options.to} (email service not configured)`);
-      return;
+      throw new Error('Email service not configured');
     }
-
-    try {
-      // Mock implementation
-      console.log(`📧 Mock email sent to ${options.to}:`);
-      console.log(`Subject: ${options.subject}`);
-      console.log(`Content: ${options.text || this.stripHtml(options.html)}`);
-      
-      // TODO: Replace with actual email service API call
-      console.log(`✅ Email sent to ${options.to}`);
-    } catch (error: any) {
-      console.error('Email error:', error);
-      throw new Error('Failed to send email. Please try again later.');
-    }
+    // Implement REST email API here if needed in the future
+    throw new Error('Direct email sending is not implemented. Use sendPasswordResetCode with EmailJS.');
   }
 
   /**

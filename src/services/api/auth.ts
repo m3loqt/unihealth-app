@@ -887,7 +887,7 @@ export const authService = {
   //   }
   // },
 
-  async requestPasswordResetCode(email: string): Promise<{ success: boolean; message: string }> {
+  async requestPasswordResetCode(email: string): Promise<{ success: boolean; message: string; devCode?: string }> {
     try {
       // Check if user exists in database
       const userRecord = await this.findUserByEmail(email);
@@ -899,9 +899,21 @@ export const authService = {
       const code = await passwordResetService.createResetCode(email);
       
       // Send email with code
-      await emailService.sendPasswordResetCode(email, code);
-      
-      return { success: true, message: 'Reset code sent to your email' };
+      try {
+        await emailService.sendPasswordResetCode(email, code);
+        return { success: true, message: 'Reset code sent to your email' };
+      } catch (e: any) {
+        const message = e?.message || '';
+        const isDev = (typeof __DEV__ !== 'undefined' && __DEV__) || process.env.NODE_ENV !== 'production';
+        // In development, allow showing the code when email cannot be sent
+        if (isDev) {
+          console.warn('Email sending failed in dev. Exposing code for testing only.');
+          return { success: true, message: 'Development mode: code generated', devCode: code };
+        }
+        // In production, treat as failure
+        console.error('Email send failed in production:', message);
+        return { success: false, message: 'Failed to send reset code' };
+      }
     } catch (error) {
       console.error('Error requesting password reset:', error);
       return { success: false, message: 'Failed to send reset code' };
