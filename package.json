@@ -18,6 +18,7 @@
     "build:ios": "cd ios && xcodebuild -workspace bolt-expo-nativewind.xcworkspace -scheme bolt-expo-nativewind -configuration Release -destination generic/platform=iOS -archivePath bolt-expo-nativewind.xcarchive archive"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@expo-google-fonts/inter": "^0.2.3",
     "@expo/vector-icons": "^14.1.0",
     "@google-cloud/speech": "^7.2.0",
