@@ -24,6 +24,16 @@ import {
 } from 'lucide-react-native';
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Other', 'Prefer not to say'];
+const EDUCATIONAL_ATTAINMENT_OPTIONS = [
+  'Elementary',
+  'High School',
+  'Vocational/Technical',
+  'Associate Degree',
+  'Bachelor\'s Degree',
+  'Master\'s Degree',
+  'Doctorate',
+  'Other'
+];
 const REQUIRED_FIELDS = [
   { key: 'email', label: 'Email' },
   { key: 'firstName', label: 'First Name' },
@@ -57,13 +67,16 @@ export default function SignUpStep1Screen() {
   const [formData, setFormData] = useState<Record<string, string>>({
     email: '',
     firstName: '',
+    middleName: '',
     lastName: '',
     dateOfBirth: '',
     gender: '',
     address: '',
     contactNumber: '',
+    highestEducationalAttainment: '',
   });
   const [showGenderModal, setShowGenderModal] = useState(false);
+  const [showEducationalAttainmentModal, setShowEducationalAttainmentModal] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -137,6 +150,24 @@ export default function SignUpStep1Screen() {
                   placeholderTextColor="#9CA3AF"
                   value={formData.firstName}
                   onChangeText={value => handleInputChange('firstName', value)}
+                  autoCapitalize="words"
+                />
+              </View>
+            </View>
+
+            {/* Middle Name */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.inputLabel}>Middle Name</Text>
+              </View>
+              <View style={styles.inputContainer}>
+                <User size={20} color="#9CA3AF" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your middle name (optional)"
+                  placeholderTextColor="#9CA3AF"
+                  value={formData.middleName}
+                  onChangeText={value => handleInputChange('middleName', value)}
                   autoCapitalize="words"
                 />
               </View>
@@ -244,6 +275,24 @@ export default function SignUpStep1Screen() {
               </View>
             </View>
 
+            {/* Highest Educational Attainment */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.inputLabel}>Highest Educational Attainment</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.inputContainer}
+                onPress={() => setShowEducationalAttainmentModal(true)}
+                activeOpacity={0.7}
+              >
+                <User size={20} color="#9CA3AF" style={styles.inputIcon} />
+                <Text style={[styles.input, !formData.highestEducationalAttainment && styles.placeholder]}>
+                  {formData.highestEducationalAttainment || 'Select your highest educational attainment'}
+                </Text>
+                <ChevronDown size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
             {/* Email */}
             <View style={styles.inputGroup}>
               <View style={styles.labelRow}>
@@ -310,6 +359,44 @@ export default function SignUpStep1Screen() {
                         formData.gender === gender && styles.selectedGenderOptionText
                       ]}>
                         {gender}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Educational Attainment Selection Modal */}
+        <Modal
+          visible={showEducationalAttainmentModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowEducationalAttainmentModal(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Highest Educational Attainment</Text>
+                <View style={styles.genderOptions}>
+                  {EDUCATIONAL_ATTAINMENT_OPTIONS.map((attainment) => (
+                    <TouchableOpacity
+                      key={attainment}
+                      style={[
+                        styles.genderOption,
+                        formData.highestEducationalAttainment === attainment && styles.selectedGenderOption
+                      ]}
+                      onPress={() => {
+                        handleInputChange('highestEducationalAttainment', attainment);
+                        setShowEducationalAttainmentModal(false);
+                      }}
+                    >
+                      <Text style={[
+                        styles.genderOptionText,
+                        formData.highestEducationalAttainment === attainment && styles.selectedGenderOptionText
+                      ]}>
+                        {attainment}
                       </Text>
                     </TouchableOpacity>
                   ))}

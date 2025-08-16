@@ -2,11 +2,14 @@ export interface UserProfile {
   uid: string;
   email: string;
   role: 'patient' | 'specialist';
-  name: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
   phone?: string;
   dateOfBirth?: string;
   gender?: string;
   address?: string;
+  highestEducationalAttainment?: string;
   emergencyContact?: {
     name: string;
     phone: string;
@@ -18,11 +21,13 @@ export interface SignUpData {
   // Step 1 data
   email: string;
   firstName: string;
+  middleName?: string;
   lastName: string;
   dateOfBirth: string;
   gender: string;
   address: string;
   contactNumber: string;
+  highestEducationalAttainment?: string;
   
   // Step 2 data
   emergencyContactName: string;
@@ -56,10 +61,12 @@ export interface PatientNode {
     relationship: string;
   };
   firstName: string;
+  middleName?: string;
   gender?: string;
   lastName: string;
   lastUpdated?: string;
   userId: string;
+  highestEducationalAttainment?: string;
 }
 
 export interface DoctorNode {

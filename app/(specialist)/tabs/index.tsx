@@ -458,7 +458,7 @@ export default function SpecialistHomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.userName}>Dr. {user?.name || 'Specialist'}</Text>
+            <Text style={styles.userName}>Dr. {user?.firstName || 'Specialist'}</Text>
           </View>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.iconButton}>
@@ -470,7 +470,7 @@ export default function SpecialistHomeScreen() {
               )} */}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/(specialist)/tabs/profile')}>
-              {user?.name ? (
+              {user?.firstName ? (
                 <View style={styles.profileInitials}>
                   <Text style={styles.profileInitialsText}>
                     {getFirstName(user.name).charAt(0).toUpperCase()}

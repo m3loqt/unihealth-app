@@ -317,7 +317,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.userName}>{user?.name || ''}</Text>
+            <Text style={styles.userName}>{user?.firstName || ''}</Text>
           </View>
           <View style={styles.headerIcons}>
             <TouchableOpacity 
