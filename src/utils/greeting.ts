@@ -19,6 +19,6 @@ export function getGreeting(): string {
   } 
   // Night: 9 PM to 4:59 AM
   else {
-    return 'Good Night';
+    return 'Good night,';
   }
 } 
