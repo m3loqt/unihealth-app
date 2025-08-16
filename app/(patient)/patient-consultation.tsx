@@ -500,7 +500,6 @@ export default function PatientConsultationScreen() {
     const prescription = {
       id: Date.now(),
       ...newPrescription,
-      prescribedBy: 'Dr. Sarah Johnson',
       prescribedDate: new Date().toLocaleDateString(),
     };
     
@@ -552,8 +551,8 @@ export default function PatientConsultationScreen() {
     const certificate = {
       id: Date.now(),
       ...newCertificate,
-      doctor: 'Dr. Sarah Johnson',
-      clinic: 'San Francisco General Hospital',
+      // doctor: 'Dr. Sarah Johnson',
+      // clinic: 'San Francisco General Hospital',
       issuedDate: new Date().toLocaleDateString(),
       issuedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'Valid',
@@ -719,8 +718,8 @@ export default function PatientConsultationScreen() {
           patientId: patientId as string,
           provider: {
             id: user?.uid || '',
-            firstName: user?.name?.split(' ')[0] || '',
-            lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+            firstName: user?.firstName || '',
+            lastName: user?.lastName || '',
             providerType: 'specialist',
             sourceSystem: 'unihealth',
           },
@@ -752,8 +751,8 @@ export default function PatientConsultationScreen() {
           patientId: patientId as string,
           provider: {
             id: user?.uid || '',
-            firstName: user?.name?.split(' ')[0] || '',
-            lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+            firstName: user?.firstName || '',
+            lastName: user?.lastName || '',
             providerType: 'specialist',
             sourceSystem: 'unihealth',
           },
@@ -825,8 +824,8 @@ export default function PatientConsultationScreen() {
                 treatmentPlan: formData.treatmentPlan,
                 provider: {
                   id: user?.uid || '',
-                  firstName: user?.name?.split(' ')[0] || '',
-                  lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+                  firstName: user?.firstName || '',
+                  lastName: user?.lastName || '',
                   providerType: 'specialist',
                   sourceSystem: 'UniHealth_Patient_App',
                 },
