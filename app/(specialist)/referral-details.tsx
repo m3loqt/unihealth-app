@@ -256,9 +256,9 @@ export default function ReferralDetailsScreen() {
         } catch (error) {
           console.log('Could not fetch clinic, doctor, or patient data:', error);
         }
-        
+         
                  // Additional: Fetch specialist's assigned clinic
-         if (user?.uid) {
+         if (user?.uid && user?.role === 'specialist') {
            try {
              console.log('🔍 Fetching specialist schedules for logged-in user:', user.uid);
              const specialistSchedules = await databaseService.getDocument(`specialistSchedules/${user.uid}`);
@@ -478,6 +478,19 @@ export default function ReferralDetailsScreen() {
     );
   }
 
+  // Compute avatar initials based on role
+  const isPatientUser = user?.role === 'patient';
+  const specialistName = `${(referralData as any)?.assignedSpecialistFirstName || ''} ${(referralData as any)?.assignedSpecialistLastName || ''}`.trim();
+  const patientNameFromFields = `${(referralData as any)?.patientFirstName || ''} ${(referralData as any)?.patientLastName || ''}`.trim();
+  const displayPatientName = referralData.patientName || patientNameFromFields;
+  const avatarName = (isPatientUser ? specialistName : displayPatientName) || 'User';
+  const avatarInitials = avatarName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join('') || 'U';
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
@@ -501,22 +514,35 @@ export default function ReferralDetailsScreen() {
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Referral Information</Text>
           <View style={styles.cardBox}>
-            {/* Status Badge */}
-            <View style={styles.statusSection}>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(referralData.status) + '20' }]}>
-                <Text style={[styles.statusText, { color: getStatusColor(referralData.status) }]}>
-                  {getStatusText(referralData.status)}
-                </Text>
-              </View>
+            {/* Avatar initials (top-left) */}
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitials}>{avatarInitials}</Text>
+            </View>
+            {/* Fixed Status Badge (top-right) */}
+            <View style={[styles.statusBadge, styles.statusBadgeFixed, { backgroundColor: getStatusColor(referralData.status) + '20' }]}> 
+              <Text style={[styles.statusText, { color: getStatusColor(referralData.status) }]}> 
+                {getStatusText(referralData.status)}
+              </Text>
             </View>
             
             <View style={styles.referralDivider} />
             
             <View style={styles.referralDetailsTable}>
-              <View style={styles.referralDetailsRow}>
-                <Text style={styles.referralLabel}>Patient</Text>
-                <Text style={styles.referralValue}>{referralData.patientName || 'Unknown Patient'}</Text>
-              </View>
+              {user?.role === 'patient' ? (
+                <View style={styles.referralDetailsRow}>
+                  <Text style={styles.referralLabel}>Specialist</Text>
+                  <Text style={styles.referralValue}>
+                    {(referralData as any)?.assignedSpecialistFirstName || (referralData as any)?.assignedSpecialistLastName
+                      ? `${(referralData as any)?.assignedSpecialistFirstName || ''} ${(referralData as any)?.assignedSpecialistLastName || ''}`.trim()
+                      : 'Not assigned'}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.referralDetailsRow}>
+                  <Text style={styles.referralLabel}>Patient</Text>
+                  <Text style={styles.referralValue}>{referralData.patientName || 'Unknown Patient'}</Text>
+                </View>
+              )}
               <View style={styles.referralDetailsRow}>
                 <Text style={styles.referralLabel}>Referring Generalist</Text>
                 <Text style={styles.referralValue}>{referralData.referringDoctorName || 'Unknown Doctor'}</Text>
@@ -585,10 +611,12 @@ export default function ReferralDetailsScreen() {
             </View>
           )) : referralData.status.toLowerCase() === 'completed' ? (
             <View style={styles.emptyStateCard}>
+              <Pill size={36} color="#9CA3AF" />
               <Text style={styles.emptyStateText}>No prescriptions for this referral.</Text>
             </View>
           ) : (
             <View style={styles.emptyStateCard}>
+              <Pill size={36} color="#9CA3AF" />
               <Text style={styles.emptyStateText}>Prescriptions will be available after the referral is completed.</Text>
             </View>
           )}
@@ -636,10 +664,12 @@ export default function ReferralDetailsScreen() {
             );
           }) : referralData.status.toLowerCase() === 'completed' ? (
             <View style={styles.emptyStateCard}>
+              <FileText size={36} color="#9CA3AF" />
               <Text style={styles.emptyStateText}>No certificates were issued for this referral.</Text>
             </View>
           ) : (
             <View style={styles.emptyStateCard}>
+              <FileText size={36} color="#9CA3AF" />
               <Text style={styles.emptyStateText}>Certificates will be available after the referral is completed.</Text>
             </View>
           )}
@@ -650,6 +680,7 @@ export default function ReferralDetailsScreen() {
           <Text style={styles.sectionTitle}>Clinical Summary</Text>
           {referralData.status.toLowerCase() !== 'completed' ? (
             <View style={styles.emptyStateCard}>
+              <FileText size={36} color="#9CA3AF" />
               <Text style={styles.emptyStateText}>
                 Consultation details will be available after the referral is completed.
               </Text>
@@ -866,6 +897,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
   },
+  statusBadgeFixed: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
+    alignSelf: 'flex-end',
+    zIndex: 10,
+  },
   statusText: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
@@ -930,7 +968,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#23272F',
     fontFamily: 'Inter-Medium',
-    lineHeight: 22,
+    lineHeight: 27,
     letterSpacing: 0.01,
   },
   sectionDivider: {
@@ -945,6 +983,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
     padding: 16,
+    paddingTop: 64,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     marginBottom: 14,
@@ -959,7 +998,7 @@ const styles = StyleSheet.create({
   },
   referralDetailsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: 7,
     paddingHorizontal: 2,
     minHeight: 38,
@@ -968,7 +1007,7 @@ const styles = StyleSheet.create({
   },
   referralDetailsRowNoBorder: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: 7,
     paddingHorizontal: 2,
     minHeight: 38,
@@ -994,6 +1033,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     flex: 2,
     textAlign: 'right',
+    textAlignVertical: 'top',
+    lineHeight: 19,
   },
   wrappedText: {
     flexWrap: 'wrap',
@@ -1004,8 +1045,26 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     fontFamily: 'Inter-Regular',
     flex: 2,
-    textAlign: 'left',
-    lineHeight: 20,
+    textAlign: 'right',
+    lineHeight: 25,
+    textAlignVertical: 'top',
+  },
+  // Avatar styles
+  avatarCircle: {
+    position: 'absolute',
+    left: 16,
+    top: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1E40AF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitials: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
   emptyStateCard: {
     padding: 18,
@@ -1021,6 +1080,8 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 14,
     fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    lineHeight: 19,
   },
   loadingContainer: {
     flex: 1,
