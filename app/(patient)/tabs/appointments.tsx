@@ -477,8 +477,8 @@ export default function AppointmentsScreen() {
           <TouchableOpacity
             style={styles.secondaryButton}
             onPress={() => {
-              // Always show modal - medical history will be loaded automatically for completed referrals
-              openAppointmentModal(appointment);
+              // Navigate to visit overview screen for referrals as well
+              router.push(`/(patient)/visit-overview?id=${appointment.id}`);
             }}
           >
             <Text style={styles.secondaryButtonText}>View Details</Text>
