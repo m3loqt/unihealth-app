@@ -127,21 +127,7 @@ export default function ReviewConfirmScreen() {
       // Save to database
       const appointmentId = await databaseService.createAppointment(appointmentData);
       console.log('Appointment created successfully with ID:', appointmentId);
-      
-      Alert.alert(
-        'Success!', 
-        'Your appointment has been booked successfully. You can view it in the Appointments tab.',
-        [
-          {
-            text: 'View Appointments',
-            onPress: () => router.push('/(patient)/tabs/appointments?filter=pending')
-          },
-          {
-            text: 'OK',
-            onPress: () => setShowSuccessModal(true)
-          }
-        ]
-      );
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Error booking appointment:', error);
       Alert.alert('Error', 'Failed to book appointment. Please try again.');
