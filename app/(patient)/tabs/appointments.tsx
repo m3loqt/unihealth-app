@@ -477,8 +477,8 @@ export default function AppointmentsScreen() {
           <TouchableOpacity
             style={styles.secondaryButton}
             onPress={() => {
-              // Navigate to visit overview screen for referrals as well
-              router.push(`/(patient)/visit-overview?id=${appointment.id}`);
+              // Navigate to referral details screen using the referral ID
+              router.push(`/referral-details?id=${appointment.relatedReferralId}`);
             }}
           >
             <Text style={styles.secondaryButtonText}>View Details</Text>
