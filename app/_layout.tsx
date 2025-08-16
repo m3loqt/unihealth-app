@@ -56,6 +56,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)/signup/step3" />
         <Stack.Screen name="(patient)/tabs" />
         <Stack.Screen name="(specialist)/tabs" />
+        <Stack.Screen name="(specialist)/referral-details" />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="dark" />
