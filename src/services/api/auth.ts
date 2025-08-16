@@ -20,7 +20,9 @@ export const STATIC_USERS = {
     email: 'admin',
     password: 'admin',
     role: 'patient' as const,
-    name: 'Mel Angelo Cortes',
+    firstName: 'Mel Angelo',
+    middleName: undefined,
+    lastName: 'Cortes',
     phone: '+1234567890',
     dateOfBirth: '1990-01-01',
     gender: 'Male',
@@ -36,7 +38,9 @@ export const STATIC_USERS = {
     email: 'specialist',
     password: 'specialist',
     role: 'specialist' as const,
-    name: 'Dr. Sarah Johnson',
+    firstName: 'Dr. Sarah',
+    middleName: undefined,
+    lastName: 'Johnson',
     phone: '+1234567890',
     dateOfBirth: '1985-01-01',
     gender: 'Female',
@@ -53,11 +57,14 @@ export interface UserProfile {
   uid: string;
   email: string;
   role: 'patient' | 'specialist';
-  name: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
   phone?: string;
   dateOfBirth?: string;
   gender?: string;
   address?: string;
+  highestEducationalAttainment?: string;
   emergencyContact?: {
     name: string;
     phone: string;
@@ -69,11 +76,13 @@ export interface SignUpData {
   // Step 1 data
   email: string;
   firstName: string;
+  middleName?: string;
   lastName: string;
   dateOfBirth: string;
   gender: string;
   address: string;
   contactNumber: string;
+  highestEducationalAttainment?: string;
   
   // Step 2 data
   emergencyContactName: string;
@@ -112,10 +121,12 @@ export interface PatientNode {
     relationship: string;
   };
   firstName: string;
+  middleName?: string;
   gender?: string;
   lastName: string;
   lastUpdated?: string;
   userId: string;
+  highestEducationalAttainment?: string;
 }
 
 export interface DoctorNode {
@@ -255,7 +266,9 @@ export const authService = {
                    uid: newUserCredential.user.uid, // Use new Firebase Auth UID
                    email: userData.userData.email,
                    role: userData.userData.role,
-                   name: `${userData.userData.firstName} ${userData.userData.lastName}`,
+                   firstName: userData.userData.firstName,
+                   middleName: userData.userData.middleName || undefined,
+                   lastName: userData.userData.lastName,
                    // Note: phone, address, dateOfBirth, gender, emergencyContact are in patients node
                    // Will be populated if needed when accessing patient data
                  };
@@ -355,7 +368,9 @@ export const authService = {
            uid: user.uid, // Use Firebase Auth UID
            email: userData.email,
            role: userData.role,
-           name: `${userData.firstName} ${userData.lastName}`,
+           firstName: userData.firstName,
+           middleName: userData.middleName || undefined,
+           lastName: userData.lastName,
            phone: patientData?.contactNumber || undefined,
            address: patientData?.address || undefined,
            dateOfBirth: patientData?.dateOfBirth || undefined,
@@ -363,7 +378,7 @@ export const authService = {
            emergencyContact: patientData?.emergencyContact || undefined,
          };
         
-        console.log('Created user profile from email lookup:', userProfile.name);
+        console.log('Created user profile from email lookup:', `${userProfile.firstName} ${userProfile.lastName}`);
         return userProfile;
       }
       
@@ -396,6 +411,7 @@ export const authService = {
         createdAt: currentTime,
         email: signUpData.email,
         firstName: signUpData.firstName,
+        middleName: signUpData.middleName || undefined,
         lastName: signUpData.lastName,
         patientId: patientId,
         role: 'patient'
@@ -413,10 +429,12 @@ export const authService = {
           relationship: signUpData.relationship || ''
         } : undefined,
         firstName: signUpData.firstName,
+        middleName: signUpData.middleName || undefined,
         gender: signUpData.gender || '',
         lastName: signUpData.lastName,
         lastUpdated: currentTime,
-        userId: user.uid
+        userId: user.uid,
+        highestEducationalAttainment: signUpData.highestEducationalAttainment || undefined
       };
       
       // Store data in both nodes
@@ -430,11 +448,14 @@ export const authService = {
         uid: user.uid,
         email: user.email!,
         role: 'patient',
-        name: `${signUpData.firstName} ${signUpData.lastName}`,
+        firstName: signUpData.firstName,
+        middleName: signUpData.middleName || undefined,
+        lastName: signUpData.lastName,
         phone: signUpData.contactNumber || undefined,
         dateOfBirth: signUpData.dateOfBirth || undefined,
         gender: signUpData.gender || undefined,
         address: signUpData.address || undefined,
+        highestEducationalAttainment: signUpData.highestEducationalAttainment || undefined,
         emergencyContact: signUpData.emergencyContactName ? {
           name: signUpData.emergencyContactName,
           phone: signUpData.emergencyContactNumber || '',
@@ -503,7 +524,9 @@ export const authService = {
            uid: uid,
            email: userData.email,
            role: userData.role,
-           name: `${userData.firstName} ${userData.lastName}`,
+           firstName: userData.firstName,
+           middleName: userData.middleName || undefined,
+           lastName: userData.lastName,
            // Note: phone, address, dateOfBirth and emergencyContact are in patients node
            // We'll get those separately if needed
          };
@@ -581,7 +604,9 @@ export const authService = {
            uid: uid,
            email: userData.email,
            role: userData.role,
-           name: `${userData.firstName} ${userData.lastName}`,
+           firstName: userData.firstName,
+           middleName: userData.middleName || undefined,
+           lastName: userData.lastName,
            phone: patientData?.contactNumber || undefined,
            address: patientData?.address || undefined,
            dateOfBirth: patientData?.dateOfBirth || undefined,
@@ -589,7 +614,7 @@ export const authService = {
            emergencyContact: patientData?.emergencyContact || undefined,
          };
         
-        console.log('Created complete user profile:', userProfile.name);
+        console.log('Created complete user profile:', `${userProfile.firstName} ${userProfile.lastName}`);
         return userProfile;
       }
       
