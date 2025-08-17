@@ -12,7 +12,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { Search, User, Users } from 'lucide-react-native';
+import { Search, User, Users, CheckCircle, Hourglass, XCircle, Check } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService, Patient } from '../../../src/services/database/firebase';
@@ -30,6 +30,7 @@ export default function SpecialistPatientsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [referrerByPatientId, setReferrerByPatientId] = useState<{ [patientId: string]: string }>({});
   const filters = ['All', 'Active', 'Completed'];
 
   // Load patients from Firebase
@@ -73,6 +74,61 @@ export default function SpecialistPatientsScreen() {
       }
       
       setPatients(validPatients);
+
+      // Enrich with referring generalist names per patient based on latest referral, mirroring referral-details logic
+      try {
+        const referrals = await databaseService.getReferralsBySpecialist(user.uid);
+        // Map patientId -> latest referral
+        const latestReferralByPatient: { [patientId: string]: any } = {};
+        referrals.forEach((r: any) => {
+          const pid = r.patientId;
+          if (!pid) return;
+          const prev = latestReferralByPatient[pid];
+          const rTime = new Date(r.referralTimestamp || r.appointmentDate || 0).getTime();
+          const pTime = prev ? new Date(prev.referralTimestamp || prev.appointmentDate || 0).getTime() : -1;
+          if (!prev || rTime > pTime) {
+            latestReferralByPatient[pid] = r;
+          }
+        });
+
+        // Collect unique referring generalist ids that need profile lookup
+        const uniqueGeneralistIds = Array.from(new Set(
+          Object.values(latestReferralByPatient)
+            .map((r: any) => r?.referringGeneralistId)
+            .filter(Boolean)
+        ));
+
+        const idToName: { [id: string]: string } = {};
+        if (uniqueGeneralistIds.length > 0) {
+          const profiles = await Promise.all(uniqueGeneralistIds.map(async (specId) => {
+            let profile = await databaseService.getDocument(`specialists/${specId}`);
+            if (!profile) {
+              profile = await databaseService.getDocument(`users/${specId}`);
+            }
+            return { id: specId, profile };
+          }));
+          profiles.forEach(({ id, profile }) => {
+            const name = profile
+              ? `${profile.firstName || profile.first_name || ''} ${profile.lastName || profile.last_name || ''}`.trim()
+              : '';
+            idToName[id] = name || 'Unknown Doctor';
+          });
+        }
+
+        const mapByPatient: { [patientId: string]: string } = {};
+        Object.entries(latestReferralByPatient).forEach(([pid, r]: [string, any]) => {
+          const fromNames = (r?.referringGeneralistFirstName || r?.referringGeneralistLastName)
+            ? `${r.referringGeneralistFirstName || ''} ${r.referringGeneralistLastName || ''}`.trim()
+            : '';
+          const fromId = r?.referringGeneralistId ? idToName[r.referringGeneralistId] : '';
+          const finalName = fromNames || fromId || 'Unknown Doctor';
+          mapByPatient[pid] = finalName;
+        });
+
+        setReferrerByPatientId(mapByPatient);
+      } catch (e) {
+        console.log('ℹ️ Could not enrich referring generalist names for patients:', e);
+      }
     } catch (error) {
       console.error('❌ Error loading patients:', error);
       setError('Failed to load patients. Please try again.');
@@ -114,35 +170,30 @@ export default function SpecialistPatientsScreen() {
     });
   }, [patients, searchQuery, activeFilter]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return {
-          bg: '#EFF6FF',
-          text: '#1E40AF',
-          border: '#DBEAFE',
-        };
-      case 'completed':
-        return {
-          bg: '#F0FDF4',
-          text: '#166534',
-          border: '#DCFCE7',
-        };
-      default:
-        return {
-          bg: '#F3F4F6',
-          text: '#6B7280',
-          border: '#E5E7EB',
-        };
+  const formatDoctorName = (name?: string): string => {
+    if (!name || name.trim().length === 0 || name.toLowerCase().includes('unknown')) {
+      return 'Unknown Doctor';
     }
+    const stripped = name.replace(/^Dr\.?\s+/i, '').trim();
+    return `Dr. ${stripped}`;
+  };
+
+  // Neutral monotone status icon, consistent with other screens
+  const getStatusIcon = (status?: string) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'confirmed') return <CheckCircle size={14} color="#6B7280" />;
+    if (s === 'completed') return <Check size={14} color="#6B7280" />;
+    if (s === 'cancelled' || s === 'canceled') return <XCircle size={14} color="#6B7280" />;
+    return <Hourglass size={14} color="#6B7280" />;
   };
 
   const renderPatientCard = (patient: Patient) => {
-    const statusColors = getStatusColor(patient.status || 'confirmed');
     const patientName = safeDataAccess.getUserFullName(patient, 'Unknown Patient');
     const initials = safeDataAccess.getUserInitials(patient, 'U');
     const statusDisplay = patient.status === 'confirmed' ? 'Active' : 
                          patient.status === 'completed' ? 'Completed' : 'Active';
+    const referringDoctorRaw = referrerByPatientId[patient.id];
+    const referringDoctor = referringDoctorRaw ? formatDoctorName(referringDoctorRaw) : 'Unknown Doctor';
 
     return (
       <TouchableOpacity
@@ -160,45 +211,38 @@ export default function SpecialistPatientsScreen() {
           </View>
           <View style={styles.patientInfo}>
             <Text style={styles.patientName}>{patientName || 'Unknown Patient'}</Text>
+            <Text style={styles.patientReferrer}>Referred by: {referringDoctor}</Text>
           </View>
-          <View
-            style={[
-              styles.statusBadge,
-              {
-                backgroundColor: statusColors.bg,
-                borderColor: statusColors.border,
-              },
-            ]}
-          >
-            <Text style={[styles.statusText, { color: statusColors.text }]}>
-              {statusDisplay}
+          <View style={[styles.statusBadgeNeutral]}>
+            {getStatusIcon(patient.status)}
+            <Text style={styles.statusTextNeutral}>{statusDisplay}</Text>
+          </View>
+        </View>
+
+        {/* Meta table: Label left, Value right */}
+        <View style={styles.patientDetailsTable}>
+          <View style={styles.metaRow}> 
+            <Text style={styles.metaLabel}>Last visit</Text>
+            <Text style={styles.metaValue}>
+              {patient.lastVisit && patient.lastVisit !== 'No visits yet' 
+                ? (patient as any).isScheduledVisit 
+                  ? `Scheduled: ${patient.lastVisit}` 
+                  : patient.lastVisit 
+                : 'No visits yet'}
             </Text>
           </View>
-        </View>
-
-        {/* Second row: Last visit or scheduled visit */}
-        <View style={styles.visitInfo}>
-          <Text style={styles.visitText}>
-            {patient.lastVisit && patient.lastVisit !== 'No visits yet' 
-              ? patient.isScheduledVisit 
-                ? `Scheduled visit: ${patient.lastVisit}` 
-                : `Last visit: ${patient.lastVisit}` 
-              : 'No visits yet'}
-          </Text>
-        </View>
-
-        {/* Third row: Address */}
-        <View style={styles.contactInfo}>
-          <Text style={styles.contactText}>
-            {patient.address || 'Address not available'}
-          </Text>
-        </View>
-
-        {/* Fourth row: Phone */}
-        <View style={styles.contactInfo}>
-          <Text style={styles.contactText}>
-            {patient.phoneNumber || 'Phone not available'}
-          </Text>
+          <View style={styles.metaRow}> 
+            <Text style={styles.metaLabel}>Address</Text>
+            <Text style={styles.metaValue}>
+              {patient.address || 'Address not available'}
+            </Text>
+          </View>
+          <View style={styles.metaRowNoBorder}> 
+            <Text style={styles.metaLabel}>Phone</Text>
+            <Text style={styles.metaValue}>
+              {patient.phoneNumber || 'Phone not available'}
+            </Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -438,26 +482,56 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
   },
-  statusBadge: {
+  patientReferrer: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  statusBadgeNeutral: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
     borderWidth: 1,
-    minWidth: 56,
-    alignItems: 'center',
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
   },
-  statusText: {
+  statusTextNeutral: {
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
+    color: '#374151',
   },
-  visitInfo: {
+  patientDetailsTable: {
     marginTop: 8,
-    marginBottom: 4,
   },
-  visitText: {
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  metaRowNoBorder: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 7,
+  },
+  metaLabel: {
     fontSize: 13,
-    fontFamily: 'Inter-Regular',
     color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    flex: 1.1,
+  },
+  metaValue: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontFamily: 'Inter-Regular',
+    flex: 2,
+    textAlign: 'right',
+    lineHeight: 19,
   },
   contactInfo: {
     marginBottom: 4,

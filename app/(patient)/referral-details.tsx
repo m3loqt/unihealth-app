@@ -196,7 +196,7 @@ export default function PatientReferralDetailsScreen() {
         } catch (error) {
           console.log('Could not fetch specialist schedule or clinic data:', error);
         }
-
+        
         // Load medical history if completed
         let medicalHistory = null;
         if (referral.status.toLowerCase() === 'completed' && referral.referralConsultationId) {
@@ -445,7 +445,7 @@ export default function PatientReferralDetailsScreen() {
               <Text style={styles.statusTextNeutral}>{getStatusText(referralData.status)}</Text>
             </View>
 
-            <View style={styles.referralDetailsTable}>
+            <View style={styles.referralDetailsTable}> 
               <View style={styles.referralDetailsRow}>
                 <Text style={styles.referralLabel}>Specialist</Text>
                 <Text style={styles.referralValue}>
