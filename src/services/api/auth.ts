@@ -941,7 +941,14 @@ export const authService = {
         return { success: true, message: 'Reset code sent to your email' };
       } catch (e: any) {
         const message = e?.message || '';
-        console.error('Email send failed:', message);
+        const isDev = (typeof __DEV__ !== 'undefined' && __DEV__) || process.env.NODE_ENV !== 'production';
+        // In development, allow showing the code when email cannot be sent
+        if (isDev) {
+          console.warn('Email sending failed in dev. Exposing code for testing only.');
+          return { success: true, message: 'Development mode: code generated', devCode: code };
+        }
+        // In production, treat as failure
+        console.error('Email send failed in production:', message);
         return { success: false, message: 'Failed to send reset code' };
       }
     } catch (error) {
