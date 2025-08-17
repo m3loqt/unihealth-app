@@ -498,13 +498,13 @@ export default function SpecialistAppointmentsScreen() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return <CheckCircle size={14} color="#1E40AF" />;
+        return <CheckCircle size={14} color="#6B7280" />;
       case 'pending':
         return <Hourglass size={14} color="#6B7280" />;
       case 'completed':
-        return <CheckMark size={14} color="#10B981" />;
+        return <CheckMark size={14} color="#6B7280" />;
       case 'cancelled':
-        return <XCircle size={14} color="#EF4444" />;
+        return <XCircle size={14} color="#6B7280" />;
       default:
         return null;
     }
@@ -548,6 +548,21 @@ export default function SpecialistAppointmentsScreen() {
         return [styles.referralStatusText, styles.referralStatusTextCanceled];
       default:
         return styles.referralStatusText;
+    }
+  };
+
+  const getReferralStatusIcon = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return <CheckCircle size={14} color="#6B7280" />;
+      case 'completed':
+        return <CheckMark size={14} color="#6B7280" />;
+      case 'cancelled':
+        return <XCircle size={14} color="#6B7280" />;
+      case 'pending':
+      case 'pending_acceptance':
+      default:
+        return <Hourglass size={14} color="#6B7280" />;
     }
   };
 
@@ -631,6 +646,7 @@ export default function SpecialistAppointmentsScreen() {
             </Text>
           </View>
           <View style={getReferralStatusBadgeStyle(appointment.status)}>
+            {getReferralStatusIcon(appointment.status)}
             <Text style={getReferralStatusTextStyle(appointment.status)}>
               {appointment.status === 'confirmed' ? 'Confirmed' :
                appointment.status === 'pending' || appointment.status === 'pending_acceptance' ? 'Pending' :
@@ -642,14 +658,14 @@ export default function SpecialistAppointmentsScreen() {
 
         <View style={styles.appointmentMeta}>
           <View style={styles.metaRow}>
-            <Clock size={16} color="#6B7280" />
-            <Text style={styles.metaText}>
+            <Text style={styles.metaLabel}>Date & Time:</Text>
+            <Text style={styles.metaValue}>
               {formatDisplayDate(referral?.appointmentDate || '')} at {formatDisplayTime(referral?.appointmentTime || '')}
             </Text>
           </View>
           <View style={styles.metaRow}>
-            <MapPin size={16} color="#6B7280" />
-            <Text style={styles.metaText}>
+            <Text style={styles.metaLabel}>Clinic:</Text>
+            <Text style={styles.metaValue}>
               {(() => {
                 const clinic = referral?.referringClinicId ? clinicData[referral.referringClinicId] : null;
                 return clinic?.name || referral?.referringClinicName || 'Clinic not specified';
@@ -767,14 +783,12 @@ export default function SpecialistAppointmentsScreen() {
 
         <View style={styles.appointmentMeta}>
           <View style={styles.metaRow}>
-            <Clock size={16} color="#6B7280" />
-            <Text style={styles.metaText}>
+            <Text style={styles.metaLabel}>Date & Time:</Text>
+            <Text style={styles.metaValue}>
               {appointment.appointmentDate || 'Date not specified'} at {(() => {
                 const timeString = appointment.appointmentTime;
                 if (!timeString) return 'Time not specified';
-                // Handle time strings that already have AM/PM
                 if (timeString.includes('AM') || timeString.includes('PM')) {
-                  // Remove any duplicate AM/PM and return clean format
                   const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
                   return cleanTime.trim();
                 }
@@ -783,8 +797,8 @@ export default function SpecialistAppointmentsScreen() {
             </Text>
           </View>
           <View style={styles.metaRow}>
-            <MapPin size={16} color="#6B7280" />
-            <Text style={styles.metaText}>
+            <Text style={styles.metaLabel}>Clinic:</Text>
+            <Text style={styles.metaValue}>
               {(() => {
                 const clinic = appointment.clinicId ? clinicData[appointment.clinicId] : null;
                 return clinic?.name || appointment.clinicName || 'Clinic not specified';
@@ -1367,11 +1381,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#374151',
   },
+  metaLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    flex: 1,
+  },
+  metaValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'right',
+    flex: 1,
+  },
   notesSection: {
     backgroundColor: '#F3F4F6',
     borderRadius: 8,
     padding: 12,
-    marginBottom: 0,
+    marginBottom: -10,
   },
   notesLabel: {
     fontSize: 13,
@@ -1458,15 +1485,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#DBEAFE',
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#2563EB',
   },
   referralText: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    color: '#1E40AF',
+    color: '#2563EB',
   },
   emptyState: {
     alignItems: 'center',
@@ -1740,17 +1769,20 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   referralStatusBadge: {
-    backgroundColor: '#FEF2F2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F9FAFB',
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: '#D1D5DB',
   },
   referralStatusText: {
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
-    color: '#EF4444',
+    color: '#374151',
   },
   subtleDivider: {
     height: 1,
@@ -1938,52 +1970,52 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
   },
   statusBadgeConfirmed: {
-    backgroundColor: '#E0F2FE',
-    borderColor: '#1E40AF',
+    backgroundColor: '#F9FAFB',
+    borderColor: '#D1D5DB',
   },
   statusBadgePending: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#F59E0B',
+    backgroundColor: '#F9FAFB',
+    borderColor: '#D1D5DB',
   },
   statusBadgeCompleted: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
+    backgroundColor: '#F9FAFB',
+    borderColor: '#D1D5DB',
   },
   statusBadgeCanceled: {
-    backgroundColor: '#EF4444',
-    borderColor: '#EF4444',
+    backgroundColor: '#F9FAFB',
+    borderColor: '#D1D5DB',
   },
   referralStatusBadgeConfirmed: {
-    backgroundColor: '#E0F2FE',
-    borderColor: '#1E40AF',
+    backgroundColor: '#F9FAFB',
+    borderColor: '#D1D5DB',
   },
   referralStatusBadgeCompleted: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
+    backgroundColor: '#F9FAFB',
+    borderColor: '#D1D5DB',
   },
   referralStatusBadgeCanceled: {
-    backgroundColor: '#EF4444',
-    borderColor: '#EF4444',
+    backgroundColor: '#F9FAFB',
+    borderColor: '#D1D5DB',
   },
   referralStatusTextConfirmed: {
-    color: '#1E40AF',
+    color: '#374151',
   },
   referralStatusTextCompleted: {
-    color: '#FFFFFF',
+    color: '#374151',
   },
   referralStatusTextCanceled: {
-    color: '#EF4444',
+    color: '#374151',
   },
   statusTextConfirmed: {
-    color: '#1E40AF',
+    color: '#374151',
   },
   statusTextPending: {
-    color: '#F59E0B',
+    color: '#374151',
   },
   statusTextCompleted: {
-    color: '#FFFFFF',
+    color: '#374151',
   },
   statusTextCanceled: {
-    color: '#EF4444',
+    color: '#374151',
   },
 });

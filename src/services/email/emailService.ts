@@ -46,12 +46,12 @@ class EmailService {
     }
   }
 
-  async sendPasswordResetCode(email: string, code: string): Promise<void> {
+  async sendPasswordResetCode(email: string, code: string, userName?: string): Promise<void> {
     if (!this.isConfigured) {
       throw new Error('Email service not configured');
     }
 
-    // Prefer proxy (required for React Native/Expo)
+    // Use proxy if provided
     if (this.proxyUrl) {
       const res = await fetch(this.proxyUrl, {
         method: 'POST',
@@ -66,8 +66,36 @@ class EmailService {
       return;
     }
 
-    // Direct EmailJS call is blocked for non-browser apps; surface actionable error
-    throw new Error('Direct EmailJS calls are blocked in React Native. Configure EXPO_PUBLIC_EMAIL_PROXY_URL to a serverless endpoint that sends the email.');
+    // Direct EmailJS REST call (works in React Native/Expo via fetch)
+    // Ensure your EmailJS template expects these template_params keys
+    const endpoint = 'https://api.emailjs.com/api/v1.0/email/send';
+    const payload = {
+      service_id: this.emailJsServiceId,
+      template_id: this.emailJsTemplateId,
+      user_id: this.emailJsPublicKey,
+      template_params: {
+        to_email: email,
+        verification_code: code,
+        user_name: userName || 'User',
+        // Optional extras if your template uses them
+        subject: 'UniHEALTH Password Reset Verification Code',
+        app_name: 'UniHEALTH',
+        from_email: this.fromEmail,
+      },
+    } as const;
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('EmailJS error:', res.status, body);
+      throw new Error('Failed to send verification code');
+    }
+    return;
   }
 
   /**

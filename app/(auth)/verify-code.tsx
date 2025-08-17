@@ -16,7 +16,7 @@ import { ChevronLeft, Mail, Clock, ArrowRight } from 'lucide-react-native';
 import { authService } from '../../src/services/api/auth';
 
 export default function VerifyCodeScreen() {
-  const { email, devCode } = useLocalSearchParams();
+  const { email } = useLocalSearchParams();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
@@ -155,16 +155,7 @@ export default function VerifyCodeScreen() {
 
   const isCodeComplete = code.every(digit => digit !== '');
 
-  // Autofill and auto-verify in dev mode when devCode param is provided
-  useEffect(() => {
-    const dc = (devCode as string) || '';
-    if (dc && dc.length === 6) {
-      setCode(dc.split(''));
-      // Auto-verify
-      performVerify(dc);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [devCode]);
+  // No auto-verify; user must enter the code received via email
 
   return (
     <SafeAreaView style={styles.container}>
