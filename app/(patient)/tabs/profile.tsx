@@ -77,6 +77,17 @@ export default function ProfileScreen() {
     refresh: refreshNotifications
   } = useNotifications();
 
+  // Initials for profile avatar header
+  const userInitials = (() => {
+    const fullName = safeDataAccess.getUserFullName(user, user?.email || 'User');
+    return fullName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join('') || 'U';
+  })();
+
   // Debug logging
   React.useEffect(() => {
     console.log('🔔 Patient Profile - Notifications state:', {
@@ -525,7 +536,9 @@ export default function ProfileScreen() {
           ) : (
             <>
               <View style={styles.profileHeader}>
-                <Image source={{ uri: profileImg }} style={styles.profileImage} />
+                <View style={styles.profileAvatarCircle}>
+                  <Text style={styles.profileAvatarText}>{userInitials}</Text>
+                </View>
                 <View style={styles.profileInfo}>
                   <Text style={styles.userName}>{fullName}</Text>
                   {calcAge(dob) && <Text style={styles.userAge}>{calcAge(dob)}</Text>}
@@ -673,6 +686,20 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     marginRight: 16,
+  },
+  profileAvatarCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginRight: 16,
+    backgroundColor: BLUE,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
   },
   profileInfo: { flex: 1, justifyContent: 'center' },
   userName: {
