@@ -498,13 +498,13 @@ export default function SpecialistAppointmentsScreen() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return <CheckCircle size={14} color="#6B7280" />;
+        return <CheckCircle size={14} color="#1E40AF" />;
       case 'pending':
         return <Hourglass size={14} color="#6B7280" />;
       case 'completed':
-        return <CheckMark size={14} color="#6B7280" />;
+        return <CheckMark size={14} color="#10B981" />;
       case 'cancelled':
-        return <XCircle size={14} color="#6B7280" />;
+        return <XCircle size={14} color="#EF4444" />;
       default:
         return null;
     }
@@ -548,21 +548,6 @@ export default function SpecialistAppointmentsScreen() {
         return [styles.referralStatusText, styles.referralStatusTextCanceled];
       default:
         return styles.referralStatusText;
-    }
-  };
-
-  const getReferralStatusIcon = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return <CheckCircle size={14} color="#6B7280" />;
-      case 'completed':
-        return <CheckMark size={14} color="#6B7280" />;
-      case 'cancelled':
-        return <XCircle size={14} color="#6B7280" />;
-      case 'pending':
-      case 'pending_acceptance':
-      default:
-        return <Hourglass size={14} color="#6B7280" />;
     }
   };
 
@@ -646,7 +631,6 @@ export default function SpecialistAppointmentsScreen() {
             </Text>
           </View>
           <View style={getReferralStatusBadgeStyle(appointment.status)}>
-            {getReferralStatusIcon(appointment.status)}
             <Text style={getReferralStatusTextStyle(appointment.status)}>
               {appointment.status === 'confirmed' ? 'Confirmed' :
                appointment.status === 'pending' || appointment.status === 'pending_acceptance' ? 'Pending' :
@@ -658,14 +642,14 @@ export default function SpecialistAppointmentsScreen() {
 
         <View style={styles.appointmentMeta}>
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Date & Time:</Text>
-            <Text style={styles.metaValue}>
+            <Clock size={16} color="#6B7280" />
+            <Text style={styles.metaText}>
               {formatDisplayDate(referral?.appointmentDate || '')} at {formatDisplayTime(referral?.appointmentTime || '')}
             </Text>
           </View>
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Clinic:</Text>
-            <Text style={styles.metaValue}>
+            <MapPin size={16} color="#6B7280" />
+            <Text style={styles.metaText}>
               {(() => {
                 const clinic = referral?.referringClinicId ? clinicData[referral.referringClinicId] : null;
                 return clinic?.name || referral?.referringClinicName || 'Clinic not specified';
@@ -783,12 +767,14 @@ export default function SpecialistAppointmentsScreen() {
 
         <View style={styles.appointmentMeta}>
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Date & Time:</Text>
-            <Text style={styles.metaValue}>
+            <Clock size={16} color="#6B7280" />
+            <Text style={styles.metaText}>
               {appointment.appointmentDate || 'Date not specified'} at {(() => {
                 const timeString = appointment.appointmentTime;
                 if (!timeString) return 'Time not specified';
+                // Handle time strings that already have AM/PM
                 if (timeString.includes('AM') || timeString.includes('PM')) {
+                  // Remove any duplicate AM/PM and return clean format
                   const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
                   return cleanTime.trim();
                 }
@@ -797,8 +783,8 @@ export default function SpecialistAppointmentsScreen() {
             </Text>
           </View>
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Clinic:</Text>
-            <Text style={styles.metaValue}>
+            <MapPin size={16} color="#6B7280" />
+            <Text style={styles.metaText}>
               {(() => {
                 const clinic = appointment.clinicId ? clinicData[appointment.clinicId] : null;
                 return clinic?.name || appointment.clinicName || 'Clinic not specified';
@@ -1769,20 +1755,17 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   referralStatusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FEF2F2',
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#FCA5A5',
   },
   referralStatusText: {
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
-    color: '#374151',
+    color: '#EF4444',
   },
   subtleDivider: {
     height: 1,
