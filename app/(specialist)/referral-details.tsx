@@ -14,6 +14,8 @@ import {
   UIManager,
   Alert,
   RefreshControl,
+  Modal,
+  TextInput,
 } from 'react-native';
 import {
   Pill,
@@ -30,6 +32,9 @@ import {
   Calendar,
   Clock,
   Stethoscope,
+  X,
+  Check,
+  ChevronDown as ChevronIcon,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
@@ -235,6 +240,10 @@ export default function ReferralDetailsScreen() {
   const [certificates, setCertificates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
+  const [showReasonDropdown, setShowReasonDropdown] = useState(false);
+  const [customReason, setCustomReason] = useState('');
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
     patientHistory: true,
     findings: true,
@@ -542,6 +551,45 @@ export default function ReferralDetailsScreen() {
     setRefreshing(false);
   };
 
+  const isPending = (referralData?.status || '').toLowerCase() === 'pending' || (referralData?.status || '').toLowerCase() === 'pending_acceptance';
+  const isConfirmed = (referralData?.status || '').toLowerCase() === 'confirmed';
+
+  // Accept referral
+  const handleAcceptReferral = async () => {
+    if (!referralData?.id) return;
+    try {
+      await databaseService.updateReferralStatus(referralData.id, 'confirmed');
+      Alert.alert('Success', 'Referral confirmed successfully!');
+      await loadReferralData();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to accept referral. Please try again.');
+    }
+  };
+
+  // Decline referral
+  const handleDeclineReferral = async () => {
+    setShowDeclineModal(true);
+  };
+
+  const submitDeclineReferral = async () => {
+    if (!referralData?.id) return;
+    const finalReason = declineReason === 'Other (specify)' ? customReason : declineReason;
+    if (!finalReason.trim()) {
+      Alert.alert('Error', 'Please provide a reason for declining.');
+      return;
+    }
+    try {
+      await databaseService.updateReferralStatus(referralData.id, 'cancelled', finalReason);
+      Alert.alert('Success', 'Referral declined successfully!');
+      setShowDeclineModal(false);
+      setDeclineReason('');
+      setCustomReason('');
+      await loadReferralData();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to decline referral. Please try again.');
+    }
+  };
+
   const toggleSection = (key: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedSections(prev => ({
@@ -643,8 +691,16 @@ export default function ReferralDetailsScreen() {
                 <Text style={styles.referralValueWrapped}>{referralData.clinicAndAddress || 'Unknown Clinic'}</Text>
               </View>
               <View style={styles.referralDetailsRow}>
-                <Text style={styles.referralLabel}>Appointment Date & Time</Text>
-                <Text style={styles.referralValue}>{referralData.dateTime || 'Not specified'}</Text>
+                <Text style={styles.referralLabel}>Date</Text>
+                <Text style={styles.referralValue}>
+                  {referralData.date ? formatDate(referralData.date) : 'Not specified'}
+                </Text>
+              </View>
+              <View style={styles.referralDetailsRow}>
+                <Text style={styles.referralLabel}>Time</Text>
+                <Text style={styles.referralValue}>
+                  {referralData.time ? formatTime(referralData.time) : 'Not specified'}
+                </Text>
               </View>
               <View style={styles.referralDetailsRow}>
                 <Text style={styles.referralLabel}>Specialist Clinic</Text>
@@ -663,7 +719,7 @@ export default function ReferralDetailsScreen() {
               {referralData.generalistNotes && (
                 <View style={styles.referralDetailsRowNoBorder}>
                   <Text style={styles.referralLabel}>Generalist Notes</Text>
-                  <Text style={styles.referralValue}>{referralData.generalistNotes}</Text>
+                  <Text style={styles.referralValueNotes}>{referralData.generalistNotes}</Text>
                 </View>
               )}
             </View>
@@ -675,8 +731,9 @@ export default function ReferralDetailsScreen() {
           <Text style={styles.sectionTitle}>Clinical Summary</Text>
           {referralData.status.toLowerCase() !== 'completed' ? (
             <View style={styles.emptyStateCard}>
-              <FileText size={36} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>
+              <FileText size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>Consultation details unavailable</Text>
+              <Text style={styles.emptyStateDescription}>
                 Consultation details will be available after the referral is completed.
               </Text>
             </View>
@@ -821,13 +878,15 @@ export default function ReferralDetailsScreen() {
             </View>
           )) : referralData.status.toLowerCase() === 'completed' ? (
             <View style={styles.emptyStateCard}>
-              <Pill size={36} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>No prescriptions for this referral.</Text>
+              <Pill size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>No Prescriptions</Text>
+              <Text style={styles.emptyStateDescription}>No prescriptions for this referral.</Text>
             </View>
           ) : (
             <View style={styles.emptyStateCard}>
-              <Pill size={36} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>Prescriptions will be available after the referral is completed.</Text>
+              <Pill size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>Prescriptions unavailable</Text>
+              <Text style={styles.emptyStateDescription}>Prescriptions will be available after the referral is completed.</Text>
             </View>
           )}
         </View>
@@ -874,43 +933,165 @@ export default function ReferralDetailsScreen() {
             );
           }) : referralData.status.toLowerCase() === 'completed' ? (
             <View style={styles.emptyStateCard}>
-              <FileText size={36} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>No certificates were issued for this referral.</Text>
+              <FileText size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>No Certificates</Text>
+              <Text style={styles.emptyStateDescription}>No certificates were issued for this referral.</Text>
             </View>
           ) : (
             <View style={styles.emptyStateCard}>
-              <FileText size={36} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>Certificates will be available after the referral is completed.</Text>
+              <FileText size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>Certificates unavailable</Text>
+              <Text style={styles.emptyStateDescription}>Certificates will be available after the referral is completed.</Text>
             </View>
           )}
         </View>
         </ScrollView>
 
       {/* --- BOTTOM ACTION BAR --- */}
-      {referralData.status.toLowerCase() === 'completed' && (
+      {(referralData.status.toLowerCase() === 'completed' || isPending || isConfirmed) && (
         <View style={styles.buttonBarVertical}>
-          <TouchableOpacity
-            style={styles.primaryBottomButton}
-            onPress={() => {
-              alert('Downloading referral record...');
-            }}
-            activeOpacity={0.8}
-          >
-            <Download size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.primaryBottomButtonText}>Download Record</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.secondaryBottomButtonOutline}
-            onPress={() => {
-              alert('Referral details hidden');
-            }}
-            activeOpacity={0.8}
-          >
-            <Eye size={18} color="#1E40AF" style={{ marginRight: 8 }} />
-            <Text style={styles.secondaryBottomButtonOutlineText}>Hide Referral Details</Text>
-          </TouchableOpacity>
+          {isPending ? (
+            <View>
+              <TouchableOpacity
+                style={styles.primaryBottomButton}
+                onPress={handleAcceptReferral}
+                activeOpacity={0.8}
+              >
+                <Check size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.primaryBottomButtonText}>Accept Referral</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryBottomButtonOutline}
+                onPress={handleDeclineReferral}
+                activeOpacity={0.8}
+              >
+                <X size={18} color="#1E40AF" style={{ marginRight: 8 }} />
+                <Text style={styles.secondaryBottomButtonOutlineText}>Decline Referral</Text>
+              </TouchableOpacity>
+            </View>
+          ) : referralData.status.toLowerCase() === 'completed' ? (
+            <View>
+              <TouchableOpacity
+                style={styles.primaryBottomButton}
+                onPress={() => {
+                  alert('Downloading referral record...');
+                }}
+                activeOpacity={0.8}
+              >
+                <Download size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.primaryBottomButtonText}>Download Record</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryBottomButtonOutline}
+                onPress={() => {
+                  alert('Referral details hidden');
+                }}
+                activeOpacity={0.8}
+              >
+                <Eye size={18} color="#1E40AF" style={{ marginRight: 8 }} />
+                <Text style={styles.secondaryBottomButtonOutlineText}>Hide Referral Details</Text>
+              </TouchableOpacity>
+            </View>
+          ) : isConfirmed ? (
+            <View>
+              <TouchableOpacity
+                style={styles.primaryBottomButton}
+                onPress={() => {
+                  // Navigate to patient consultation using referral context
+                  router.push({
+                    pathname: '/patient-consultation',
+                    params: {
+                      patientId: referralData?.patientId || '',
+                      referralId: String(id || referralData?.id || ''),
+                    },
+                  });
+                }}
+                activeOpacity={0.8}
+              >
+                <Stethoscope size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.primaryBottomButtonText}>Diagnose Patient</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </View>
       )}
+
+      {/* Decline Referral Modal */}
+      <Modal
+        visible={showDeclineModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeclineModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Decline Referral</Text>
+              <Text style={styles.modalSubtitle}>Please select a reason for declining</Text>
+
+              <View style={styles.reasonContainer}>
+                <TouchableOpacity
+                  style={styles.reasonDropdown}
+                  onPress={() => setShowReasonDropdown((v) => !v)}
+                >
+                  <Text style={[styles.reasonText, !declineReason && styles.reasonPlaceholder]}>
+                    {declineReason || 'Select reason'}
+                  </Text>
+                  <ChevronIcon size={20} color="#6B7280" />
+                </TouchableOpacity>
+                {showReasonDropdown && (
+                  <View style={styles.reasonDropdownMenu}>
+                    {['Schedule conflict','Patient needs different specialist','Insufficient information provided','Outside my area of expertise','Clinic capacity full','Other (specify)'].map((reason) => (
+                      <TouchableOpacity
+                        key={reason}
+                        style={styles.reasonDropdownItem}
+                        onPress={() => {
+                          setDeclineReason(reason);
+                          setShowReasonDropdown(false);
+                        }}
+                      >
+                        <Text style={styles.reasonDropdownText}>{reason}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {declineReason === 'Other (specify)' && (
+                <View style={styles.customReasonContainer}>
+                  <Text style={styles.customReasonLabel}>Please specify:</Text>
+                  <TextInput
+                    style={styles.customReasonInput}
+                    placeholder="Enter your reason..."
+                    placeholderTextColor="#9CA3AF"
+                    value={customReason}
+                    onChangeText={setCustomReason}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+              )}
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalCancelButton}
+                  onPress={() => setShowDeclineModal(false)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalSubmitButton, { backgroundColor: '#EF4444' }]}
+                  onPress={submitDeclineReferral}
+                  disabled={!declineReason || (declineReason === 'Other (specify)' && !customReason.trim())}
+                >
+                  <Text style={styles.modalSubmitText}>Submit</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1156,21 +1337,38 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
   },
   emptyStateCard: {
-    padding: 18,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 10,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    marginVertical: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 6,
   },
-  emptyStateText: {
-    color: '#6B7280',
+  emptyStateTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginTop: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateDescription: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
+    color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 19,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  referralValueNotes: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontFamily: 'Inter-Regular',
+    flex: 2,
+    textAlign: 'right',
+    lineHeight: 22,
+    textAlignVertical: 'top',
   },
   loadingContainer: {
     flex: 1,
@@ -1196,6 +1394,134 @@ const styles = StyleSheet.create({
     paddingHorizontal: HORIZONTAL_MARGIN,
     paddingBottom: Platform.OS === 'ios' ? 26 : 18,
     paddingTop: 18,
+  },
+  // Modal styles reused from specialist appointments for consistency
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '90%',
+    maxWidth: 400,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  reasonContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  reasonDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  reasonText: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+  },
+  reasonPlaceholder: {
+    color: '#9CA3AF',
+  },
+  reasonDropdownMenu: {
+    position: 'absolute',
+    top: 54,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    zIndex: 10,
+    maxHeight: 200,
+  },
+  reasonDropdownItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  reasonDropdownText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+  },
+  customReasonContainer: {
+    marginBottom: 16,
+  },
+  customReasonLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  customReasonInput: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    minHeight: 80,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+  },
+  modalSubmitButton: {
+    flex: 1,
+    backgroundColor: '#EF4444',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalSubmitText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
   },
   primaryBottomButton: {
     width: '100%',

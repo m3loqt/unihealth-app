@@ -108,14 +108,13 @@ export default function PatientOverviewScreen() {
       ]);
 
       if (patient) {
-        // Validate patient data
-        const validPatient = dataValidation.isValidUser(patient) ? patient : null;
+        // Patient objects from DB may not have a `uid`; accept as-is
         const validAppointments = dataValidation.validateArray(patientAppointments, dataValidation.isValidAppointment);
         const validPrescriptions = dataValidation.validateArray(patientPrescriptions, dataValidation.isValidPrescription);
-        
-        setPatientData(validPatient);
+
+        setPatientData(patient as any);
         setAppointments(validAppointments);
-        setMedicalHistory(patientMedicalHistory); // Keep original data for now
+        setMedicalHistory(patientMedicalHistory);
         setPrescriptions(validPrescriptions);
       }
     } catch (error) {
