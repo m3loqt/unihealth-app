@@ -51,7 +51,7 @@ class EmailService {
       throw new Error('Email service not configured');
     }
 
-    // Use proxy if provided
+    // Prefer proxy (required for React Native/Expo)
     if (this.proxyUrl) {
       const res = await fetch(this.proxyUrl, {
         method: 'POST',
