@@ -22,6 +22,8 @@ import {
   Stethoscope,
   Pill,
   FileText,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
@@ -181,6 +183,26 @@ export default function PatientReferralDetailsScreen() {
     }
   };
 
+  // Monotone status helpers (align with specialist screen)
+  const getStatusText = (status: string) =>
+    status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown';
+
+  const getMonotoneStatusIcon = (status: string) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'confirmed') return <CheckCircle size={16} color="#6B7280" style={{ marginRight: 6 }} />;
+    if (s === 'completed') return <CheckCircle size={16} color="#6B7280" style={{ marginRight: 6 }} />;
+    if (s === 'cancelled') return <XCircle size={16} color="#6B7280" style={{ marginRight: 6 }} />;
+    return <Clock size={16} color="#6B7280" style={{ marginRight: 6 }} />;
+  };
+
+  const formatDoctorName = (name?: string): string => {
+    if (!name || name.trim().length === 0 || name.toLowerCase().includes('unknown')) {
+      return 'Unknown Doctor';
+    }
+    const stripped = name.replace(/^Dr\.?\s+/i, '').trim();
+    return `Dr. ${stripped}`;
+  };
+
   const toggleSection = (key: string) => {
     setExpandedSections(prev => ({
       ...prev,
@@ -224,6 +246,19 @@ export default function PatientReferralDetailsScreen() {
     );
   }
 
+  // Build avatar initials consistent with specialist UI
+  const isPatientUser = user?.role === 'patient';
+  const specialistName = `${referralData.assignedSpecialistFirstName || ''} ${referralData.assignedSpecialistLastName || ''}`.trim();
+  const patientNameFromFields = `${(referralData as any)?.patientFirstName || ''} ${(referralData as any)?.patientLastName || ''}`.trim();
+  const displayPatientName = referralData.patientName || patientNameFromFields;
+  const avatarName = (isPatientUser ? specialistName : displayPatientName) || 'User';
+  const avatarInitials = avatarName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join('') || 'U';
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
@@ -243,218 +278,170 @@ export default function PatientReferralDetailsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={loadReferralData} />
         }
       >
-        {/* Status Badge */}
-        <View style={styles.statusContainer}>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(referralData.status) + '20' }]}>
-            <Text style={[styles.statusText, { color: getStatusColor(referralData.status) }]}>
-              {referralData.status === 'confirmed' ? 'Confirmed' :
-               referralData.status === 'pending' ? 'Pending' :
-               referralData.status === 'completed' ? 'Completed' :
-               referralData.status === 'cancelled' ? 'Cancelled' : 'Unknown'}
-            </Text>
+        {/* Referral Information (card with avatar + monotone badge) */}
+        <View style={styles.sectionSpacing}>
+          <Text style={styles.sectionTitle}>Referral Information</Text>
+          <View style={styles.cardBox}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitials}>{avatarInitials}</Text>
+            </View>
+            <View style={[styles.statusBadge, styles.statusBadgeFixed, styles.statusBadgeNeutral]}>
+              {getMonotoneStatusIcon(referralData.status)}
+              <Text style={styles.statusTextNeutral}>{getStatusText(referralData.status)}</Text>
+            </View>
+            <View style={styles.referralDetailsTable}> 
+              <View style={styles.referralDetailsRow}>
+                <Text style={styles.referralLabel}>Specialist</Text>
+                <Text style={styles.referralValue}>
+                  {referralData.assignedSpecialistFirstName && referralData.assignedSpecialistLastName
+                    ? `Dr. ${referralData.assignedSpecialistFirstName} ${referralData.assignedSpecialistLastName}`
+                    : 'Not assigned'}
+                </Text>
+              </View>
+              <View style={styles.referralDetailsRow}>
+                <Text style={styles.referralLabel}>Referring Generalist</Text>
+                <Text style={styles.referralValue}>{formatDoctorName(referralData.referringDoctorName)}</Text>
+              </View>
+              <View style={styles.referralDetailsRow}>
+                <Text style={styles.referralLabel}>Clinic</Text>
+                <Text style={styles.referralValue}>{referralData.clinic || 'Unknown Clinic'}</Text>
+              </View>
+              <View style={styles.referralDetailsRow}>
+                <Text style={styles.referralLabel}>Date & Time</Text>
+                <Text style={styles.referralValue}>{referralData.dateTime || 'Not specified'}</Text>
+              </View>
+              <View style={styles.referralDetailsRowNoBorder}>
+                <Text style={styles.referralLabel}>Reason for Referral</Text>
+                <Text style={styles.referralValue}>{referralData.initialReasonForReferral || 'Not specified'}</Text>
+              </View>
+              {!!referralData.generalistNotes && (
+                <View style={styles.referralDetailsRowNoBorder}>
+                  <Text style={styles.referralLabel}>Doctor's Notes</Text>
+                  <Text style={styles.referralValue}>{referralData.generalistNotes}</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
-        <View style={styles.referralDivider} />
-
-        {/* Referral Details Table */}
-        <View style={styles.referralDetailsTable}>
-          <View style={styles.referralDetailsRow}>
-            <Text style={styles.referralLabel}>Referring Doctor</Text>
-            <Text style={styles.referralValue}>{referralData.referringDoctorName || 'Unknown Doctor'}</Text>
-          </View>
-          <View style={styles.referralDetailsRow}>
-            <Text style={styles.referralLabel}>Clinic</Text>
-            <Text style={styles.referralValue}>{referralData.clinic || 'Unknown Clinic'}</Text>
-          </View>
-          <View style={styles.referralDetailsRow}>
-            <Text style={styles.referralLabel}>Date & Time</Text>
-            <Text style={styles.referralValue}>{referralData.dateTime || 'Not specified'}</Text>
-          </View>
-          <View style={styles.referralDetailsRow}>
-            <Text style={styles.referralLabel}>Assigned Specialist</Text>
-            <Text style={styles.referralValue}>
-              {referralData.assignedSpecialistFirstName && referralData.assignedSpecialistLastName
-                ? `Dr. ${referralData.assignedSpecialistFirstName} ${referralData.assignedSpecialistLastName}`
-                : 'Not assigned'}
-            </Text>
-          </View>
-          <View style={styles.referralDetailsRowNoBorder}>
-            <Text style={styles.referralLabel}>Reason for Referral</Text>
-            <Text style={styles.referralValue}>{referralData.initialReasonForReferral || 'Not specified'}</Text>
-          </View>
-          <View style={styles.referralDetailsRowNoBorder}>
-            <Text style={styles.referralLabel}>Doctor's Notes</Text>
-            <Text style={styles.referralValue}>{referralData.generalistNotes || 'No notes provided'}</Text>
-          </View>
-        </View>
-
-        {/* Clinical Information (only if completed) */}
-        {referralData.status.toLowerCase() === 'completed' && referralData.medicalHistory && (
-          <>
-            <View style={styles.sectionDivider} />
-            
-            {/* Patient History Section */}
-            <View style={styles.section}>
-              <TouchableOpacity 
-                style={styles.sectionHeader} 
-                onPress={() => toggleSection('patientHistory')}
-              >
-                <User size={20} color="#1E40AF" />
-                <Text style={styles.sectionTitle}>Patient History</Text>
+        {/* Clinical Summary (match specialist UI), with fallbacks */}
+        <View style={styles.sectionSpacing}>
+          <Text style={styles.sectionTitle}>Clinical Summary</Text>
+          {referralData.status.toLowerCase() !== 'completed' ? (
+            <View style={styles.emptyStateCard}>
+              <FileText size={36} color="#9CA3AF" />
+              <Text style={styles.emptyStateText}>
+                Consultation details will be available after the referral is completed.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.cardBoxClinical}>
+              {/* Patient History */}
+              <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('patientHistory')}>
+                <Text style={styles.clinicalSectionLabel}>Patient History</Text>
                 {expandedSections['patientHistory'] ? (
-                  <ChevronDown size={20} color="#6B7280" />
+                  <ChevronDown size={23} color="#6B7280" />
                 ) : (
-                  <ChevronRight size={20} color="#9CA3AF" />
+                  <ChevronRight size={23} color="#9CA3AF" />
                 )}
               </TouchableOpacity>
               {expandedSections['patientHistory'] && (
-                <View style={styles.sectionContent}>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Present Illness History:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.presentIllnessHistory || 'No history provided'}</Text>
+                <View style={styles.clinicalSectionBody}>
+                  <Text style={styles.fieldLabel}>History of Present Illnesses</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldValue}>{referralData.presentIllnessHistory || 'No illness history recorded'}</Text>
                   </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Review of Symptoms:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.reviewOfSymptoms || 'No symptoms reviewed'}</Text>
+                  <Text style={styles.fieldLabel}>Review of Symptoms</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldValue}>{referralData.reviewOfSymptoms || 'No symptoms reviewed'}</Text>
                   </View>
                 </View>
               )}
-            </View>
 
-            {/* Findings Section */}
-            <View style={styles.section}>
-              <TouchableOpacity 
-                style={styles.sectionHeader} 
-                onPress={() => toggleSection('findings')}
-              >
-                <FileText size={20} color="#1E40AF" />
-                <Text style={styles.sectionTitle}>Clinical Findings</Text>
+              {/* Findings */}
+              <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('findings')}>
+                <Text style={styles.clinicalSectionLabel}>Findings</Text>
                 {expandedSections['findings'] ? (
-                  <ChevronDown size={20} color="#6B7280" />
+                  <ChevronDown size={23} color="#6B7280" />
                 ) : (
-                  <ChevronRight size={20} color="#9CA3AF" />
+                  <ChevronRight size={23} color="#9CA3AF" />
                 )}
               </TouchableOpacity>
               {expandedSections['findings'] && (
-                <View style={styles.sectionContent}>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Lab Results:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.labResults || 'No lab results'}</Text>
+                <View style={styles.clinicalSectionBody}>
+                  <Text style={styles.fieldLabel}>Lab Results</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldValue}>{referralData.labResults || 'No lab results recorded'}</Text>
                   </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Medications:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.medications || 'No medications listed'}</Text>
+                  <Text style={styles.fieldLabel}>Medications</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldValue}>{referralData.medications || 'No medications recorded'}</Text>
                   </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Diagnosis:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.diagnosis || 'No diagnosis provided'}</Text>
+                  <Text style={styles.fieldLabel}>Diagnosis</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldValue}>{referralData.diagnosis || 'No diagnosis recorded'}</Text>
                   </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Differential Diagnosis:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.differentialDiagnosis || 'No differential diagnosis'}</Text>
+                  <Text style={styles.fieldLabel}>Differential Diagnosis</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldValue}>{referralData.differentialDiagnosis || 'No differential diagnosis recorded'}</Text>
                   </View>
                 </View>
               )}
-            </View>
 
-            {/* SOAP Notes Section */}
-            {referralData.soapNotes && (
-              <View style={styles.section}>
-                <TouchableOpacity 
-                  style={styles.sectionHeader} 
-                  onPress={() => toggleSection('soapNotes')}
-                >
-                  <FileText size={20} color="#1E40AF" />
-                  <Text style={styles.sectionTitle}>SOAP Notes</Text>
-                  {expandedSections['soapNotes'] ? (
-                    <ChevronDown size={20} color="#6B7280" />
-                  ) : (
-                    <ChevronRight size={20} color="#9CA3AF" />
-                  )}
-                </TouchableOpacity>
-                {expandedSections['soapNotes'] && (
-                  <View style={styles.sectionContent}>
-                    <View style={styles.clinicalFieldRow}>
-                      <Text style={styles.clinicalFieldLabel}>Subjective:</Text>
-                      <Text style={styles.clinicalFieldValue}>{referralData.soapNotes.subjective || 'Not documented'}</Text>
-                    </View>
-                    <View style={styles.clinicalFieldRow}>
-                      <Text style={styles.clinicalFieldLabel}>Objective:</Text>
-                      <Text style={styles.clinicalFieldValue}>{referralData.soapNotes.objective || 'Not documented'}</Text>
-                    </View>
-                    <View style={styles.clinicalFieldRow}>
-                      <Text style={styles.clinicalFieldLabel}>Assessment:</Text>
-                      <Text style={styles.clinicalFieldValue}>{referralData.soapNotes.assessment || 'Not documented'}</Text>
-                    </View>
-                    <View style={styles.clinicalFieldRow}>
-                      <Text style={styles.clinicalFieldLabel}>Plan:</Text>
-                      <Text style={styles.clinicalFieldValue}>{referralData.soapNotes.plan || 'Not documented'}</Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* Treatment Section */}
-            <View style={styles.section}>
-              <TouchableOpacity 
-                style={styles.sectionHeader} 
-                onPress={() => toggleSection('treatment')}
-              >
-                <Stethoscope size={20} color="#1E40AF" />
-                <Text style={styles.sectionTitle}>Treatment & Summary</Text>
-                {expandedSections['treatment'] ? (
-                  <ChevronDown size={20} color="#6B7280" />
+              {/* SOAP Notes */}
+              <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('soapNotes')}>
+                <Text style={styles.clinicalSectionLabel}>SOAP Notes</Text>
+                {expandedSections['soapNotes'] ? (
+                  <ChevronDown size={23} color="#6B7280" />
                 ) : (
-                  <ChevronRight size={20} color="#9CA3AF" />
+                  <ChevronRight size={23} color="#9CA3AF" />
+                )}
+              </TouchableOpacity>
+              {expandedSections['soapNotes'] && (
+                <View style={styles.clinicalSectionBody}>
+                  <Text style={styles.fieldLabel}>Subjective</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldValue}>{referralData.soapNotes?.subjective || 'No subjective notes'}</Text>
+                  </View>
+                  <Text style={styles.fieldLabel}>Objective</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldValue}>{referralData.soapNotes?.objective || 'No objective notes'}</Text>
+                  </View>
+                  <Text style={styles.fieldLabel}>Assessment</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldValue}>{referralData.soapNotes?.assessment || 'No assessment notes'}</Text>
+                  </View>
+                  <Text style={styles.fieldLabel}>Plan</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldValue}>{referralData.soapNotes?.plan || 'No plan notes'}</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Treatment */}
+              <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('treatment')}>
+                <Text style={styles.clinicalSectionLabel}>Treatment & Wrap-Up</Text>
+                {expandedSections['treatment'] ? (
+                  <ChevronDown size={23} color="#6B7280" />
+                ) : (
+                  <ChevronRight size={23} color="#9CA3AF" />
                 )}
               </TouchableOpacity>
               {expandedSections['treatment'] && (
-                <View style={styles.sectionContent}>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Treatment Plan:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.treatmentPlan || 'No treatment plan provided'}</Text>
+                <View style={styles.clinicalSectionBody}>
+                  <Text style={styles.fieldLabel}>Treatment Plan</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldValue}>{referralData.treatmentPlan || 'No treatment plan recorded'}</Text>
                   </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Clinical Summary:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.clinicalSummary || 'No clinical summary'}</Text>
+                  <Text style={styles.fieldLabel}>Clinical Summary</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldValue}>{referralData.clinicalSummary || 'No clinical summary recorded'}</Text>
                   </View>
                 </View>
               )}
             </View>
-
-            {/* Prescriptions Section */}
-            {referralData.prescriptions && referralData.prescriptions.length > 0 && (
-              <View style={styles.section}>
-                <TouchableOpacity 
-                  style={styles.sectionHeader} 
-                  onPress={() => toggleSection('supplementary')}
-                >
-                  <Pill size={20} color="#1E40AF" />
-                  <Text style={styles.sectionTitle}>Prescriptions</Text>
-                  {expandedSections['supplementary'] ? (
-                    <ChevronDown size={20} color="#6B7280" />
-                  ) : (
-                    <ChevronRight size={20} color="#9CA3AF" />
-                  )}
-                </TouchableOpacity>
-                {expandedSections['supplementary'] && (
-                  <View style={styles.sectionContent}>
-                    {referralData.prescriptions.map((prescription, index) => (
-                      <View key={index} style={styles.prescriptionItem}>
-                        <Text style={styles.prescriptionMedication}>{prescription.medication}</Text>
-                        <Text style={styles.prescriptionDetails}>
-                          {prescription.dosage} • {prescription.frequency}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </View>
-            )}
-          </>
-        )}
+          )}
+        </View>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -643,3 +630,4 @@ const styles = StyleSheet.create({
     height: 40,
   },
 });
+
