@@ -431,7 +431,51 @@ export default function ReferralDetailsScreen() {
          
          if (referral.referralConsultationId && medicalHistory) {
            // Extract prescriptions and certificates from the medical history data
-           referralPrescriptions = medicalHistory.prescriptions || [];
+           // Build a set of potential specialist/provider IDs to resolve names dynamically
+           const potentialIds = new Set<string>();
+           const providerId = (medicalHistory as any)?.provider?.userId || (medicalHistory as any)?.provider?.id;
+           if (providerId) potentialIds.add(String(providerId));
+           (medicalHistory.prescriptions || []).forEach((pr: any) => {
+             if (pr?.specialistId) potentialIds.add(String(pr.specialistId));
+           });
+           if ((referral as any)?.assignedSpecialistId) potentialIds.add(String((referral as any).assignedSpecialistId));
+
+           // Fetch names for all potential IDs (specialists preferred, fallback to users)
+           const idList = Array.from(potentialIds);
+           const profiles = await Promise.all(idList.map(async (specId) => {
+             let profile = await databaseService.getDocument(`specialists/${specId}`);
+             if (!profile) {
+               profile = await databaseService.getDocument(`users/${specId}`);
+             }
+             return { id: specId, profile };
+           }));
+
+           const idToName: Record<string, string> = {};
+           profiles.forEach(({ id, profile }) => {
+             const name = profile
+               ? `${profile.firstName || profile.first_name || ''} ${profile.lastName || profile.last_name || ''}`.trim()
+               : '';
+             idToName[id] = name || 'Unknown Doctor';
+           });
+
+           // Compute fallback names
+           const assignedSpecialistName = ((referral as any)?.assignedSpecialistFirstName || (referral as any)?.assignedSpecialistLastName)
+             ? `${(referral as any)?.assignedSpecialistFirstName || ''} ${(referral as any)?.assignedSpecialistLastName || ''}`.trim()
+             : undefined;
+           const resolvedProviderName = (providerId && idToName[providerId])
+             ? idToName[providerId]
+             : (assignedSpecialistName || 'Unknown Doctor');
+
+           // Map prescriptions, deriving prescribedBy from prescription specialistId -> fetched name,
+           // then provider, then assigned specialist
+           referralPrescriptions = (medicalHistory.prescriptions || []).map((prescription: any, index: number) => {
+             const prescriberFromId = prescription?.specialistId ? idToName[String(prescription.specialistId)] : undefined;
+             return {
+               id: `${referral.referralConsultationId || 'mh'}-${index}`,
+               ...prescription,
+               prescribedBy: prescription.prescribedBy || prescriberFromId || resolvedProviderName,
+             };
+           });
            referralCertificates = medicalHistory.certificates || [];
            console.log('🔍 Extracted prescriptions and certificates from medical history:', {
              prescriptions: referralPrescriptions.length,
@@ -758,7 +802,6 @@ export default function ReferralDetailsScreen() {
                 <View style={styles.prescriptionDetails}>
                   <Text style={styles.medicationName}>{p.medication || 'Unknown Medication'}</Text>
                   <Text style={styles.medicationDosage}>{p.dosage || 'N/A'} • {p.frequency || 'N/A'}</Text>
-                  <Text style={styles.prescriptionDescription}>{p.description || 'No description provided'}</Text>
                 </View>
                 <View style={styles.prescriptionStatus}>
                   <Text style={styles.remainingDays}>{p.remaining}</Text>
@@ -841,140 +884,7 @@ export default function ReferralDetailsScreen() {
             </View>
           )}
         </View>
-
-        {/* --- CLINICAL SUMMARY --- */}
-        <View style={styles.sectionSpacing}>
-          <Text style={styles.sectionTitle}>Clinical Summary</Text>
-          {referralData.status.toLowerCase() !== 'completed' ? (
-            <View style={styles.emptyStateCard}>
-              <FileText size={36} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>
-                Consultation details will be available after the referral is completed.
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.cardBoxClinical}>
-            {/* Step 1: Patient History */}
-            <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('patientHistory')}>
-              <Text style={styles.clinicalSectionLabel}>Patient History</Text>
-              {expandedSections['patientHistory'] ? (
-                <ChevronDown size={23} color="#6B7280" />
-              ) : (
-                <ChevronRight size={23} color="#9CA3AF" />
-              )}
-            </TouchableOpacity>
-            {expandedSections['patientHistory'] && (
-              <View style={styles.clinicalSectionBody}>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>History of Present Illnesses:</Text>
-                  <Text style={styles.clinicalFieldValue}>{referralData.presentIllnessHistory || 'No illness history recorded'}</Text>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Review of Symptoms:</Text>
-                  <Text style={styles.clinicalFieldValue}>{referralData.reviewOfSymptoms || 'No symptoms reviewed'}</Text>
-                </View>
-              </View>
-            )}
-
-            {/* Step 2: Findings */}
-            <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('findings')}>
-              <Text style={styles.clinicalSectionLabel}>Findings</Text>
-              {expandedSections['findings'] ? (
-                <ChevronDown size={23} color="#6B7280" />
-              ) : (
-                <ChevronRight size={23} color="#9CA3AF" />
-              )}
-            </TouchableOpacity>
-            {expandedSections['findings'] && (
-              <View style={styles.clinicalSectionBody}>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Lab Results:</Text>
-                  <Text style={styles.clinicalFieldValue}>{referralData.labResults || 'No lab results recorded'}</Text>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Medications:</Text>
-                  <Text style={styles.clinicalFieldValue}>{referralData.medications || 'No medications recorded'}</Text>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Diagnosis:</Text>
-                  <Text style={styles.clinicalFieldValue}>{referralData.diagnosis || 'No diagnosis recorded'}</Text>
-                </View>
-                <View style={styles.clinicalFieldRow}>
-                  <Text style={styles.clinicalFieldLabel}>Differential Diagnosis:</Text>
-                  <Text style={styles.clinicalFieldValue}>{referralData.differentialDiagnosis || 'No differential diagnosis recorded'}</Text>
-                </View>
-              </View>
-            )}
-
-              {/* SOAP Notes */}
-              <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('soapNotes')}>
-                <Text style={styles.clinicalSectionLabel}>SOAP Notes</Text>
-                {expandedSections['soapNotes'] ? (
-                  <ChevronDown size={23} color="#6B7280" />
-                ) : (
-                  <ChevronRight size={23} color="#9CA3AF" />
-                )}
-              </TouchableOpacity>
-              {expandedSections['soapNotes'] && (
-                <View style={styles.clinicalSectionBody}>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Subjective:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.soapNotes?.subjective || 'No subjective notes'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Objective:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.soapNotes?.objective || 'No objective notes'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Assessment:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.soapNotes?.assessment || 'No assessment notes'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Plan:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.soapNotes?.plan || 'No plan notes'}</Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Treatment & Wrap-Up */}
-              <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('treatment')}>
-                <Text style={styles.clinicalSectionLabel}>Treatment & Wrap-Up</Text>
-                {expandedSections['treatment'] ? (
-                  <ChevronDown size={23} color="#6B7280" />
-                ) : (
-                  <ChevronRight size={23} color="#9CA3AF" />
-                )}
-              </TouchableOpacity>
-              {expandedSections['treatment'] && (
-                <View style={styles.clinicalSectionBody}>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Treatment Plan:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.treatmentPlan || 'No treatment plan recorded'}</Text>
-                  </View>
-                  <View style={styles.clinicalFieldRow}>
-                    <Text style={styles.clinicalFieldLabel}>Clinical Summary:</Text>
-                    <Text style={styles.clinicalFieldValue}>{referralData.clinicalSummary || 'No clinical summary recorded'}</Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Supplementary Information */}
-              <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('supplementary')}>
-                <Text style={styles.clinicalSectionLabel}>Supplementary Information</Text>
-                {expandedSections['supplementary'] ? (
-                  <ChevronDown size={23} color="#6B7280" />
-                ) : (
-                  <ChevronRight size={23} color="#9CA3AF" />
-                )}
-              </TouchableOpacity>
-              {expandedSections['supplementary'] && (
-                <View style={styles.clinicalSectionBody}>
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-      </ScrollView>
+        </ScrollView>
 
       {/* --- BOTTOM ACTION BAR --- */}
       {referralData.status.toLowerCase() === 'completed' && (
@@ -1091,25 +1001,19 @@ const styles = StyleSheet.create({
 
   // === Improved Card for Clinical Summary ===
   cardBoxClinical: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingVertical: 7,
-    paddingHorizontal: 0,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     marginBottom: 14,
-    shadowColor: '#00000022',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
   },
   clinicalSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 0,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 6,
     backgroundColor: 'transparent',
     marginBottom: 0,
@@ -1125,9 +1029,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.05,
   },
   clinicalSectionBody: {
-    paddingHorizontal: 0,
+    paddingHorizontal: 12,
     paddingTop: 6,
-    paddingBottom: 12,
+    paddingBottom: 10,
     backgroundColor: 'transparent',
   },
   // Field-like containers to match SignIn input styling

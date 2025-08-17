@@ -406,45 +406,40 @@ export default function AppointmentsScreen() {
     };
 
     const specialistName = `${referral?.assignedSpecialistFirstName || ''} ${referral?.assignedSpecialistLastName || ''}`.trim();
-    const specialistInitials = `${referral?.assignedSpecialistFirstName?.[0] || 'S'}${referral?.assignedSpecialistLastName?.[0] || 'p'}`;
+    const specialistInitials = `${referral?.assignedSpecialistFirstName?.[0] || 'S'}${referral?.assignedSpecialistLastName?.[0] || 'P'}`;
+    const referringDoctorName = `${referral?.referringGeneralistFirstName || ''} ${referral?.referringGeneralistLastName || ''}`.trim();
+    const resolvedSpecialty = (() => {
+      if (referral?.assignedSpecialistId && specialistData[referral.assignedSpecialistId]) {
+        const doc = specialistData[referral.assignedSpecialistId];
+        return doc?.specialty || doc?.specialisation || doc?.specialization || referral?.specialty || 'General Medicine';
+      }
+      return referral?.specialty || 'General Medicine';
+    })();
 
     return (
-      <View key={referralData.id} style={styles.referralCard}>
-        <View style={styles.referralCardHeader}>
-          <View style={styles.referralCardHeaderLeft}>
-            <View style={styles.referralIconContainer}>
-              <Text style={styles.referralCardIcon}>📋</Text>
+      <TouchableOpacity
+        key={referralData.id}
+        style={styles.referralCard}
+        activeOpacity={0.8}
+        onPress={() => router.push(`/referral-details?id=${appointment.relatedReferralId}`)}
+      >
+        <View style={styles.appointmentHeader}>
+          <View style={styles.doctorInfo}>
+            <View style={styles.doctorAvatar}>
+              <Text style={styles.doctorInitial}>{specialistInitials}</Text>
             </View>
-            {/* Medical History Button - Only show if referral is completed */}
-            {/* {referral?.status === 'completed' && (
-              <TouchableOpacity
-                style={styles.medicalHistoryButton}
-                onPress={() => {
-                  console.log('🔍 MEDICAL HISTORY EYE ICON PRESSED!');
-                  console.log('Appointment being passed:', appointment);
-                  loadMedicalHistory(appointment, 'referral');
-                }}
-              >
-                <Text style={styles.medicalHistoryButtonText}>View History</Text>
-              </TouchableOpacity>
-            )} */}
+            <View style={styles.doctorDetails}>
+              <Text style={styles.doctorName}>
+                {specialistName ? `Dr. ${specialistName}` : 'Dr. Unknown'}
+              </Text>
+              <Text style={styles.doctorSpecialty}>{resolvedSpecialty}</Text>
+            </View>
           </View>
-          <View style={styles.referralCardDetails}>
-            <Text style={styles.referralCardTitle}>Referral</Text>
-            <Text style={styles.referralCardSubtitle}>
-              {specialistName || 'Specialist'}
-            </Text>
-          </View>
-          <View style={styles.referralStatusBadge}>
-            <Text style={styles.referralStatusText}>
-              {referral?.status === 'confirmed' ? 'Confirmed' :
-               referral?.status === 'pending' ? 'Pending' :
-               referral?.status === 'completed' ? 'Completed' :
-               referral?.status === 'cancelled' ? 'Cancelled' :
-               referral?.status === 'pending' ? 'Pending' :
-               referral?.status === 'confirmed' ? 'Confirmed' :
-               referral?.status === 'canceled' ? 'Canceled' : 'Unknown'}
-            </Text>
+          <View style={styles.appointmentHeaderRight}>
+            <View style={styles.statusBadge}>
+              {getStatusIcon(referral?.status)}
+              <Text style={styles.statusText}>{capitalize(referral?.status || 'unknown')}</Text>
+            </View>
           </View>
         </View>
 
@@ -464,6 +459,10 @@ export default function AppointmentsScreen() {
               })()}
             </Text>
           </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Referred by:</Text>
+            <Text style={styles.metaValue}>{referringDoctorName ? `Dr. ${referringDoctorName}` : 'Unknown'}</Text>
+          </View>
         </View>
 
         {referral?.initialReasonForReferral && (
@@ -473,18 +472,7 @@ export default function AppointmentsScreen() {
           </View>
         )}
 
-        <View style={styles.referralCardActions}>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => {
-              // Navigate to referral details screen using the referral ID
-              router.push(`/referral-details?id=${appointment.relatedReferralId}`);
-            }}
-          >
-            <Text style={styles.secondaryButtonText}>View Details</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -542,7 +530,12 @@ export default function AppointmentsScreen() {
     })();
 
     return (
-      <View key={appointment.id} style={styles.appointmentCard}>
+      <TouchableOpacity
+        key={appointment.id}
+        style={styles.appointmentCard}
+        activeOpacity={0.8}
+        onPress={() => router.push(`/(patient)/visit-overview?id=${appointment.id}`)}
+      >
         <View style={styles.appointmentHeader}>
           <View style={styles.doctorInfo}>
             <View style={styles.doctorAvatar}>
@@ -585,6 +578,13 @@ export default function AppointmentsScreen() {
           </View>
         </View>
 
+        {/* Purpose (same style as referral reason) */}
+        {appointment.appointmentPurpose && (
+          <View style={styles.notesSection}>
+            <Text style={styles.notesLabel}>Purpose:</Text>
+            <Text style={styles.notesText}>{appointment.appointmentPurpose}</Text>
+          </View>
+        )}
         {appointment.additionalNotes && (
           <View style={styles.notesSection}>
             <Text style={styles.notesLabel}>Additional Notes:</Text>
@@ -594,56 +594,21 @@ export default function AppointmentsScreen() {
 
         <View style={styles.appointmentActions}>
           {isCompleted ? (
-            <>
-              <TouchableOpacity
-                style={styles.outlinedButton}
-                onPress={() => {
-                  setFeedbackAppointment(appointment);
-                  setFeedbackStars(0);
-                  setFeedbackReason('');
-                  setFeedbackSubmitted(false);
-                  setShowFeedbackModal(true);
-                }}
-              >
-                <Text style={styles.outlinedButtonText}>Give Feedback</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => {
-                  console.log('🔍 VIEW DETAILS BUTTON PRESSED (COMPLETED APPOINTMENT)!');
-                  console.log('Appointment being passed:', appointment);
-                  // For completed appointments, route to visit overview
-                  router.push(`/(patient)/visit-overview?id=${appointment.id}`);
-                }}
-              >
-                <Text style={styles.secondaryButtonText}>View Details</Text>
-              </TouchableOpacity>
-            </>
-          ) : appointment.status === 'confirmed' ? (
             <TouchableOpacity
-              style={styles.secondaryButton}
+              style={styles.outlinedButton}
               onPress={() => {
-                console.log('🔍 VIEW DETAILS BUTTON PRESSED (CONFIRMED APPOINTMENT)!');
-                console.log('Appointment being passed:', appointment);
-                // For confirmed appointments, route to visit overview
-                router.push(`/(patient)/visit-overview?id=${appointment.id}`);
+                setFeedbackAppointment(appointment);
+                setFeedbackStars(0);
+                setFeedbackReason('');
+                setFeedbackSubmitted(false);
+                setShowFeedbackModal(true);
               }}
             >
-              <Text style={styles.secondaryButtonText}>View Details</Text>
-              </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={ () => {
-                // For other appointment statuses, route to visit overview
-                router.push(`/(patient)/visit-overview?id=${appointment.id}`);
-              }}
-            >
-              <Text style={styles.secondaryButtonText}>View Details</Text>
+              <Text style={styles.outlinedButtonText}>Give Feedback</Text>
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -1469,11 +1434,11 @@ feedbackModalButton: {
 
   // Referral Card Styles
   referralCard: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F9FAFB',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#E5E7EB',
     marginBottom: 16,
   },
   referralCardHeader: {
