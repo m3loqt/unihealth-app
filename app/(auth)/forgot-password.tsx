@@ -41,10 +41,10 @@ export default function ForgotPasswordScreen() {
       const result = await authService.requestPasswordResetCode(email);
 
       if (result.success) {
-        // Navigate to verify code screen (pass devCode for local testing if present)
+        // Navigate to verify code screen
         router.push({
           pathname: '/verify-code',
-          params: { email, devCode: result.devCode || '' }
+          params: { email }
         });
       } else {
         // Handle specific error cases
