@@ -24,7 +24,6 @@ import {
   Hourglass,
   Circle as XCircle,
   Check,
-  User,
   X,
   Star,
 } from 'lucide-react-native';
@@ -91,6 +90,17 @@ export default function AppointmentsScreen() {
   const [loadingReferrals, setLoadingReferrals] = useState<{[key: string]: boolean}>({});
   const [clinicData, setClinicData] = useState<{[key: string]: any}>({});
   const [specialistData, setSpecialistData] = useState<{[key: string]: any}>({});
+
+  // Header initials for logged in user
+  const userInitials = (() => {
+    const fullName = safeDataAccess.getUserFullName(user, user?.email || 'User');
+    return fullName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join('') || 'U';
+  })();
 
   useEffect(() => {
     if (filter && filters.includes(capitalize(filter as string))) {
@@ -291,12 +301,23 @@ export default function AppointmentsScreen() {
       }
       
       // Load specialist data if assignedSpecialistId exists
-      if (referral?.assignedSpecialistId && !specialistData[referral.assignedSpecialistId]) {
+      if (referral?.assignedSpecialistId) {
         try {
-          console.log('Loading specialist data for ID:', referral.assignedSpecialistId);
-          const specialist = await databaseService.getDoctorById(referral.assignedSpecialistId);
-          console.log('Loaded specialist data:', specialist);
-          setSpecialistData(prev => ({ ...prev, [referral.assignedSpecialistId]: specialist }));
+          // Load specialist profile if needed
+          let specialist = specialistData[referral.assignedSpecialistId];
+          if (!specialist) {
+            specialist = await databaseService.getDoctorById(referral.assignedSpecialistId);
+            setSpecialistData(prev => ({ ...prev, [referral.assignedSpecialistId]: specialist }));
+          }
+          // Enrich referral with specialist specialty to ensure correct display
+          const computedSpecialty = specialist?.specialty || specialist?.specialisation || specialist?.specialization;
+          // Attach as a weakly-typed property so UI can read it without changing types
+          if (computedSpecialty && (!(referral as any)?.specialty || (referral as any).specialty !== computedSpecialty)) {
+            setReferrals(prev => ({
+              ...prev,
+              [referralId]: { ...(referral as any), specialty: computedSpecialty },
+            }));
+          }
         } catch (error) {
           console.error('Error loading specialist data:', error);
         }
@@ -331,23 +352,32 @@ export default function AppointmentsScreen() {
 
   // Get referrals for appointments
   const getReferralCards = () => {
-    const referralCards = [];
-    
+    const referralCards = [] as Array<{ id: string; type: string; appointment: Appointment; referral: any; loading: boolean }>;
+    const filterStatus = (activeFilter as string).toLowerCase();
+    const matchesFilter = (status: string) => {
+      const s = (status || '').toLowerCase();
+      if (filterStatus === 'all') return true;
+      if (filterStatus === 'cancelled') return s === 'cancelled' || s === 'canceled';
+      return s === filterStatus;
+    };
+
     appointments.forEach(appointment => {
       if (appointment.relatedReferralId) {
         const referral = referrals[appointment.relatedReferralId];
         const isLoading = loadingReferrals[appointment.relatedReferralId];
-        
-        referralCards.push({
-          id: appointment.id || appointment.relatedReferralId, // Use appointment.id as unique key, fallback to referral ID (Firebase push key)
-          type: 'referral',
-          appointment,
-          referral,
-          loading: isLoading
-        });
+
+        if (!referral || matchesFilter(referral.status || '')) {
+          referralCards.push({
+            id: appointment.id || appointment.relatedReferralId,
+            type: 'referral',
+            appointment,
+            referral,
+            loading: isLoading,
+          });
+        }
       }
     });
-    
+
     return referralCards;
   };
 
@@ -766,7 +796,7 @@ export default function AppointmentsScreen() {
             style={styles.profileButton}
             onPress={() => router.push('/(patient)/tabs/profile')}
           >
-            <User size={24} color="#6B7280" />
+            <Text style={styles.profileInitialsText}>{userInitials}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -894,11 +924,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#1E40AF',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 0,
+    borderColor: 'transparent',
+  },
+  profileInitialsText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
   filtersContainer: {
     backgroundColor: '#FFFFFF',

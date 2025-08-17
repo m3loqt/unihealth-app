@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import {
   FileText, Search, Download, Eye, Shield, Activity, Syringe, Heart, Stethoscope,
-  Import as SortAsc, ChevronDown, Check, User
+  Import as SortAsc, ChevronDown, Check
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -53,6 +53,17 @@ export default function CertificatesScreen() {
   const [userCertificates, setUserCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Header initials for logged in user
+  const userInitials = (() => {
+    const fullName = safeDataAccess.getUserFullName(user, user?.email || 'User');
+    return fullName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join('') || 'U';
+  })();
 
   // Load certificates from database
   useEffect(() => {
@@ -315,7 +326,7 @@ export default function CertificatesScreen() {
           style={styles.profileButton}
           onPress={() => router.push('/(patient)/tabs/profile')}
         >
-          <User size={24} color="#6B7280" />
+          <Text style={styles.profileInitialsText}>{userInitials}</Text>
         </TouchableOpacity>
       </View>
 
@@ -412,11 +423,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#1E40AF',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 0,
+    borderColor: 'transparent',
+  },
+  profileInitialsText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
   filtersContainer: {
     backgroundColor: '#FFFFFF',

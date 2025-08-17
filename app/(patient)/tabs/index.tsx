@@ -23,6 +23,7 @@ import {
   Clock,
   Bell,
   Pill,
+  CheckCircle,
   Info,
   Download,
   Share,
@@ -97,6 +98,10 @@ export default function HomeScreen() {
   const qrCodeRef = useRef<any>(null);
   const qrCodeViewShotRef = useRef<any>(null);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [qrValue, setQrValue] = useState<string>('');
+  const [qrReady, setQrReady] = useState<boolean>(false);
+  const [showQRSuccessModal, setShowQRSuccessModal] = useState<boolean>(false);
+  const [hasMediaPermission, setHasMediaPermission] = useState<boolean>(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [activePrescriptions, setActivePrescriptions] = useState<Prescription[]>([]);
@@ -175,8 +180,51 @@ export default function HomeScreen() {
     setActiveTip(page);
   }, []);
 
+  // Header initials for logged in user
+  const userInitials = (() => {
+    const fullName = safeDataAccess.getUserFullName(user, user?.email || 'User');
+    return fullName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join('') || 'U';
+  })();
+
   // QR Modal Actions
-  const handleCloseQRModal = () => setShowQRModal(false);
+  const handleOpenQRModal = async () => {
+    const payload = JSON.stringify({
+      type: 'patient',
+      id: user?.uid || 'user-id',
+      name: safeDataAccess.getUserFullName(user, 'Unknown User'),
+      email: user?.email || 'Email not provided',
+      timestamp: new Date().toISOString(),
+    });
+    setQrValue(payload);
+    setQrReady(false);
+    // Pre-flight media permission (Android) to avoid prompt on first download click
+    try {
+      if (Platform.OS === 'android') {
+        const current = await MediaLibrary.getPermissionsAsync();
+        if (current.status !== 'granted') {
+          const req = await MediaLibrary.requestPermissionsAsync();
+          setHasMediaPermission(req.status === 'granted');
+        } else {
+          setHasMediaPermission(true);
+        }
+      } else {
+        setHasMediaPermission(true);
+      }
+    } catch (e) {
+      // If permission preflight fails, we'll re-attempt during download
+      setHasMediaPermission(false);
+    }
+    setShowQRModal(true);
+  };
+  const handleCloseQRModal = () => {
+    setShowQRModal(false);
+    setQrReady(false);
+  };
 
   // Notification Modal Actions
   const handleOpenNotifications = () => setShowNotificationModal(true);
@@ -203,27 +251,31 @@ export default function HomeScreen() {
     try {
       setQrActionLoading(true);
 
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Please grant media library permissions to download the QR code.');
-        return;
+      if (!hasMediaPermission) {
+        const { status } = await MediaLibrary.requestPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Please grant media library permissions to download the QR code.');
+          return;
+        }
+        setHasMediaPermission(true);
       }
 
-      // Wait for QR code to render
-      await new Promise(resolve => setTimeout(resolve, 150));
+      if (!qrReady) {
+        await new Promise(resolve => setTimeout(resolve, 180));
+      }
 
       // Capture QR code as PNG image
       const uri = await qrCodeViewShotRef.current.capture();
 
       // Save to gallery (MediaLibrary)
       const asset = await MediaLibrary.createAssetAsync(uri);
-      await MediaLibrary.createAlbumAsync('UniHealth', asset, false);
+      try {
+        await MediaLibrary.createAlbumAsync('UniHealth', asset, false);
+      } catch (e) {
+        await MediaLibrary.saveToLibraryAsync(uri);
+      }
 
-      Alert.alert(
-        'Success!',
-        'QR Code has been saved as an image in your photo gallery.',
-        [{ text: 'OK' }]
-      );
+      setShowQRSuccessModal(true);
     } catch (error) {
       console.error('Error downloading QR code:', error);
       Alert.alert('Error', 'Failed to download QR code. Please try again.');
@@ -238,8 +290,9 @@ export default function HomeScreen() {
     try {
       setQrActionLoading(true);
 
-      // Wait for QR code to render
-      await new Promise(resolve => setTimeout(resolve, 150));
+      if (!qrReady) {
+        await new Promise(resolve => setTimeout(resolve, 180));
+      }
 
       // Capture QR code as PNG image
       const uri = await qrCodeViewShotRef.current.capture();
@@ -334,10 +387,9 @@ export default function HomeScreen() {
               )}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/(patient)/tabs/profile')}>
-              <Image
-                source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }}
-                style={styles.profileImage}
-              />
+              <View style={styles.profileInitialsCircle}>
+                <Text style={styles.profileInitialsText}>{userInitials}</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -404,7 +456,7 @@ export default function HomeScreen() {
         <View style={styles.quickActionsContainer}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.quickActionButton} onPress={() => setShowQRModal(true)}>
+            <TouchableOpacity style={styles.quickActionButton} onPress={handleOpenQRModal}>
               <QrCode size={24} color="#1E40AF" />
               <Text style={styles.quickActionText}>Generate{'\n'}QR Code</Text>
             </TouchableOpacity>
@@ -586,16 +638,11 @@ export default function HomeScreen() {
                     height: 300,
                   }}
                 >
-                  <View style={qrModalStyles.qrCodeWrapper}>
+                  <View style={qrModalStyles.qrCodeWrapper} onLayout={() => setQrReady(true)}>
                                       <QRCode
                     ref={qrCodeRef}
-                    value={JSON.stringify({
-                      type: 'patient',
-                      id: user?.uid || 'user-id',
-                      name: safeDataAccess.getUserFullName(user, 'Unknown User'),
-                      email: user?.email || 'Email not provided',
-                      timestamp: new Date().toISOString()
-                    })}
+                    value={qrValue || ''}
+                    key={qrValue}
                     size={180}
                     color="#1F2937"
                     backgroundColor="#FFFFFF"
@@ -622,9 +669,9 @@ export default function HomeScreen() {
               {/* Action Buttons */}
               <View style={qrModalStyles.actions}>
                 <TouchableOpacity
-                  style={[qrModalStyles.secondaryButton, qrActionLoading && qrModalStyles.disabledButton]}
+                  style={[qrModalStyles.secondaryButton, (qrActionLoading || !qrReady) && qrModalStyles.disabledButton]}
                   onPress={handleDownload}
-                  disabled={qrActionLoading}
+                  disabled={qrActionLoading || !qrReady}
                 >
                   <Download size={20} color="#374151" />
                   <Text style={qrModalStyles.secondaryButtonText}>
@@ -632,9 +679,9 @@ export default function HomeScreen() {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[qrModalStyles.primaryButton, qrActionLoading && qrModalStyles.disabledButton]}
+                  style={[qrModalStyles.primaryButton, (qrActionLoading || !qrReady) && qrModalStyles.disabledButton]}
                   onPress={handleShare}
-                  disabled={qrActionLoading}
+                  disabled={qrActionLoading || !qrReady}
                 >
                   <Share size={20} color="#FFFFFF" />
                   <Text style={qrModalStyles.primaryButtonText}>
@@ -643,6 +690,31 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
+
+      {/* === QR SUCCESS MODAL (Bottom Sheet, styled like SignIn success) === */}
+      <Modal
+        visible={showQRSuccessModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowQRSuccessModal(false)}
+      >
+        <Pressable style={qrSuccessStyles.backdrop} onPress={() => setShowQRSuccessModal(false)}>
+          <View style={qrSuccessStyles.backdropOverlay} />
+        </Pressable>
+        <View style={qrSuccessStyles.modalContainer}>
+          <SafeAreaView style={qrSuccessStyles.safeArea}>
+            <Pressable style={qrSuccessStyles.modalContent} onPress={() => setShowQRSuccessModal(false)}>
+              <View style={qrSuccessStyles.successContent}>
+                <View style={qrSuccessStyles.successIcon}>
+                  <CheckCircle size={48} color="#1E40AF" />
+                </View>
+                <Text style={qrSuccessStyles.successTitle}>Saved to Photos</Text>
+                <Text style={qrSuccessStyles.successSubtitle}>Your QR Code has been saved to your gallery.{"\n"}Click anywhere to continue.</Text>
+              </View>
+            </Pressable>
           </SafeAreaView>
         </View>
       </Modal>
@@ -789,6 +861,20 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     marginLeft: 12,
+  },
+  profileInitialsCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginLeft: 12,
+    backgroundColor: '#1E40AF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileInitialsText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
   section: { padding: 24, backgroundColor: '#FFFFFF', marginTop: 8 },
   sectionHeader: {
@@ -1349,3 +1435,35 @@ const notificationModalStyles = StyleSheet.create({
   },
 });
  
+// QR Download Success Modal Styles (bottom sheet, aligned with SignIn success modal)
+const qrSuccessStyles = StyleSheet.create({
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
+  backdropOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalContainer: { flex: 1, justifyContent: 'flex-end', zIndex: 2 },
+  safeArea: { width: '100%' },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    alignItems: 'stretch',
+    minHeight: SCREEN_HEIGHT * 0.35,
+  },
+  successContent: { alignItems: 'center', paddingVertical: 16, flex: 1, justifyContent: 'center' },
+  successIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  successTitle: { fontSize: 18, fontFamily: 'Inter-Bold', color: '#1F2937', marginBottom: 4, textAlign: 'center' },
+  successSubtitle: { fontSize: 13, fontFamily: 'Inter-Regular', color: '#6B7280', textAlign: 'center', lineHeight: 20 },
+  actions: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  primaryButton: { flex: 1, backgroundColor: '#1E40AF', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-SemiBold' },
+});

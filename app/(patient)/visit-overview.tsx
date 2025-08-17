@@ -25,6 +25,7 @@ import {
   ChevronRight,
   CheckCircle,
   XCircle,
+  Clock,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
@@ -118,6 +119,15 @@ const getStatusColor = (status: string) => {
 // Helper function to get status text
 const getStatusText = (status: string) => {
   return status.charAt(0).toUpperCase() + status.slice(1);
+};
+
+// Monotone status icon (consistent with patient referral UI)
+const getMonotoneStatusIcon = (status: string) => {
+  const s = (status || '').toLowerCase();
+  if (s === 'confirmed') return <CheckCircle size={16} color="#6B7280" style={{ marginRight: 6 }} />;
+  if (s === 'completed') return <CheckCircle size={16} color="#6B7280" style={{ marginRight: 6 }} />;
+  if (s === 'cancelled') return <XCircle size={16} color="#6B7280" style={{ marginRight: 6 }} />;
+  return <Clock size={16} color="#6B7280" style={{ marginRight: 6 }} />;
 };
 
 // Helper function to format clinic address with fallbacks
@@ -335,7 +345,7 @@ export default function VisitOverviewScreen() {
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: (visitData.status?.toLowerCase?.() === 'completed') ? 90 : 24 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -352,49 +362,55 @@ export default function VisitOverviewScreen() {
         {/* --- CONSULTATION DETAILS --- */}
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Consultation Details</Text>
-          <View style={styles.cardBox}>
-            <View style={styles.doctorRow}>
-              <View style={styles.doctorInfo}>
-                <Text style={styles.doctorName}>{visitData.doctorName || 'Unknown Doctor'}</Text>
-                <Text style={styles.doctorSpecialty}>{visitData.doctorSpecialty || 'General Medicine'}</Text>
-              </View>
-              {/* Status Badge - Fixed to right-top */}
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(visitData.status) + '20' }]}>
-                <Text style={[styles.statusText, { color: getStatusColor(visitData.status) }]}>
-                  {getStatusText(visitData.status)}
-                </Text>
-              </View>
+          <View style={[styles.cardBox, styles.cardBoxTopAvatar]}>
+            {/* Avatar initials (top-left) */}
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitials}>{(() => {
+                const name = (visitData.doctorName || '').replace(/^Dr\.?\s+/i, '').trim() || 'Doctor';
+                return name.split(' ').filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join('') || 'DR';
+              })()}</Text>
             </View>
-            <View style={styles.consultDivider} />
-                         <View style={styles.consultDetailsTable}>
-               <View style={styles.consultDetailsRow}>
-                 <Text style={styles.consultLabel}>Clinic</Text>
-                 <Text style={styles.consultValue}>{visitData.clinic || 'Unknown Clinic'}</Text>
-               </View>
-               <View style={styles.consultDetailsRow}>
-                 <Text style={styles.consultLabel}>Address</Text>
-                 <Text style={styles.consultValue}>{visitData.address || 'Address not provided'}</Text>
-               </View>
-               <View style={styles.consultDetailsRow}>
-                 <Text style={styles.consultLabel}>Date</Text>
-                 <Text style={styles.consultValue}>{visitData.appointmentDate ? formatDate(visitData.appointmentDate) : 'Not specified'}</Text>
-               </View>
-               <View style={styles.consultDetailsRow}>
-                 <Text style={styles.consultLabel}>Time</Text>
-                 <Text style={styles.consultValue}>{visitData.appointmentTime}</Text>
-               </View>
-               <View style={styles.consultDetailsRow}>
-                 <Text style={styles.consultLabel}>Purpose</Text>
-                 <Text style={styles.consultValue}>{visitData.appointmentPurpose || 'Not specified'}</Text>
-               </View>
-               {visitData.additionalNotes && (
-                 <View style={styles.consultDetailsRowNoBorder}>
-                   <Text style={styles.consultLabel}>Notes</Text>
-                   <Text style={styles.consultValue}>{visitData.additionalNotes}</Text>
-                 </View>
-               )}
-              
-              
+            {/* Fixed Status Badge (top-right) - Monotone */}
+            <View style={[styles.statusBadge, styles.statusBadgeFixed, styles.statusBadgeNeutral]}>
+              {getMonotoneStatusIcon(visitData.status)}
+              <Text style={styles.statusTextNeutral}>{getStatusText(visitData.status)}</Text>
+            </View>
+
+            <View style={styles.consultDetailsTable}>
+              <View style={styles.consultDetailsRow}>
+                <Text style={styles.consultLabel}>Doctor</Text>
+                <Text style={styles.consultValue}>{visitData.doctorName || 'Unknown Doctor'}</Text>
+              </View>
+              <View style={styles.consultDetailsRow}>
+                <Text style={styles.consultLabel}>Specialty</Text>
+                <Text style={styles.consultValue}>{visitData.doctorSpecialty || 'General Medicine'}</Text>
+              </View>
+              <View style={styles.consultDetailsRow}>
+                <Text style={styles.consultLabel}>Clinic</Text>
+                <Text style={styles.consultValue}>{visitData.clinic || 'Unknown Clinic'}</Text>
+              </View>
+              <View style={styles.consultDetailsRow}>
+                <Text style={styles.consultLabel}>Address</Text>
+                <Text style={styles.consultValue}>{visitData.address || 'Address not provided'}</Text>
+              </View>
+              <View style={styles.consultDetailsRow}>
+                <Text style={styles.consultLabel}>Date</Text>
+                <Text style={styles.consultValue}>{visitData.appointmentDate ? formatDate(visitData.appointmentDate) : 'Not specified'}</Text>
+              </View>
+              <View style={styles.consultDetailsRow}>
+                <Text style={styles.consultLabel}>Time</Text>
+                <Text style={styles.consultValue}>{visitData.appointmentTime}</Text>
+              </View>
+              <View style={styles.consultDetailsRow}>
+                <Text style={styles.consultLabel}>Purpose</Text>
+                <Text style={styles.consultValue}>{visitData.appointmentPurpose || 'Not specified'}</Text>
+              </View>
+              {visitData.additionalNotes && (
+                <View style={styles.consultDetailsRowNoBorder}>
+                  <Text style={styles.consultLabel}>Notes</Text>
+                  <Text style={styles.consultValue}>{visitData.additionalNotes}</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -431,13 +447,15 @@ export default function VisitOverviewScreen() {
             </View>
           )) : visitData.status.toLowerCase() === 'completed' ? (
             <View style={styles.emptyStateCard}>
-              <Pill size={36} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>No prescriptions for this visit.</Text>
+              <Pill size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>No Prescriptions</Text>
+              <Text style={styles.emptyStateDescription}>No prescriptions for this visit.</Text>
             </View>
           ) : (
             <View style={styles.emptyStateCard}>
-              <Pill size={36} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>Prescriptions will be available after the appointment is completed.</Text>
+              <Pill size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>Prescriptions unavailable</Text>
+              <Text style={styles.emptyStateDescription}>Prescriptions will be available after the appointment is completed.</Text>
             </View>
           )}
         </View>
@@ -484,13 +502,15 @@ export default function VisitOverviewScreen() {
             );
           }          ) : visitData.status.toLowerCase() === 'completed' ? (
             <View style={styles.emptyStateCard}>
-              <FileText size={36} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>No certificates were issued for this visit.</Text>
+              <FileText size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>No Certificates</Text>
+              <Text style={styles.emptyStateDescription}>No certificates were issued for this visit.</Text>
             </View>
           ) : (
             <View style={styles.emptyStateCard}>
-              <FileText size={36} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>Certificates will be available after the appointment is completed.</Text>
+              <FileText size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>Certificates unavailable</Text>
+              <Text style={styles.emptyStateDescription}>Certificates will be available after the appointment is completed.</Text>
             </View>
           )}
         </View>
@@ -500,8 +520,9 @@ export default function VisitOverviewScreen() {
           <Text style={styles.sectionTitle}>Clinical Summary</Text>
           {visitData.status.toLowerCase() !== 'completed' ? (
             <View style={styles.emptyStateCard}>
-              <FileText size={36} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>
+              <FileText size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>Consultation details unavailable</Text>
+              <Text style={styles.emptyStateDescription}>
                 Consultation details will be available after the appointment is completed.
               </Text>
             </View>
@@ -710,10 +731,30 @@ const styles = StyleSheet.create({
     letterSpacing: 0.15,
   },
   statusBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusBadgeFixed: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
+    alignSelf: 'flex-end',
+    zIndex: 10,
+  },
+  statusBadgeNeutral: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  statusTextNeutral: {
+    color: '#374151',
+    fontSize: 13.5,
+    fontFamily: 'Inter-SemiBold',
   },
   statusText: {
     fontSize: 14,
@@ -797,6 +838,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     marginBottom: 14,
+  },
+  cardBoxTopAvatar: {
+    paddingTop: 84,
+  },
+  avatarCircle: {
+    position: 'absolute',
+    left: 16,
+    top: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#1E40AF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitials: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
   },
   doctorRow: {
     flexDirection: 'row',
@@ -1024,21 +1084,28 @@ const styles = StyleSheet.create({
     marginLeft: 3,
   },
   emptyStateCard: {
-    padding: 24,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F9FAFB',
     borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    marginVertical: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 6,
   },
-  emptyStateText: {
-    color: '#6B7280',
+  emptyStateTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginTop: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateDescription: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
+    color: '#6B7280',
     textAlign: 'center',
-    marginTop: 12,
+    marginBottom: 16,
     lineHeight: 20,
   },
   loadingContainer: {

@@ -14,7 +14,6 @@ import {
 import {
   Pill,
   CircleCheck as CheckCircle,
-  User,
   Search,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
@@ -33,6 +32,17 @@ export default function PrescriptionsScreen() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Header initials for logged in user
+  const userInitials = (() => {
+    const fullName = safeDataAccess.getUserFullName(user, user?.email || 'User');
+    return fullName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join('') || 'U';
+  })();
 
   // Load prescriptions from database
   useEffect(() => {
@@ -227,7 +237,7 @@ export default function PrescriptionsScreen() {
             style={styles.profileButton}
             onPress={() => router.push('/(patient)/tabs/profile')}
           >
-            <User size={24} color="#6B7280" />
+            <Text style={styles.profileInitialsText}>{userInitials}</Text>
           </TouchableOpacity>
         </View>
 
@@ -351,11 +361,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#1E40AF',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 0,
+    borderColor: 'transparent',
   },
   searchRow: {
     paddingHorizontal: 24,
@@ -368,7 +378,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderRadius: 10,
     paddingHorizontal: 14,
-    paddingVertical: 11.5,
+    paddingVertical: 22,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -383,6 +393,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#1F2937',
     paddingVertical: 0,
+  },
+  profileInitialsText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
   filtersContainer: {
     backgroundColor: '#FFFFFF',
