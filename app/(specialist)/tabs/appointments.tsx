@@ -496,75 +496,22 @@ export default function SpecialistAppointmentsScreen() {
 
   // ---- CARD RENDER ----
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return <CheckCircle size={14} color="#1E40AF" />;
-      case 'pending':
-        return <Hourglass size={14} color="#6B7280" />;
-      case 'completed':
-        return <CheckMark size={14} color="#10B981" />;
-      case 'cancelled':
-        return <XCircle size={14} color="#EF4444" />;
-      default:
-        return null;
-    }
+    // Monotone neutral status icons (match patient UI)
+    const s = (status || '').toLowerCase();
+    if (s === 'confirmed') return <CheckCircle size={14} color="#6B7280" />;
+    if (s === 'pending' || s === 'pending_acceptance') return <Hourglass size={14} color="#6B7280" />;
+    if (s === 'completed') return <Check size={14} color="#6B7280" />;
+    if (s === 'cancelled' || s === 'canceled') return <XCircle size={14} color="#6B7280" />;
+    return <Hourglass size={14} color="#6B7280" />;
   };
 
-  const getStatusBadgeStyle = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return [styles.statusBadge, styles.statusBadgeConfirmed];
-      case 'pending':
-        return [styles.statusBadge, styles.statusBadgePending];
-      case 'completed':
-        return [styles.statusBadge, styles.statusBadgeCompleted];
-      case 'cancelled':
-        return [styles.statusBadge, styles.statusBadgeCanceled];
-      default:
-        return styles.statusBadge;
-    }
-  };
+  const getStatusBadgeStyle = (_status: string) => styles.statusBadge;
 
-  const getReferralStatusBadgeStyle = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return [styles.referralStatusBadge, styles.referralStatusBadgeConfirmed];
-      case 'completed':
-        return [styles.referralStatusBadge, styles.referralStatusBadgeCompleted];
-      case 'cancelled':
-        return [styles.referralStatusBadge, styles.referralStatusBadgeCanceled];
-      default:
-        return styles.referralStatusBadge;
-    }
-  };
+  const getReferralStatusBadgeStyle = (_status: string) => styles.statusBadge;
 
-  const getReferralStatusTextStyle = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return [styles.referralStatusText, styles.referralStatusTextConfirmed];
-      case 'completed':
-        return [styles.referralStatusText, styles.referralStatusTextCompleted];
-      case 'cancelled':
-        return [styles.referralStatusText, styles.referralStatusTextCanceled];
-      default:
-        return styles.referralStatusText;
-    }
-  };
+  const getReferralStatusTextStyle = (_status: string) => styles.statusText;
 
-  const getStatusTextStyle = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return [styles.statusText, styles.statusTextConfirmed];
-      case 'pending':
-        return [styles.statusText, styles.statusTextPending];
-      case 'completed':
-        return [styles.statusText, styles.statusTextCompleted];
-      case 'cancelled':
-        return [styles.statusText, styles.statusTextCanceled];
-      default:
-        return styles.statusText;
-    }
-  };
+  const getStatusTextStyle = (_status: string) => styles.statusText;
 
   // === Referral Card ===
   const renderReferralCard = (referralData: any) => {
@@ -604,7 +551,7 @@ export default function SpecialistAppointmentsScreen() {
       }
     };
 
-    const isPending = appointment.status === 'pending';
+    // Actions for referrals are moved to referral details screen
     const patientName = `${appointment.patientFirstName} ${appointment.patientLastName}`;
     const patientInitials = `${appointment.patientFirstName?.[0] || ''}${appointment.patientLastName?.[0] || ''}`;
 
@@ -631,6 +578,7 @@ export default function SpecialistAppointmentsScreen() {
             </Text>
           </View>
           <View style={getReferralStatusBadgeStyle(appointment.status)}>
+            {getStatusIcon(appointment.status)}
             <Text style={getReferralStatusTextStyle(appointment.status)}>
               {appointment.status === 'confirmed' ? 'Confirmed' :
                appointment.status === 'pending' || appointment.status === 'pending_acceptance' ? 'Pending' :
@@ -641,67 +589,46 @@ export default function SpecialistAppointmentsScreen() {
         </View>
 
         <View style={styles.appointmentMeta}>
+          <View style={styles.subtleDividerLight} />
           <View style={styles.metaRow}>
-            <Clock size={16} color="#6B7280" />
-            <Text style={styles.metaText}>
-              {formatDisplayDate(referral?.appointmentDate || '')} at {formatDisplayTime(referral?.appointmentTime || '')}
+            <Text style={styles.metaLabel}>Date:</Text>
+            <Text style={styles.metaValue}>
+              {formatDisplayDate(referral?.appointmentDate || '')}
             </Text>
           </View>
           <View style={styles.metaRow}>
-            <MapPin size={16} color="#6B7280" />
-            <Text style={styles.metaText}>
+            <Text style={styles.metaLabel}>Time:</Text>
+            <Text style={styles.metaValue}>
+              {formatDisplayTime(referral?.appointmentTime || '')}
+            </Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Clinic:</Text>
+            <Text style={styles.metaValue}>
               {(() => {
                 const clinic = referral?.referringClinicId ? clinicData[referral.referringClinicId] : null;
                 return clinic?.name || referral?.referringClinicName || 'Clinic not specified';
               })()}
             </Text>
           </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Referred by:</Text>
+            <Text style={styles.metaValue}>
+              {referral?.referringGeneralistFirstName || referral?.referringGeneralistLastName
+                ? `Dr. ${`${referral?.referringGeneralistFirstName || ''} ${referral?.referringGeneralistLastName || ''}`.trim()}`
+                : 'Unknown'}
+            </Text>
+          </View>
         </View>
 
         {referral?.initialReasonForReferral && (
-          <View style={styles.notesSection}>
+          <View style={[styles.notesSection, { marginBottom: 10 }]}>
             <Text style={styles.notesLabel}>Reason:</Text>
             <Text style={styles.notesText}>{referral.initialReasonForReferral}</Text>
           </View>
         )}
 
-        <View style={styles.referralCardActions}>
-          {isPending ? (
-            <>
-              <TouchableOpacity
-                style={styles.declineButton}
-                onPress={(e) => {
-                  e.stopPropagation(); // Prevent card click
-                  handleDeclineReferral(appointment);
-                }}
-              >
-                <X size={16} color="#EF4444" />
-                <Text style={styles.declineButtonText}>Decline</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.acceptButton}
-                onPress={(e) => {
-                  e.stopPropagation(); // Prevent card click
-                  handleAcceptReferral(appointment);
-                }}
-              >
-                <Check size={16} color="#FFFFFF" />
-                <Text style={styles.acceptButtonText}>Accept</Text>
-              </TouchableOpacity>
-            </>
-          ) : appointment.status === 'confirmed' ? (
-            <TouchableOpacity
-              style={styles.diagnoseButton}
-              onPress={(e) => {
-                e.stopPropagation(); // Prevent card click
-                handleDiagnosePatient(appointment);
-              }}
-            >
-              <Stethoscope size={16} color="#FFFFFF" />
-              <Text style={styles.diagnoseButtonText}>Diagnose Patient</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
+        {/* Actions moved to referral details screen */}
       </TouchableOpacity>
     );
   };
@@ -1384,7 +1311,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     borderRadius: 8,
     padding: 12,
-    marginBottom: -10,
+    marginBottom: -12,
   },
   notesLabel: {
     fontSize: 13,
@@ -1771,6 +1698,11 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#E5E7EB',
     marginVertical: 12,
+  },
+  subtleDividerLight: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 10,
   },
   keyValueRow: {
     flexDirection: 'row',
