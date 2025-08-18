@@ -296,6 +296,7 @@ export default function PatientConsultationScreen() {
   const [feeChecked, setFeeChecked] = useState(false);
   const [professionalFee, setProfessionalFee] = useState<number | null>(null);
   const [loadingFee, setLoadingFee] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   // Update completion status when appointment or referral data changes
   useEffect(() => {
@@ -911,145 +912,134 @@ export default function PatientConsultationScreen() {
       return;
     }
 
-    // Get the actual patientId string value
     const patientIdString = Array.isArray(patientId) ? patientId[0] : patientId;
     console.log('Using patientIdString:', patientIdString);
 
-    Alert.alert(
-      'Complete Consultation',
-      'Are you sure you want to complete this consultation? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Complete',
-          style: 'default',
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              
-              // Prepare consultation data
-              console.log('Form data diagnoses before saving:', formData.diagnoses);
-              console.log('Number of diagnoses:', formData.diagnoses.length);
-              
-              const consultationData = {
-                diagnosis: formData.diagnoses,
-                differentialDiagnosis: formData.differentialDiagnosis,
-                reviewOfSymptoms: formData.reviewOfSymptoms,
-                presentIllnessHistory: formData.presentIllnessHistory,
-                soapNotes: {
-                  subjective: formData.subjective,
-                  objective: formData.objective,
-                  assessment: formData.assessment,
-                  plan: formData.plan,
-                },
-                labResults: formData.labResults,
-                medications: formData.medications,
-                prescriptions: formData.prescriptions,
-                certificates: formData.certificates,
-                clinicalSummary: formData.clinicalSummary,
-                treatmentPlan: formData.treatmentPlan,
-                provider: {
-                  id: user?.uid || '',
-                  firstName: user?.firstName || '',
-                  lastName: user?.lastName || '',
-                  providerType: 'specialist',
-                  sourceSystem: 'UniHealth_Patient_App',
-                },
-                type: 'General Consultation',
-              };
+    try {
+      setIsCompleting(true);
+      setIsLoading(true);
 
-                             // Handle consultation - prioritize referral if both exist
-               if (referralIdString) {
-                 console.log('Saving consultation for referral:', referralIdString);
-                 console.log('Referral ID format check:', {
-                   referralId: referralIdString,
-                   isFirebaseKey: referralIdString.startsWith('-'),
-                   length: referralIdString.length
-                 });
-                 
-                 const referralConsultationId = await databaseService.saveReferralConsultationData(
-                   patientIdString,
-                   referralIdString as string,
-                   {
-                     ...consultationData,
-                     type: 'Referral Consultation'
-                   }
-                 );
-                 console.log('Referral consultation saved with ID:', referralConsultationId);
-                 
-                 // Update referral with the referralConsultationId to create the link
-                 try {
-                   // Check if referral exists before trying to update it
-                   const referralExists = await databaseService.getReferralById(referralIdString as string);
-                   if (referralExists) {
-                     await databaseService.updateReferral(referralIdString as string, {
-                       status: 'completed',
-                       referralConsultationId: referralConsultationId,
-                     });
-                     console.log('Referral updated with referralConsultationId:', referralConsultationId);
-                   } else {
-                     console.warn('Referral not found with ID:', referralIdString);
-                     console.log('This might be because the referral ID is in a custom format. Consultation data is still saved.');
-                   }
-                 } catch (error) {
-                   console.error('Error updating referral with consultation ID:', error);
-                   console.log('Referral update failed, but consultation data is still saved successfully.');
-                   // Don't fail the consultation completion if referral update fails
-                 }
+      // Prepare consultation data
+      console.log('Form data diagnoses before saving:', formData.diagnoses);
+      console.log('Number of diagnoses:', formData.diagnoses.length);
 
-                 // Clean up temporary referral data that was saved with referralId as the key
-                 try {
-                   await databaseService.cleanupTemporaryReferralData(patientIdString, referralIdString as string);
-                   console.log('Temporary referral data cleaned up successfully');
-                 } catch (cleanupError) {
-                   console.error('Error cleaning up temporary referral data:', cleanupError);
-                   // Don't fail the consultation completion if cleanup fails
-                 }
-                
-                // If there's also an appointment ID, update its status to completed
-                if (consultationIdString) {
-                  try {
-                    await databaseService.updateAppointmentStatus(consultationIdString as string, 'completed');
-                    console.log('Appointment status updated to completed');
-                  } catch (error) {
-                    console.error('Error updating appointment status:', error);
-                    // Don't fail the consultation completion if appointment status update fails
-                  }
-                }
-              } else if (consultationIdString) {
-                console.log('Saving consultation for appointment:', consultationIdString);
-                const consultationId = await databaseService.saveConsultationData(
-                  patientIdString,
-                  consultationIdString as string,
-                  consultationData
-                );
-                console.log('Consultation saved with ID:', consultationId);
-                
-                // Update appointment status to completed
-                try {
-                  await databaseService.updateAppointmentStatus(consultationIdString as string, 'completed');
-                  console.log('Appointment status updated to completed');
-                } catch (error) {
-                  console.error('Error updating appointment status:', error);
-                  // Don't fail the consultation completion if appointment status update fails
-                }
-              }
+      const consultationData = {
+        diagnosis: formData.diagnoses,
+        differentialDiagnosis: formData.differentialDiagnosis,
+        reviewOfSymptoms: formData.reviewOfSymptoms,
+        presentIllnessHistory: formData.presentIllnessHistory,
+        soapNotes: {
+          subjective: formData.subjective,
+          objective: formData.objective,
+          assessment: formData.assessment,
+          plan: formData.plan,
+        },
+        labResults: formData.labResults,
+        medications: formData.medications,
+        prescriptions: formData.prescriptions,
+        certificates: formData.certificates,
+        clinicalSummary: formData.clinicalSummary,
+        treatmentPlan: formData.treatmentPlan,
+        provider: {
+          id: user?.uid || '',
+          firstName: user?.firstName || '',
+          lastName: user?.lastName || '',
+          providerType: 'specialist',
+          sourceSystem: 'UniHealth_Patient_App',
+        },
+        type: 'General Consultation',
+      };
 
-              // Update local state to reflect completion
-              setIsCompleted(true);
-              
-              Alert.alert('Success', 'Consultation completed successfully!');
-              router.back();
-            } catch (error) {
-              console.error('Error saving consultation:', error);
-              Alert.alert('Error', 'Failed to save consultation. Please try again.');
-            } finally {
-              setIsLoading(false);
-            }
+      // Handle consultation - prioritize referral if both exist
+      if (referralIdString) {
+        console.log('Saving consultation for referral:', referralIdString);
+        console.log('Referral ID format check:', {
+          referralId: referralIdString,
+          isFirebaseKey: (referralIdString as string).startsWith('-'),
+          length: (referralIdString as string).length,
+        });
+
+        const referralConsultationId = await databaseService.saveReferralConsultationData(
+          patientIdString,
+          referralIdString as string,
+          {
+            ...consultationData,
+            type: 'Referral Consultation',
+          }
+        );
+        console.log('Referral consultation saved with ID:', referralConsultationId);
+
+        // Update referral with the referralConsultationId to create the link
+        try {
+          const referralExists = await databaseService.getReferralById(referralIdString as string);
+          if (referralExists) {
+            await databaseService.updateReferral(referralIdString as string, {
+              status: 'completed',
+              referralConsultationId,
+            });
+            console.log('Referral updated with referralConsultationId:', referralConsultationId);
+          } else {
+            console.warn('Referral not found with ID:', referralIdString);
+          }
+        } catch (error) {
+          console.error('Error updating referral with consultation ID:', error);
+        }
+
+        // Clean up temporary referral data saved with referralId as the key
+        try {
+          await databaseService.cleanupTemporaryReferralData(patientIdString, referralIdString as string);
+          console.log('Temporary referral data cleaned up successfully');
+        } catch (cleanupError) {
+          console.error('Error cleaning up temporary referral data:', cleanupError);
+        }
+
+        // If there's also an appointment ID, update its status to completed
+        if (consultationIdString) {
+          try {
+            await databaseService.updateAppointmentStatus(consultationIdString as string, 'completed');
+            console.log('Appointment status updated to completed');
+          } catch (error) {
+            console.error('Error updating appointment status:', error);
           }
         }
-      ]
-    );
+      } else if (consultationIdString) {
+        console.log('Saving consultation for appointment:', consultationIdString);
+        const consultationId = await databaseService.saveConsultationData(
+          patientIdString,
+          consultationIdString as string,
+          consultationData
+        );
+        console.log('Consultation saved with ID:', consultationId);
+
+        // Update appointment status to completed
+        try {
+          await databaseService.updateAppointmentStatus(consultationIdString as string, 'completed');
+          console.log('Appointment status updated to completed');
+        } catch (error) {
+          console.error('Error updating appointment status:', error);
+        }
+      }
+
+      // Update local state to reflect completion
+      setIsCompleted(true);
+
+      // Close the modal and navigate back to force refresh of details page
+      setShowFeeModal(false);
+      const refreshParam = `&_=${Date.now()}`;
+      if (referralIdString) {
+        router.replace(`/(specialist)/referral-details?id=${referralIdString}${refreshParam}`);
+      } else if (consultationIdString) {
+        router.replace(`/visit-overview?id=${consultationIdString}${refreshParam}`);
+      } else {
+        router.back();
+      }
+    } catch (error) {
+      console.error('Error saving consultation:', error);
+      Alert.alert('Error', 'Failed to save consultation. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsCompleting(false);
+    }
   };
 
 
