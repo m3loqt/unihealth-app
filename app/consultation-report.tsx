@@ -11,11 +11,15 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Download, Share2 } from 'lucide-react-native';
+import { CheckCircle2 } from 'lucide-react-native';
 import { databaseService } from '../src/services/database/firebase';
 import { WebView } from 'react-native-webview';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
+import { Asset } from 'expo-asset';
+import { Modal, Button } from '../src/components/ui';
+import { COLORS } from '../src/constants/colors';
 
 type MedicalHistory = any;
 
@@ -29,6 +33,9 @@ export default function ConsultationReportScreen() {
   const [provider, setProvider] = useState<any>(null);
   const [history, setHistory] = useState<MedicalHistory | null>(null);
   const webViewRef = useRef<WebView>(null);
+  const [logoDataUri, setLogoDataUri] = useState<string | null>(null);
+  const [downloadModalVisible, setDownloadModalVisible] = useState(false);
+  const [downloadSavedPath, setDownloadSavedPath] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -75,6 +82,23 @@ export default function ConsultationReportScreen() {
     };
     load();
   }, [id]);
+
+  // Load logo asset as base64 for watermark
+  useEffect(() => {
+    (async () => {
+      try {
+        const asset = Asset.fromModule(require('../assets/images/HEALTH Logo.png'));
+        await asset.downloadAsync();
+        const localUri = asset.localUri || asset.uri;
+        if (localUri) {
+          const b64 = await FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 });
+          setLogoDataUri(`data:image/png;base64,${b64}`);
+        }
+      } catch (e) {
+        // ignore watermark load failures
+      }
+    })();
+  }, []);
 
   // Build safe HTML helpers and PDF actions
   const buildSafe = (val?: any) => {
@@ -353,8 +377,11 @@ export default function ConsultationReportScreen() {
     @page { size: 8.5in 11in; margin: 0.5in; }
     html, body { margin: 0; padding: 0; background: #F3F4F6; color: ${text}; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
     .preview { display: flex; flex-direction: column; align-items: center; padding: 16px; }
-    .page { width: 100%; max-width: 8.5in; min-height: 11in; background: #FFFFFF; box-shadow: 0 2px 16px rgba(0,0,0,0.08); position: relative; border: 1px solid #E5E7EB; display: flex; flex-direction: column; }
+    .page { width: 100%; max-width: 8.5in; height: 11in; background: #FFFFFF; box-shadow: 0 2px 16px rgba(0,0,0,0.08); position: relative; border: 1px solid #E5E7EB; display: flex; flex-direction: column; box-sizing: border-box; }
     .page-body { flex: 1; }
+    .page .header, .page .top, .page .footer, .page .page-body { position: relative; z-index: 1; }
+    .watermark { position: absolute; left: 0; right: 0; bottom: 64px; display: flex; align-items: center; justify-content: center; opacity: 0.14; z-index: 0; pointer-events: none; }
+    .watermark img { max-width: 60%; max-height: 60%; object-fit: contain; }
     .preview { gap: 16px; }
     .page + .page { margin-top: 16px; }
     .header { padding: 8px 16px; background: ${brandPrimary}; color: #fff; font-weight: 600; font-size: 13px; letter-spacing: 0.3px; display: flex; align-items: center; justify-content: space-between; }
@@ -398,7 +425,7 @@ export default function ConsultationReportScreen() {
     @media print {
       body { background: #FFFFFF; }
       .preview { padding: 0; }
-      .page { box-shadow: none; width: auto; min-height: auto; border: none; margin: 0; }
+      .page { box-shadow: none; width: 100%; height: calc(11in - 0in); min-height: auto; border: none; margin: 0; max-width: none; }
       .footer-fixed { position: fixed; bottom: 0; left: 0; right: 0; }
       .header-fixed { position: fixed; top: 0; left: 0; right: 0; }
     }
@@ -407,6 +434,7 @@ export default function ConsultationReportScreen() {
 <body>
   <div class="preview">
     <div class="page">
+      <div class="watermark">${logoDataUri ? `<img src="${logoDataUri}" />` : ''}</div>
       <div class="header"><span class="brand-left">UNIHEALTH</span><span class="brand-right">PATIENT VISIT SUMMARY</span></div>
       <div class="top avoid-break">
         <div class="clinic">
@@ -440,6 +468,7 @@ export default function ConsultationReportScreen() {
 
       <div id="content">
         <div class="section avoid-break no-border">
+          <p class="title">Medical History</p>
           ${hpiRosTableHtml}
         </div>
         <div class="divider divider-narrow"></div>
@@ -471,8 +500,7 @@ export default function ConsultationReportScreen() {
             </table>
           ` : `<div class=\"value\">No medications recorded</div>`}
         </div>
-        <div class="divider"></div>
-
+        
         <div class="row">
           <div class="cell">
             <p class="title">Diagnosis</p>
@@ -493,7 +521,7 @@ export default function ConsultationReportScreen() {
                   `).join('')}
                 </tbody>
               </table>
-            ` : `<div class=\"value\">No diagnosis recorded</div>`}
+            ` : `<div class=\\\"value\\\">No diagnosis recorded</div>`}
           </div>
           <div class="cell">
             <p class="title">Differential Diagnosis</p>
@@ -525,14 +553,20 @@ export default function ConsultationReportScreen() {
       const header = firstPage.querySelector('.header');
       const top = firstPage.querySelector('.top');
       const footer = firstPage.querySelector('.footer');
-      const pageHeight = 11 * inch;
+      // Use the actual rendered height for better accuracy across devices/scales
+      const pageHeight = firstPage.getBoundingClientRect().height || (11 * inch);
       const availableFirst = pageHeight - header.offsetHeight - top.offsetHeight - footer.offsetHeight;
       const availableOther = pageHeight - header.offsetHeight - footer.offsetHeight;
       const pages = [firstPage];
+      const watermarkSrc = '${logoDataUri || ''}';
 
       function createPage() {
         const page = document.createElement('div');
         page.className = 'page';
+        const wm = document.createElement('div');
+        wm.className = 'watermark';
+        if (watermarkSrc) { wm.innerHTML = '<img src="' + watermarkSrc + '" />'; }
+        page.appendChild(wm);
         page.appendChild(header.cloneNode(true));
         const body = document.createElement('div');
         body.className = 'page-body';
@@ -556,7 +590,9 @@ export default function ConsultationReportScreen() {
       blocks.forEach(block => {
         const currentAvailable = isFirstBody ? availableFirst : availableOther;
         currentBody.appendChild(block);
-        if (currentBody.scrollHeight > currentAvailable) {
+        // Recompute available when moving to a new page after first
+        const exceeds = currentBody.scrollHeight > currentAvailable;
+        if (exceeds) {
           currentBody.removeChild(block);
           currentBody = createPage();
           isFirstBody = false;
@@ -576,16 +612,23 @@ export default function ConsultationReportScreen() {
           foot.appendChild(right);
         }
         right.textContent = 'Page ' + (i + 1) + ' of ' + total;
+        // Adjust watermark position to sit just above the footer
+        const wm = p.querySelector('.watermark');
+        if (wm) {
+          const offset = (foot.offsetHeight || 0) + 12; // 12px breathing room
+          wm.style.bottom = offset + 'px';
+        }
       });
     })();
   </script>
 </body>
 </html>`;
-  }, [clinic, referral, patient, provider, history]);
+  }, [clinic, referral, patient, provider, history, logoDataUri]);
 
   const handleGeneratePdf = async () => {
     try {
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      // Letter size in points: 8.5in x 11in = 612 x 792
+      const { uri } = await Print.printToFileAsync({ html, width: 612, height: 792, base64: false });
       return uri;
     } catch (e) {
       Alert.alert('Error', 'Failed to generate PDF.');
@@ -597,9 +640,31 @@ export default function ConsultationReportScreen() {
     const uri = await handleGeneratePdf();
     if (!uri) return;
     try {
-      const dest = FileSystem.documentDirectory + `UniHealth_Visit_Report_${Date.now()}.pdf`;
+      const filename = `UniHealth_Visit_Report_${Date.now()}.pdf`;
+      if (Platform.OS === 'android') {
+        try {
+          const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+          if (permissions.granted) {
+            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+            const createdUri = await FileSystem.StorageAccessFramework.createFileAsync(
+              permissions.directoryUri,
+              filename,
+              'application/pdf'
+            );
+            await FileSystem.StorageAccessFramework.writeAsStringAsync(createdUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+            setDownloadSavedPath('Saved to selected folder');
+            setDownloadModalVisible(true);
+            return;
+          }
+        } catch (err) {
+          // fall through to internal save
+        }
+      }
+      // Fallback (iOS or if user denied folder selection on Android): save to app documents
+      const dest = FileSystem.documentDirectory + filename;
       await FileSystem.copyAsync({ from: uri, to: dest });
-      await Sharing.shareAsync(dest, { mimeType: 'application/pdf', dialogTitle: 'Save report as PDF' });
+      setDownloadSavedPath(dest);
+      setDownloadModalVisible(true);
     } catch (e) {
       Alert.alert('Error', 'Failed to save PDF.');
     }
@@ -661,6 +726,25 @@ export default function ConsultationReportScreen() {
           <Text style={styles.secondaryText}>Share PDF Report</Text>
         </TouchableOpacity>
         </View>
+
+      <Modal
+        visible={downloadModalVisible}
+        onClose={() => setDownloadModalVisible(false)}
+        showBackdrop
+        backdropOpacity={0.4}
+      >
+        <View style={{ alignItems: 'center', gap: 12 }}>
+          <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+            <CheckCircle2 size={36} color={COLORS.primary} />
+          </View>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: '#1F2937' }}>Visit Report Successfully Downloaded</Text>
+          <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center' }}>
+            {downloadSavedPath ? `Your report has been saved.${Platform.OS !== 'android' ? '\nPath: ' + downloadSavedPath : ''}` : 'Your report has been saved.'}
+          </Text>
+          <View style={{ height: 8 }} />
+          <Button title="Done" onPress={() => setDownloadModalVisible(false)} fullWidth />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
