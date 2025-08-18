@@ -974,12 +974,12 @@ export default function ReferralDetailsScreen() {
               <TouchableOpacity
                 style={styles.primaryBottomButton}
                 onPress={() => {
-                  alert('Downloading referral record...');
+                  router.push({ pathname: '/consultation-report', params: { id: String(id) } });
                 }}
                 activeOpacity={0.8}
               >
                 <Download size={18} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.primaryBottomButtonText}>Download Record</Text>
+                <Text style={styles.primaryBottomButtonText}>Generate Visit Report</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.secondaryBottomButtonOutline}
