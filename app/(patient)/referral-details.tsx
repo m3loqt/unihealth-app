@@ -716,6 +716,20 @@ export default function PatientReferralDetailsScreen() {
             </View>
           )}
         </View>
+
+        {/* View Visit Report (if completed) */}
+        {referralData.status.toLowerCase() === 'completed' && (
+          <View style={[styles.sectionSpacing, { marginTop: -10 }] }>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => router.push({ pathname: '/consultation-report', params: { id: String(id) } })}
+              activeOpacity={0.85}
+            >
+              <Download size={18} color="#FFFFFF" />
+              <Text style={styles.primaryButtonText}>View Visit Report</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
 
       {/* Bottom action bar (shown when completed) */}
