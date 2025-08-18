@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -6,15 +6,16 @@ import {
   StyleSheet,
   StatusBar,
   Platform,
-  ScrollView,
   TouchableOpacity,
   Alert,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Download } from 'lucide-react-native';
+import { ChevronLeft, Download, Share2 } from 'lucide-react-native';
 import { databaseService } from '../src/services/database/firebase';
-import { captureRef } from 'react-native-view-shot';
-import * as MediaLibrary from 'expo-media-library';
+import { WebView } from 'react-native-webview';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 
 type MedicalHistory = any;
 
@@ -27,7 +28,7 @@ export default function ConsultationReportScreen() {
   const [patient, setPatient] = useState<any>(null);
   const [provider, setProvider] = useState<any>(null);
   const [history, setHistory] = useState<MedicalHistory | null>(null);
-  const reportRef = useRef<View>(null);
+  const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -44,13 +45,14 @@ export default function ConsultationReportScreen() {
         setReferral(refData);
 
         // Fetch related entities
-        const [clinicData, patientData, specialistData] = await Promise.all([
+        const [clinicData, userData, patientProfileData, specialistData] = await Promise.all([
           refData.referringClinicId ? databaseService.getDocument(`clinics/${refData.referringClinicId}`) : null,
           refData.patientId ? databaseService.getDocument(`users/${refData.patientId}`) : null,
-          refData.assignedSpecialistId ? databaseService.getDocument(`specialists/${refData.assignedSpecialistId}`) : null,
+          refData.patientId ? databaseService.getDocument(`patients/${refData.patientId}`) : null,
+          refData.assignedSpecialistId ? databaseService.getSpecialistProfile(refData.assignedSpecialistId) : null,
         ]);
         setClinic(clinicData);
-        setPatient(patientData);
+        setPatient({ ...(userData || {}), ...(patientProfileData || {}) });
         setProvider(specialistData);
 
         let mh: MedicalHistory | null = null;
@@ -74,29 +76,17 @@ export default function ConsultationReportScreen() {
     load();
   }, [id]);
 
-  const requestMediaPermission = async () => {
-    try {
-      const res = await MediaLibrary.requestPermissionsAsync();
-      return res.granted;
-    } catch {
-      return false;
-    }
-  };
-
-  const handleDownloadReport = async () => {
-    try {
-      const ok = await requestMediaPermission();
-      if (!ok) {
-        Alert.alert('Permission required', 'Please allow media library access to save the report.');
-        return;
-      }
-      if (!reportRef.current) return;
-      const uri = await captureRef(reportRef, { format: 'png', quality: 1 });
-      await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert('Saved', 'Report saved to your gallery.');
-    } catch (e) {
-      Alert.alert('Error', 'Failed to save report.');
-    }
+  // Build safe HTML helpers and PDF actions
+  const buildSafe = (val?: any) => {
+    if (val === undefined || val === null) return '—';
+    const str = String(val);
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/\n/g, '<br/>');
   };
 
   const formatDate = (date?: string) => {
@@ -114,13 +104,524 @@ export default function ConsultationReportScreen() {
     return new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   };
 
-  const fullName = (obj: any, fallback = '—') => {
+  // More tolerant parser for DOB and similar fields
+  const formatDateFlexible = (input?: any) => {
+    if (!input) return '—';
+    try {
+      // Firestore Timestamp
+      if (typeof input === 'object' && input.seconds) {
+        return new Date(input.seconds * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      }
+      const str = String(input).trim();
+      // YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        return new Date(`${str}T00:00:00Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      }
+      // MM/DD/YYYY
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
+        const [m, d, y] = str.split('/').map(Number);
+        return new Date(Date.UTC(y, (m || 1) - 1, d || 1)).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      }
+      // Milliseconds timestamp
+      if (/^\d{10,13}$/.test(str)) {
+        const ms = str.length === 13 ? Number(str) : Number(str) * 1000;
+        return new Date(ms).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      }
+      // Fallback to native Date parsing
+      const asDate = new Date(str);
+      if (!isNaN(asDate.getTime())) {
+        return asDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      }
+      return str;
+    } catch {
+      return String(input);
+    }
+  };
+
+  const html = useMemo(() => {
+    const full = (o: any, fb: string) => fullName(o, fb);
+    const clinicName = buildSafe(clinic?.name || referral?.referringClinicName || 'Clinic');
+    const addressParts = [
+      clinic?.addressLine || clinic?.address || clinic?.addressLine1 || clinic?.street,
+      clinic?.addressLine2,
+      clinic?.barangay,
+      clinic?.district,
+      clinic?.city || clinic?.municipality,
+      clinic?.province || clinic?.state,
+      clinic?.postalCode || clinic?.zip || clinic?.zipCode,
+      clinic?.country,
+    ].filter(Boolean);
+    const clinicAddress = addressParts.join(', ');
+    const clinicContact = buildSafe((clinic?.contactNumber || clinic?.phone || clinic?.telephone || '') as any);
+    const patientName = buildSafe(full(patient, 'Unknown Patient'));
+    const patientDob = buildSafe(formatDateFlexible((patient?.dateOfBirth || patient?.dob || patient?.birthDate) as any));
+    const patientGender = buildSafe((patient?.gender || patient?.sex || '') as string) || '—';
+    const visitDate = `${formatDate(referral?.appointmentDate)} ${formatTime(referral?.appointmentTime)}`;
+    const specialistName = buildSafe(full(provider, (`${referral?.assignedSpecialistFirstName || ''} ${referral?.assignedSpecialistLastName || ''}`).trim() || 'Unknown'));
+    const specialistSpecialty = buildSafe((provider?.specialty || provider?.specialization || provider?.field || referral?.assignedSpecialistSpecialty || referral?.specialty || '') as string) || '—';
+
+    const diagnosis = Array.isArray(history?.diagnosis) && history?.diagnosis?.length
+      ? history?.diagnosis.map((d: any) => `${d.code ? `${d.code}: ` : ''}${d.description}`).join('<br/>')
+      : 'No diagnosis recorded';
+
+    const meds = Array.isArray(history?.prescriptions) && history?.prescriptions?.length
+      ? history?.prescriptions.map((p: any) => `${buildSafe(p.medication)} ${buildSafe(p.dosage)} • ${buildSafe(p.frequency || '')}`).join('<br/>')
+      : 'No medications recorded';
+
+    const brandPrimary = '#1E40AF';
+    const borderColor = '#E5E7EB';
+    const subtle = '#6B7280';
+    const text = '#111827';
+
+    // Build tabular HTML fragments
+    const hpiRosTableHtml = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:50%">History of Present Illness</th>
+            <th style="width:50%">Review of Symptoms</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${buildSafe(history?.presentIllnessHistory || 'Not recorded')}</td>
+            <td>${buildSafe(history?.reviewOfSymptoms || 'Not recorded')}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    let labTableHtml = '';
+    if (Array.isArray(history?.labResults) && history?.labResults?.length) {
+      const labRows = history?.labResults.map((r: any) => {
+        const test = r?.test || r?.name || r?.parameter || r?.title || '';
+        const result = r?.result || r?.value || r?.finding || '';
+        const units = r?.units || r?.unit || '';
+        const dateVal = r?.date || r?.performedAt || r?.updatedAt || r?.createdAt || '';
+        const date = formatDateFlexible(dateVal);
+        const notes = r?.notes || r?.note || r?.comment || r?.comments || '';
+        return `
+          <tr>
+            <td>${buildSafe(test)}</td>
+            <td>${buildSafe(result)}</td>
+            <td>${buildSafe(units)}</td>
+            <td>${buildSafe(date)}</td>
+            <td>${buildSafe(notes)}</td>
+          </tr>
+        `;
+      }).join('');
+      labTableHtml = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width:30%">Lab Test</th>
+              <th style="width:20%">Result</th>
+              <th style="width:15%">Units</th>
+              <th style="width:20%">Date</th>
+              <th style="width:15%">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${labRows}
+          </tbody>
+        </table>
+      `;
+    } else {
+      labTableHtml = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Lab Results</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${buildSafe(history?.labResults || 'No lab results recorded')}</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+    }
+
+    // Differential Diagnosis table (supports string, array of strings, or array of objects with code/description)
+    let diffDxTableHtml = '';
+    const diffDx = (history as any)?.differentialDiagnosis;
+    if (Array.isArray(diffDx) && diffDx.length) {
+      const first = diffDx[0];
+      if (typeof first === 'string') {
+        const rows = diffDx.map((val: string) => `<tr><td>${buildSafe(val)}</td></tr>`).join('');
+        diffDxTableHtml = `
+          <table class="data-table">
+            <thead>
+              <tr><th>Differential Diagnosis</th></tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+        `;
+      } else {
+        const rows = diffDx.map((d: any) => `
+          <tr>
+            <td>${buildSafe(d?.code || '')}</td>
+            <td>${buildSafe(d?.description || '')}</td>
+          </tr>
+        `).join('');
+        diffDxTableHtml = `
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:25%">Code</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+        `;
+      }
+    } else {
+      diffDxTableHtml = `
+        <table class="data-table">
+          <thead>
+            <tr><th>Differential Diagnosis</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>${buildSafe(diffDx || 'Not recorded')}</td></tr>
+          </tbody>
+        </table>
+      `;
+    }
+
+    // SOAP Notes as tables (two separate two-column tables for clarity)
+    const soapTablesHtml = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:50%">Subjective</th>
+            <th style="width:50%">Objective</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${buildSafe(history?.soapNotes?.subjective || '—')}</td>
+            <td>${buildSafe(history?.soapNotes?.objective || '—')}</td>
+          </tr>
+        </tbody>
+      </table>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:50%">Assessment</th>
+            <th style="width:50%">Plan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${buildSafe(history?.soapNotes?.assessment || '—')}</td>
+            <td>${buildSafe(history?.soapNotes?.plan || '—')}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    // Treatment & Summary as table
+    const treatmentSummaryTableHtml = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:50%">Treatment Plan</th>
+            <th style="width:50%">Clinical Summary</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${buildSafe(history?.treatmentPlan || '—')}</td>
+            <td>${buildSafe(history?.clinicalSummary || '—')}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <style>
+    @page { size: 8.5in 11in; margin: 0.5in; }
+    html, body { margin: 0; padding: 0; background: #F3F4F6; color: ${text}; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+    .preview { display: flex; flex-direction: column; align-items: center; padding: 16px; }
+    .page { width: 100%; max-width: 8.5in; min-height: 11in; background: #FFFFFF; box-shadow: 0 2px 16px rgba(0,0,0,0.08); position: relative; border: 1px solid #E5E7EB; display: flex; flex-direction: column; }
+    .page-body { flex: 1; }
+    .preview { gap: 16px; }
+    .page + .page { margin-top: 16px; }
+    .header { padding: 8px 16px; background: ${brandPrimary}; color: #fff; font-weight: 600; font-size: 13px; letter-spacing: 0.3px; display: flex; align-items: center; justify-content: space-between; }
+    .brand-left { font-weight: 700; }
+    .brand-right { opacity: 0.95; }
+    .top { padding: 22px 16px; border-bottom: 1px solid ${borderColor}; }
+    .clinic { text-align: center; margin-bottom: 25px; }
+    .clinic-name { font-weight: 700; font-size: 16px; color: #111827; margin: 0 0 2px; }
+    .muted { color: ${subtle}; font-size: 12px; margin: 0; }
+    .info-row { display: flex; gap: 16px; align-items: flex-start; }
+    .left { flex: 1; text-align: left; }
+    .right { flex: 1; text-align: right; }
+    .info-subrow { display: flex; gap: 16px; align-items: flex-start; padding-top: 6px; }
+    .sub-left { flex: 1; text-align: left; }
+    .sub-right { flex: 1; text-align: right; }
+    .item { margin: 2px 0; font-size: 12px; color: ${subtle}; font-weight: 400; }
+    .item strong { color: #111827; }
+    .divider { height: 1.5px; background: #9CA3AF; width: calc(100% - 48px); margin: 10px auto; opacity: 0.75; }
+    .divider-narrow { width: calc(100% - 64px); }
+    .section { padding: 16px; border-bottom: 1px solid #F3F4F6; }
+    .no-border { border-bottom: 0; }
+    .row { display: flex; gap: 16px; padding: 12px 16px; }
+    .cell { flex: 1; }
+    .title { font-weight: 600; font-size: 13px; margin: 0 0 8px; color: #1F2937; }
+    .label { color: ${subtle}; font-size: 12px; margin: 8px 0 4px; font-weight: 500; }
+    .value { font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+    .data-table { width: calc(100% - 48px); margin: 6px auto; border-collapse: collapse; font-size: 12px; }
+    .data-table th { text-align: left; font-weight: 600; color: #374151; background: #F9FAFB; border-bottom: 1px solid #E5E7EB; padding: 8px; }
+    .data-table td { color: #374151; border-bottom: 1px solid #E5E7EB; padding: 8px; vertical-align: top; }
+    .footer { padding: 8px 16px; color: ${subtle}; font-size: 11px; background: #F9FAFB; display: flex; align-items: center; justify-content: space-between; }
+    .avoid-break { page-break-inside: avoid; }
+    .page-break { page-break-before: always; }
+
+    /* Screen-only adjustments for narrow devices */
+    @media screen and (max-width: 640px) {
+      .row { flex-direction: column; }
+      .divider { width: 100%; }
+      .data-table { width: 100%; }
+    }
+
+    @media print {
+      body { background: #FFFFFF; }
+      .preview { padding: 0; }
+      .page { box-shadow: none; width: auto; min-height: auto; border: none; margin: 0; }
+      .footer-fixed { position: fixed; bottom: 0; left: 0; right: 0; }
+      .header-fixed { position: fixed; top: 0; left: 0; right: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview">
+    <div class="page">
+      <div class="header"><span class="brand-left">UNIHEALTH</span><span class="brand-right">PATIENT VISIT SUMMARY</span></div>
+      <div class="top avoid-break">
+        <div class="clinic">
+          <p class="clinic-name">${clinicName}</p>
+          ${clinicContact ? `<p class="muted">${clinicContact}</p>` : ''}
+          ${clinicAddress ? `<p class="muted">${buildSafe(clinicAddress)}</p>` : ''}
+        </div>
+        <div class="info-row" style="margin-bottom:0px;">
+          <div class="left">
+            <p class="clinic-name" style="margin-bottom:6px;">${patientName}</p>
+            <p class="item"><span style="color:${subtle}">Date of Birth:</span> ${patientDob}</p>
+            <p class="item"><span style="color:${subtle}">Gender:</span> ${patientGender || '—'}</p>
+            <div style="height:12px"></div>
+          </div>
+          <div class="right">
+            <p class="clinic-name" style="margin-bottom:6px;">Dr. ${specialistName}</p>
+            <p class="item">${specialistSpecialty}</p>
+          </div>
+        </div>
+        <div class="info-subrow">
+          <div class="sub-left">
+            <p class="title" style="margin:0 0 4px;">Reason for Visit</p>
+            <div class="value">${buildSafe(referral?.initialReasonForReferral || 'Not specified')}</div>
+          </div>
+          <div class="sub-right">
+            <p class="item"><span style="color:${subtle}">Visit Date:</span> ${buildSafe(formatDate(referral?.appointmentDate))}</p>
+            <p class="item"><span style="color:${subtle}">Visit Time:</span> ${buildSafe(formatTime(referral?.appointmentTime))}</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="content">
+        <div class="section avoid-break no-border">
+          ${hpiRosTableHtml}
+        </div>
+        <div class="divider divider-narrow"></div>
+
+        <div class="section no-border">
+          <p class="title">Findings & Results</p>
+          ${labTableHtml}
+          <p class="title" style="margin-top:20px">Medications</p>
+          ${Array.isArray(history?.prescriptions) && history?.prescriptions?.length ? `
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:40%">Medication</th>
+                  <th style="width:20%">Dosage</th>
+                  <th style="width:20%">Frequency</th>
+                  <th style="width:20%">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${history?.prescriptions.map((p:any) => `
+                  <tr>
+                    <td>${buildSafe(p.medication)}</td>
+                    <td>${buildSafe(p.dosage)}</td>
+                    <td>${buildSafe(p.frequency)}</td>
+                    <td>${buildSafe(p.description || '')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          ` : `<div class=\"value\">No medications recorded</div>`}
+        </div>
+        <div class="divider"></div>
+
+        <div class="row">
+          <div class="cell">
+            <p class="title">Diagnosis</p>
+            ${Array.isArray(history?.diagnosis) && history?.diagnosis?.length ? `
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width:25%">Code</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${history?.diagnosis.map((d:any) => `
+                    <tr>
+                      <td>${buildSafe(d.code || '')}</td>
+                      <td>${buildSafe(d.description || '')}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            ` : `<div class=\"value\">No diagnosis recorded</div>`}
+          </div>
+          <div class="cell">
+            <p class="title">Differential Diagnosis</p>
+            ${diffDxTableHtml}
+          </div>
+        </div>
+        <div class="divider"></div>
+
+        <div class="section no-border">
+          <p class="title">SOAP Notes</p>
+          ${soapTablesHtml}
+        </div>
+        <div class="divider"></div>
+
+        <div class="section">
+          <p class="title">Treatment & Summary</p>
+          ${treatmentSummaryTableHtml}
+        </div>
+      </div>
+
+      <div class="footer"><span class="footer-left">Generated by UniHealth • ${new Date().toLocaleString()}</span><span class="footer-right"></span></div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const inch = 96;
+      const firstPage = document.querySelector('.page');
+      const header = firstPage.querySelector('.header');
+      const top = firstPage.querySelector('.top');
+      const footer = firstPage.querySelector('.footer');
+      const pageHeight = 11 * inch;
+      const availableFirst = pageHeight - header.offsetHeight - top.offsetHeight - footer.offsetHeight;
+      const availableOther = pageHeight - header.offsetHeight - footer.offsetHeight;
+      const pages = [firstPage];
+
+      function createPage() {
+        const page = document.createElement('div');
+        page.className = 'page';
+        page.appendChild(header.cloneNode(true));
+        const body = document.createElement('div');
+        body.className = 'page-body';
+        page.appendChild(body);
+        page.appendChild(footer.cloneNode(true));
+        document.querySelector('.preview').appendChild(page);
+        pages.push(page);
+        return body;
+      }
+
+      const content = document.getElementById('content');
+      const blocks = Array.from(content.children);
+      content.remove();
+
+      const firstBody = document.createElement('div');
+      firstBody.className = 'page-body';
+      firstPage.insertBefore(firstBody, footer);
+      let currentBody = firstBody;
+      let isFirstBody = true;
+
+      blocks.forEach(block => {
+        const currentAvailable = isFirstBody ? availableFirst : availableOther;
+        currentBody.appendChild(block);
+        if (currentBody.scrollHeight > currentAvailable) {
+          currentBody.removeChild(block);
+          currentBody = createPage();
+          isFirstBody = false;
+          currentBody.appendChild(block);
+        }
+      });
+
+      // Update page indicators
+      const total = pages.length;
+      pages.forEach((p, i) => {
+        const foot = p.querySelector('.footer');
+        if (!foot) return;
+        let right = foot.querySelector('.footer-right');
+        if (!right) {
+          right = document.createElement('span');
+          right.className = 'footer-right';
+          foot.appendChild(right);
+        }
+        right.textContent = 'Page ' + (i + 1) + ' of ' + total;
+      });
+    })();
+  </script>
+</body>
+</html>`;
+  }, [clinic, referral, patient, provider, history]);
+
+  const handleGeneratePdf = async () => {
+    try {
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      return uri;
+    } catch (e) {
+      Alert.alert('Error', 'Failed to generate PDF.');
+      return null;
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    const uri = await handleGeneratePdf();
+    if (!uri) return;
+    try {
+      const dest = FileSystem.documentDirectory + `UniHealth_Visit_Report_${Date.now()}.pdf`;
+      await FileSystem.copyAsync({ from: uri, to: dest });
+      await Sharing.shareAsync(dest, { mimeType: 'application/pdf', dialogTitle: 'Save report as PDF' });
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save PDF.');
+    }
+  };
+
+  const handleSharePdf = async () => {
+    const uri = await handleGeneratePdf();
+    if (!uri) return;
+    try {
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf' });
+    } catch (e) {
+      Alert.alert('Error', 'Failed to share PDF.');
+    }
+  };
+
+  function fullName(obj: any, fallback: string = '—') {
     if (!obj) return fallback;
     const first = obj.firstName || obj.first_name || '';
     const last = obj.lastName || obj.last_name || '';
     const name = `${first} ${last}`.trim();
     return name || fallback;
-  };
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -131,103 +632,35 @@ export default function ConsultationReportScreen() {
           <ChevronLeft size={22} color="#1E40AF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Visit Report</Text>
-        <TouchableOpacity style={styles.downloadBtn} onPress={handleDownloadReport}>
-          <Download size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 24 }}>
-        <View ref={reportRef} collapsable={false} style={styles.reportPage}>
-          {/* Top brand bar */}
-          <View style={styles.brandBar}>
-            <Text style={styles.brandText}>UNIHEALTH • Patient Visit Summary</Text>
+      <View style={{ flex: 1 }}>
+        {!!error && (
+          <View style={{ padding: 16 }}>
+            <Text style={{ color: '#B91C1C' }}>{error}</Text>
+          </View>
+        )}
+        {!error && (
+          <WebView
+            ref={webViewRef}
+            originWhitelist={["*"]}
+            source={{ html }}
+            style={{ flex: 1, backgroundColor: '#F3F4F6' }}
+          />
+        )}
           </View>
 
-          {/* Clinic + Patient header */}
-          <View style={styles.topBlock}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.clinicName}>{clinic?.name || referral?.referringClinicName || 'Clinic'}</Text>
-              {!!clinic?.address && <Text style={styles.clinicMeta}>{clinic.address}</Text>}
-              {!!clinic?.city && (
-                <Text style={styles.clinicMeta}>{clinic.city}{clinic?.province ? `, ${clinic.province}` : ''}</Text>
-              )}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.patientName}>{fullName(patient, 'Unknown Patient')}</Text>
-              <Text style={styles.patientMeta}>Date: {formatDate(referral?.appointmentDate)} {formatTime(referral?.appointmentTime)}</Text>
-              <Text style={styles.patientMeta}>Specialist: Dr. {fullName(provider, 'Unknown')}</Text>
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Reason for Visit</Text>
-            <Text style={styles.sectionValue}>{referral?.initialReasonForReferral || 'Not specified'}</Text>
-          </View>
-
-          <View style={styles.sectionRow}>
-            <View style={[styles.section, { flex: 1, marginRight: 8 }] }>
-              <Text style={styles.sectionTitle}>History of Present Illness</Text>
-              <Text style={styles.sectionValue}>{history?.presentIllnessHistory || 'Not recorded'}</Text>
-            </View>
-            <View style={[styles.section, { flex: 1, marginLeft: 8 }] }>
-              <Text style={styles.sectionTitle}>Review of Symptoms</Text>
-              <Text style={styles.sectionValue}>{history?.reviewOfSymptoms || 'Not recorded'}</Text>
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Findings & Results</Text>
-            <Text style={styles.fieldLabel}>Lab Results</Text>
-            <Text style={styles.sectionValue}>{history?.labResults || 'No lab results recorded'}</Text>
-            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>Medications</Text>
-            <Text style={styles.sectionValue}>
-              {Array.isArray(history?.prescriptions) && history?.prescriptions?.length
-                ? history?.prescriptions.map((p: any) => `${p.medication} ${p.dosage} • ${p.frequency || ''}`).join('\n')
-                : 'No medications recorded'}
-            </Text>
-          </View>
-
-          <View style={styles.sectionRow}>
-            <View style={[styles.section, { flex: 1, marginRight: 8 }] }>
-              <Text style={styles.sectionTitle}>Diagnosis</Text>
-              <Text style={styles.sectionValue}>
-                {Array.isArray(history?.diagnosis) && history?.diagnosis?.length
-                  ? history?.diagnosis.map((d: any) => `${d.code ? `${d.code}: ` : ''}${d.description}`).join('\n')
-                  : 'No diagnosis recorded'}
-              </Text>
-            </View>
-            <View style={[styles.section, { flex: 1, marginLeft: 8 }] }>
-              <Text style={styles.sectionTitle}>Differential Diagnosis</Text>
-              <Text style={styles.sectionValue}>{history?.differentialDiagnosis || 'Not recorded'}</Text>
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>SOAP Notes</Text>
-            <Text style={styles.fieldLabel}>Subjective</Text>
-            <Text style={styles.sectionValue}>{history?.soapNotes?.subjective || '—'}</Text>
-            <Text style={styles.fieldLabel}>Objective</Text>
-            <Text style={styles.sectionValue}>{history?.soapNotes?.objective || '—'}</Text>
-            <Text style={styles.fieldLabel}>Assessment</Text>
-            <Text style={styles.sectionValue}>{history?.soapNotes?.assessment || '—'}</Text>
-            <Text style={styles.fieldLabel}>Plan</Text>
-            <Text style={styles.sectionValue}>{history?.soapNotes?.plan || '—'}</Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Treatment & Summary</Text>
-            <Text style={styles.fieldLabel}>Treatment Plan</Text>
-            <Text style={styles.sectionValue}>{history?.treatmentPlan || '—'}</Text>
-            <Text style={styles.fieldLabel}>Clinical Summary</Text>
-            <Text style={styles.sectionValue}>{history?.clinicalSummary || '—'}</Text>
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footerBar}>
-            <Text style={styles.footerText}>Generated by UniHealth • {new Date().toLocaleString()}</Text>
-          </View>
+      <View style={styles.bottomBar}>
+        <TouchableOpacity style={[styles.primaryBtn]} onPress={handleDownloadPdf}>
+          <Download size={18} color="#FFFFFF" />
+          <Text style={styles.primaryText}>Download PDF Report</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.secondaryBtn]} onPress={handleSharePdf}>
+          <Share2 size={18} color="#1E40AF" />
+          <Text style={styles.secondaryText}>Share PDF Report</Text>
+        </TouchableOpacity>
         </View>
-      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -273,96 +706,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scroll: { flex: 1 },
-  reportPage: {
-    backgroundColor: '#FFFFFF',
-    margin: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  brandBar: {
-    backgroundColor: '#1E40AF',
-    paddingVertical: 10,
+  bottomBar: {
+    flexDirection: 'column',
     paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
   },
-  brandText: {
+  primaryBtn: {
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#1E40AF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  primaryText: {
     color: '#FFFFFF',
     fontFamily: 'Inter-SemiBold',
-    fontSize: 14,
-    textAlign: 'center',
+    fontSize: 15,
+    marginLeft: 8,
   },
-  topBlock: {
-    flexDirection: 'row',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+  secondaryBtn: {
+    height: 48,
+    borderRadius: 12,
     backgroundColor: '#FFFFFF',
-  },
-  clinicName: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: '#1F2937',
-    marginBottom: 2,
-  },
-  clinicMeta: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  patientName: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
-    color: '#1F2937',
-    marginBottom: 2,
-    textAlign: 'right',
-  },
-  patientMeta: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'right',
-  },
-  section: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  sectionRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#1E40AF',
+    marginTop: 12,
   },
-  sectionTitle: {
+  secondaryText: {
+    color: '#1E40AF',
     fontFamily: 'Inter-SemiBold',
-    fontSize: 14,
-    color: '#1F2937',
-    marginBottom: 6,
-  },
-  fieldLabel: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  sectionValue: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 13,
-    color: '#374151',
-    lineHeight: 20,
-    whiteSpace: 'pre-wrap' as any,
-  },
-  footerBar: {
-    backgroundColor: '#F9FAFB',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  footerText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
+    fontSize: 15,
+    marginLeft: 8,
   },
 });
 
