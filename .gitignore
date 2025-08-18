@@ -33,3 +33,6 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# local database exports
+odyssey-test-db-default-rtdb-export (5).json

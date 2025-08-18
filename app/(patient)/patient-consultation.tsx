@@ -12,6 +12,8 @@ import {
   Alert,
   Animated,
   Modal,
+  Pressable,
+  Dimensions,
 } from 'react-native';
 import {
   ChevronLeft,
@@ -26,8 +28,10 @@ import {
   User,
   Search,
   Edit,
+  Wallet,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 import { useVoiceToText } from '../../src/hooks/useVoiceToText';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService } from '../../src/services/database/firebase';
@@ -101,6 +105,53 @@ export default function PatientConsultationScreen() {
     certificates: [],
     
   });
+
+  // Derived validation for required fields (prescriptions and certificates are optional)
+  const isCompleteEnabled = (() => {
+    const requiredStrings = [
+      formData.presentIllnessHistory,
+      formData.reviewOfSymptoms,
+      formData.labResults,
+      formData.medications,
+      formData.differentialDiagnosis,
+      formData.subjective,
+      formData.objective,
+      formData.assessment,
+      formData.plan,
+      formData.treatmentPlan,
+      formData.clinicalSummary,
+    ];
+    const allTextFilled = requiredStrings.every((v) => typeof v === 'string' && v.trim().length > 0);
+    const hasDiagnoses = formData.diagnoses.length > 0 && formData.diagnoses.every((d) =>
+      (d.code || '').toString().trim().length > 0 && (d.description || '').toString().trim().length > 0
+    );
+    return allTextFilled && hasDiagnoses;
+  })();
+
+  // Calculate progress based on required fields completion (not on current step)
+  const progressPercent = (() => {
+    const requiredFields = [
+      formData.presentIllnessHistory,
+      formData.reviewOfSymptoms,
+      formData.labResults,
+      formData.medications,
+      formData.differentialDiagnosis,
+      formData.subjective,
+      formData.objective,
+      formData.assessment,
+      formData.plan,
+      formData.treatmentPlan,
+      formData.clinicalSummary,
+    ];
+    const totalRequired = requiredFields.length + 1; // +1 for Diagnoses block
+    const completedText = requiredFields.filter((v) => typeof v === 'string' && v.trim().length > 0).length;
+    const diagnosesComplete = formData.diagnoses.length > 0 && formData.diagnoses.every((d) =>
+      (d.code || '').toString().trim().length > 0 && (d.description || '').toString().trim().length > 0
+    );
+    const completed = completedText + (diagnosesComplete ? 1 : 0);
+    const pct = Math.max(0, Math.min(100, Math.round((completed / totalRequired) * 100)));
+    return pct;
+  })();
 
   // Load consultation data from Firebase
   useEffect(() => {
@@ -241,6 +292,10 @@ export default function PatientConsultationScreen() {
   // Diagnosis input state
   const [newDiagnosisCode, setNewDiagnosisCode] = useState('');
   const [newDiagnosisDescription, setNewDiagnosisDescription] = useState('');
+  const [showFeeModal, setShowFeeModal] = useState(false);
+  const [feeChecked, setFeeChecked] = useState(false);
+  const [professionalFee, setProfessionalFee] = useState<number | null>(null);
+  const [loadingFee, setLoadingFee] = useState(false);
 
   // Update completion status when appointment or referral data changes
   useEffect(() => {
@@ -278,16 +333,34 @@ export default function PatientConsultationScreen() {
     console.log('Transcript effect triggered - transcript:', transcript, 'activeField:', activeField);
     if (transcript && activeField) {
       console.log('Updating field:', activeField, 'with transcript:', transcript);
-      setFormData((prev) => {
-        const updated = {
-          ...prev,
-          [activeField]: transcript, // Replace the field content with current transcript
-        };
-        console.log('Form data updated:', updated[activeField as keyof typeof updated]);
-        return updated;
-      });
-      setHasChanges(true);
-      
+      const isDiagnosisDesc = activeField.startsWith('diagnoses.description.');
+      const isNewDiagnosisDesc = activeField === 'newDiagnosis.description';
+
+      if (isDiagnosisDesc) {
+        const indexStr = activeField.split('.').pop() as string;
+        const index = parseInt(indexStr, 10);
+        setFormData((prev) => {
+          const next = { ...prev };
+          const list = [...next.diagnoses];
+          if (list[index]) {
+            list[index] = { ...list[index], description: transcript };
+            next.diagnoses = list;
+          }
+          return next;
+        });
+        setHasChanges(true);
+      } else if (isNewDiagnosisDesc) {
+        setNewDiagnosisDescription(transcript);
+        setHasChanges(true);
+      } else {
+        setFormData((prev) => {
+          const updated: any = { ...prev };
+          (updated as any)[activeField] = transcript; // fallback for simple fields
+          return updated;
+        });
+        setHasChanges(true);
+      }
+
       // Clear activeField after updating the form
       setTimeout(() => {
         setActiveField(null);
@@ -360,10 +433,10 @@ export default function PatientConsultationScreen() {
 
   const handleStopRecording = async () => {
     try {
-      await stopRecording();
-      // Start loading animation while waiting for transcript
+      // Start loading animation immediately, before awaiting stop
       setIsLoading(true);
       startLoadingAnimation();
+      await stopRecording();
       // activeField will be cleared in the transcript effect
     } catch (error) {
       console.error('Stop recording error:', error);
@@ -478,6 +551,48 @@ export default function PatientConsultationScreen() {
     } catch (animError) {
       console.error('Stop loading animation error:', animError);
     }
+  };
+
+  // --- PROFESSIONAL FEE MODAL LOGIC ---
+  const formatCurrency = (amount?: number | null) => {
+    if (amount == null) return '₱0.00';
+    try {
+      return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
+    } catch {
+      return `₱${Number(amount).toFixed(2)}`;
+    }
+  };
+
+  const loadProfessionalFee = async () => {
+    if (!user?.uid) return;
+    try {
+      setLoadingFee(true);
+      // Primary source: doctors node per DB export
+      const doctorRecord = await databaseService.getDocument(`doctors/${user.uid}`);
+      // Fallbacks for older nodes
+      const specialist = doctorRecord || (await databaseService.getDocument(`specialists/${user.uid}`)) || (await databaseService.getDocument(`users/${user.uid}`));
+      const fee = specialist?.professionalFee
+        || specialist?.professional_fee
+        || specialist?.consultationFee
+        || specialist?.consultation_fee
+        || specialist?.fee
+        || 0;
+      setProfessionalFee(Number(fee) || 0);
+    } catch (e) {
+      setProfessionalFee(0);
+    } finally {
+      setLoadingFee(false);
+    }
+  };
+
+  const handleOpenFeeModal = async () => {
+    setFeeChecked(false);
+    await loadProfessionalFee();
+    setShowFeeModal(true);
+  };
+
+  const handleCloseFeeModal = () => {
+    setShowFeeModal(false);
   };
 
   // -- Input Change --
@@ -784,6 +899,17 @@ export default function PatientConsultationScreen() {
       Alert.alert('Error', 'No patient ID found.');
       return;
     }
+    // Open fee modal first; confirmation proceeds after checkbox
+    await loadProfessionalFee();
+    setFeeChecked(false);
+    setShowFeeModal(true);
+  };
+
+  const confirmCompleteConsultation = async () => {
+    if (!patientId) {
+      Alert.alert('Error', 'No patient ID found.');
+      return;
+    }
 
     // Get the actual patientId string value
     const patientIdString = Array.isArray(patientId) ? patientId[0] : patientId;
@@ -943,10 +1069,10 @@ export default function PatientConsultationScreen() {
         <View style={styles.stepProgressBar}>
           <View style={styles.stepProgressText}>
             <Text style={styles.stepProgressLabel}>Step {currentStep} of {totalSteps}</Text>
-            <Text style={styles.stepProgressPercentage}>{Math.round((currentStep / totalSteps) * 100)}% Complete</Text>
+            <Text style={styles.stepProgressPercentage}>{progressPercent}% Complete</Text>
           </View>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${(currentStep / totalSteps) * 100}%` }]} />
+            <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
           </View>
         </View>
         
@@ -957,31 +1083,24 @@ export default function PatientConsultationScreen() {
               style={[
                 styles.stepTab,
                 currentStep === step.id && styles.stepTabActive,
-                currentStep > step.id && styles.stepTabCompleted,
               ]}
               onPress={() => goToStep(step.id)}
             >
               <View style={[
                 styles.stepIcon,
                 currentStep === step.id && styles.stepIconActive,
-                currentStep > step.id && styles.stepIconCompleted,
               ]}>
-                {currentStep > step.id ? (
-                  <Text style={styles.stepCheckmark}>✓</Text>
-                ) : (
-                  <View style={styles.stepIconContainer}>
-                    {step.icon === 'User' && <User size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
-                    {step.icon === 'Search' && <Search size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
-                    {step.icon === 'FileText' && <FileText size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
-                    {step.icon === 'Edit' && <Edit size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
-                    {step.icon === 'Plus' && <Plus size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
-                  </View>
-                )}
+                <View style={styles.stepIconContainer}>
+                  {step.icon === 'User' && <User size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
+                  {step.icon === 'Search' && <Search size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
+                  {step.icon === 'FileText' && <FileText size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
+                  {step.icon === 'Edit' && <Edit size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
+                  {step.icon === 'Plus' && <Plus size={20} color={currentStep === step.id ? "#FFFFFF" : "#1E40AF"} />}
+                </View>
               </View>
               <Text style={[
                 styles.stepTitle,
                 currentStep === step.id && styles.stepTitleActive,
-                currentStep > step.id && styles.stepTitleCompleted,
               ]}>
                 {step.title}
               </Text>
@@ -995,7 +1114,10 @@ export default function PatientConsultationScreen() {
   // --- FIELD RENDERING WITH MIC ---
   const renderFieldWithSpeech = (label: string, field: string, multiline = false) => (
     <View style={styles.fieldContainer}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={styles.fieldLabel}>
+        {label}
+        <Text style={styles.requiredSuffix}> (required)</Text>
+      </Text>
       <View style={styles.inputContainer}>
         <TextInput
           style={[styles.textInput, multiline && styles.multilineInput]}
@@ -1131,7 +1253,7 @@ export default function PatientConsultationScreen() {
               </View>
               <View>
                 <Text style={styles.stepContentTitle}>Findings</Text>
-                <Text style={styles.stepSubtitle}>Evidence collection, diagnoses, and objective findings</Text>
+                <Text style={styles.stepSubtitle}>Evidence collection, diagnoses, and findings</Text>
               </View>
             </View>
             
@@ -1143,41 +1265,151 @@ export default function PatientConsultationScreen() {
             
             {/* Diagnosis */}
             <View style={styles.fieldContainer}>
-              <Text style={styles.fieldLabel}>Diagnoses</Text>
+              <Text style={styles.fieldLabel}>Diagnoses<Text style={styles.requiredSuffix}> (required)</Text></Text>
               
-              {/* Existing Diagnoses */}
+              {/* Existing Diagnoses (editable inputs) */}
               {formData.diagnoses.map((diagnosis, index) => (
                 <View key={index} style={styles.diagnosisItem}>
-                  <View style={styles.diagnosisContent}>
-                    <Text style={styles.diagnosisCode}>{diagnosis.code}</Text>
-                    <Text style={styles.diagnosisDescription}>{diagnosis.description}</Text>
+                  <View style={styles.diagnosisInputsRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fieldLabel}>
+                        Code<Text style={styles.requiredAsterisk}> *</Text>
+                      </Text>
+                      <View style={styles.inputContainer}>
+                        <TextInput
+                          style={[styles.textInput, styles.diagnosisTextInput]}
+                          placeholder="Enter code..."
+                          placeholderTextColor="#9CA3AF"
+                          value={diagnosis.code}
+                          onChangeText={(v) => {
+                            setFormData((prev) => {
+                              const next = { ...prev };
+                              const list = [...next.diagnoses];
+                              list[index] = { ...list[index], code: v };
+                              next.diagnoses = list;
+                              return next;
+                            });
+                            setHasChanges(true);
+                          }}
+                        />
+                      </View>
+                    </View>
+                    <View style={{ flex: 2, marginLeft: 12 }}>
+                      <Text style={styles.fieldLabel}>
+                        Description<Text style={styles.requiredSuffix}> (required)</Text>
+                      </Text>
+                      <View style={styles.inputContainerWithAction}>
+                        <TextInput
+                          style={[styles.textInput, styles.diagnosisTextInput, { flex: 1 }]}
+                          placeholder="Enter description..."
+                          placeholderTextColor="#9CA3AF"
+                          value={diagnosis.description}
+                          onChangeText={(v) => {
+                            setFormData((prev) => {
+                              const next = { ...prev };
+                              const list = [...next.diagnoses];
+                              list[index] = { ...list[index], description: v };
+                              next.diagnoses = list;
+                              return next;
+                            });
+                            setHasChanges(true);
+                          }}
+                        />
+                        <TouchableOpacity
+                          style={[
+                            styles.micButton,
+                            activeField === `diagnoses.description.${index}` && styles.micButtonActive,
+                            { marginTop: 4 }
+                          ]}
+                          onPress={() => {
+                            const fieldKey = `diagnoses.description.${index}`;
+                            if (activeField === fieldKey && isRecording) {
+                              handleStopRecording();
+                            } else {
+                              handleStartRecording(fieldKey);
+                            }
+                          }}
+                        >
+                          <Animated.View
+                            style={[
+                              styles.micIconContainer,
+                              activeField === `diagnoses.description.${index}` && {
+                                transform: [{ scale: pulseAnim }],
+                                backgroundColor: '#1E40AF',
+                                borderColor: '#1E40AF',
+                              },
+                            ]}
+                          >
+                            <Mic size={16} color={activeField === `diagnoses.description.${index}` ? '#FFFFFF' : '#1E40AF'} />
+                          </Animated.View>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.removeDiagnosisButton]}
+                      onPress={() => removeDiagnosis(index)}
+                    >
+                      <Trash2 size={16} color="#EF4444" />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    style={styles.removeDiagnosisButton}
-                    onPress={() => removeDiagnosis(index)}
-                  >
-                    <Trash2 size={16} color="#EF4444" />
-                  </TouchableOpacity>
                 </View>
               ))}
               
               {/* Add New Diagnosis */}
               <View style={styles.addDiagnosisContainer}>
                 <View style={styles.diagnosisInputRow}>
-                  <TextInput
-                    style={[styles.textInput, styles.diagnosisCodeInput]}
-                    value={newDiagnosisCode}
-                    onChangeText={setNewDiagnosisCode}
-                    placeholder="Code (e.g., DIAG001)"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                  <TextInput
-                    style={[styles.textInput, styles.diagnosisDescriptionInput]}
-                    value={newDiagnosisDescription}
-                    onChangeText={setNewDiagnosisDescription}
-                    placeholder="Description"
-                    placeholderTextColor="#9CA3AF"
-                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.fieldLabel}>Code<Text style={styles.requiredAsterisk}> *</Text></Text>
+                    <View style={styles.inputContainer}>
+                      <TextInput
+                        style={[styles.textInput, styles.diagnosisCodeInput, styles.diagnosisTextInput]}
+                        value={newDiagnosisCode}
+                        onChangeText={setNewDiagnosisCode}
+                        placeholder="Enter code..."
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                  </View>
+                  <View style={{ flex: 2 }}>
+                    <Text style={styles.fieldLabel}>Description<Text style={styles.requiredSuffix}> (required)</Text></Text>
+                    <View style={styles.inputContainerWithAction}>
+                      <TextInput
+                        style={[styles.textInput, styles.diagnosisDescriptionInput, styles.diagnosisTextInput, { flex: 1 }]}
+                        value={newDiagnosisDescription}
+                        onChangeText={setNewDiagnosisDescription}
+                        placeholder="Enter description..."
+                        placeholderTextColor="#9CA3AF"
+                      />
+                      <TouchableOpacity
+                        style={[
+                          styles.micButton,
+                          activeField === 'newDiagnosis.description' && styles.micButtonActive,
+                          { marginTop: 4 }
+                        ]}
+                        onPress={() => {
+                          const fieldKey = 'newDiagnosis.description';
+                          if (activeField === fieldKey && isRecording) {
+                            handleStopRecording();
+                          } else {
+                            handleStartRecording(fieldKey);
+                          }
+                        }}
+                      >
+                        <Animated.View
+                          style={[
+                            styles.micIconContainer,
+                            activeField === 'newDiagnosis.description' && {
+                              transform: [{ scale: pulseAnim }],
+                              backgroundColor: '#1E40AF',
+                              borderColor: '#1E40AF',
+                            },
+                          ]}
+                        >
+                          <Mic size={16} color={activeField === 'newDiagnosis.description' ? '#FFFFFF' : '#1E40AF'} />
+                        </Animated.View>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                   <TouchableOpacity
                     style={[
                       styles.addDiagnosisButton,
@@ -1186,7 +1418,7 @@ export default function PatientConsultationScreen() {
                     onPress={addDiagnosis}
                     disabled={!newDiagnosisCode.trim() || !newDiagnosisDescription.trim()}
                   >
-                    <Plus size={16} color="#FFFFFF" />
+                    <Plus size={20} color="#FFFFFF" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1527,46 +1759,48 @@ export default function PatientConsultationScreen() {
 
       {/* Bottom Action Buttons */}
       <View style={styles.bottomContainer}>
-        {/* Step Navigation */}
-        <View style={styles.stepNavigation}>
-          {currentStep > 1 && (
-            <TouchableOpacity
-              style={styles.stepNavButton}
-              onPress={goToPreviousStep}
-            >
-              <Text style={styles.stepNavButtonText}>Previous</Text>
-            </TouchableOpacity>
-          )}
-          
-          <Text style={styles.stepIndicator}>{currentStep}/{totalSteps}</Text>
-          
-          {currentStep < totalSteps ? (
+        {/* Step Navigation (only for steps 1-4) */}
+        {currentStep < totalSteps && (
+          <View style={styles.stepNavigation}>
+            {currentStep > 1 && (
+              <TouchableOpacity
+                style={styles.stepNavButtonSecondary}
+                onPress={goToPreviousStep}
+              >
+                <Text style={styles.stepNavButtonTextSecondary}>Previous</Text>
+              </TouchableOpacity>
+            )}
+            
+            <Text style={styles.stepIndicator}>{currentStep}/{totalSteps}</Text>
+            
             <TouchableOpacity
               style={styles.stepNavButton}
               onPress={goToNextStep}
             >
               <Text style={styles.stepNavButtonText}>Next</Text>
             </TouchableOpacity>
-          ) : (
+          </View>
+        )}
+
+        {/* Last step (5): show Save Consultation + Complete Consultation */}
+        {currentStep === totalSteps && (
+          <>
             <TouchableOpacity
-              style={styles.stepNavButton}
+              style={[styles.saveButton, !hasChanges && styles.saveButtonDisabled]}
               onPress={handleSaveChanges}
               disabled={!hasChanges}
             >
-              <Text style={styles.stepNavButtonText}>Save</Text>
+              <Text style={[styles.saveButtonText, !hasChanges && styles.saveButtonTextDisabled]}>Save Consultation</Text>
             </TouchableOpacity>
-          )}
-        </View>
-        
-        {/* Complete Consultation Button - Only show on last step */}
-        {currentStep === totalSteps && (
-          <TouchableOpacity
-            style={styles.completeButton}
-            onPress={handleCompleteConsultation}
-          >
-            <CheckCircle size={18} color="#FFFFFF" />
-            <Text style={styles.completeButtonText}>Complete Consultation</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.completeButton, !isCompleteEnabled && styles.completeButtonDisabled]}
+              onPress={handleOpenFeeModal}
+              disabled={!isCompleteEnabled}
+            >
+              <CheckCircle size={18} color="#FFFFFF" />
+              <Text style={styles.completeButtonText}>Complete Consultation</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
 
@@ -1772,6 +2006,63 @@ export default function PatientConsultationScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      {/* Professional Fee Modal (Bottom Sheet style) */}
+      <Modal
+        visible={showFeeModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCloseFeeModal}
+      >
+        <Pressable style={feeModalStyles.backdrop} onPress={handleCloseFeeModal}>
+          <View style={feeModalStyles.backdropOverlay} />
+        </Pressable>
+        <View style={feeModalStyles.modalContainer}>
+          <SafeAreaView style={feeModalStyles.safeArea}>
+            <View style={feeModalStyles.modalContent}>
+              <View style={feeStyles.headerRow}>
+                <View style={feeStyles.headerLeft}>
+                  <Text style={feeStyles.title}>Confirm Professional Fee</Text>
+                  <Text style={feeStyles.subtitle}>
+                    To complete this consultation, please confirm that you have received your professional fee. This confirmation will be recorded in the visit report.
+                  </Text>
+                </View>
+              </View>
+              <View style={feeStyles.divider} />
+
+              <View style={feeStyles.feeRow}>
+                <View style={feeStyles.feeIcon}><Wallet size={22} color="#1E40AF" /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={feeStyles.feeLabel}>Amount due</Text>
+                  <Text style={feeStyles.feeAmount}>{loadingFee ? 'Loading…' : formatCurrency(professionalFee)}</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[feeStyles.checkboxRow, feeChecked && feeStyles.checkboxRowActive]}
+                onPress={() => setFeeChecked(v => !v)}
+                activeOpacity={0.8}
+              >
+                <View style={[feeStyles.checkbox, feeChecked && feeStyles.checkboxChecked]}>
+                  {feeChecked && <CheckCircle size={16} color="#FFFFFF" />}
+                </View>
+                <Text style={feeStyles.checkboxText}>
+                  I confirm I have received {formatCurrency(professionalFee)} as my professional fee.
+                </Text>
+              </TouchableOpacity>
+
+              <View style={feeModalStyles.actions}>
+                <TouchableOpacity style={[feeModalStyles.primaryButton, !feeChecked && { opacity: 0.5 }]} disabled={!feeChecked} onPress={() => {
+                  setShowFeeModal(false);
+                  confirmCompleteConsultation();
+                }}>
+                  <Text style={feeModalStyles.primaryButtonText}>Confirm & Complete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1865,6 +2156,12 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 8,
   },
+  requiredAsterisk: {
+    color: '#1E40AF',
+  },
+  requiredSuffix: {
+    color: '#1E40AF',
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1873,6 +2170,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     paddingRight: 12,
+  },
+  inputContainerWithAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingRight: 6,
   },
   textInput: {
     flex: 1,
@@ -1886,6 +2192,10 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
     paddingTop: 12,
+  },
+  diagnosisTextInput: {
+    minHeight: 48,
+    textAlignVertical: 'center',
   },
   micButton: {
     padding: 8,
@@ -1963,6 +2273,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
+  },
+  completeButtonDisabled: {
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   completeButtonText: {
     color: '#FFFFFF',
@@ -2412,9 +2727,6 @@ const styles = StyleSheet.create({
   stepTabActive: {
     // Active state styling
   },
-  stepTabCompleted: {
-    // Completed state styling
-  },
   stepIcon: {
     width: 40,
     height: 40,
@@ -2434,18 +2746,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E40AF',
     borderColor: '#1E40AF',
   },
-  stepIconCompleted: {
-    backgroundColor: '#1E40AF',
-    borderColor: '#1E40AF',
-  },
-  stepIconText: {
-    fontSize: 18,
-  },
-  stepCheckmark: {
-    fontSize: 18,
-    color: '#FFFFFF',
-    fontFamily: 'Inter-Bold',
-  },
+  // removed completed/checkmark visuals to avoid redundancy with progress bar
   stepTitle: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
@@ -2499,7 +2800,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   stepNavButton: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#1E40AF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1E40AF',
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  stepNavButtonSecondary: {
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
@@ -2509,6 +2820,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stepNavButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
+  },
+  stepNavButtonTextSecondary: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
     color: '#374151',
@@ -2530,6 +2846,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  diagnosisInputsRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   diagnosisContent: {
     flex: 1,
@@ -2566,11 +2887,12 @@ const styles = StyleSheet.create({
   },
   addDiagnosisButton: {
     backgroundColor: '#1E40AF',
-    padding: 12,
-    borderRadius: 8,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 44,
+    marginTop: 24,
   },
   addDiagnosisButtonDisabled: {
     backgroundColor: '#9CA3AF',
@@ -2596,4 +2918,44 @@ const styles = StyleSheet.create({
     color: '#374151',
     flex: 1,
   },
+});
+
+const feeStyles = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
+  },
+  headerLeft: { flex: 1 },
+  title: { fontSize: 18, fontFamily: 'Inter-Bold', color: '#1F2937', marginBottom: 2 },
+  subtitle: { fontSize: 13, fontFamily: 'Inter-Regular', color: '#6B7280' },
+  divider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 16 },
+  feeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  feeIcon: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1, borderColor: '#DBEAFE'
+  },
+  feeLabel: { fontSize: 13, fontFamily: 'Inter-Medium', color: '#6B7280' },
+  feeAmount: { fontSize: 16, fontFamily: 'Inter-SemiBold', color: '#1F2937' },
+  checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F9FAFB', borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 12, paddingVertical: 12 },
+  checkboxRowActive: { borderColor: '#1E40AF' },
+  checkbox: { width: 24, height: 24, borderRadius: 6, backgroundColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center' },
+  checkboxChecked: { backgroundColor: '#1E40AF' },
+  checkboxText: { flex: 1, fontSize: 14, fontFamily: 'Inter-Regular', color: '#374151' },
+});
+
+// Modal layout styles (mirroring signin bottom modal)
+const feeModalStyles = StyleSheet.create({
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
+  backdropOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalContainer: { flex: 1, justifyContent: 'flex-end', zIndex: 2 },
+  safeArea: { width: '100%' },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    alignItems: 'stretch',
+    minHeight: SCREEN_HEIGHT * 0.35,
+  },
+  actions: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  primaryButton: { flex: 1, backgroundColor: '#1E40AF', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-SemiBold' },
 });
