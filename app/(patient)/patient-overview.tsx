@@ -319,8 +319,35 @@ export default function PatientOverviewScreen() {
     }
   };
 
-  const handleMedicalHistoryPress = (historyItem: MedicalHistory) => {
-    router.push(`/visit-overview?id=${historyItem.id}`);
+  const handleMedicalHistoryPress = async (historyItem: MedicalHistory) => {
+    try {
+      const allReferrals = await databaseService.getDocument('referrals');
+      const patientIdStr = String(id);
+      let matchedReferralId: string | null = null;
+
+      if (allReferrals) {
+        for (const [refId, r] of Object.entries(allReferrals as Record<string, any>)) {
+          if (r?.patientId === patientIdStr) {
+            if (
+              r?.referralConsultationId === historyItem.id ||
+              r?.consultationId === historyItem.id ||
+              (historyItem as any)?.relatedAppointment?.id === r?.clinicAppointmentId
+            ) {
+              matchedReferralId = refId;
+              break;
+            }
+          }
+        }
+      }
+
+      if (matchedReferralId) {
+        router.push(`/(specialist)/referral-details?id=${matchedReferralId}`);
+      } else {
+        router.push(`/visit-overview?id=${historyItem.id}`);
+      }
+    } catch (e) {
+      router.push(`/visit-overview?id=${historyItem.id}`);
+    }
   };
 
   const handleNewConsultation = () => {
@@ -712,28 +739,26 @@ export default function PatientOverviewScreen() {
                   {medicalHistory.slice(0, 5).map((item: MedicalHistory) => (
                     <TouchableOpacity
                       key={item.id}
-                      style={styles.historyCard}
+                      style={styles.consultationCard}
                       onPress={() => handleMedicalHistoryPress(item)}
                     >
-                      <View style={styles.historyHeader}>
-                        <View style={styles.historyIcon}>
-                          <Calendar size={16} color="#1E40AF" />
+                      <View style={styles.consultationHeader}>
+                        <View style={styles.consultationIcon}>
+                          <FileText size={20} color="#FFFFFF" />
                         </View>
-                        <View style={styles.historyInfo}>
-                          <Text style={styles.historyType}>{item.type}</Text>
-                          <Text style={styles.historyDate}>
-                            {formatDate(item.consultationDate)} at {formatTime(item.consultationTime)}
+                        <View style={styles.consultationInfo}>
+                          <Text style={styles.consultationType}>
+                            {(item?.diagnosis && item.diagnosis.length > 0 && item.diagnosis[0]?.description)
+                              || (item?.type || 'Consultation')}
                           </Text>
-                          <Text style={styles.historyDoctor}>
+                          <Text style={styles.consultationDate}>
                             Dr. {safeDataAccess.getUserFullName(item?.provider, 'Unknown Doctor')}
                           </Text>
-                          {item?.diagnosis && item.diagnosis.length > 0 && (
-                            <Text style={styles.historyDiagnosis}>
-                              {item.diagnosis[0]?.description || 'Diagnosis not specified'}
-                            </Text>
-                          )}
+                          <Text style={styles.consultationDate}>
+                            {formatDate(item.consultationDate)} at {formatTime(item.consultationTime)}
+                          </Text>
                         </View>
-                        <ChevronRight size={16} color="#9CA3AF" />
+                        <ChevronRight size={20} color="#9CA3AF" />
                       </View>
                     </TouchableOpacity>
                   ))}
