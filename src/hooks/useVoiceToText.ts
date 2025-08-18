@@ -45,6 +45,7 @@ export const useVoiceToText = (): UseVoiceToTextReturn => {
     try {
       setError(null);
       setTranscript('');
+      setIsRecording(true); // optimistically set to prevent double-tap race
 
       if (Platform.OS === 'web') {
         // Web Speech API for web platform
@@ -105,7 +106,6 @@ export const useVoiceToText = (): UseVoiceToTextReturn => {
         }
 
         await freeSpeechToTextService.startRecording();
-        setIsRecording(true);
       }
     } catch (error) {
       console.error('Start recording error:', error);
@@ -121,6 +121,12 @@ export const useVoiceToText = (): UseVoiceToTextReturn => {
         recognitionRef.current.stop();
       } else if (Platform.OS !== 'web' && freeSpeechToTextService) {
         console.log('Mobile Platform - Stopping AssemblyAI recording');
+        // Guard: avoid calling stop if service is not currently recording
+        if (!freeSpeechToTextService.isCurrentlyRecording()) {
+          console.log('Mobile Platform - stopRecording called but no active recording; ignoring');
+          setIsRecording(false);
+          return;
+        }
         const result = await freeSpeechToTextService.stopRecording();
         
         if (result.success && result.text) {
@@ -128,11 +134,18 @@ export const useVoiceToText = (): UseVoiceToTextReturn => {
           setTranscript(result.text);
         } else {
           console.error('Mobile Platform - Transcription failed:', result.error);
-          setError(result.error || 'Transcription failed');
+          // Do not surface the benign 'No recording in progress' to the UI
+          if (result.error && result.error !== 'No recording in progress') {
+            setError(result.error);
+          }
         }
       }
       
       setIsRecording(false);
+      // Clear any interim transcript when stopping without result
+      if (!transcript) {
+        setTranscript('');
+      }
     } catch (error) {
       console.error('Stop recording error:', error);
       setError(error instanceof Error ? error.message : 'Failed to stop recording');

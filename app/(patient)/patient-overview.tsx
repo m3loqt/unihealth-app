@@ -84,6 +84,10 @@ export default function PatientOverviewScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [joinedDate, setJoinedDate] = useState<string | null>(null);
+  const [resolvedDOB, setResolvedDOB] = useState<string | null>(null);
+  const [resolvedAge, setResolvedAge] = useState<number | null>(null);
+  const [confirmedReferrals, setConfirmedReferrals] = useState<any[]>([]);
 
   // Load patient data from Firebase
   useEffect(() => {
@@ -116,6 +120,166 @@ export default function PatientOverviewScreen() {
         setAppointments(validAppointments);
         setMedicalHistory(patientMedicalHistory);
         setPrescriptions(validPrescriptions);
+
+        // Derive Joined Date from multiple sources (patients/users.createdAt, earliest appointment/referral)
+        try {
+          const dateCandidates: number[] = [];
+          const pushIfValid = (d?: any) => {
+            if (!d) return;
+            const t = new Date(d).getTime();
+            if (!isNaN(t)) dateCandidates.push(t);
+          };
+
+          // patients node createdAt
+          pushIfValid((patient as any)?.createdAt);
+
+          // users node createdAt
+          const usersNodeRecordLocal = await databaseService.getDocument(`users/${id}`);
+          pushIfValid(usersNodeRecordLocal?.createdAt);
+
+          // earliest appointment date
+          (patientAppointments || []).forEach((apt) => pushIfValid(apt?.appointmentDate));
+
+          // earliest referral timestamp/date
+          try {
+            const allReferrals = await databaseService.getDocument('referrals');
+            if (allReferrals) {
+              Object.values(allReferrals).forEach((r: any) => {
+                if (r?.patientId === id) {
+                  pushIfValid(r?.referralTimestamp);
+                  pushIfValid(r?.appointmentDate);
+                }
+              });
+            }
+          } catch {}
+
+          if (dateCandidates.length > 0) {
+            const earliest = new Date(Math.min(...dateCandidates));
+            const formatted = formatDate(earliest.toISOString());
+            setJoinedDate(formatted);
+          } else {
+            setJoinedDate(null);
+          }
+        } catch {}
+
+        // Resolve DOB and Age from patients/users nodes
+        try {
+          const usersNodeRecordLocal = await databaseService.getDocument(`users/${id}`);
+          const parseDate = (raw: any): Date | null => {
+            if (!raw) return null;
+            try {
+              if (typeof raw === 'number') {
+                // Handle seconds vs milliseconds epoch
+                const ms = raw < 1e12 ? raw * 1000 : raw;
+                const d = new Date(ms);
+                return isNaN(d.getTime()) ? null : d;
+              }
+              if (typeof raw === 'string') {
+                const maybeNum = Number(raw);
+                if (!isNaN(maybeNum) && raw.trim() !== '') {
+                  const ms = maybeNum < 1e12 ? maybeNum * 1000 : maybeNum;
+                  const dNum = new Date(ms);
+                  if (!isNaN(dNum.getTime())) return dNum;
+                }
+                // Try native parse first
+                const dNative = new Date(raw);
+                if (!isNaN(dNative.getTime())) return dNative;
+                // Try common date formats like DD/MM/YYYY or MM/DD/YYYY or YYYY/MM/DD
+                const cleaned = raw.replace(/[-\.]/g, '/');
+                const parts = cleaned.split('/').map(p => p.trim());
+                if (parts.length === 3) {
+                  let day: number, month: number, year: number;
+                  if (parts[0].length === 4) {
+                    // YYYY/MM/DD
+                    year = Number(parts[0]); month = Number(parts[1]); day = Number(parts[2]);
+                  } else if (Number(parts[0]) > 12) {
+                    // DD/MM/YYYY
+                    day = Number(parts[0]); month = Number(parts[1]); year = Number(parts[2]);
+                  } else if (Number(parts[1]) > 12) {
+                    // MM/DD/YYYY (second part as day if >12)
+                    month = Number(parts[0]); day = Number(parts[1]); year = Number(parts[2]);
+                  } else {
+                    // Fallback assume MM/DD/YYYY
+                    month = Number(parts[0]); day = Number(parts[1]); year = Number(parts[2]);
+                  }
+                  if (year && month && day) {
+                    const dParts = new Date(year, month - 1, day);
+                    if (!isNaN(dParts.getTime())) return dParts;
+                  }
+                }
+                return null;
+              }
+              return null;
+            } catch {
+              return null;
+            }
+          };
+
+          // Candidates from already fetched patient and users node
+          const dobCandidates: any[] = [
+            (patient as any)?.dateOfBirth,
+            (patient as any)?.dob,
+            (patient as any)?.birthDate,
+            (patient as any)?.birthday,
+          ];
+          if (usersNodeRecordLocal) {
+            dobCandidates.push(
+              usersNodeRecordLocal?.dateOfBirth,
+              usersNodeRecordLocal?.dob,
+              usersNodeRecordLocal?.birthDate,
+              usersNodeRecordLocal?.birthday,
+              usersNodeRecordLocal?.profile?.dateOfBirth,
+              usersNodeRecordLocal?.profile?.dob,
+            );
+          }
+          let dobDate: Date | null = null;
+          for (const cand of dobCandidates) {
+            const parsed = parseDate(cand);
+            if (parsed) { dobDate = parsed; break; }
+          }
+          if (dobDate) {
+            setResolvedDOB(formatDate(dobDate.toISOString()));
+            // Compute age
+            const today = new Date();
+            let age = today.getFullYear() - dobDate.getFullYear();
+            const monthDiff = today.getMonth() - dobDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) {
+              age -= 1;
+            }
+            setResolvedAge(age);
+          } else {
+            // Fallback: use explicit age fields if present
+            const explicitAge = safeDataAccess.getUserAge(patient as any, null) ?? safeDataAccess.getUserAge(usersNodeRecordLocal as any, null);
+            setResolvedDOB(null);
+            setResolvedAge(explicitAge);
+          }
+        } catch {}
+
+        // Collect confirmed referrals for this patient
+        try {
+          const allReferrals = await databaseService.getDocument('referrals');
+          const refs: any[] = [];
+          if (allReferrals) {
+            Object.entries(allReferrals as Record<string, any>).forEach(([refId, r]) => {
+              if (r?.patientId === id && String(r?.status).toLowerCase() === 'confirmed') {
+                refs.push({
+                  id: refId,
+                  type: r?.type || 'referral',
+                  appointmentDate: r?.appointmentDate,
+                  appointmentTime: r?.appointmentTime,
+                  status: r?.status,
+                  specialistId: r?.assignedSpecialistId,
+                  specialistName: r?.assignedSpecialistFirstName || r?.assignedSpecialistLastName
+                    ? `${r?.assignedSpecialistFirstName || ''} ${r?.assignedSpecialistLastName || ''}`.trim()
+                    : (r?.specialistName || ''),
+                  reason: r?.initialReasonForReferral || r?.reason || '',
+                  source: 'referral',
+                });
+              }
+            });
+          }
+          setConfirmedReferrals(refs);
+        } catch {}
       }
     } catch (error) {
       console.error('Error loading patient data:', error);
@@ -146,12 +310,12 @@ export default function PatientOverviewScreen() {
   };
 
   const handleActiveConsultationPress = () => {
-    const activeAppts = appointments.filter(apt => 
-      apt.status === 'pending' || apt.status === 'confirmed'
-    );
-    if (activeAppts.length > 0) {
-      const consultation = activeAppts[0];
-      router.push(`/patient-consultation?patientId=${patientData?.id}&consultationId=${consultation.id}`);
+    if (activeConsultations.length === 0) return;
+    const item: any = activeConsultations[0];
+    if (item.source === 'referral') {
+      router.push(`/(specialist)/referral-details?id=${item.id}`);
+    } else {
+      router.push(`/visit-overview?id=${item.id}`);
     }
   };
 
@@ -185,10 +349,17 @@ export default function PatientOverviewScreen() {
 
   // Performance optimization: memoize filtered data
   const activeAppointments = performanceUtils.useDeepMemo(() => {
-    return appointments.filter(apt => 
-      apt.status === 'pending' || apt.status === 'confirmed'
-    );
+    return appointments.filter(apt => apt.status === 'confirmed');
   }, [appointments]);
+
+  const activeConsultations = performanceUtils.useDeepMemo(() => {
+    // Merge confirmed appointments and confirmed referrals; sort by date desc
+    const items: any[] = [
+      ...activeAppointments,
+      ...confirmedReferrals,
+    ];
+    return items.sort((a, b) => new Date(b?.appointmentDate || 0).getTime() - new Date(a?.appointmentDate || 0).getTime());
+  }, [activeAppointments, confirmedReferrals]);
 
   const completedAppointments = performanceUtils.useDeepMemo(() => {
     return appointments.filter(apt => apt.status === 'completed');
@@ -218,6 +389,16 @@ export default function PatientOverviewScreen() {
     });
   };
 
+  const formatTypeLabel = (raw?: string): string => {
+    if (!raw || typeof raw !== 'string') return 'Consultation';
+    const normalized = raw.replace(/[_-]+/g, ' ').trim();
+    return normalized
+      .split(' ')
+      .filter(Boolean)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -242,6 +423,16 @@ export default function PatientOverviewScreen() {
   }
 
   const patientAge = getPatientAge();
+  const patientInitials = (() => {
+    const full = safeDataAccess.getUserFullName(patientData, 'P');
+    return full
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((n: string) => n[0]?.toUpperCase())
+      .join('') || 'P';
+  })();
+  const patientDOB = patientData?.dateOfBirth ? formatDate(patientData.dateOfBirth) : 'Not provided';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -287,39 +478,48 @@ export default function PatientOverviewScreen() {
               <View style={styles.patientCard}>
                 <View style={styles.patientHeader}>
                   <View style={styles.patientAvatar}>
-                    <User size={32} color="#FFFFFF" />
+                    <Text style={styles.patientInitial}>{patientInitials}</Text>
                   </View>
                   <View style={styles.patientInfo}>
                     <Text style={styles.patientName}>{getPatientName()}</Text>
-                    <Text style={styles.patientAge}>
-                      {patientAge ? `${patientAge} years old` : ''} • {safeDataAccess.getUserGender(patientData)} • {safeDataAccess.getBloodType(patientData)}
-                    </Text>
-                    <Text style={styles.patientId}>ID: {patientData.id}</Text>
+                    {joinedDate && (
+                      <Text style={styles.joinedDate}>Joined: {joinedDate}</Text>
+                    )}
                   </View>
                 </View>
-                
-                <View style={styles.divider} />
-                
-                <View style={styles.contactInfo}>
-                  {safeDataAccess.getUserPhone(patientData) !== 'Not provided' && (
-                    <View style={styles.contactItem}>
-                      <Phone size={16} color="#6B7280" />
-                      <Text style={styles.contactText}>{safeDataAccess.getUserPhone(patientData)}</Text>
-                    </View>
-                  )}
-                  {patientData?.email && (
+
+                {/* Patient meta details (label/value layout) */}
+                <View style={styles.detailsTable}>
+                  <View style={styles.detailsRow}>
+                    <Text style={styles.detailsLabel}>Date of Birth</Text>
+                    <Text style={styles.detailsValue}>{resolvedDOB || 'Not provided'}</Text>
+                  </View>
+                  <View style={styles.detailsRow}>
+                    <Text style={styles.detailsLabel}>Age</Text>
+                    <Text style={styles.detailsValue}>{resolvedAge != null ? `${resolvedAge} years` : 'Not provided'}</Text>
+                  </View>
+                  <View style={styles.detailsRow}>
+                    <Text style={styles.detailsLabel}>Gender</Text>
+                    <Text style={styles.detailsValue}>{safeDataAccess.getUserGender(patientData)}</Text>
+                  </View>
+                  <View style={styles.detailsRow}>
+                    <Text style={styles.detailsLabel}>Contact Number</Text>
+                    <Text style={styles.detailsValue}>{safeDataAccess.getUserPhone(patientData)}</Text>
+                  </View>
+                  <View style={styles.detailsRowNoBorder}>
+                    <Text style={styles.detailsLabel}>Address</Text>
+                    <Text style={styles.detailsValue}>{safeDataAccess.getUserAddress(patientData)}</Text>
+                  </View>
+                </View>
+
+                {patientData?.email && (
+                  <View style={styles.contactInfo}>
                     <View style={styles.contactItem}>
                       <Mail size={16} color="#6B7280" />
                       <Text style={styles.contactText}>{patientData.email}</Text>
                     </View>
-                  )}
-                  {patientData?.address && (
-                    <View style={styles.contactItem}>
-                      <MapPin size={16} color="#6B7280" />
-                      <Text style={styles.contactText}>{patientData.address}</Text>
-                    </View>
-                  )}
-                </View>
+                  </View>
+                )}
                 
                 {patientData?.medicalConditions && patientData.medicalConditions.length > 0 && (
                   <>
@@ -343,6 +543,11 @@ export default function PatientOverviewScreen() {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Emergency Contact</Text>
                 <View style={styles.emergencyCard}>
+                  {patientData.emergencyContact.relationship ? (
+                    <View style={styles.relationshipBadgeContainer}>
+                      <Text style={styles.relationshipPill}>{patientData.emergencyContact.relationship || 'Unknown'}</Text>
+                    </View>
+                  ) : null}
                   <View style={styles.emergencyLeft}>
                     <View style={styles.emergencyAvatar}>
                       <Text style={styles.emergencyInitial}>
@@ -355,9 +560,6 @@ export default function PatientOverviewScreen() {
                     </View>
                     <View style={styles.emergencyInfo}>
                       <Text style={styles.emergencyName}>{patientData.emergencyContact.name}</Text>
-                      <View style={styles.relationshipRow}>
-                        <Text style={styles.relationshipPill}>{patientData.emergencyContact.relationship || 'Unknown'}</Text>
-                      </View>
                       <Text style={styles.emergencyPhone}>{safeDataAccess.getEmergencyContactPhone(patientData)}</Text>
                     </View>
                   </View>
@@ -410,17 +612,33 @@ export default function PatientOverviewScreen() {
             {/* Active Consultation */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Active Consultation</Text>
-              {activeAppointments.length > 0 ? (
+              {activeConsultations.length > 0 ? (
                 <TouchableOpacity style={styles.consultationCard} onPress={handleActiveConsultationPress}>
                   <View style={styles.consultationHeader}>
                     <View style={styles.consultationIcon}>
-                      <FileText size={20} color="#1E40AF" />
+                      <FileText size={20} color="#FFFFFF" />
                     </View>
                     <View style={styles.consultationInfo}>
-                      <Text style={styles.consultationType}>{activeAppointments[0]?.type || 'Consultation'}</Text>
+                      <Text style={styles.consultationType}>
+                        {activeConsultations[0]?.source === 'referral'
+                          ? (activeConsultations[0]?.reason || 'Not specified')
+                          : (activeConsultations[0]?.appointmentPurpose || formatTypeLabel(activeConsultations[0]?.type))}
+                      </Text>
                       <Text style={styles.consultationDate}>
-                        {activeAppointments[0]?.appointmentDate || 'N/A'} at {(() => {
-                          const timeString = activeAppointments[0]?.appointmentTime;
+                        {activeConsultations[0]?.source === 'referral'
+                          ? (() => {
+                              const name = activeConsultations[0]?.specialistName;
+                              const stripped = (name || '').replace(/^Dr\.?\s+/i, '').trim();
+                              return `Dr. ${stripped || 'Unknown Doctor'}`;
+                            })()
+                          : (() => {
+                              const doctor = safeDataAccess.getAppointmentDoctorName(activeConsultations[0] as any, 'Dr. Unknown Doctor');
+                              return doctor;
+                            })()}
+                      </Text>
+                      <Text style={styles.consultationDate}>
+                        {activeConsultations[0]?.appointmentDate || 'N/A'} at {(() => {
+                          const timeString = activeConsultations[0]?.appointmentTime;
                           if (!timeString) return 'N/A';
                           // Handle time strings that already have AM/PM
                           if (timeString.includes('AM') || timeString.includes('PM')) {
@@ -431,14 +649,7 @@ export default function PatientOverviewScreen() {
                           return timeString;
                         })()}
                       </Text>
-                      <View style={styles.statusContainer}>
-                        <View style={[
-                          styles.statusBadge,
-                          activeAppointments[0]?.status === 'confirmed' ? styles.statusConfirmed : styles.statusPending
-                        ]}>
-                          <Text style={styles.statusText}>{activeAppointments[0]?.status || 'pending'}</Text>
-                        </View>
-                      </View>
+                      {/* Status pill removed for active consultation preview */}
                     </View>
                     <ChevronRight size={20} color="#9CA3AF" />
                   </View>
@@ -657,9 +868,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   patientAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#1E40AF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -670,9 +881,49 @@ const styles = StyleSheet.create({
   },
   patientName: {
     fontSize: 22,
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
     marginBottom: 4,
+  },
+  joinedDate: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  patientInitial: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontFamily: 'Inter-SemiBold',
+  },
+  detailsTable: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  detailsRowNoBorder: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 6,
+  },
+  detailsLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    flex: 1.1,
+  },
+  detailsValue: {
+    fontSize: 14,
+    color: '#1F2937',
+    fontFamily: 'Inter-Regular',
+    flex: 2,
+    textAlign: 'right',
+    lineHeight: 19,
   },
   patientAge: {
     fontSize: 16,
@@ -726,11 +977,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderRadius: 16,
     padding: 20,
+    paddingTop: 24,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    position: 'relative',
+  },
+  relationshipBadgeContainer: {
+    position: 'absolute',
+    right: 16,
+    top: 14,
   },
   emergencyLeft: {
     flexDirection: 'row',
@@ -760,11 +1018,6 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 2,
   },
-  relationshipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
   relationshipPill: {
     backgroundColor: '#EFF6FF',
     color: '#1E40AF',
@@ -773,7 +1026,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    marginRight: 6,
     overflow: 'hidden',
   },
   emergencyPhone: {
@@ -785,14 +1037,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1E40AF',
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 18,
     gap: 7,
+    marginTop: 20,
   },
   emergencyCallText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Inter-SemiBold',
     marginLeft: 5,
   },
@@ -860,7 +1113,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#1E40AF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
