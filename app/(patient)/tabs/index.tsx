@@ -738,7 +738,7 @@ export default function HomeScreen() {
               </View>
               
               {/* Action Buttons */}
-              <View style={notificationModalStyles.modalActions}>
+              <View style={[notificationModalStyles.modalActions, { marginBottom: 12 }]}>
                 <TouchableOpacity
                   style={notificationModalStyles.modalActionButton}
                   onPress={refreshNotifications}
@@ -755,11 +755,15 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View style={notificationModalStyles.notificationList}>
-                {notifications.length === 0 ? (
-                  <Text style={notificationModalStyles.emptyNotificationText}>No notifications yet</Text>
-                ) : (
-                  notifications.map((notification) => (
+              {notifications.length === 0 ? (
+                <Text style={[notificationModalStyles.emptyNotificationText, { marginBottom: 12, marginTop: 12 }]}>No notifications yet</Text>
+              ) : (
+                <ScrollView
+                  style={notificationModalStyles.notificationScroll}
+                  contentContainerStyle={notificationModalStyles.notificationListContent}
+                  showsVerticalScrollIndicator
+                >
+                  {notifications.map((notification) => (
                     <View key={notification.id} style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}>
                       <View style={notificationModalStyles.notificationContent}>
                         <Text style={[notificationModalStyles.notificationText, !notification.read && notificationModalStyles.unreadText]}>
@@ -786,9 +790,10 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                       </View>
                     </View>
-                  ))
-                )}
-              </View>
+                  ))}
+                </ScrollView>
+              )}
+
               <View style={notificationModalStyles.modalActions}>
                 <TouchableOpacity
                   style={notificationModalStyles.modalSecondaryButton}
@@ -1320,20 +1325,20 @@ const notificationModalStyles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 24,
+    padding: 20,
     alignItems: 'center',
-    paddingBottom: 40,
+    paddingBottom: 24,
   },
   modalHeader: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   modalTitle: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
     marginTop: 8,
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
   modalSubtext: {
@@ -1342,7 +1347,7 @@ const notificationModalStyles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   modalActions: {
     flexDirection: 'row',
@@ -1380,19 +1385,22 @@ const notificationModalStyles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
   },
-  notificationList: {
+  notificationScroll: {
     width: '100%',
-    maxHeight: 200,
-    marginBottom: 20,
+    maxHeight: SCREEN_HEIGHT * 0.55,
+    marginBottom: 16,
+  },
+  notificationListContent: {
+    paddingBottom: 8,
   },
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 8,
-    marginBottom: 5,
+    marginBottom: 10,
     backgroundColor: '#F3F4F6',
   },
   unreadNotification: {
@@ -1403,11 +1411,13 @@ const notificationModalStyles = StyleSheet.create({
   notificationContent: {
     flex: 1,
     marginRight: 10,
+    maxWidth: '85%',
   },
   notificationText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#374151',
+    lineHeight: 20,
   },
   unreadText: {
     fontFamily: 'Inter-SemiBold',
@@ -1431,7 +1441,7 @@ const notificationModalStyles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 8,
   },
 });
  
