@@ -377,10 +377,10 @@ export default function ConsultationReportScreen() {
     @page { size: 8.5in 11in; margin: 0.5in; }
     html, body { margin: 0; padding: 0; background: #F3F4F6; color: ${text}; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
     .preview { display: flex; flex-direction: column; align-items: center; padding: 16px; }
-    .page { width: 100%; max-width: 8.5in; height: 11in; background: #FFFFFF; box-shadow: 0 2px 16px rgba(0,0,0,0.08); position: relative; border: 1px solid #E5E7EB; display: flex; flex-direction: column; box-sizing: border-box; }
+    .page { width: 100%; max-width: 8.5in; height: auto; background: #FFFFFF; box-shadow: 0 2px 16px rgba(0,0,0,0.08); position: relative; border: 1px solid #E5E7EB; display: flex; flex-direction: column; box-sizing: border-box; }
     .page-body { flex: 1; }
     .page .header, .page .top, .page .footer, .page .page-body { position: relative; z-index: 1; }
-    .watermark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0.1; z-index: 0; pointer-events: none; }
+    .watermark { position: absolute; left: 0; right: 0; bottom: 56px; top: auto; display: flex; align-items: center; justify-content: center; opacity: 0.1; z-index: 0; pointer-events: none; }
     .watermark img { max-width: 65%; max-height: 65%; object-fit: contain; }
     .preview { gap: 16px; }
     .page + .page { margin-top: 16px; }
@@ -430,6 +430,7 @@ export default function ConsultationReportScreen() {
       .footer-fixed { position: fixed; bottom: 0; left: 0; right: 0; }
       .header-fixed { position: fixed; top: 0; left: 0; right: 0; }
     }
+    @media screen { .page { height: calc(100vh - 30px); aspect-ratio: 8.5 / 11; overflow: hidden; } }
   </style>
 </head>
 <body>
@@ -591,13 +592,17 @@ export default function ConsultationReportScreen() {
       blocks.forEach(block => {
         const currentAvailable = isFirstBody ? availableFirst : availableOther;
         currentBody.appendChild(block);
-        // Recompute available when moving to a new page after first
-        const exceeds = currentBody.scrollHeight > currentAvailable;
+        let exceeds = currentBody.scrollHeight > currentAvailable;
+        // If it exceeds but the block itself is smaller than the available space,
+        // it means a tiny remainder is forcing a new page. Move it directly to a new page.
         if (exceeds) {
+          const blockHeight = block.getBoundingClientRect().height;
+          const canFitAlone = blockHeight <= currentAvailable;
           currentBody.removeChild(block);
           currentBody = createPage();
           isFirstBody = false;
           currentBody.appendChild(block);
+          // Re-check in case of edge cases; if still exceeding, leave it (it will span next page's start)
         }
       });
 
