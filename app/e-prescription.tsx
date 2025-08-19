@@ -40,7 +40,9 @@ export default function EPrescriptionScreen() {
   const [provider, setProvider] = useState<any>(null);
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
   const [diagnoses, setDiagnoses] = useState<any[]>([]);
+  const [providerUser, setProviderUser] = useState<any>(null);
   const [logoDataUri, setLogoDataUri] = useState<string | null>(null);
+  const [rxDataUri, setRxDataUri] = useState<string | null>(null);
   const webViewRef = useRef<WebView>(null);
   const [downloadModalVisible, setDownloadModalVisible] = useState(false);
   const [downloadSavedPath, setDownloadSavedPath] = useState<string | null>(null);
@@ -60,15 +62,17 @@ export default function EPrescriptionScreen() {
         setReferral(refData);
 
         // Related entities
-        const [clinicData, userData, patientProfileData, specialistData] = await Promise.all([
+        const [clinicData, userData, patientProfileData, specialistData, specialistUserDoc] = await Promise.all([
           refData.referringClinicId ? databaseService.getDocument(`clinics/${refData.referringClinicId}`) : null,
           refData.patientId ? databaseService.getDocument(`users/${refData.patientId}`) : null,
           refData.patientId ? databaseService.getDocument(`patients/${refData.patientId}`) : null,
           refData.assignedSpecialistId ? databaseService.getSpecialistProfile(refData.assignedSpecialistId) : null,
+          refData.assignedSpecialistId ? databaseService.getDocument(`users/${refData.assignedSpecialistId}`) : null,
         ]);
         setClinic(clinicData);
         setPatient({ ...(userData || {}), ...(patientProfileData || {}) });
         setProvider(specialistData);
+        setProviderUser(specialistUserDoc);
 
         // Prescriptions from medical history if available, otherwise by appointment
         let loadedPrescriptions: any[] = [];
@@ -117,6 +121,21 @@ export default function EPrescriptionScreen() {
     })();
   }, []);
 
+  // Load Rx image if available
+  useEffect(() => {
+    (async () => {
+      try {
+        const asset = Asset.fromModule(require('../assets/images/rx2.png'));
+        await asset.downloadAsync();
+        const localUri = asset.localUri || asset.uri;
+        if (localUri) {
+          const b64 = await FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 });
+          setRxDataUri(`data:image/png;base64,${b64}`);
+        }
+      } catch {}
+    })();
+  }, []);
+
   const safe = (val?: any) => {
     if (val === undefined || val === null) return '—';
     const str = String(val);
@@ -157,6 +176,71 @@ export default function EPrescriptionScreen() {
     }
   };
 
+  const computeAgeFromInput = (input?: any): string => {
+    if (!input) return '—';
+    try {
+      let birth: Date | null = null;
+      if (typeof input === 'object' && input?.seconds) {
+        birth = new Date(input.seconds * 1000);
+      } else if (typeof input === 'object' && typeof input?.toDate === 'function') {
+        birth = input.toDate();
+      } else {
+        const str = String(input);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+          birth = new Date(`${str}T00:00:00Z`);
+        } else if (/^\d{10,13}$/.test(str)) {
+          const ms = str.length === 13 ? Number(str) : Number(str) * 1000;
+          birth = new Date(ms);
+        } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
+          const [a, b, y] = str.split('/').map(Number);
+          // If first segment > 12, assume DD/MM/YYYY; else MM/DD/YYYY
+          const month = (a > 12 ? b : a) - 1;
+          const day = a > 12 ? a : b;
+          birth = new Date(Date.UTC(y, month, day));
+        } else {
+          const d = new Date(str);
+          if (!isNaN(d.getTime())) birth = d;
+        }
+      }
+      if (!birth) return '—';
+      const today = new Date();
+      let years = today.getFullYear() - birth.getFullYear();
+      const monthDelta = today.getMonth() - birth.getMonth();
+      if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < birth.getDate())) {
+        years--;
+      }
+      return years >= 0 && years <= 130 ? String(years) : '—';
+    } catch {
+      return '—';
+    }
+  };
+
+  const toDateObj = (input?: any): Date | null => {
+    if (!input) return null;
+    try {
+      if (typeof input === 'object') {
+        if (input?.seconds) return new Date(input.seconds * 1000);
+        if (typeof input?.toDate === 'function') return input.toDate();
+      }
+      const str = String(input).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return new Date(`${str}T00:00:00Z`);
+      if (/^\d{10,13}$/.test(str)) {
+        const ms = str.length === 13 ? Number(str) : Number(str) * 1000;
+        return new Date(ms);
+      }
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
+        const [a, b, y] = str.split('/').map(Number);
+        const month = (a > 12 ? b : a) - 1;
+        const day = a > 12 ? a : b;
+        return new Date(Date.UTC(y, month, day));
+      }
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? null : d;
+    } catch {
+      return null;
+    }
+  };
+
   const html = useMemo(() => {
     const brandPrimary = '#1E40AF';
     const subtle = '#6B7280';
@@ -178,10 +262,15 @@ export default function EPrescriptionScreen() {
     const clinicContact = safe((clinic?.contactNumber || clinic?.phone || clinic?.telephone || '') as any);
     const patientName = safe(fullName(patient, 'Unknown Patient'));
     const dob = safe(formatDateFlexible((patient?.dateOfBirth || patient?.dob || patient?.birthDate) as any));
+    const age = computeAgeFromInput(patient?.dateOfBirth || patient?.dob || patient?.birthDate);
     const gender = safe((patient?.gender || patient?.sex || '') as any);
     const doctorName = safe(fullName(provider, (`${referral?.assignedSpecialistFirstName || ''} ${referral?.assignedSpecialistLastName || ''}`).trim() || 'Unknown'));
     const dateIssued = safe(formatDateFlexible(referral?.appointmentDate));
     const timeIssued = safe(referral?.appointmentTime || '');
+    const issuedObj = toDateObj(referral?.appointmentDate);
+    const expirationDate = issuedObj
+      ? new Date(issuedObj.getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+      : '—';
     const patientContact = safe((patient?.contactNumber || patient?.phoneNumber || patient?.mobile || patient?.phone || '') as any);
     const patientAddressParts = [
       patient?.addressLine || patient?.address || patient?.addressLine1 || patient?.street,
@@ -195,16 +284,24 @@ export default function EPrescriptionScreen() {
     ].filter(Boolean);
     const patientAddress = safe(patientAddressParts.join(', '));
 
+    const ageText = age && age !== '—' ? `${age} years old` : '—';
+    const firstRx: any = Array.isArray(prescriptions) && prescriptions[0] ? (prescriptions[0] as any) : null;
+    const prescriptionId = safe(((firstRx && (firstRx.id || firstRx.prescriptionId))
+      || referral?.referralConsultationId
+      || referral?.clinicAppointmentId
+      || referral?.id
+      || String(id)
+      || '—'));
+
     const rows = (Array.isArray(prescriptions) && prescriptions.length)
       ? prescriptions.map((p: any, idx: number) => `
           <tr>
             <td>${safe(p.medication || '')}</td>
             <td>${safe(p.dosage || '')}</td>
-            <td>${safe(p.frequency || p.description || '')}</td>
             <td>${safe(p.duration || p.quantity || '')}</td>
           </tr>
         `).join('')
-      : `<tr><td colspan="4">No prescriptions recorded</td></tr>`;
+      : `<tr><td colspan=\"3\">No prescriptions recorded</td></tr>`;
 
     return `<!DOCTYPE html>
 <html>
@@ -215,9 +312,9 @@ export default function EPrescriptionScreen() {
     @page { size: 8.5in 11in; margin: 0.5in; }
     html, body { margin: 0; padding: 0; background: #F3F4F6; color: ${text}; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
     .preview { display: flex; flex-direction: column; align-items: center; padding: 16px; }
-    .page { width: 100%; max-width: 8.5in; height: 11in; background: #FFFFFF; box-shadow: 0 2px 16px rgba(0,0,0,0.08); position: relative; border: 1px solid ${border}; display: flex; flex-direction: column; box-sizing: border-box; }
+    .page { width: 100%; max-width: 8.5in; background: #FFFFFF; box-shadow: 0 2px 16px rgba(0,0,0,0.08); position: relative; border: 1px solid ${border}; display: flex; flex-direction: column; box-sizing: border-box; }
     .page .header, .page .top, .page .footer, .page .body { position: relative; z-index: 1; }
-    .watermark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0.1; z-index: 0; pointer-events: none; }
+    .watermark { position: absolute; left: 0; right: 0; bottom: 56px; top: auto; display: flex; align-items: center; justify-content: center; opacity: 0.1; z-index: 0; pointer-events: none; }
     .watermark img { max-width: 65%; max-height: 65%; object-fit: contain; }
 
     .header { padding: 10px 16px; background: ${brandPrimary}; color: #fff; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; letter-spacing: 0.3px; }
@@ -242,19 +339,31 @@ export default function EPrescriptionScreen() {
     .body { flex: 1; display: flex; flex-direction: column; }
     .footer { padding: 8px 16px; color: ${subtle}; font-size: 11px; background: #F9FAFB; display: flex; align-items: center; justify-content: space-between; }
     .divider { height: 1px; background: ${border}; width: calc(100% - 48px); margin: 10px auto; }
-    .details { width: calc(100% - 48px); margin: 0 auto 4px; }
+    .divider-wider { width: calc(100% - 30px); }
+    .details { width: calc(100% - 32px); margin: 0 16px 4px; }
     .detail-item { margin-bottom: 8px; }
     .details-row { display:flex; gap:16px; align-items:flex-end; }
     .details-col { flex:1; }
     .text-right { text-align:right; }
     .text-center { text-align:center; }
-    .signature-wrap { text-align: center; display: inline-block; }
-    .signature-line { height: 1px; background: ${border}; margin: 0 auto 6px; width: 160px; }
-    .signature-name { color: #374151; font-size: 12px; }
-    .signature-caption { color: ${subtle}; font-size: 11px; }
+    .kv-row { display:flex; align-items:flex-start; padding: 4px 0; }
+    .kv-label { flex: 0 0 40%; color: ${subtle}; font-size: 12px; }
+    .kv-value { flex: 1; text-align: right; font-size: 13px; font-weight: 600; }
+    .signature-wrap { text-align: left; display: inline-block; }
+    .signature-line { height: 1px; background: ${border}; margin: 4px 0 6px 0; width: 160px; }
+    .signature-name { color: #374151; font-size: 13.5px; font-weight: 700; }
+    .signature-caption { color: ${subtle}; font-size: 12.5px; margin-top: 6px; }
+    .signature-label { color: ${subtle}; font-size: 11px; margin-top: 6px; }
+
+    /* Rx layout */
+    .rx-row { display: flex; gap: 12px; align-items: flex-start; width: calc(100% - 32px); margin: 0 16px; }
+    .rx-badge { width: 60px; min-width: 60px; height: 60px; border-radius: 10px; background: transparent; color: #000000; display: flex; align-items: center; justify-content: center; font-size: 50px; font-weight: 700; line-height: 1; user-select: none; opacity: 0.9; }
+    .rx-badge img { width: 100%; height: 100%; object-fit: contain; }
+    .rx-table { width: 100%; margin: 0; }
 
     @media screen and (max-width: 640px) { .data-table { width: 100%; } }
-    @media print { .preview { padding: 0; } .page { box-shadow: none; width: 100%; height: calc(11in - 0in); border: none; margin: 0; max-width: none; } }
+    @media print { .preview { padding: 0; } .page { box-shadow: none; width: 8.5in; height: 11in; border: none; margin: 0 auto; max-width: 8.5in; } }
+    @media screen { .page { height: calc(100vh - 30px); aspect-ratio: 8.5 / 11; overflow: hidden; } }
   </style>
 </head>
 <body>
@@ -265,81 +374,55 @@ export default function EPrescriptionScreen() {
       <div class="top">
         <div class="row">
           <div class="cell">
-            <p class="label">Prescribing Doctor</p>
-            <div class="value strong" style="font-size:16px; font-weight:700;">Dr. ${doctorName}</div>
-            <p class="label">Date</p>
-            <div class="value strong">${dateIssued}</div>
-            ${timeIssued ? `<p class=\"label\">Time</p><div class=\"value strong\">${timeIssued}</div>` : ''}
+            <p class="label">Patient</p>
+            <div class="value" style="font-size:16px; font-weight:700;">${patientName}</div>
+            <p class="label">Age</p>
+            <div class="value strong">${ageText}</div>
+            ${patientContact && patientContact !== '—' ? `<p class="label">Contact Number</p><div class="value strong">${patientContact}</div>` : ''}
+            ${patientAddressParts.length ? `<p class="label">Address</p><div class="value strong">${patientAddress}</div>` : ''}
           </div>
           <div class="cell" style="text-align:right">
-            <div class="clinic-name" style="display:inline-block">${clinicName}</div>
-            ${addressParts.length ? `<p class="muted" style="margin-top:2px; margin-bottom:14px;">${clinicAddress}</p>` : ''}
-            ${clinicContact && clinicContact !== '—' ? `<p class="muted">${clinicContact}</p>` : ''}
+            <p class="label">Prescription ID</p>
+            <div class="value strong" style="font-size:16px; font-weight:700;">${prescriptionId}</div>
+            <p class="label">Date Issued</p>
+            <div class="value strong">${dateIssued}</div>
+            <p class=\"label\">Expiration Date</p>
+            <div class=\"value strong\">${expirationDate}</div>
           </div>
         </div>
       </div>
-      <div class="divider"></div>
+      <div class="divider divider-wider"></div>
 
       <div class="body">
-        <p class="rx-title" style="padding: 0 16px; font-weight:400; font-size:12px;">Patient Details</p>
-        <div class="details">
-          <div class="detail-item"><div class="value" style="font-size:16px; font-weight:700;">${patientName}</div></div>
-          <div class="details-row">
-            <div class="details-col">
-              <p class="label" style="margin-bottom:2px;">Date of Birth</p>
-              <div class="value">${dob}</div>
-            </div>
-            <div class="details-col text-center">
-              <div class="value">${gender || '—'}</div>
-            </div>
-            <div class="details-col text-right">
-              ${patientContact && patientContact !== '—' ? `<div class="value">${patientContact}</div>` : ''}
-            </div>
-          </div>
-          ${patientAddressParts.length ? `<div class="detail-item"><div class="value">${patientAddress}</div></div>` : ''}
-        </div>
-        <div class="divider"></div>
 
-        <p class="rx-title" style="padding: 0 16px;">Medicines</p>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th style="width:38%">Medicine Name</th>
-              <th style="width:20%">Dosage</th>
-              <th style="width:27%">Instructions</th>
-              <th style="width:15%">Duration</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows}
-          </tbody>
-        </table>
-        ${Array.isArray(diagnoses) && diagnoses.length ? `
-        <p class=\"rx-title\" style=\"padding: 0 16px;\">Diagnoses</p>
-        <table class=\"data-table\">
-          <thead>
-            <tr>
-              <th style=\"width:25%\">Code</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${diagnoses.map((d:any) => `
-              <tr>
-                <td>${safe(d.code || '')}</td>
-                <td>${safe(d.description || '')}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        <div class=\"divider\"></div>` : ''}
+        <div class="rx-row">
+          <div class="rx-badge">${rxDataUri ? `<img src="${rxDataUri}" />` : 'Rx'}</div>
+          <div class="rx-table">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:58%">Medicine Name</th>
+                  <th style="width:22%">Dosage</th>
+                  <th style="width:20%">Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
 
         <div style="padding: 6px 24px 12px;">
-          <div style="display:flex; justify-content:flex-end; margin-top: 12px;">
+          <div style="display:flex; justify-content:flex-end; margin-top: 20px;">
             <div class="signature-wrap">
-              <div class="signature-line" id="sig-line"></div>
+              <div class="signature-label">Prescribing Doctor</div>
               <div class="signature-name" id="sig-name">Dr. ${doctorName}</div>
-              <div class="signature-caption">Signature</div>
+              <div class="signature-line" id="sig-line"></div>
+              ${provider?.prcId ? `<div class="signature-caption">PRC ID: ${safe(provider.prcId)}</div>` : ''}
+              ${provider?.phone || provider?.contactNumber ? `<div class="signature-caption">Phone: ${safe(provider.phone || provider.contactNumber)}</div>` : ''}
+              ${providerUser?.email ? `<div class="signature-caption">Email: ${safe(providerUser.email)}</div>` : ''}
             </div>
           </div>
         </div>
@@ -372,7 +455,8 @@ export default function EPrescriptionScreen() {
 
   const handleGeneratePdf = async () => {
     try {
-      const { uri } = await Print.printToFileAsync({ html, width: 612, height: 792, base64: false });
+      // 8x11 inches in points (72dpi) = 576 x 792
+      const { uri } = await Print.printToFileAsync({ html, width: 576, height: 792, base64: false });
       return uri;
     } catch (e) {
       Alert.alert('Error', 'Failed to generate PDF.');
@@ -452,11 +536,11 @@ export default function EPrescriptionScreen() {
       <View style={styles.bottomBar}>
         <TouchableOpacity style={[styles.primaryBtn]} onPress={handleDownloadPdf}>
           <Download size={18} color="#FFFFFF" />
-          <Text style={styles.primaryText}>Download PDF</Text>
+          <Text style={styles.primaryText}>Download e-Prescription</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.secondaryBtn]} onPress={handleSharePdf}>
           <Share2 size={18} color="#1E40AF" />
-          <Text style={styles.secondaryText}>Share PDF</Text>
+          <Text style={styles.secondaryText}>Share e-Prescription</Text>
         </TouchableOpacity>
       </View>
 
