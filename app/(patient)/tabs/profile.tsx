@@ -12,6 +12,7 @@ import {
   Modal,
   Linking,
   StyleSheet,
+  Dimensions,
 } from 'react-native';
 import {
   Bell,
@@ -63,6 +64,7 @@ const defaultProfileData = {
 
 const BLUE = '#1E40AF';
 const LIGHT_BLUE = '#DBEAFE';
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -396,7 +398,7 @@ export default function ProfileScreen() {
               </View>
               
               {/* Action Buttons */}
-              <View style={styles.modalActions}>
+              <View style={[styles.modalActions, { marginBottom: 12 }]}>
                 <TouchableOpacity
                   style={styles.modalActionButton}
                   onPress={refreshNotifications}
@@ -412,12 +414,15 @@ export default function ProfileScreen() {
                   <Text style={styles.modalActionButtonText}>Mark All Read</Text>
                 </TouchableOpacity>
               </View>
-
-              <View style={styles.notificationList}>
-                {notifications.length === 0 ? (
-                  <Text style={styles.emptyNotificationText}>No notifications yet</Text>
-                ) : (
-                  notifications.map((notification) => (
+              {notifications.length === 0 ? (
+                <Text style={styles.emptyNotificationText}>No notifications yet</Text>
+              ) : (
+                <ScrollView
+                  style={styles.notificationScroll}
+                  contentContainerStyle={styles.notificationListContent}
+                  showsVerticalScrollIndicator
+                >
+                  {notifications.map((notification) => (
                     <View key={notification.id} style={[styles.notificationItem, !notification.read && styles.unreadNotification]}>
                       <View style={styles.notificationContent}>
                         <Text style={[styles.notificationText, !notification.read && styles.unreadText]}>
@@ -444,9 +449,9 @@ export default function ProfileScreen() {
                         </TouchableOpacity>
                       </View>
                     </View>
-                  ))
-                )}
-              </View>
+                  ))}
+                </ScrollView>
+              )}
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={styles.modalSecondaryButton}
@@ -913,20 +918,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 24,
+    padding: 20,
     alignItems: 'center',
-    paddingBottom: 40,
+    paddingBottom: 24,
   },
   modalHeader: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   modalTitle: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
     marginTop: 8,
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
   modalText: {
@@ -943,7 +948,7 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   modalActions: {
     flexDirection: 'row',
@@ -1011,19 +1016,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
   },
-  notificationList: {
+  notificationScroll: {
     width: '100%',
-    maxHeight: 200, // Limit height for scrollability
-    marginBottom: 20,
+    maxHeight: SCREEN_HEIGHT * 0.55,
+    marginBottom: 16,
+  },
+  notificationListContent: {
+    paddingBottom: 8,
   },
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 8,
-    marginBottom: 5,
+    marginBottom: 10,
     backgroundColor: '#F3F4F6',
   },
   unreadNotification: {
@@ -1034,11 +1042,13 @@ const styles = StyleSheet.create({
   notificationContent: {
     flex: 1,
     marginRight: 10,
+    maxWidth: '86%',
   },
   notificationText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#374151',
+    lineHeight: 20,
   },
   unreadText: {
     fontFamily: 'Inter-SemiBold',
@@ -1062,7 +1072,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 8,
   },
   modalActionButton: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   Alert,
   Pressable,
   Dimensions,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Stethoscope, Eye, EyeOff, Mail, Lock, Fingerprint, User, AlertCircle, X, CheckCircle } from 'lucide-react-native';
@@ -22,6 +24,43 @@ import { performBiometricLogin, isBiometricLoginAvailable, saveBiometricCredenti
 import { safeDataAccess } from '../src/utils/safeDataAccess';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const RotatingStethoscope: React.FC<{ size?: number }> = ({ size = 38 }) => {
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  const loopRef = useRef<Animated.CompositeAnimation | null>(null);
+  useEffect(() => {
+    loopRef.current = Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    loopRef.current.start();
+    return () => {
+      loopRef.current && loopRef.current.stop();
+      spinAnim.stopAnimation();
+      spinAnim.setValue(0);
+    };
+  }, [spinAnim]);
+  const rotate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  return (
+    <Animated.View
+      style={{
+        transform: [{ rotate }],
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: '#DBEAFE',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Stethoscope size={size} color="#1E40AF" />
+    </Animated.View>
+  );
+};
 
 export default function SignInScreen() {
   const { signIn } = useAuth();
@@ -117,9 +156,11 @@ export default function SignInScreen() {
 
   const handleBiometricLogin = async () => {
     try {
+      setErrorMessage('');
       const credentials = await performBiometricLogin();
       if (credentials) {
         // Sign in with the retrieved credentials
+        setIsLoading(true);
         const userProfile = await signIn(credentials.email, credentials.password);
         if (userProfile) {
           const targetRoute = userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
@@ -133,6 +174,8 @@ export default function SignInScreen() {
       }
     } catch (error) {
       setErrorMessage('Biometric authentication failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -250,6 +293,15 @@ export default function SignInScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Loading Overlay during Sign In */}
+      <Modal visible={isLoading} transparent animationType="fade" onRequestClose={() => {}}>
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <RotatingStethoscope />
+            <Text style={styles.loadingLabel}>Signing in...</Text>
+          </View>
+        </View>
+      </Modal>
       {/* Success Login Modal */}
       <Modal
         visible={showWelcomeModal}
@@ -353,7 +405,7 @@ export default function SignInScreen() {
                     styles.roleDescription,
                     selectedRole === 'specialist' && styles.roleDescriptionSelected
                   ]}>
-                    Manage patients, appointments, and provide medical care
+                    Manage patients, appointments and{"\n"}provide best medical care
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -434,7 +486,7 @@ export default function SignInScreen() {
                 <Mail size={20} color="#9CA3AF" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Email or username"
+                  placeholder="Email address"
                   placeholderTextColor="#9CA3AF"
                   value={formData.email}
                   onChangeText={value => handleInputChange('email', value)}
@@ -535,6 +587,27 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   keyboardAvoid: { flex: 1 },
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 22,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  loadingLabel: {
+    marginTop: 12,
+    fontSize: 15,
+    color: '#1F2937',
+    fontFamily: 'Inter-Medium',
+  },
   scrollContent: {
     flexGrow: 1,
     flex: 1,

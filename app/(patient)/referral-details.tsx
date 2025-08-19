@@ -766,7 +766,15 @@ export default function PatientReferralDetailsScreen() {
             <Text style={styles.primaryBottomButtonText}>Generate Visit Report</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.secondaryBottomButtonOutline}
+            style={[styles.secondaryBottomButtonOutline, { marginTop: 10 }]}
+            onPress={() => router.push({ pathname: '/e-prescription', params: { id: String(id) } })}
+            activeOpacity={0.8}
+          >
+            <FileText size={18} color="#1E40AF" style={{ marginRight: 8 }} />
+            <Text style={styles.secondaryBottomButtonOutlineText}>Generate E‑Prescription</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.secondaryBottomButtonOutline, { marginTop: 10 }]}
             onPress={() => {
               Alert.alert('Hidden', 'Referral details hidden');
             }}
