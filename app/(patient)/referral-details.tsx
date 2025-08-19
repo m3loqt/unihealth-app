@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   RefreshControl,
   UIManager,
   LayoutAnimation,
+  Animated,
+  Easing,
 } from 'react-native';
 import {
   ChevronLeft,
@@ -24,6 +26,7 @@ import {
   XCircle,
   Eye,
   Download,
+  Stethoscope,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
@@ -63,6 +66,36 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const HORIZONTAL_MARGIN = 24;
+
+const RotatingStethoscope: React.FC = () => {
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  const loopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  useEffect(() => {
+    loopRef.current = Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 1200,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    loopRef.current.start();
+    return () => {
+      loopRef.current && loopRef.current.stop();
+      spinAnim.stopAnimation();
+      spinAnim.setValue(0);
+    };
+  }, [spinAnim]);
+
+  const rotate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
+  return (
+    <Animated.View style={{ transform: [{ rotate }], width: 72, height: 72, borderRadius: 36, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+      <Stethoscope size={38} color="#1E40AF" />
+    </Animated.View>
+  );
+};
 
 // Formatting helpers (aligned with specialist screen)
 const formatDate = (dateString: string) => {
@@ -375,6 +408,7 @@ export default function PatientReferralDetailsScreen() {
           <Text style={styles.headerTitle}>Referral Details</Text>
         </View>
         <View style={styles.loadingContainer}>
+          <RotatingStethoscope />
           <Text style={styles.loadingText}>Loading referral details...</Text>
         </View>
       </SafeAreaView>
@@ -632,8 +666,8 @@ export default function PatientReferralDetailsScreen() {
                   <Text style={styles.medicationDosage}>{p.dosage || 'N/A'} • {p.frequency || 'N/A'}</Text>
                 </View>
                 <View style={styles.prescriptionStatus}>
-                  <Text style={styles.remainingDays}>{p.remaining}</Text>
-                  <Text style={styles.remainingLabel}>remaining</Text>
+                  <Text style={styles.remainingDays}>{p.duration}</Text>
+                  <Text style={styles.remainingLabel}>Duration</Text>
                 </View>
               </View>
               <View style={styles.prescriptionMeta}>
@@ -717,19 +751,7 @@ export default function PatientReferralDetailsScreen() {
           )}
         </View>
 
-        {/* View Visit Report (if completed) */}
-        {referralData.status.toLowerCase() === 'completed' && (
-          <View style={[styles.sectionSpacing, { marginTop: -10 }] }>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => router.push({ pathname: '/consultation-report', params: { id: String(id) } })}
-              activeOpacity={0.85}
-            >
-              <Download size={18} color="#FFFFFF" />
-              <Text style={styles.primaryButtonText}>View Visit Report</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {/* View Visit Report button moved to bottom action bar */}
       </ScrollView>
 
       {/* Bottom action bar (shown when completed) */}
@@ -737,13 +759,11 @@ export default function PatientReferralDetailsScreen() {
         <View style={styles.buttonBarVertical}>
           <TouchableOpacity
             style={styles.primaryBottomButton}
-            onPress={() => {
-              Alert.alert('Download', 'Downloading referral record...');
-            }}
+            onPress={() => router.push({ pathname: '/consultation-report', params: { id: String(id) } })}
             activeOpacity={0.8}
           >
             <Download size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.primaryBottomButtonText}>Download Record</Text>
+            <Text style={styles.primaryBottomButtonText}>Generate Visit Report</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.secondaryBottomButtonOutline}
