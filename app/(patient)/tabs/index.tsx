@@ -755,7 +755,7 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
 
-              {notifications.length === 0 ? (
+                {notifications.length === 0 ? (
                 <Text style={[notificationModalStyles.emptyNotificationText, { marginBottom: 12, marginTop: 12 }]}>No notifications yet</Text>
               ) : (
                 <ScrollView
@@ -792,7 +792,7 @@ export default function HomeScreen() {
                     </View>
                   ))}
                 </ScrollView>
-              )}
+                )}
 
               <View style={notificationModalStyles.modalActions}>
                 <TouchableOpacity
