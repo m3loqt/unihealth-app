@@ -380,8 +380,8 @@ export default function ConsultationReportScreen() {
     .page { width: 100%; max-width: 8.5in; height: 11in; background: #FFFFFF; box-shadow: 0 2px 16px rgba(0,0,0,0.08); position: relative; border: 1px solid #E5E7EB; display: flex; flex-direction: column; box-sizing: border-box; }
     .page-body { flex: 1; }
     .page .header, .page .top, .page .footer, .page .page-body { position: relative; z-index: 1; }
-    .watermark { position: absolute; left: 0; right: 0; bottom: 64px; display: flex; align-items: center; justify-content: center; opacity: 0.14; z-index: 0; pointer-events: none; }
-    .watermark img { max-width: 60%; max-height: 60%; object-fit: contain; }
+    .watermark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: 0.1; z-index: 0; pointer-events: none; }
+    .watermark img { max-width: 65%; max-height: 65%; object-fit: contain; }
     .preview { gap: 16px; }
     .page + .page { margin-top: 16px; }
     .header { padding: 8px 16px; background: ${brandPrimary}; color: #fff; font-weight: 600; font-size: 13px; letter-spacing: 0.3px; display: flex; align-items: center; justify-content: space-between; }
@@ -411,6 +411,7 @@ export default function ConsultationReportScreen() {
     .data-table { width: calc(100% - 48px); margin: 6px auto; border-collapse: collapse; font-size: 12px; }
     .data-table th { text-align: left; font-weight: 600; color: #374151; background: #F9FAFB; border-bottom: 1px solid #E5E7EB; padding: 8px; }
     .data-table td { color: #374151; border-bottom: 1px solid #E5E7EB; padding: 8px; vertical-align: top; }
+    .data-table tbody tr:nth-child(even) { background: #FAFAFB; }
     .footer { padding: 8px 16px; color: ${subtle}; font-size: 11px; background: #F9FAFB; display: flex; align-items: center; justify-content: space-between; }
     .avoid-break { page-break-inside: avoid; }
     .page-break { page-break-before: always; }
@@ -612,12 +613,7 @@ export default function ConsultationReportScreen() {
           foot.appendChild(right);
         }
         right.textContent = 'Page ' + (i + 1) + ' of ' + total;
-        // Adjust watermark position to sit just above the footer
-        const wm = p.querySelector('.watermark');
-        if (wm) {
-          const offset = (foot.offsetHeight || 0) + 12; // 12px breathing room
-          wm.style.bottom = offset + 'px';
-        }
+        // Watermark stays centered by CSS
       });
     })();
   </script>
