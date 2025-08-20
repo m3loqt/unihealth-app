@@ -15,6 +15,7 @@ import {
   Modal,
   Pressable,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { BlurView } from 'expo-blur';
@@ -36,7 +37,11 @@ import {
   MapPin,
   Pill,
   Heart,
+  LineChart as LineChartIcon,
+  LayoutGrid
 } from 'lucide-react-native';
+// @ts-ignore - library has no types bundled
+import { LineChart } from 'react-native-gifted-charts';
 import { router } from 'expo-router';
 import { getGreeting } from '../../../src/utils/greeting';
 import { getFirstName } from '../../../src/utils/string';
@@ -82,16 +87,40 @@ export default function SpecialistHomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showChart, setShowChart] = useState(true);
+  const [chartRange, setChartRange] = useState<'weekly' | 'monthly'>('weekly');
+  const [chartData, setChartData] = useState<{value: number; label: string}[]>([]);
+  const [selectedBand, setSelectedBand] = useState<string | null>(null);
+  const [chartTitle, setChartTitle] = useState('Patient Growth & Completed Appointments');
+  const [chartSubtitle, setChartSubtitle] = useState('');
+  const [bandAnimations] = useState(() => 
+    new Map<string, Animated.Value>()
+  );
   const [showQRModal, setShowQRModal] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [scannedPatient, setScannedPatient] = useState<any>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   // Load dashboard data from Firebase
   useEffect(() => {
     if (user && user.uid) {
       loadDashboardData();
+    }
+  }, [user]);
+
+  // Regenerate chart data when chart range changes
+  useEffect(() => {
+    if (user && user.uid && nextAppointments.length > 0) {
+      generateChartData();
+    }
+  }, [chartRange, user, nextAppointments]);
+
+  // Initialize chart data when component mounts
+  useEffect(() => {
+    if (user && user.uid) {
+      generateChartData();
     }
   }, [user]);
 
@@ -139,7 +168,7 @@ export default function SpecialistHomeScreen() {
 
       // Get all pending referrals (both 'pending' and 'pending_acceptance' statuses)
       const pendingReferrals = referrals.filter(ref => 
-        ref.status === 'pending' || ref.status === 'pending_acceptance'
+        (ref.status as any) === 'pending' || (ref.status as any) === 'pending_acceptance'
       );
 
       // Calculate today's appointments (including referrals)
@@ -245,6 +274,9 @@ export default function SpecialistHomeScreen() {
 
       setNextAppointments(allUpcoming);
       setNewPatients(recentPatients);
+      
+      // Generate initial chart data
+      generateChartData();
 
       // Load clinic data for appointments
       const clinicIds = new Set<string>();
@@ -284,6 +316,97 @@ export default function SpecialistHomeScreen() {
     setRefreshing(true);
     await loadDashboardData();
     setRefreshing(false);
+  };
+
+  const generateChartData = () => {
+    if (!user) return;
+    
+    // Build chart datasets based on current range
+    const buildWeekly = () => {
+      const days = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
+      const start = new Date();
+      start.setDate(start.getDate() - 6);
+      const data: any[] = [];
+      // Use realistic weekly data that shows a trend
+      const values = [45, 38, 52, 41, 67, 58, 72]; // Sample weekly trend
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        const label = days[i];
+        const value = values[i] || Math.floor(Math.random() * 30) + 20;
+        data.push({ value, label });
+      }
+      return data;
+    };
+    
+    const buildMonthly = () => {
+      const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+      const now = new Date();
+      const year = now.getFullYear();
+      const data: any[] = [];
+      for (let m = 0; m < 6; m++) {
+        const date = new Date(year, now.getMonth() - (5 - m), 1);
+        const monthIdx = date.getMonth();
+        const label = months[monthIdx];
+        // Use more realistic and varied data for better visualization
+        const values = [320, 280, 470, 190, 380, 420]; // Sample monthly data
+        const value = values[m] || Math.floor(Math.random() * 200) + 100;
+        data.push({ value, label });
+      }
+      return data;
+    };
+    
+    // Set chart data based on current range
+    const newChartData = chartRange === 'weekly' ? buildWeekly() : buildMonthly();
+    setChartData(newChartData);
+    
+    // Reset selected band when data changes
+    setSelectedBand(null);
+    
+    // Initialize animations for new data
+    newChartData.forEach(item => {
+      if (!bandAnimations.has(item.label)) {
+        bandAnimations.set(item.label, new Animated.Value(0));
+      }
+    });
+    
+    // Update chart title and subtitle
+    const now = new Date();
+    if (chartRange === 'weekly') {
+      const start = new Date();
+      start.setDate(start.getDate() - 6);
+      setChartTitle('Weekly Overview');
+      setChartSubtitle(`${start.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })} - ${now.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}`);
+    } else {
+      setChartTitle('Monthly Trends');
+      setChartSubtitle(now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+    }
+  };
+
+  const handleBandSelection = (label: string) => {
+    const newSelection = selectedBand === label ? null : label;
+    setSelectedBand(newSelection);
+    
+    // Animate band selection
+    chartData.forEach(item => {
+      const animation = bandAnimations.get(item.label);
+      if (animation) {
+        Animated.timing(animation, {
+          toValue: item.label === newSelection ? 1 : 0,
+          duration: 200,
+          useNativeDriver: false,
+        }).start();
+      }
+    });
+  };
+
+  const handleDropdownToggle = () => {
+    setShowDropdown(!showDropdown);
+  };
+
+  const handleRangeSelect = (range: 'weekly' | 'monthly') => {
+    setChartRange(range);
+    setShowDropdown(false);
   };
 
   const dashboardMetrics = [
@@ -458,7 +581,7 @@ export default function SpecialistHomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.userName}>Dr. {user?.firstName || 'Specialist'}</Text>
+            <Text style={styles.userName}>Dr. {user?.firstName || (user as any)?.name || 'Specialist'}</Text>
           </View>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.iconButton}>
@@ -470,10 +593,10 @@ export default function SpecialistHomeScreen() {
               )} */}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/(specialist)/tabs/profile')}>
-              {user?.firstName ? (
+              {user?.firstName || (user as any)?.name ? (
                 <View style={styles.profileInitials}>
                   <Text style={styles.profileInitialsText}>
-                    {getFirstName(user.name).charAt(0).toUpperCase()}
+                    {getFirstName((user as any).name || user.firstName).charAt(0).toUpperCase()}
                   </Text>
                 </View>
               ) : (
@@ -486,35 +609,199 @@ export default function SpecialistHomeScreen() {
           </View>
         </View>
 
-        {/* Dashboard Metrics */}
+        {/* Dashboard */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Dashboard</Text>
-          <View style={styles.metricsGrid}>
-            {dashboardMetrics.map((metric) => (
-              <TouchableOpacity
-                key={metric.id}
-                style={styles.metricCard}
-                onPress={metric.onPress}
-                activeOpacity={0.8}
-              >
-                <View style={styles.metricHeader}>
-                  <View style={styles.metricIcon}>
-                    <metric.icon size={20} color="#1E40AF" />
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{showChart ? 'Appointment Overview' : 'Dashboard'}</Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity onPress={() => setShowChart(false)} style={styles.toggleIconBtn}>
+                <LayoutGrid size={18} color={showChart ? '#6B7280' : '#1E40AF'} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setShowChart(true)} style={styles.toggleIconBtn}>
+                <LineChartIcon size={18} color={showChart ? '#1E40AF' : '#6B7280'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {!showChart ? (
+            <View style={styles.metricsGrid}>
+              {dashboardMetrics.map((metric) => (
+                <TouchableOpacity
+                  key={metric.id}
+                  style={styles.metricCard}
+                  onPress={metric.onPress}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.metricHeader}>
+                    <View style={styles.metricIcon}>
+                      <metric.icon size={20} color="#1E40AF" />
+                    </View>
+                    {metric.trend > 0 ? (
+                      <TrendingUp size={20} color="#10B981" />
+                    ) : metric.trend < 0 ? (
+                      <TrendingUp size={20} color="#EF4444" style={{ transform: [{ rotate: '180deg' }] }} />
+                    ) : (
+                      <TrendingUp size={20} color="#9CA3AF" />
+                    )}
                   </View>
-                  {metric.trend > 0 ? (
-                    <TrendingUp size={20} color="#10B981" />
-                  ) : metric.trend < 0 ? (
-                    <TrendingUp size={20} color="#EF4444" style={{ transform: [{ rotate: '180deg' }] }} />
-                  ) : (
-                    <TrendingUp size={20} color="#9CA3AF" />
+                  <Text style={styles.metricValue}>{metric.value}</Text>
+                  <Text style={styles.metricTitle}>{metric.title}</Text>
+                  <Text style={styles.metricChange}>{metric.change}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View>
+              {/* Chart Header with Left-Aligned Overview and Right-Aligned Filter */}
+              <View style={styles.chartHeaderNew}>
+                <View style={styles.chartHeaderLeft}>
+           
+                  <Text style={styles.chartSubtitle}>{chartSubtitle}</Text>
+                </View>
+                <View style={styles.chartHeaderRight}>
+                  <TouchableOpacity 
+                    style={styles.filterDropdown}
+                    onPress={handleDropdownToggle}
+                  >
+                    <Text style={styles.filterDropdownText}>{chartRange === 'weekly' ? 'Weekly' : 'Monthly'}</Text>
+                    <Text style={styles.filterDropdownIcon}>▼</Text>
+                  </TouchableOpacity>
+                  
+                  {/* Dropdown Menu */}
+                  {showDropdown && (
+                    <View style={styles.dropdownMenu}>
+                      <TouchableOpacity 
+                        style={[
+                          styles.dropdownItem,
+                          chartRange === 'weekly' && styles.dropdownItemActive
+                        ]}
+                        onPress={() => handleRangeSelect('weekly')}
+                      >
+                        <Text style={[
+                          styles.dropdownItemText,
+                          chartRange === 'weekly' && styles.dropdownItemTextActive
+                        ]}>Weekly</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[
+                          styles.dropdownItem,
+                          chartRange === 'monthly' && styles.dropdownItemActive
+                        ]}
+                        onPress={() => handleRangeSelect('monthly')}
+                      >
+                        <Text style={[
+                          styles.dropdownItemText,
+                          chartRange === 'monthly' && styles.dropdownItemTextActive
+                        ]}>Monthly</Text>
+                      </TouchableOpacity>
+                    </View>
                   )}
                 </View>
-                <Text style={styles.metricValue}>{metric.value}</Text>
-                <Text style={styles.metricTitle}>{metric.title}</Text>
-                <Text style={styles.metricChange}>{metric.change}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+              </View>
+              
+              {/* Chart Container */}
+              <View style={styles.chartWrapper}>
+                {/* Custom Y-axis Labels */}
+                <View style={styles.yAxisLabelsContainer}>
+                  <Text style={styles.yAxisLabel}>500</Text>
+                  <Text style={styles.yAxisLabel}>250</Text>
+                  <Text style={styles.yAxisLabel}>0</Text>
+                </View>
+                
+                {/* Custom Vertical Bands - Render first as background */}
+                <View style={styles.bandsContainer}>
+                  {chartData.map((item, index) => (
+                    <TouchableOpacity
+                      key={item.label}
+                      style={[
+                        styles.band,
+                        selectedBand === item.label && styles.bandSelected
+                      ]}
+                      onPress={() => handleBandSelection(item.label)}
+                      activeOpacity={0.8}
+                    >
+                      {/* Band gradient background */}
+                      <Animated.View style={[
+                        styles.bandBackground,
+                        selectedBand === item.label && styles.bandBackgroundSelected,
+                        {
+                          opacity: bandAnimations.get(item.label)?.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.7, 0.9],
+                          })
+                        }
+                      ]}>
+                        {/* Gradient effect layers */}
+                        <View style={styles.gradientTop} />
+                        <View style={styles.gradientMiddle} />
+                        <View style={styles.gradientBottom} />
+                      </Animated.View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                
+                {/* Line Chart - Render on top of bands */}
+                <View style={styles.lineChartContainer}>
+                  <LineChart
+                    data={chartData}
+                    curved
+                    thickness={2}
+                    color="#8BA4FF"
+                    height={200}
+                    hideRules
+                    hideAxesAndRules
+                    yAxisThickness={0}
+                    yAxisColor="transparent"
+                    yAxisTextStyle={{color:'transparent'}}
+                    xAxisColor="transparent"
+                    xAxisThickness={0}
+                    xAxisLabelTexts={[]}
+                    xAxisLabelTextStyle={{color:'transparent'}}
+                    hideDataPoints={false}
+                    showDataPointOnFocus={true}
+                    dataPointsRadius={3}
+                    dataPointsColor="#8BA4FF"
+                    dataPointsShape="circle"
+                    initialSpacing={25}
+                    spacing={40}
+                    noOfSections={4}
+                    pointerConfig={{
+                      pointerStripHeight: 140,
+                      pointerColor: '#8BA4FF',
+                      radius: 4,
+                      activatePointersOnLongPress: true,
+                      pointerLabelComponent: (items) => {
+                        const value = items[0]?.value ?? 0;
+                        const label = items[0]?.label ?? '';
+                        return (
+                          <View style={styles.pointerPill}>
+                            <Text style={styles.pointerValue}>{value}</Text>
+                            <Text style={styles.pointerLabel}>total appointments</Text>
+                          </View>
+                        );
+                      }
+                    }}
+                  />
+                </View>
+                
+                {/* Custom X-axis Labels below bands */}
+                <View style={styles.xAxisLabelsContainer}>
+                  {chartData.map((item, index) => (
+                    <View key={item.label} style={styles.xAxisLabel}>
+                      <Text style={styles.xAxisLabelText}>{item.label}</Text>
+                    </View>
+                  ))}
+                </View>
+                
+                {/* Selected Point Dot */}
+                {selectedBand && (
+                  <View style={styles.selectedDot}>
+                    <View style={styles.dotInner} />
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Quick Actions */}
@@ -595,7 +882,18 @@ export default function SpecialistHomeScreen() {
                 };
 
                 return (
-                  <TouchableOpacity key={appointment.id} style={styles.appointmentCard}>
+                  <TouchableOpacity 
+                    key={appointment.id} 
+                    style={styles.appointmentCard}
+                    onPress={() => {
+                      // Route to referral-details if it's a referral, otherwise to visit-overview
+                      if ('referringClinicId' in appointment) {
+                        router.push(`/(specialist)/referral-details?id=${appointment.id}`);
+                      } else {
+                        router.push(`/visit-overview?id=${appointment.id}`);
+                      }
+                    }}
+                  >
                     <View style={styles.appointmentHeader}>
                       <View style={styles.patientAvatar}>
                         <Text style={styles.patientInitial}>
@@ -606,15 +904,6 @@ export default function SpecialistHomeScreen() {
                         <Text style={styles.patientName}>{patientName}</Text>
                         <Text style={styles.appointmentType}>
                           {appointment.specialty || appointment.type || 'General Consultation'}
-                        </Text>
-                        <Text style={styles.clinicName}>
-                          {(() => {
-                            // Check if it's an appointment (has clinicId) or referral (has referringClinicId)
-                            const clinicId = 'clinicId' in appointment ? appointment.clinicId : 
-                                            'referringClinicId' in appointment ? appointment.referringClinicId : null;
-                            const clinic = clinicId ? clinicData[clinicId] : null;
-                            return clinic?.name || appointment.clinicName || 'Clinic not specified';
-                          })()}
                         </Text>
                       </View>
                       <View style={styles.appointmentTime}>
@@ -697,7 +986,11 @@ export default function SpecialistHomeScreen() {
                 };
 
                 return (
-                  <TouchableOpacity key={patient.id} style={styles.patientCard}>
+                  <TouchableOpacity 
+                    key={patient.id} 
+                    style={styles.patientCard}
+                    onPress={() => router.push(`/patient-overview?id=${patient.id}`)}
+                  >
                     <View style={styles.patientHeader}>
                       <View style={styles.patientAvatar}>
                         <Text style={styles.patientInitial}>
@@ -1159,7 +1452,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   appointmentHeader: {
     flexDirection: 'row',
@@ -1176,39 +1469,34 @@ const styles = StyleSheet.create({
   },
   patientInitial: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
   },
   appointmentDetails: {
     flex: 1,
   },
   patientName: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
     color: '#1F2937',
     marginBottom: 2,
   },
   appointmentType: {
-    fontSize: 15,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  clinicName: {
     fontSize: 13,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     marginTop: 2,
   },
+
   appointmentTime: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
   appointmentDate: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
   },
   timeContainer: {
     flexDirection: 'row',
@@ -1216,9 +1504,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   timeText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
   },
   patientsContainer: {
     gap: 12,
@@ -1323,24 +1611,286 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
   },
   quickActionButton: {
-    flex: 1,
+    alignItems: 'center',
+    padding: 16,
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    paddingVertical: 22,
-    paddingHorizontal: 18,
-    alignItems: 'center',
-    borderWidth: 1.5,
+    flex: 1,
+    marginHorizontal: 4,
+    borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  quickActionText: {
+  quickActionText: { 
+    fontSize: 12, 
+    color: '#374151', 
+    marginTop: 8, 
+    textAlign: 'center' 
+  },
+  toggleIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rangeChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB'
+  },
+  rangeChipActive: {
+    borderColor: '#1E40AF',
+    backgroundColor: '#EFF6FF'
+  },
+  rangeChipText: {
     fontSize: 12,
     color: '#6B7280',
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Inter-SemiBold'
+  },
+  rangeChipTextActive: {
+    color: '#1E40AF'
+  },
+  // Chart styles
+  chartHeader: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  chartHeaderNew: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  chartHeaderLeft: {
+    flex: 1,
+  },
+  chartHeaderRight: {
+    marginLeft: 16,
+  },
+  filterDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+    position: 'relative',
+  },
+  filterDropdownText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+  },
+  filterDropdownIcon: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 10,
+    minWidth: 120,
+  },
+  dropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dropdownItemActive: {
+    backgroundColor: '#EFF6FF',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+  },
+  dropdownItemTextActive: {
+    color: '#1E40AF',
+    fontFamily: 'Inter-Medium',
+  },
+  chartTitle: {
+    fontSize: 22,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    marginBottom: 6,
     textAlign: 'center',
-    marginTop: 8,
+  },
+  chartSubtitle: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginTop: 10,
+  },
+  chartWrapper: {
+    position: 'relative',
+    height: 240,
+    marginHorizontal: 4,
+  },
+  bandsContainer: {
+    position: 'absolute',
+    top: 10,
+    left: 30,
+    right: 0,
+    bottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    zIndex: 0,
+    paddingHorizontal: 0,
+    marginHorizontal: 0,
+  },
+  band: {
+    flex: 1,
+    marginHorizontal: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  bandSelected: {
+    borderWidth: 1,
+    borderColor: '#D6E2FF',
+  },
+  bandBackground: {
+    flex: 1,
+    backgroundColor: '#F0F4FF',
+    opacity: 0.7,
+  },
+  bandBackgroundSelected: {
+    backgroundColor: '#E7EEFF',
+    opacity: 0.9,
+  },
+  lineChartContainer: {
+    position: 'absolute',
+    top: 10,
+    left: 0,
+    right: 0,
+    height: 200,
+    zIndex: 2,
+    paddingHorizontal: 30,
+    marginRight: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gradientTop: {
+    flex: 3,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.9,
+  },
+  gradientMiddle: {
+    flex: 2,
+    backgroundColor: '#F7FAFF',
+    opacity: 0.7,
+  },
+  gradientBottom: {
+    flex: 1,
+    backgroundColor: '#EDF4FF',
+    opacity: 0.5,
+  },
+  selectedDot: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#8BA4FF',
+    zIndex: 2,
+    alignSelf: 'center',
+  },
+  dotInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+  },
+  pointerPill: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pointerValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+  },
+  pointerLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  xAxisLabelsContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 30,
+    right: 0,
+    height: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 1,
+    paddingHorizontal: 0,
+    marginHorizontal: 0,
+  },
+  xAxisLabel: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  xAxisLabelText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  yAxisLabelsContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 30,
+    height: 220,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    zIndex: 1,
+    paddingVertical: 10,
+  },
+  yAxisLabel: {
+    fontSize: 10,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
   },
 });
 
