@@ -105,8 +105,8 @@ export default function ReviewConfirmScreen() {
       const doctorNameParts = getDoctorNameParts(doctorName);
       
       // Get patient name from user profile (using the new structure)
-      const patientFirstName = user.name ? user.name.split(' ')[0] : '';
-      const patientLastName = user.name ? user.name.split(' ').slice(1).join(' ') : '';
+      const patientFirstName = user.firstName || '';
+      const patientLastName = user.lastName || '';
       
       const appointmentData = {
         appointmentDate: selectedDate as string,
@@ -130,7 +130,22 @@ export default function ReviewConfirmScreen() {
       setShowSuccessModal(true);
     } catch (error) {
       console.error('Error booking appointment:', error);
-      Alert.alert('Error', 'Failed to book appointment. Please try again.');
+      
+      // Check if it's a time slot conflict error
+      if (error instanceof Error && error.message.includes('already booked')) {
+        Alert.alert(
+          'Time Slot Unavailable', 
+          'This time slot has already been booked. Please select a different time.',
+          [
+            {
+              text: 'Go Back',
+              onPress: () => router.back()
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to book appointment. Please try again.');
+      }
     } finally {
       setIsBooking(false);
     }

@@ -7,6 +7,7 @@ export interface Patient {
   gender?: string;
   address?: string;
   bloodType?: string;
+  allergies?: string[];
   emergencyContact?: {
     name: string;
     phone: string;

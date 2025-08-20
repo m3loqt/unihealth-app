@@ -546,6 +546,39 @@ export const databaseService = {
     }
   },
 
+  async getAllDoctors(): Promise<Doctor[]> {
+    try {
+      const doctorsRef = ref(database, 'doctors');
+      const snapshot = await get(doctorsRef);
+      
+      if (snapshot.exists()) {
+        const doctorsData = snapshot.val();
+        const doctors: Doctor[] = [];
+        
+        Object.keys(doctorsData).forEach(doctorId => {
+          const doctorData = doctorsData[doctorId];
+          if (this.hasValidAvailability(doctorData)) {
+            doctors.push({
+              id: doctorId,
+              ...doctorData,
+              availability: doctorData.availability || {
+                lastUpdated: new Date().toISOString(),
+                weeklySchedule: {},
+                specificDates: {}
+              }
+            });
+          }
+        });
+        
+        return doctors;
+      }
+      return [];
+    } catch (error) {
+      console.error('Get all doctors error:', error);
+      throw new Error('Failed to load doctors from database');
+    }
+  },
+
   async getDoctorById(doctorId: string): Promise<Doctor | null> {
     try {
       const doctorRef = ref(database, `doctors/${doctorId}`);
@@ -575,11 +608,11 @@ export const databaseService = {
     }
   },
 
-  // Helper method to generate 1-hour time slots from start time to end time
+  // Helper method to generate 20-minute time slots from start time to end time
   generateTimeSlots(startTime: string, endTime: string): string[] {
     const slots: string[] = [];
     
-    console.log(`Generating time slots from ${startTime} to ${endTime}`);
+    console.log(`Generating 20-minute time slots from ${startTime} to ${endTime}`);
     
     // Parse start and end times (assuming format "HH:MM" or "HH:MM:SS")
     const start = new Date(`2000-01-01T${startTime}`);
@@ -588,15 +621,15 @@ export const databaseService = {
     console.log('Parsed start time:', start);
     console.log('Parsed end time:', end);
     
-    // Generate 1-hour slots
+    // Generate 20-minute slots
     let current = new Date(start);
     while (current < end) {
       const timeString = current.toTimeString().slice(0, 5); // Format as "HH:MM"
       slots.push(timeString);
       console.log(`Added slot: ${timeString}`);
       
-      // Add 1 hour
-      current.setHours(current.getHours() + 1);
+      // Add 20 minutes
+      current.setMinutes(current.getMinutes() + 20);
     }
     
     console.log('Generated slots:', slots);
@@ -664,7 +697,7 @@ export const databaseService = {
       // Check specific date first (overrides weekly schedule)
       if (specificDate?.timeSlots) {
         console.log('Using specific date time slots:', specificDate.timeSlots);
-        // Generate 1-hour slots for each time slot range
+        // Generate 20-minute slots for each time slot range
         specificDate.timeSlots.forEach(slot => {
           const slots = this.generateTimeSlots(slot.startTime, slot.endTime);
           console.log(`Generated slots for ${slot.startTime}-${slot.endTime}:`, slots);
@@ -672,7 +705,7 @@ export const databaseService = {
         });
       } else if (weeklySchedule?.enabled && weeklySchedule?.timeSlots) {
         console.log('Using weekly schedule time slots:', weeklySchedule.timeSlots);
-        // Generate 1-hour slots for each time slot range
+        // Generate 20-minute slots for each time slot range
         weeklySchedule.timeSlots.forEach(slot => {
           const slots = this.generateTimeSlots(slot.startTime, slot.endTime);
           console.log(`Generated slots for ${slot.startTime}-${slot.endTime}:`, slots);
@@ -696,26 +729,173 @@ export const databaseService = {
     }
   },
 
-  async getBookedTimeSlots(doctorId: string, date: string): Promise<string[]> {
+      async getBookedTimeSlots(doctorId: string, date: string): Promise<string[]> {
+      try {
+        console.log('🔍 getBookedTimeSlots: Searching for', { doctorId, date });
+        const appointmentsRef = ref(database, 'appointments');
+        const snapshot = await get(appointmentsRef);
+      
+      if (snapshot.exists()) {
+        const bookedSlots: string[] = [];
+        console.log('🔍 Found appointments, checking each one...');
+        
+        snapshot.forEach((childSnapshot) => {
+          const appointmentData = childSnapshot.val();
+          console.log('🔍 Checking appointment:', {
+            id: childSnapshot.key,
+            doctorId: appointmentData.doctorId,
+            doctor: appointmentData.doctor,
+            appointmentDate: appointmentData.appointmentDate,
+            appointmentTime: appointmentData.appointmentTime,
+            searchingFor: { doctorId, date }
+          });
+          
+          // Check if appointment is for the same doctor and date
+          // Handle both doctorId and doctor field names for compatibility
+          const appointmentDoctorId = appointmentData.doctorId || appointmentData.doctor;
+          if (appointmentDoctorId === doctorId && appointmentData.appointmentDate === date) {
+            console.log('🔍 ✅ Found matching appointment:', appointmentData.appointmentTime);
+            bookedSlots.push(appointmentData.appointmentTime);
+          }
+        });
+        
+        console.log('🔍 Final booked slots:', bookedSlots);
+        return bookedSlots;
+      } else {
+        console.log('🔍 No appointments found in database');
+        return [];
+      }
+    } catch (error) {
+      console.error('❌ Get booked time slots error:', error);
+      return [];
+    }
+  },
+
+  // Helper method to check if a time slot is already booked
+  async isTimeSlotBooked(doctorId: string, date: string, time: string): Promise<boolean> {
     try {
       const appointmentsRef = ref(database, 'appointments');
       const snapshot = await get(appointmentsRef);
       
       if (snapshot.exists()) {
-        const bookedSlots: string[] = [];
+        let isBooked = false;
         snapshot.forEach((childSnapshot) => {
           const appointmentData = childSnapshot.val();
-          // Check if appointment is for the same doctor and date
-          if (appointmentData.doctor === doctorId && appointmentData.appointmentDate === date) {
-            bookedSlots.push(appointmentData.appointmentTime);
+          // Handle both doctorId and doctor field names for compatibility
+          const appointmentDoctorId = appointmentData.doctorId || appointmentData.doctor;
+          if (appointmentDoctorId === doctorId && 
+              appointmentData.appointmentDate === date && 
+              appointmentData.appointmentTime === time) {
+            isBooked = true;
           }
         });
-        return bookedSlots;
+        return isBooked;
+      }
+      return false;
+    } catch (error) {
+      console.error('Check time slot booked error:', error);
+      return false;
+    }
+  },
+
+  // Helper method to get all appointments for a doctor from today onwards
+  async getDoctorAppointmentsFromToday(doctorId: string): Promise<Appointment[]> {
+    try {
+      const appointmentsRef = ref(database, 'appointments');
+      const snapshot = await get(appointmentsRef);
+      
+      if (snapshot.exists()) {
+        const appointments: Appointment[] = [];
+        const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+        
+        snapshot.forEach((childSnapshot) => {
+          const appointmentData = childSnapshot.val();
+          // Handle both doctorId and doctor field names for compatibility
+          const appointmentDoctorId = appointmentData.doctorId || appointmentData.doctor;
+          
+          // Check if appointment is for this doctor and date is today or in the future
+          if (appointmentDoctorId === doctorId && appointmentData.appointmentDate >= today) {
+            appointments.push({
+              id: childSnapshot.key,
+              ...appointmentData
+            });
+          }
+        });
+        
+        return appointments.sort((a, b) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime());
       }
       return [];
     } catch (error) {
-      console.error('Get booked time slots error:', error);
+      console.error('Get doctor appointments from today error:', error);
       return [];
+    }
+  },
+
+  // Helper method to get doctor's complete schedule including booked slots for a specific date
+  async getDoctorScheduleWithBookings(doctorId: string, date: string): Promise<{
+    availableSlots: string[];
+    bookedSlots: string[];
+    allSlots: string[];
+  }> {
+    try {
+      console.log('🔍 getDoctorScheduleWithBookings: Starting for', { doctorId, date });
+      
+      // Get all available slots for the doctor on this date
+      const availableSlots = await this.getAvailableTimeSlots(doctorId, date);
+      console.log('🔍 Available slots:', availableSlots);
+      
+      // Get booked slots for the doctor on this date
+      const bookedSlots = await this.getBookedTimeSlots(doctorId, date);
+      console.log('🔍 Booked slots:', bookedSlots);
+      
+      // Get doctor's schedule to determine all possible slots
+      const doctor = await this.getDoctorById(doctorId);
+      if (!doctor) {
+        console.log('🔍 Doctor not found');
+        return { availableSlots: [], bookedSlots: [], allSlots: [] };
+      }
+
+      const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      const weeklySchedule = doctor.availability?.weeklySchedule?.[dayOfWeek];
+      const specificDate = doctor.availability?.specificDates?.[date];
+
+      console.log('🔍 Doctor schedule info:', {
+        dayOfWeek,
+        hasWeeklySchedule: !!weeklySchedule,
+        hasSpecificDate: !!specificDate,
+        weeklyScheduleEnabled: weeklySchedule?.enabled,
+        weeklyTimeSlots: weeklySchedule?.timeSlots,
+        specificTimeSlots: specificDate?.timeSlots
+      });
+
+      let allSlots: string[] = [];
+
+      // Check specific date first (overrides weekly schedule)
+      if (specificDate?.timeSlots) {
+        specificDate.timeSlots.forEach(slot => {
+          const slots = this.generateTimeSlots(slot.startTime, slot.endTime);
+          allSlots.push(...slots);
+        });
+      } else if (weeklySchedule?.enabled && weeklySchedule?.timeSlots) {
+        weeklySchedule.timeSlots.forEach(slot => {
+          const slots = this.generateTimeSlots(slot.startTime, slot.endTime);
+          allSlots.push(...slots);
+        });
+      }
+
+      console.log('🔍 All possible slots:', allSlots);
+
+      const result = {
+        availableSlots,
+        bookedSlots,
+        allSlots
+      };
+      
+      console.log('🔍 Final result:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Get doctor schedule with bookings error:', error);
+      return { availableSlots: [], bookedSlots: [], allSlots: [] };
     }
   },
 
@@ -763,6 +943,17 @@ export const databaseService = {
 
   async createAppointment(appointment: Omit<Appointment, 'id' | 'createdAt' | 'lastUpdated'>): Promise<string> {
     try {
+      // Validate that the time slot is not already booked
+      const isBooked = await this.isTimeSlotBooked(
+        appointment.doctorId, 
+        appointment.appointmentDate, 
+        appointment.appointmentTime
+      );
+      
+      if (isBooked) {
+        throw new Error(`Time slot ${appointment.appointmentTime} on ${appointment.appointmentDate} is already booked for this doctor.`);
+      }
+      
       const appointmentsRef = ref(database, 'appointments');
       const newAppointmentRef = push(appointmentsRef);
       
