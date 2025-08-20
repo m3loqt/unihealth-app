@@ -30,6 +30,7 @@ import {
   RefreshCw,
   Check,
   Trash2,
+  DoorOpen,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
@@ -381,27 +382,23 @@ export default function SpecialistProfileScreen() {
     // No need to manually handle retry
   };
 
-  const handleSignOut = async () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-              router.replace('/');
-            } catch (error) {
-              console.error('Error signing out:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const handleSignOut = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    try {
+      await signOut();
+      setShowLogoutModal(false);
+      setTimeout(() => {
+        router.replace('/');
+      }, 100);
+    } catch (error) {
+      console.error('Error signing out:', error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
+    }
   };
 
   const handleEditProfile = () => {
@@ -1308,6 +1305,43 @@ export default function SpecialistProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <DoorOpen size={36} color="#1E40AF" />
+                <Text style={styles.modalTitle}>Confirm Logout</Text>
+                <Text style={styles.modalSubtext}>
+                  Are you sure you want to logout? You will need to sign in again to access your account.
+                </Text>
+              </View>
+              
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalSecondaryButton}
+                  onPress={() => setShowLogoutModal(false)}
+                >
+                  <Text style={styles.modalSecondaryButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalPrimaryButton}
+                  onPress={handleConfirmLogout}
+                >
+                  <Text style={styles.modalPrimaryButtonText}>Logout</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
       </SafeAreaView>
     </ErrorBoundary>
   );
@@ -2015,5 +2049,17 @@ const styles = StyleSheet.create({
   },
   notificationActionButton: {
     padding: 8,
+  },
+  modalPrimaryButton: {
+    flex: 1,
+    backgroundColor: '#1E40AF',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalPrimaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
 });
