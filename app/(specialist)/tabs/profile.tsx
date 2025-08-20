@@ -31,6 +31,13 @@ import {
   Check,
   Trash2,
   DoorOpen,
+  Lock,
+  HelpCircle,
+  BookOpen,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Pill,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
@@ -88,6 +95,15 @@ export default function SpecialistProfileScreen() {
     }
     
     return '';
+  };
+
+  // Helper function to get monotone status icon and styles
+  const getStatusDisplay = (status: string) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'pending') return { icon: <Clock size={14} color="#6B7280" />, text: 'Pending' };
+    if (s === 'approved' || s === 'active') return { icon: <CheckCircle size={14} color="#6B7280" />, text: 'Active' };
+    if (s === 'rejected' || s === 'inactive') return { icon: <XCircle size={14} color="#6B7280" />, text: 'Inactive' };
+    return { icon: <Clock size={14} color="#6B7280" />, text: status || 'Unknown' };
   };
 
   // Transform profile data for display
@@ -420,10 +436,10 @@ export default function SpecialistProfileScreen() {
           profile.yearsOfExperience.toString() : '',
         medicalLicenseNumber: profile.medicalLicenseNumber || '',
         prcId: profile.prcId || '',
-        prcExpiryDate: profile.prcExpiryDate || '2025-12-31',
+        prcExpiryDate: profile.prcExpiryDate || '',
         professionalFee: profile.professionalFee ? profile.professionalFee.toString() : '',
         gender: profile.gender || '',
-        dateOfBirth: profile.dateOfBirth || '2020-01-01',
+        dateOfBirth: profile.dateOfBirth || '',
         civilStatus: profile.civilStatus || '',
       };
       
@@ -534,7 +550,7 @@ export default function SpecialistProfileScreen() {
 
   const quickActions = [
     {
-      icon: FileText,
+      icon: Pill,
       title: 'Prescriptions',
       color: '#1E40AF',
       onPress: () => router.push('/(specialist)/tabs/prescriptions'),
@@ -549,25 +565,25 @@ export default function SpecialistProfileScreen() {
 
   const settingsItems = [
     {
-      icon: Settings,
+      icon: Lock,
       title: 'Change Password',
       color: '#1E40AF',
       onPress: () => router.push('/(auth)/change-password'),
     },
     {
-      icon: Settings,
+      icon: Bell,
       title: 'Notification Preferences',
       color: '#1E40AF',
       onPress: () => Alert.alert('Notifications', 'Notification preferences would be configured here'),
     },
     {
-      icon: Settings,
+      icon: HelpCircle,
       title: 'Help & Support',
       color: '#1E40AF',
       onPress: () => router.push('/(shared)/help-support'),
     },
     {
-      icon: Settings,
+      icon: BookOpen,
       title: 'Terms & Privacy Policy',
       color: '#1E40AF',
       onPress: () => router.push('/(shared)/terms-privacy'),
@@ -780,9 +796,12 @@ export default function SpecialistProfileScreen() {
             {status && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Status:</Text>
-                <Text style={[styles.infoValue, { color: status === 'pending' ? '#F59E0B' : '#10B981' }]}>
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                </Text>
+                <View style={styles.statusPill}>
+                  {getStatusDisplay(status).icon}
+                  <Text style={styles.statusPillText}>
+                    {getStatusDisplay(status).text}
+                  </Text>
+                </View>
               </View>
             )}
           </View>
@@ -839,389 +858,404 @@ export default function SpecialistProfileScreen() {
         )}
       </ScrollView>
 
-      {/* Full Profile Modal */}
-      <Modal
-        visible={showFullProfileModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => {
-          setShowFullProfileModal(false);
-          setIsEditing(false);
-        }}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContainer}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {isEditing ? 'Edit Profile' : 'Full Profile'}
-              </Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => {
-                  setShowFullProfileModal(false);
-                  setIsEditing(false);
-                }}
-              >
-                <Text style={styles.closeButtonText}>✕</Text>
-              </TouchableOpacity>
-            </View>
+             {/* Full Profile Modal */}
+       <Modal
+         visible={showFullProfileModal}
+         transparent={true}
+         animationType="slide"
+         onRequestClose={() => {
+           setShowFullProfileModal(false);
+           setIsEditing(false);
+         }}
+       >
+         <View style={styles.fullProfileModalBackdrop}>
+           <View style={styles.fullProfileModalContainer}>
+             {/* Modal Header */}
+             <View style={styles.fullProfileModalHeader}>
+               <Text style={styles.fullProfileModalTitle}>
+                 {isEditing ? 'Edit Profile' : 'Full Profile'}
+               </Text>
+               <TouchableOpacity
+                 style={styles.fullProfileCloseButton}
+                 onPress={() => {
+                   setShowFullProfileModal(false);
+                   setIsEditing(false);
+                 }}
+               >
+                 <Text style={styles.fullProfileCloseButtonText}>✕</Text>
+               </TouchableOpacity>
+             </View>
 
-            {/* Modal Content */}
-            <View style={styles.modalContentWrapper}>
-              <ScrollView 
-                style={styles.modalScrollView}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.modalContent}
-              >
-                {isEditing ? (
-                  // Edit Form - Inline Editing
-                  <>
-                    {/* Profile Header */}
-                    <View style={styles.modalProfileHeader}>
-                      <View style={styles.modalProfileImageContainer}>
-                        {profileImage ? (
-                          <Image 
-                            source={{ uri: profileImage }} 
-                            style={styles.modalProfileImage}
-                            // defaultSource={require('../../../assets/default-avatar.png')}
-                          />
-                        ) : (
-                          <View style={styles.modalProfileImagePlaceholder}>
-                            <Text style={styles.modalProfileImageText}>
-                              {name ? safeDataAccess.getUserInitials({ name }, 'DR') : 'DR'}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.modalProfileInfo}>
-                        <Text style={styles.modalEditModeIndicator}>✏️ Edit Mode</Text>
-                        <Input
-                          value={editableData.name}
-                          onChangeText={(text) => setEditableData(prev => ({ ...prev, name: text }))}
-                          placeholder="Enter your full name"
-                          style={styles.inlineInput}
-                          inputStyle={styles.inlineInputText}
-                        />
-                        <Input
-                          value={editableData.specialization}
-                          onChangeText={(text) => setEditableData(prev => ({ ...prev, specialization: text }))}
-                          placeholder="Enter specialization"
-                          style={styles.inlineInput}
-                          inputStyle={styles.inlineInputText}
-                        />
-                        <Input
-                          value={editableData.experience}
-                          onChangeText={(text) => setEditableData(prev => ({ ...prev, experience: text }))}
-                          placeholder="Enter years of experience"
-                          keyboardType="numeric"
-                          style={styles.inlineInput}
-                          inputStyle={styles.inlineInputText}
-                        />
-                      </View>
-                    </View>
+             {/* Modal Content */}
+             <View style={styles.fullProfileModalContentWrapper}>
+               <ScrollView 
+                 style={styles.fullProfileModalScrollView}
+                 showsVerticalScrollIndicator={false}
+                 contentContainerStyle={styles.fullProfileModalContent}
+               >
+                 {isEditing ? (
+                   // Edit Form - Inline Editing
+                   <>
+                                                                  {/* Profile Header */}
+                       <View style={styles.modalProfileHeader}>
+                         <View style={styles.modalProfileImageContainer}>
+                           {profileImage ? (
+                             <Image 
+                               source={{ uri: profileImage }} 
+                               style={styles.modalProfileImage}
+                               // defaultSource={require('../../../assets/default-avatar.png')}
+                             />
+                           ) : (
+                             <View style={styles.modalProfileImagePlaceholder}>
+                               <Text style={styles.modalProfileImageText}>
+                                 {name ? safeDataAccess.getUserInitials({ name }, 'DR') : 'DR'}
+                               </Text>
+                             </View>
+                           )}
+                         </View>
+                       </View>
 
-                    {/* Personal Information */}
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>Personal Information</Text>
-                      <View style={styles.modalInfoGrid}>
-                        <View style={styles.modalInfoItem}>
-                          <Text style={styles.modalInfoLabel}>Gender</Text>
-                          <Dropdown
-                            options={genderOptions}
-                            value={editableData.gender}
-                            onValueChange={(value) => setEditableData(prev => ({ ...prev, gender: value }))}
-                            placeholder="Select gender"
-                            style={styles.inlineInput}
-                          />
-                        </View>
-                        <View style={styles.modalInfoItem}>
-                          <Text style={styles.modalInfoLabel}>Date of Birth</Text>
-                          <DatePicker
-                            value={editableData.dateOfBirth}
-                            onValueChange={(value) => setEditableData(prev => ({ ...prev, dateOfBirth: value }))}
-                            placeholder="Select date of birth"
-                            style={styles.inlineInput}
-                          />
-                        </View>
-                        <View style={styles.modalInfoItem}>
-                          <Text style={styles.modalInfoLabel}>Civil Status</Text>
-                          <Dropdown
-                            options={civilStatusOptions}
-                            value={editableData.civilStatus}
-                            onValueChange={(value) => setEditableData(prev => ({ ...prev, civilStatus: value }))}
-                            placeholder="Select civil status"
-                            style={styles.inlineInput}
-                          />
-                        </View>
-                      </View>
-                    </View>
+                       {/* Profile Information */}
+                       <View style={styles.modalSection}>
+                         <Text style={styles.modalSectionTitle}>Profile Information</Text>
+                         <View style={styles.modalEditFields}>
+                           <View style={styles.modalEditField}>
+                             <Text style={styles.modalEditLabel}>Full Name</Text>
+                             <Input
+                               value={editableData.name}
+                               onChangeText={(text) => setEditableData(prev => ({ ...prev, name: text }))}
+                               placeholder="Enter your full name"
+                               style={styles.editInput}
+                               inputStyle={styles.editInputText}
+                             />
+                           </View>
+                           <View style={styles.modalEditField}>
+                             <Text style={styles.modalEditLabel}>Specialization</Text>
+                             <Input
+                               value={editableData.specialization}
+                               onChangeText={(text) => setEditableData(prev => ({ ...prev, specialization: text }))}
+                               placeholder="Enter specialization"
+                               style={styles.editInput}
+                               inputStyle={styles.editInputText}
+                             />
+                           </View>
+                           <View style={styles.modalEditField}>
+                             <Text style={styles.modalEditLabel}>Years of Experience</Text>
+                             <Input
+                               value={editableData.experience}
+                               onChangeText={(text) => setEditableData(prev => ({ ...prev, experience: text }))}
+                               placeholder="Enter years of experience"
+                               keyboardType="numeric"
+                               style={styles.editInput}
+                               inputStyle={styles.editInputText}
+                             />
+                           </View>
+                         </View>
+                       </View>
 
-                    {/* Contact Information */}
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>Contact Information</Text>
-                      <View style={styles.modalContactList}>
-                        <View style={styles.modalContactItem}>
-                          <Mail size={18} color="#6B7280" />
-                          <Input
-                            value={editableData.email}
-                            onChangeText={(text) => setEditableData(prev => ({ ...prev, email: text }))}
-                            placeholder="Enter email"
-                            keyboardType="email-address"
-                            style={styles.inlineInput}
-                            inputStyle={styles.inlineInputText}
-                          />
-                        </View>
-                        <View style={styles.modalContactItem}>
-                          <Phone size={18} color="#6B7280" />
-                          <Input
-                            value={editableData.phone}
-                            onChangeText={(text) => setEditableData(prev => ({ ...prev, phone: text }))}
-                            placeholder="Enter phone number"
-                            keyboardType="phone-pad"
-                            style={styles.inlineInput}
-                            inputStyle={styles.inlineInputText}
-                          />
-                        </View>
-                        <View style={styles.modalContactItem}>
-                          <MapPin size={18} color="#6B7280" />
-                          <Input
-                            value={editableData.address}
-                            onChangeText={(text) => setEditableData(prev => ({ ...prev, address: text }))}
-                            placeholder="Enter address"
-                            multiline
-                            numberOfLines={3}
-                            style={styles.inlineInput}
-                            inputStyle={styles.inlineInputText}
-                          />
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* Professional Information */}
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>Professional Information</Text>
-                      <View style={styles.modalInfoList}>
-                        <View style={styles.modalInfoRow}>
-                          <Text style={styles.modalInfoLabel}>License Number</Text>
-                          <Input
-                            value={editableData.medicalLicenseNumber}
-                            onChangeText={(text) => setEditableData(prev => ({ ...prev, medicalLicenseNumber: text }))}
-                            placeholder="Enter license number"
-                            style={styles.inlineInput}
-                            inputStyle={styles.inlineInputText}
-                          />
-                        </View>
-                        <View style={styles.modalInfoRow}>
-                          <Text style={styles.modalInfoLabel}>PRC ID</Text>
-                          <Input
-                            value={editableData.prcId}
-                            onChangeText={(text) => setEditableData(prev => ({ ...prev, prcId: text }))}
-                            placeholder="Enter PRC ID"
-                            style={styles.inlineInput}
-                            inputStyle={styles.inlineInputText}
-                          />
-                        </View>
-                        <View style={styles.modalInfoRow}>
-                          <Text style={styles.modalInfoLabel}>PRC Expiry Date</Text>
-                          <DatePicker
-                            value={editableData.prcExpiryDate}
-                            onValueChange={(value) => setEditableData(prev => ({ ...prev, prcExpiryDate: value }))}
-                            placeholder="Select expiry date"
-                            style={styles.inlineInput}
-                          />
-                        </View>
-                        <View style={styles.modalInfoRow}>
-                          <Text style={styles.modalInfoLabel}>Professional Fee</Text>
-                          <Input
-                            value={editableData.professionalFee}
-                            onChangeText={(text) => setEditableData(prev => ({ ...prev, professionalFee: text }))}
-                            placeholder="Enter professional fee"
-                            keyboardType="numeric"
-                            style={styles.inlineInput}
-                            inputStyle={styles.inlineInputText}
-                          />
-                        </View>
-                      </View>
-                    </View>
-                  </>
-                ) : (
-                  // View Mode
-                  <>
-                    {/* Profile Header */}
-                    <View style={styles.modalProfileHeader}>
-                      <View style={styles.modalProfileImageContainer}>
-                        {profileImage ? (
-                          <Image 
-                            source={{ uri: profileImage }} 
-                            style={styles.modalProfileImage}
-                            // defaultSource={require('../../../assets/default-avatar.png')}
-                          />
-                        ) : (
-                          <View style={styles.modalProfileImagePlaceholder}>
-                            <Text style={styles.modalProfileImageText}>
-                              {name ? safeDataAccess.getUserInitials({ name }, 'DR') : 'DR'}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.modalProfileInfo}>
-                        <Text style={styles.modalUserName}>Dr. {name || 'Unknown Doctor'}</Text>
-                        <Text style={styles.modalUserSpecialty}>{specialization || 'General Medicine'}</Text>
-                        {experience && <Text style={styles.modalExperience}>{experience} experience</Text>}
-                      </View>
-                    </View>
-
-                    {/* Personal Information */}
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>Personal Information</Text>
-                      <View style={styles.modalInfoGrid}>
-                        {gender && (
-                          <View style={styles.modalInfoItem}>
-                            <Text style={styles.modalInfoLabel}>Gender</Text>
-                            <Text style={styles.modalInfoValue}>
-                              {gender.charAt(0).toUpperCase() + gender.slice(1)}
-                            </Text>
-                          </View>
-                        )}
-                        {dateOfBirth && (
-                          <View style={styles.modalInfoItem}>
-                            <Text style={styles.modalInfoLabel}>Date of Birth</Text>
-                            <Text style={styles.modalInfoValue}>
-                              {formatDateSafely(dateOfBirth)}
-                            </Text>
-                          </View>
-                        )}
-                        {civilStatus && (
-                          <View style={styles.modalInfoItem}>
-                            <Text style={styles.modalInfoLabel}>Civil Status</Text>
-                            <Text style={styles.modalInfoValue}>
-                              {civilStatus.charAt(0).toUpperCase() + civilStatus.slice(1)}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-
-                    {/* Contact Information */}
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>Contact Information</Text>
-                      <View style={styles.modalContactList}>
-                        <View style={styles.modalContactItem}>
-                          <Mail size={18} color="#6B7280" />
-                          <Text style={styles.modalContactText}>{email || 'Email not provided'}</Text>
-                        </View>
-                        {phone && (
-                          <View style={styles.modalContactItem}>
-                            <Phone size={18} color="#6B7280" />
-                            <Text style={styles.modalContactText}>{phone}</Text>
-                          </View>
-                        )}
-                        {address && (
-                          <View style={styles.modalContactItem}>
-                            <MapPin size={18} color="#6B7280" />
-                            <Text style={styles.modalContactText}>{address}</Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-
-                    {/* Professional Information */}
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>Professional Information</Text>
-                      <View style={styles.modalInfoList}>
-                        {medicalLicenseNumber && (
-                          <View style={styles.modalInfoRow}>
-                            <Text style={styles.modalInfoLabel}>License Number</Text>
-                            <Text style={styles.modalInfoValue}>{medicalLicenseNumber}</Text>
-                          </View>
-                        )}
-                        {prcId && (
-                          <View style={styles.modalInfoRow}>
-                            <Text style={styles.modalInfoLabel}>PRC ID</Text>
-                            <Text style={styles.modalInfoValue}>{prcId}</Text>
-                          </View>
-                        )}
-                        {prcExpiryDate && (
-                          <View style={styles.modalInfoRow}>
-                            <Text style={styles.modalInfoLabel}>PRC Expiry Date</Text>
-                            <Text style={styles.modalInfoValue}>
-                              {formatDateSafely(prcExpiryDate)}
-                            </Text>
-                          </View>
-                        )}
-                        {professionalFee && (
-                          <View style={styles.modalInfoRow}>
-                            <Text style={styles.modalInfoLabel}>Professional Fee</Text>
-                            <Text style={styles.modalInfoValue}>{professionalFee}</Text>
-                          </View>
-                        )}
-                        {status && (
-                          <View style={styles.modalInfoRow}>
-                            <Text style={styles.modalInfoLabel}>Status</Text>
-                            <Text style={[
-                              styles.modalInfoValue, 
-                              { color: status === 'pending' ? '#F59E0B' : '#10B981' }
-                            ]}>
-                              {status.charAt(0).toUpperCase() + status.slice(1)}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-
-                    {/* Clinic Affiliations */}
-                    {memoizedClinicNames.length > 0 && (
-                      <View style={styles.modalSection}>
-                        <Text style={styles.modalSectionTitle}>Clinic Affiliations</Text>
-                        <View style={styles.modalInfoList}>
-                          {memoizedClinicNames.map((clinicName, index) => (
-                            <View key={index} style={styles.modalInfoRow}>
-                              <Text style={styles.modalInfoLabel}>Clinic {index + 1}</Text>
-                              <Text style={styles.modalInfoValue}>{clinicName}</Text>
+                                                                  {/* Personal Information */}
+                       <View style={styles.modalSection}>
+                         <Text style={styles.modalSectionTitle}>Personal Information</Text>
+                         <View style={styles.modalEditFields}>
+                           <View style={styles.modalEditField}>
+                             <Text style={styles.modalEditLabel}>Gender</Text>
+                             <Dropdown
+                               options={genderOptions}
+                               value={editableData.gender}
+                               onValueChange={(value) => setEditableData(prev => ({ ...prev, gender: value }))}
+                               placeholder="Select gender"
+                               style={styles.editInput}
+                             />
+                           </View>
+                                                       <View style={styles.modalEditField}>
+                              <Text style={styles.modalEditLabel}>Date of Birth</Text>
+                              <DatePicker
+                                value={editableData.dateOfBirth}
+                                onValueChange={(value) => setEditableData(prev => ({ ...prev, dateOfBirth: value }))}
+                                placeholder="Select date of birth"
+                                style={styles.editInput}
+                              />
                             </View>
-                          ))}
-                        </View>
-                      </View>
-                    )}
-                  </>
-                )}
-              </ScrollView>
-            </View>
+                           <View style={styles.modalEditField}>
+                             <Text style={styles.modalEditLabel}>Civil Status</Text>
+                             <Dropdown
+                               options={civilStatusOptions}
+                               value={editableData.civilStatus}
+                               onValueChange={(value) => setEditableData(prev => ({ ...prev, civilStatus: value }))}
+                               placeholder="Select civil status"
+                               style={styles.editInput}
+                             />
+                           </View>
+                         </View>
+                       </View>
 
-            {/* Floating Buttons */}
-            {isEditing ? (
-              <View style={styles.floatingButtonsContainer}>
-                <TouchableOpacity 
-                  style={styles.cancelButton}
-                  onPress={handleCancelEdit}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.saveButton}
-                  onPress={handleSaveProfile}
-                  disabled={isSaving}
-                >
-                  <Text style={styles.saveButtonText}>
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.floatingButtonsContainer}>
-                <TouchableOpacity 
-                  style={styles.editProfileButton}
-                  onPress={handleEditProfile}
-                >
-                  <Edit size={18} color="#FFFFFF" />
-                  <Text style={styles.editProfileButtonText}>Edit Profile</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
-      </Modal>
+                                                                  {/* Contact Information */}
+                       <View style={styles.modalSection}>
+                         <Text style={styles.modalSectionTitle}>Contact Information</Text>
+                         <View style={styles.modalEditFields}>
+                           <View style={styles.modalEditField}>
+                             <Text style={styles.modalEditLabel}>Email</Text>
+                             <Input
+                               value={editableData.email}
+                               onChangeText={(text) => setEditableData(prev => ({ ...prev, email: text }))}
+                               placeholder="Enter email"
+                               keyboardType="email-address"
+                               style={styles.editInput}
+                               inputStyle={styles.editInputText}
+                             />
+                           </View>
+                           <View style={styles.modalEditField}>
+                             <Text style={styles.modalEditLabel}>Phone</Text>
+                             <Input
+                               value={editableData.phone}
+                               onChangeText={(text) => setEditableData(prev => ({ ...prev, phone: text }))}
+                               placeholder="Enter phone number"
+                               keyboardType="phone-pad"
+                               style={styles.editInput}
+                               inputStyle={styles.editInputText}
+                             />
+                           </View>
+                           <View style={styles.modalEditField}>
+                             <Text style={styles.modalEditLabel}>Address</Text>
+                             <Input
+                               value={editableData.address}
+                               onChangeText={(text) => setEditableData(prev => ({ ...prev, address: text }))}
+                               placeholder="Enter address"
+                               multiline
+                               numberOfLines={3}
+                               style={styles.editInput}
+                               inputStyle={styles.editInputText}
+                             />
+                           </View>
+                         </View>
+                       </View>
+
+                                                                  {/* Professional Information */}
+                       <View style={styles.modalSection}>
+                         <Text style={styles.modalSectionTitle}>Professional Information</Text>
+                         <View style={styles.modalEditFields}>
+                           <View style={styles.modalEditField}>
+                             <Text style={styles.modalEditLabel}>License Number</Text>
+                             <Input
+                               value={editableData.medicalLicenseNumber}
+                               onChangeText={(text) => setEditableData(prev => ({ ...prev, medicalLicenseNumber: text }))}
+                               placeholder="Enter license number"
+                               style={styles.editInput}
+                               inputStyle={styles.editInputText}
+                             />
+                           </View>
+                           <View style={styles.modalEditField}>
+                             <Text style={styles.modalEditLabel}>PRC ID</Text>
+                             <Input
+                               value={editableData.prcId}
+                               onChangeText={(text) => setEditableData(prev => ({ ...prev, prcId: text }))}
+                               placeholder="Enter PRC ID"
+                               style={styles.editInput}
+                               inputStyle={styles.editInputText}
+                             />
+                           </View>
+                                                       <View style={styles.modalEditField}>
+                              <Text style={styles.modalEditLabel}>PRC Expiry Date</Text>
+                              <DatePicker
+                                value={editableData.prcExpiryDate}
+                                onValueChange={(value) => setEditableData(prev => ({ ...prev, prcExpiryDate: value }))}
+                                placeholder="Select expiry date"
+                                style={styles.editInput}
+                              />
+                            </View>
+                           <View style={styles.modalEditField}>
+                             <Text style={styles.modalEditLabel}>Professional Fee</Text>
+                             <Input
+                               value={editableData.professionalFee}
+                               onChangeText={(text) => setEditableData(prev => ({ ...prev, professionalFee: text }))}
+                               placeholder="Enter professional fee"
+                               keyboardType="numeric"
+                               style={styles.editInput}
+                               inputStyle={styles.editInputText}
+                             />
+                           </View>
+                         </View>
+                       </View>
+                   </>
+                 ) : (
+                   // View Mode
+                   <>
+                     {/* Profile Header */}
+                     <View style={styles.modalProfileHeader}>
+                       <View style={styles.modalProfileImageContainer}>
+                         {profileImage ? (
+                           <Image 
+                             source={{ uri: profileImage }} 
+                             style={styles.modalProfileImage}
+                             // defaultSource={require('../../../assets/default-avatar.png')}
+                           />
+                         ) : (
+                           <View style={styles.modalProfileImagePlaceholder}>
+                             <Text style={styles.modalProfileImageText}>
+                               {name ? safeDataAccess.getUserInitials({ name }, 'DR') : 'DR'}
+                             </Text>
+                           </View>
+                         )}
+                       </View>
+                       <View style={styles.modalProfileInfo}>
+                         <Text style={styles.modalUserName}>Dr. {name || 'Unknown Doctor'}</Text>
+                         <Text style={styles.modalUserSpecialty}>{specialization || 'General Medicine'}</Text>
+                         {experience && <Text style={styles.modalExperience}>{experience} experience</Text>}
+                       </View>
+                     </View>
+
+                     {/* Personal Information */}
+                     <View style={styles.modalSection}>
+                       <Text style={styles.modalSectionTitle}>Personal Information</Text>
+                       <View style={styles.modalInfoGrid}>
+                         {gender && (
+                           <View style={styles.modalInfoItem}>
+                             <Text style={styles.modalInfoLabel}>Gender</Text>
+                             <Text style={styles.modalInfoValue}>
+                               {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                             </Text>
+                           </View>
+                         )}
+                         {dateOfBirth && (
+                           <View style={styles.modalInfoItem}>
+                             <Text style={styles.modalInfoLabel}>Date of Birth</Text>
+                             <Text style={styles.modalInfoValue}>
+                               {formatDateSafely(dateOfBirth)}
+                             </Text>
+                           </View>
+                         )}
+                         {civilStatus && (
+                           <View style={styles.modalInfoItem}>
+                             <Text style={styles.modalInfoLabel}>Civil Status</Text>
+                             <Text style={styles.modalInfoValue}>
+                               {civilStatus.charAt(0).toUpperCase() + civilStatus.slice(1)}
+                             </Text>
+                           </View>
+                         )}
+                       </View>
+                     </View>
+
+                     {/* Contact Information */}
+                     <View style={styles.modalSection}>
+                       <Text style={styles.modalSectionTitle}>Contact Information</Text>
+                       <View style={styles.modalContactList}>
+                         <View style={styles.modalContactItem}>
+                           <Mail size={18} color="#6B7280" />
+                           <Text style={styles.modalContactText}>{email || 'Email not provided'}</Text>
+                         </View>
+                         {phone && (
+                           <View style={styles.modalContactItem}>
+                             <Phone size={18} color="#6B7280" />
+                             <Text style={styles.modalContactText}>{phone}</Text>
+                           </View>
+                         )}
+                         {address && (
+                           <View style={styles.modalContactItem}>
+                             <MapPin size={18} color="#6B7280" />
+                             <Text style={styles.modalContactText}>{address}</Text>
+                           </View>
+                         )}
+                       </View>
+                     </View>
+
+                     {/* Professional Information */}
+                     <View style={styles.modalSection}>
+                       <Text style={styles.modalSectionTitle}>Professional Information</Text>
+                       <View style={styles.modalInfoList}>
+                         {medicalLicenseNumber && (
+                           <View style={styles.modalInfoRow}>
+                             <Text style={styles.modalInfoLabel}>License Number</Text>
+                             <Text style={styles.modalInfoValue}>{medicalLicenseNumber}</Text>
+                           </View>
+                         )}
+                         {prcId && (
+                           <View style={styles.modalInfoRow}>
+                             <Text style={styles.modalInfoLabel}>PRC ID</Text>
+                             <Text style={styles.modalInfoValue}>{prcId}</Text>
+                           </View>
+                         )}
+                         {prcExpiryDate && (
+                           <View style={styles.modalInfoRow}>
+                             <Text style={styles.modalInfoLabel}>PRC Expiry Date</Text>
+                             <Text style={styles.modalInfoValue}>
+                               {formatDateSafely(prcExpiryDate)}
+                             </Text>
+                           </View>
+                         )}
+                         {professionalFee && (
+                           <View style={styles.modalInfoRow}>
+                             <Text style={styles.modalInfoLabel}>Professional Fee</Text>
+                             <Text style={styles.modalInfoValue}>{professionalFee}</Text>
+                           </View>
+                         )}
+                         {status && (
+                           <View style={styles.modalInfoRow}>
+                             <Text style={styles.modalInfoLabel}>Status</Text>
+                             <View style={styles.modalStatusPill}>
+                               {getStatusDisplay(status).icon}
+                               <Text style={styles.modalStatusPillText}>
+                                 {getStatusDisplay(status).text}
+                               </Text>
+                             </View>
+                           </View>
+                         )}
+                       </View>
+                     </View>
+
+                     {/* Clinic Affiliations */}
+                     {memoizedClinicNames.length > 0 && (
+                       <View style={styles.modalSection}>
+                         <Text style={styles.modalSectionTitle}>Clinic Affiliations</Text>
+                         <View style={styles.modalInfoList}>
+                           {memoizedClinicNames.map((clinicName, index) => (
+                             <View key={index} style={styles.modalInfoRow}>
+                               <Text style={styles.modalInfoLabel}>Clinic {index + 1}</Text>
+                               <Text style={styles.modalInfoValue}>{clinicName}</Text>
+                             </View>
+                           ))}
+                         </View>
+                       </View>
+                     )}
+                   </>
+                 )}
+               </ScrollView>
+             </View>
+
+                           {/* Floating Buttons */}
+              {isEditing ? (
+                <View style={styles.editButtonContainer}>
+                  <View style={styles.editButtonsRow}>
+                    <TouchableOpacity 
+                      style={styles.cancelButton}
+                      onPress={handleCancelEdit}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.saveButton}
+                      onPress={handleSaveProfile}
+                      disabled={isSaving}
+                    >
+                      <Text style={styles.saveButtonText}>
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.editButtonContainer}>
+                  <TouchableOpacity 
+                    style={styles.editProfileButton}
+                    onPress={handleEditProfile}
+                  >
+                    <Edit size={18} color="#FFFFFF" />
+                    <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+           </View>
+         </View>
+       </Modal>
 
       {/* Notification Modal */}
       <Modal
@@ -1526,6 +1560,22 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 6,
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
   viewFullProfileButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1597,43 +1647,98 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 2,
   },
-  // Modal Styles
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    width: Dimensions.get('window').width * 0.9,
-    maxWidth: 400,
-    height: Dimensions.get('window').height * 0.85,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-  },
+     // Modal Styles
+   modalBackdrop: {
+     flex: 1,
+     backgroundColor: 'rgba(0, 0, 0, 0.42)',
+     justifyContent: 'flex-end',
+     alignItems: 'center',
+   },
+   modalContainer: {
+     width: '100%',
+     maxWidth: '100%',
+   },
+   // Full Profile Modal Styles
+   fullProfileModalBackdrop: {
+     flex: 1,
+     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+     justifyContent: 'center',
+     alignItems: 'center',
+   },
+   fullProfileModalContainer: {
+     width: Dimensions.get('window').width * 0.9,
+     maxWidth: 400,
+     height: Dimensions.get('window').height * 0.85,
+     backgroundColor: '#FFFFFF',
+     borderRadius: 20,
+     overflow: 'hidden',
+     shadowColor: '#000',
+     shadowOffset: {
+       width: 0,
+       height: 10,
+     },
+     shadowOpacity: 0.25,
+     shadowRadius: 20,
+     elevation: 10,
+   },
+   fullProfileModalHeader: {
+     flexDirection: 'row',
+     justifyContent: 'space-between',
+     alignItems: 'center',
+     paddingHorizontal: 24,
+     paddingVertical: 20,
+     borderBottomWidth: 1,
+     borderBottomColor: '#E5E7EB',
+     backgroundColor: '#FFFFFF',
+   },
+   fullProfileModalTitle: {
+     fontSize: 20,
+     fontFamily: 'Inter-Bold',
+     color: '#1F2937',
+   },
+   fullProfileCloseButton: {
+     width: 32,
+     height: 32,
+     borderRadius: 16,
+     backgroundColor: '#F3F4F6',
+     justifyContent: 'center',
+     alignItems: 'center',
+   },
+   fullProfileCloseButtonText: {
+     fontSize: 16,
+     fontFamily: 'Inter-SemiBold',
+     color: '#6B7280',
+   },
+   fullProfileModalContentWrapper: {
+     flex: 1,
+     justifyContent: 'space-between',
+   },
+   fullProfileModalScrollView: {
+     flex: 1,
+   },
+   fullProfileModalContent: {
+     padding: 24,
+     paddingBottom: 32,
+   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    marginBottom: 12,
   },
   modalTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
+    marginTop: 8,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  modalSubtext: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
   },
   closeButton: {
     width: 32,
@@ -1656,17 +1761,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   modalContent: {
-    padding: 24,
-    paddingBottom: 32,
-  },
-  modalProfileHeader: {
-    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
     alignItems: 'center',
-    marginBottom: 32,
     paddingBottom: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
+     modalProfileHeader: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     marginBottom: 24,
+     paddingBottom: 0,
+   },
   modalProfileImageContainer: {
     marginRight: 16,
   },
@@ -1754,6 +1861,22 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
   },
+  modalStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 6,
+  },
+  modalStatusPillText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
   modalContactList: {
     gap: 12,
   },
@@ -1773,9 +1896,21 @@ const styles = StyleSheet.create({
     color: '#374151',
     flex: 1,
   },
-  modalInfoList: {
-    gap: 12,
-  },
+     modalInfoList: {
+     gap: 12,
+   },
+   modalEditFields: {
+     gap: 20,
+   },
+   modalEditField: {
+     width: '100%',
+   },
+   modalEditLabel: {
+     fontSize: 14,
+     fontFamily: 'Inter-Medium',
+     color: '#6B7280',
+     marginBottom: 8,
+   },
   modalInfoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1786,25 +1921,37 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  editProfileButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1E40AF',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    marginTop: 16,
-    gap: 8,
-    shadowColor: '#1E40AF',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
+     editProfileButton: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     justifyContent: 'center',
+     backgroundColor: '#1E40AF',
+     paddingVertical: 16,
+     paddingHorizontal: 24,
+     borderRadius: 12,
+     gap: 8,
+     shadowColor: '#1E40AF',
+     shadowOffset: {
+       width: 0,
+       height: 2,
+     },
+     shadowOpacity: 0.1,
+     shadowRadius: 4,
+     elevation: 2,
+   },
+   editButtonContainer: {
+     paddingVertical: 20,
+     paddingHorizontal: 24,
+     backgroundColor: 'transparent',
+     borderTopWidth: 1,
+     borderTopColor: '#E5E7EB',
+   },
+   editButtonsRow: {
+     flexDirection: 'row',
+     gap: 12,
+     width: '100%',
+     justifyContent: 'center',
+   },
   editProfileButtonText: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
@@ -1815,51 +1962,62 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     marginTop: 20,
   },
-  cancelButton: {
-    backgroundColor: '#E5E7EB',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    flex: 1,
-    marginRight: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-    textAlign: 'center',
-  },
-  saveButton: {
-    backgroundColor: '#1E40AF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    flex: 1,
-    marginLeft: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  inlineInput: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    marginBottom: 0,
-  },
-  inlineInputText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#1F2937',
-    paddingVertical: 0,
-  },
+     cancelButton: {
+     backgroundColor: '#F9FAFB',
+     paddingVertical: 12,
+     borderRadius: 8,
+     flex: 1,
+     alignItems: 'center',
+     borderWidth: 1,
+     borderColor: '#E5E7EB',
+   },
+     cancelButtonText: {
+     color: '#374151',
+     fontSize: 14,
+     fontFamily: 'Inter-SemiBold',
+   },
+     saveButton: {
+     backgroundColor: '#1E40AF',
+     paddingVertical: 12,
+     borderRadius: 8,
+     flex: 1,
+     alignItems: 'center',
+   },
+     saveButtonText: {
+     color: '#FFFFFF',
+     fontSize: 14,
+     fontFamily: 'Inter-SemiBold',
+   },
+     inlineInput: {
+     backgroundColor: 'transparent',
+     borderWidth: 0,
+     paddingHorizontal: 0,
+     paddingVertical: 0,
+     marginBottom: 0,
+   },
+   inlineInputText: {
+     fontSize: 14,
+     fontFamily: 'Inter-Regular',
+     color: '#1F2937',
+     paddingVertical: 0,
+   },
+       editInput: {
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+      paddingHorizontal: 0,
+      paddingVertical: 0,
+      marginBottom: 0,
+      width: '100%',
+      fontSize: 14,
+      fontFamily: 'Inter-Regular',
+      color: '#1F2937',
+    },
+       editInputText: {
+      fontSize: 14,
+      fontFamily: 'Inter-Regular',
+      color: '#1F2937',
+      paddingVertical: 0,
+    },
   floatingButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -1931,12 +2089,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
   },
   // New styles for notification modal
-  modalSubtext: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginTop: 4,
-  },
   notificationList: {
     maxHeight: Dimensions.get('window').height * 0.4, // Limit height for scrollability
     marginTop: 16,
@@ -1975,19 +2127,35 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
+    gap: 12,
+    width: '100%',
     justifyContent: 'center',
-    marginTop: 20,
   },
   modalSecondaryButton: {
-    backgroundColor: '#E5E7EB',
+    flex: 1,
+    backgroundColor: '#F9FAFB',
     paddingVertical: 12,
-    paddingHorizontal: 24,
     borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   modalSecondaryButtonText: {
-    fontSize: 16,
+    color: '#374151',
+    fontSize: 14,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
+  },
+  modalPrimaryButton: {
+    flex: 1,
+    backgroundColor: '#1E40AF',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalPrimaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
   },
   bellButton: {
     position: 'relative',
@@ -2049,17 +2217,5 @@ const styles = StyleSheet.create({
   },
   notificationActionButton: {
     padding: 8,
-  },
-  modalPrimaryButton: {
-    flex: 1,
-    backgroundColor: '#1E40AF',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalPrimaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
   },
 });
