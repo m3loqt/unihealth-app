@@ -65,6 +65,8 @@ export interface UserProfile {
   gender?: string;
   address?: string;
   highestEducationalAttainment?: string;
+  bloodType?: string;
+  allergies?: string[];
   emergencyContact?: {
     name: string;
     phone: string;
@@ -83,6 +85,8 @@ export interface SignUpData {
   address: string;
   contactNumber: string;
   highestEducationalAttainment?: string;
+  bloodType?: string;
+  allergies?: string;
   
   // Step 2 data
   emergencyContactName: string;
@@ -112,6 +116,7 @@ export interface UserNode {
 export interface PatientNode {
   address?: string;
   bloodType?: string;
+  allergies?: string[];
   contactNumber?: string;
   createdAt: string;
   dateOfBirth?: string;
@@ -434,7 +439,9 @@ export const authService = {
         lastName: signUpData.lastName,
         lastUpdated: currentTime,
         userId: user.uid,
-        highestEducationalAttainment: signUpData.highestEducationalAttainment || undefined
+        highestEducationalAttainment: signUpData.highestEducationalAttainment || undefined,
+        bloodType: signUpData.bloodType || undefined,
+        allergies: signUpData.allergies ? signUpData.allergies.split(',').map(allergy => allergy.trim()).filter(allergy => allergy.length > 0) : undefined
       };
       
       // Store data in both nodes
@@ -460,7 +467,9 @@ export const authService = {
           name: signUpData.emergencyContactName,
           phone: signUpData.emergencyContactNumber || '',
           relationship: signUpData.relationship || ''
-        } : undefined
+        } : undefined,
+        bloodType: signUpData.bloodType || undefined,
+        allergies: signUpData.allergies ? signUpData.allergies.split(',').map(allergy => allergy.trim()).filter(allergy => allergy.length > 0) : undefined
       };
       
       return { user, userProfile };

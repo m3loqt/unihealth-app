@@ -24,6 +24,7 @@ import {
 } from 'lucide-react-native';
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Other', 'Prefer not to say'];
+const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
 const EDUCATIONAL_ATTAINMENT_OPTIONS = [
   'Elementary',
   'High School',
@@ -74,9 +75,12 @@ export default function SignUpStep1Screen() {
     address: '',
     contactNumber: '',
     highestEducationalAttainment: '',
+    bloodType: '',
+    allergies: '',
   });
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showEducationalAttainmentModal, setShowEducationalAttainmentModal] = useState(false);
+  const [showBloodTypeModal, setShowBloodTypeModal] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -293,6 +297,41 @@ export default function SignUpStep1Screen() {
               </TouchableOpacity>
             </View>
 
+            {/* Blood Type */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.inputLabel}>Blood Type</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.inputContainer}
+                onPress={() => setShowBloodTypeModal(true)}
+                activeOpacity={0.7}
+              >
+                <User size={20} color="#9CA3AF" style={styles.inputIcon} />
+                <Text style={[styles.input, !formData.bloodType && styles.placeholder]}>
+                  {formData.bloodType || 'Select your blood type'}
+                </Text>
+                <ChevronDown size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Allergies */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.inputLabel}>Allergies</Text>
+              </View>
+              <View style={styles.inputContainer}>
+                <User size={20} color="#9CA3AF" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter allergies (comma-separated, e.g., peanuts, shellfish, penicillin)"
+                  placeholderTextColor="#9CA3AF"
+                  value={formData.allergies}
+                  onChangeText={value => handleInputChange('allergies', value)}
+                />
+              </View>
+            </View>
+
             {/* Email */}
             <View style={styles.inputGroup}>
               <View style={styles.labelRow}>
@@ -397,6 +436,44 @@ export default function SignUpStep1Screen() {
                         formData.highestEducationalAttainment === attainment && styles.selectedGenderOptionText
                       ]}>
                         {attainment}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Blood Type Selection Modal */}
+        <Modal
+          visible={showBloodTypeModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowBloodTypeModal(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Blood Type</Text>
+                <View style={styles.genderOptions}>
+                  {BLOOD_TYPE_OPTIONS.map((bloodType) => (
+                    <TouchableOpacity
+                      key={bloodType}
+                      style={[
+                        styles.genderOption,
+                        formData.bloodType === bloodType && styles.selectedGenderOption
+                      ]}
+                      onPress={() => {
+                        handleInputChange('bloodType', bloodType);
+                        setShowBloodTypeModal(false);
+                      }}
+                    >
+                      <Text style={[
+                        styles.genderOptionText,
+                        formData.bloodType === bloodType && styles.selectedGenderOptionText
+                      ]}>
+                        {bloodType}
                       </Text>
                     </TouchableOpacity>
                   ))}
