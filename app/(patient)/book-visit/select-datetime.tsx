@@ -28,7 +28,7 @@ import {
   Calendar,
   Phone,
 } from 'lucide-react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { databaseService } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 
@@ -172,8 +172,7 @@ export default function SelectDateTimeScreen() {
   const [notes, setNotes] = useState('');
   const [showPurposeDropdown, setShowPurposeDropdown] = useState(false);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<Array<{time: string; minutes: number}>>([]);
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
-  const [loadingDates, setLoadingDates] = useState(true);
+  const [bookedTimeSlots, setBookedTimeSlots] = useState<string[]>([]);
   
   // Refs
   const dateScrollRef = useRef<ScrollView>(null);
@@ -184,48 +183,44 @@ export default function SelectDateTimeScreen() {
   const displayDoctorSpecialty = doctor?.specialty || doctorSpecialty || '';
   const displayClinicName = clinicName || 'Clinic Name';
 
-  // Generate available dates for the next 30 days
-  const generateAvailableDates = async () => {
-    if (!doctorId) return;
-    
-    setLoadingDates(true);
-    try {
-      const startDate = new Date().toISOString().split('T')[0];
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + 30);
-      const endDateString = endDate.toISOString().split('T')[0];
-      
-      const dates = await databaseService.getAvailableDates(doctorId, startDate, endDateString);
-      setAvailableDates(dates);
-    } catch (error) {
-      console.error('Error loading available dates:', error);
-    } finally {
-      setLoadingDates(false);
-    }
-  };
-
-  // Generate date items for available dates only
+  // Generate the next 30 days as selectable dates
   const AVAILABLE_DATES = useMemo(() => {
-    if (availableDates.length === 0) return [];
-    
     const months = [
       'JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'
     ];
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dates = [];
     
-    return availableDates.map(dateString => {
-      const date = new Date(dateString);
-      return {
+    let currentDate = new Date();
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(currentDate);
+      date.setDate(currentDate.getDate() + i);
+      const dateString = date.toISOString().split('T')[0];
+      
+      dates.push({
         date: dateString,
         month: months[date.getMonth()],
         day: date.getDate().toString(),
         dayName: days[date.getDay()],
-      };
-    });
-  }, [availableDates]);
+      });
+    }
+    
+    return dates;
+  }, []);
 
   const datePager = useMemo(() => getPagerData(AVAILABLE_DATES, 7), [AVAILABLE_DATES]);
-  const timePager = useMemo(() => getPagerData(availableTimeSlots, 4), [availableTimeSlots]);
+    // Use available time slots directly (they already include all standard slots)
+  const allTimeSlots = useMemo(() => {
+    console.log('🔍 allTimeSlots calculation:', {
+      availableTimeSlots,
+      bookedTimeSlots
+    });
+    
+    // availableTimeSlots already contains all standard time slots
+    return availableTimeSlots;
+  }, [availableTimeSlots, bookedTimeSlots]);
+
+  const timePager = useMemo(() => getPagerData(allTimeSlots, 4), [allTimeSlots]);
 
   const loadDoctorData = async () => {
     if (!doctorId) return;
@@ -241,9 +236,6 @@ export default function SelectDateTimeScreen() {
       }
       
       setDoctor(doctorData);
-      
-      // Load available dates after doctor data is loaded
-      await generateAvailableDates();
     } catch (error) {
       console.error('Error loading doctor data:', error);
       setError('Failed to load doctor data');
@@ -253,35 +245,72 @@ export default function SelectDateTimeScreen() {
   };
 
   const loadAvailableTimeSlots = async () => {
-    if (!doctorId || !selectedDate) return;
+    if (!doctorId || !selectedDate) {
+      console.log('🔍 loadAvailableTimeSlots: Missing doctorId or selectedDate', { doctorId, selectedDate });
+      return;
+    }
+    
+    console.log('🔍 loadAvailableTimeSlots: Starting with', { doctorId, selectedDate });
     
     try {
-      const slots = await databaseService.getAvailableTimeSlots(doctorId, selectedDate);
+             // Get booked time slots for this doctor on this date
+       const bookedSlots = await databaseService.getBookedTimeSlots(doctorId, selectedDate);
+       console.log('🔍 Booked slots found:', bookedSlots);
+       
+       // Booked slots are already in 12-hour format from the database, no need to convert
+       const formattedBookedSlots = bookedSlots;
       
-      // Convert string slots to objects with time property for UI compatibility
-      // Convert 24-hour format to 12-hour format
-      const formattedSlots = slots.map(slot => ({
-        time: convertTo12HourFormat(slot),
-        minutes: 0 // Not used but keeping for compatibility
-      }));
+             // Generate standard time slots (9 AM to 5 PM, every 20 minutes)
+       const standardTimeSlots = [
+         { time: '9:00 AM', minutes: 0 },
+         { time: '9:20 AM', minutes: 0 },
+         { time: '9:40 AM', minutes: 0 },
+         { time: '10:00 AM', minutes: 0 },
+         { time: '10:20 AM', minutes: 0 },
+         { time: '10:40 AM', minutes: 0 },
+         { time: '11:00 AM', minutes: 0 },
+         { time: '11:20 AM', minutes: 0 },
+         { time: '11:40 AM', minutes: 0 },
+         { time: '12:00 PM', minutes: 0 },
+         { time: '12:20 PM', minutes: 0 },
+         { time: '12:40 PM', minutes: 0 },
+         { time: '1:00 PM', minutes: 0 },
+         { time: '1:20 PM', minutes: 0 },
+         { time: '1:40 PM', minutes: 0 },
+         { time: '2:00 PM', minutes: 0 },
+         { time: '2:20 PM', minutes: 0 },
+         { time: '2:40 PM', minutes: 0 },
+         { time: '3:00 PM', minutes: 0 },
+         { time: '3:20 PM', minutes: 0 },
+         { time: '3:40 PM', minutes: 0 },
+         { time: '4:00 PM', minutes: 0 },
+         { time: '4:20 PM', minutes: 0 },
+         { time: '4:40 PM', minutes: 0 },
+         { time: '5:00 PM', minutes: 0 },
+       ];
       
-      // If no slots found, show some test slots for debugging
-      if (formattedSlots.length === 0) {
-        const testSlots = [
-          { time: '9:00 AM', minutes: 0 },
-          { time: '10:00 AM', minutes: 0 },
-          { time: '11:00 AM', minutes: 0 },
-          { time: '2:00 PM', minutes: 0 },
-          { time: '3:00 PM', minutes: 0 },
-          { time: '4:00 PM', minutes: 0 },
-        ];
-        setAvailableTimeSlots(testSlots);
-      } else {
-        setAvailableTimeSlots(formattedSlots);
-      }
+             console.log('🔍 Generated standard time slots:', standardTimeSlots.length);
+       console.log('🔍 Booked slots to block:', formattedBookedSlots);
+       console.log('🔍 Standard time slots:', standardTimeSlots.map(slot => slot.time));
+       
+       // Debug: Check if any booked slots match the standard slots
+       formattedBookedSlots.forEach(bookedSlot => {
+         const isInStandardSlots = standardTimeSlots.some(slot => slot.time === bookedSlot);
+         console.log(`🔍 Booked slot "${bookedSlot}" in standard slots: ${isInStandardSlots}`);
+       });
+      
+      setAvailableTimeSlots(standardTimeSlots);
+      setBookedTimeSlots(formattedBookedSlots);
+      
+             // Debug: Log state after setting
+       setTimeout(() => {
+         console.log('🔍 State after setting - Available:', standardTimeSlots.length, 'Booked:', formattedBookedSlots.length);
+       }, 100);
+      
     } catch (error) {
-      console.error('Error loading time slots:', error);
+      console.error('❌ Error loading time slots:', error);
       setAvailableTimeSlots([]);
+      setBookedTimeSlots([]);
     }
   };
 
@@ -294,6 +323,20 @@ export default function SelectDateTimeScreen() {
       loadAvailableTimeSlots();
     }
   }, [selectedDate, doctorId]);
+
+  // Monitor bookedTimeSlots state changes
+  useEffect(() => {
+    console.log('🔍 bookedTimeSlots state changed:', bookedTimeSlots);
+  }, [bookedTimeSlots]);
+
+  // Refresh time slots when screen comes into focus (in case someone else booked a slot)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (selectedDate && doctorId) {
+        loadAvailableTimeSlots();
+      }
+    }, [selectedDate, doctorId])
+  );
 
   // onScroll event to update active page
   const handleDateScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -403,14 +446,14 @@ export default function SelectDateTimeScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color="#1E40AF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Select Date & Time</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+             {/* Header */}
+       <View style={styles.header}>
+         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+           <ChevronLeft size={24} color="#1E40AF" />
+         </TouchableOpacity>
+         <Text style={styles.headerTitle}>Select Date & Time</Text>
+         <View style={styles.headerRight} />
+       </View>
 
       {/* Progress Bar */}
       <View style={styles.progressBarRoot}>
@@ -464,59 +507,47 @@ export default function SelectDateTimeScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Select Date</Text>
           
-          {loadingDates ? (
-            <View style={styles.dateLoadingContainer}>
-              <ActivityIndicator size="small" color="#1E40AF" />
-              <Text style={styles.dateLoadingText}>Loading available dates...</Text>
-            </View>
-          ) : AVAILABLE_DATES.length === 0 ? (
-            <View style={styles.noDatesContainer}>
-              <Calendar size={24} color="#9CA3AF" />
-              <Text style={styles.noDatesText}>No available dates in the next 30 days</Text>
-            </View>
-          ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleDateScroll}
-              scrollEventThrottle={16}
-              ref={dateScrollRef}
-            >
-              {datePager.pages.map((page, pageIndex) => (
-                <View key={pageIndex} style={styles.dateRow}>
-                  {page.map((dateItem, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={[
-                        styles.dateCard,
-                        selectedDate === dateItem.date && styles.dateCardSelected
-                      ]}
-                      onPress={() => setSelectedDate(dateItem.date)}
-                    >
-                      <Text style={[
-                        styles.dateDayName,
-                        selectedDate === dateItem.date && styles.dateDayNameSelected
-                      ]}>
-                        {dateItem.dayName}
-                      </Text>
-                      <Text style={[
-                        styles.dateDay,
-                        selectedDate === dateItem.date && styles.dateDaySelected
-                      ]}>
-                        {dateItem.day}
-                      </Text>
-                      <Text style={[
-                        styles.dateMonth,
-                        selectedDate === dateItem.date && styles.dateMonthSelected
-                      ]}>
-                        {dateItem.month}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ))}
-            </ScrollView>
-          )}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleDateScroll}
+            scrollEventThrottle={16}
+            ref={dateScrollRef}
+          >
+            {datePager.pages.map((page, pageIndex) => (
+              <View key={pageIndex} style={styles.dateRow}>
+                {page.map((dateItem, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.dateCard,
+                      selectedDate === dateItem.date && styles.dateCardSelected
+                    ]}
+                    onPress={() => setSelectedDate(dateItem.date)}
+                  >
+                    <Text style={[
+                      styles.dateDayName,
+                      selectedDate === dateItem.date && styles.dateDayNameSelected
+                    ]}>
+                      {dateItem.dayName}
+                    </Text>
+                    <Text style={[
+                      styles.dateDay,
+                      selectedDate === dateItem.date && styles.dateDaySelected
+                    ]}>
+                      {dateItem.day}
+                    </Text>
+                    <Text style={[
+                      styles.dateMonth,
+                      selectedDate === dateItem.date && styles.dateMonthSelected
+                    ]}>
+                      {dateItem.month}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
+          </ScrollView>
         </View>
 
         {/* Time Selection */}
@@ -525,8 +556,7 @@ export default function SelectDateTimeScreen() {
             <Text style={styles.sectionTitle}>Select Time</Text>
             {availableTimeSlots.length === 0 ? (
               <View style={styles.noSlotsContainer}>
-                <Text style={styles.noSlotsText}>No available time slots for this date</Text>
-                <Text style={styles.noSlotsSubtext}>Please select a different date</Text>
+                <Text style={styles.noSlotsText}>Loading time slots...</Text>
               </View>
             ) : (
               <ScrollView
@@ -538,25 +568,60 @@ export default function SelectDateTimeScreen() {
               >
                 {timePager.pages.map((page, pageIndex) => (
                   <View key={pageIndex} style={styles.timeRow}>
-                    {page.map((timeItem, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={[
-                          styles.timeCard,
-                          selectedTime === timeItem.time && styles.timeCardSelected
-                        ]}
-                        onPress={() => {
-                          setSelectedTime(timeItem.time);
-                        }}
-                      >
-                        <Text style={[
-                          styles.timeText,
-                          selectedTime === timeItem.time && styles.timeTextSelected
-                        ]}>
-                          {timeItem.time}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    {page.map((timeItem, index) => {
+                      const isBooked = bookedTimeSlots.includes(timeItem.time);
+                      console.log('🔍 Rendering time slot:', {
+                        time: timeItem.time,
+                        isBooked,
+                        bookedTimeSlots,
+                        includes: bookedTimeSlots.includes(timeItem.time),
+                        bookedTimeSlotsLength: bookedTimeSlots.length
+                      });
+                      
+                      // Debug: Log only if this slot should be booked but isn't being detected
+                      if (bookedTimeSlots.length > 0 && !isBooked) {
+                        console.log('🔍 WARNING: Slot should be booked but isBooked=false:', {
+                          time: timeItem.time,
+                          bookedTimeSlots,
+                          includes: bookedTimeSlots.includes(timeItem.time)
+                        });
+                      }
+                      
+                      return (
+                        <TouchableOpacity
+                          key={index}
+                          style={[
+                            styles.timeCard,
+                            selectedTime === timeItem.time && styles.timeCardSelected,
+                            isBooked && styles.timeCardBooked
+                          ]}
+                          onPress={() => {
+                            console.log('🔍 Time slot pressed:', { time: timeItem.time, isBooked });
+                            if (isBooked) {
+                              Alert.alert('Slot Booked', `This time slot (${timeItem.time}) is already booked and cannot be selected.`);
+                              return;
+                            }
+                            setSelectedTime(timeItem.time);
+                          }}
+                          disabled={isBooked}
+                          activeOpacity={isBooked ? 1 : 0.7}
+                        >
+                          <Text style={[
+                            styles.timeText,
+                            selectedTime === timeItem.time && styles.timeTextSelected,
+                            isBooked && styles.timeTextBooked
+                          ]}>
+                            {timeItem.time}
+                          </Text>
+                          {isBooked && (
+                            <>
+                              <View style={styles.bookedOverlay} />
+                              <Text style={styles.bookedLabel}>Booked</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 ))}
               </ScrollView>
@@ -959,6 +1024,21 @@ const styles = StyleSheet.create({
     backgroundColor: BLUE,
     borderColor: BLUE,
   },
+  timeCardBooked: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#EF4444',
+    opacity: 0.8,
+    position: 'relative',
+  },
+  bookedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(239, 68, 68, 0.3)',
+    borderRadius: 12,
+  },
   timeText: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
@@ -966,6 +1046,21 @@ const styles = StyleSheet.create({
   },
   timeTextSelected: {
     color: '#fff',
+  },
+  timeTextBooked: {
+    color: '#DC2626',
+    textDecorationLine: 'line-through',
+    fontWeight: 'bold',
+  },
+  bookedLabel: {
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
+    color: '#DC2626',
+    marginTop: 2,
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
   },
   noSlotsContainer: {
     alignItems: 'center',

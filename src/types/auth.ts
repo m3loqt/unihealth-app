@@ -28,6 +28,8 @@ export interface SignUpData {
   address: string;
   contactNumber: string;
   highestEducationalAttainment?: string;
+  bloodType?: string;
+  allergies?: string;
   
   // Step 2 data
   emergencyContactName: string;
@@ -52,6 +54,7 @@ export interface UserNode {
 export interface PatientNode {
   address?: string;
   bloodType?: string;
+  allergies?: string[];
   contactNumber?: string;
   createdAt: string;
   dateOfBirth?: string;
