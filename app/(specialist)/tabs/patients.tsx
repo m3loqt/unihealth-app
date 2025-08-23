@@ -22,11 +22,20 @@ import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { useDeepMemo } from '../../../src/utils/performance';
 
+// Extended interface for what the database service actually returns
+interface SpecialistPatient extends Patient {
+  patientFirstName?: string;
+  patientLastName?: string;
+  status: string; // Status from appointments/referrals
+  lastVisit?: string;
+  isScheduledVisit?: boolean;
+}
+
 export default function SpecialistPatientsScreen() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const [patients, setPatients] = useState<SpecialistPatient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -51,29 +60,22 @@ export default function SpecialistPatientsScreen() {
       
       console.log('📋 Raw patients from database:', specialistPatients);
       
+      // Debug: Log the structure of returned patients to understand the data
+      if (specialistPatients.length > 0) {
+        console.log('🔍 Sample patient structure:', specialistPatients[0]);
+        console.log('🔍 Patient statuses:', specialistPatients.map(p => ({ id: p.id, status: (p as any).status })));
+        console.log('🔍 All patient fields:', specialistPatients.map(p => Object.keys(p)));
+        console.log('🔍 Status field types:', specialistPatients.map(p => ({ id: p.id, status: (p as any).status, statusType: typeof (p as any).status })));
+      }
+      
       // Validate patients data
       const validPatients = dataValidation.validateArray(specialistPatients, dataValidation.isValidPatient);
       console.log('✅ Valid patients after validation:', validPatients.length, validPatients);
       
-      // Debug: Check what's being filtered out
-      if (specialistPatients.length !== validPatients.length) {
-        console.log('⚠️ Some patients were filtered out by validation:');
-        specialistPatients.forEach((patient: any, index) => {
-          if (!dataValidation.isValidPatient(patient)) {
-            console.log(`❌ Invalid patient ${index}:`, patient);
-            console.log('❌ Validation issues:', {
-              hasId: !!patient?.id,
-              idType: typeof patient?.id,
-              hasFirstName: !!patient?.patientFirstName,
-              firstNameType: typeof patient?.patientFirstName,
-              hasLastName: !!patient?.patientLastName,
-              lastNameType: typeof patient?.patientLastName
-            });
-          }
-        });
-      }
+      // Cast to SpecialistPatient[] since the database service adds status and other fields
+      const typedPatients = validPatients as SpecialistPatient[];
       
-      setPatients(validPatients);
+      setPatients(typedPatients);
 
       // Enrich with referring generalist names per patient based on latest referral, mirroring referral-details logic
       try {
@@ -150,24 +152,52 @@ export default function SpecialistPatientsScreen() {
 
   // Performance optimization: memoize filtered patients
   const filteredPatients = useDeepMemo(() => {
-    return patients.filter((patient) => {
+    console.log('🔍 Filtering patients:', {
+      totalPatients: patients.length,
+      activeFilter,
+      searchQuery,
+      patientStatuses: patients.map(p => ({ id: p.id, status: p.status }))
+    });
+    
+    const filtered = patients.filter((patient) => {
       const matchesSearch =
-        safeDataAccess.getUserFullName(patient, '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        // Use the fields that the database service actually returns
+        (patient.patientFirstName && patient.patientLastName 
+          ? `${patient.patientFirstName} ${patient.patientLastName}`.toLowerCase()
+          : safeDataAccess.getUserFullName(patient, '').toLowerCase()
+        ).includes(searchQuery.toLowerCase()) ||
         patient.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.phoneNumber?.toLowerCase().includes(searchQuery.toLowerCase());
       
-      // Map filter names to appointment statuses
+      // Filter based on the actual status from referrals/appointments
       let matchesFilter = true;
       if (activeFilter === 'Active') {
+        // Active patients have confirmed status from appointments/referrals
         matchesFilter = patient.status === 'confirmed';
       } else if (activeFilter === 'Completed') {
+        // Completed patients have completed status from appointments/referrals
         matchesFilter = patient.status === 'completed';
       } else if (activeFilter !== 'All') {
-        matchesFilter = patient.status === activeFilter;
+        // For any other specific filter, match the exact status
+        matchesFilter = patient.status === activeFilter.toLowerCase();
       }
+      
+      console.log(`🔍 Patient ${patient.id} (${patient.patientFirstName} ${patient.patientLastName}):`, {
+        status: patient.status,
+        matchesSearch,
+        matchesFilter,
+        finalResult: matchesSearch && matchesFilter
+      });
       
       return matchesSearch && matchesFilter;
     });
+    
+    console.log('✅ Filtered patients result:', {
+      filteredCount: filtered.length,
+      filteredPatients: filtered.map(p => ({ id: p.id, status: p.status, name: `${p.patientFirstName} ${p.patientLastName}` }))
+    });
+    
+    return filtered;
   }, [patients, searchQuery, activeFilter]);
 
   const formatDoctorName = (name?: string): string => {
@@ -187,11 +217,19 @@ export default function SpecialistPatientsScreen() {
     return <Hourglass size={14} color="#6B7280" />;
   };
 
-  const renderPatientCard = (patient: Patient) => {
-    const patientName = safeDataAccess.getUserFullName(patient, 'Unknown Patient');
-    const initials = safeDataAccess.getUserInitials(patient, 'U');
+  const renderPatientCard = (patient: SpecialistPatient) => {
+    // Use the fields that the database service actually returns
+    const patientName = patient.patientFirstName && patient.patientLastName 
+      ? `${patient.patientFirstName} ${patient.patientLastName}` 
+      : safeDataAccess.getUserFullName(patient, 'Unknown Patient');
+    const initials = patient.patientFirstName && patient.patientLastName
+      ? `${patient.patientFirstName[0]}${patient.patientLastName[0]}`.toUpperCase()
+      : safeDataAccess.getUserInitials(patient, 'U');
+    // Use the actual status from referrals/appointments for proper display
     const statusDisplay = patient.status === 'confirmed' ? 'Active' : 
-                         patient.status === 'completed' ? 'Completed' : 'Active';
+                         patient.status === 'completed' ? 'Completed' : 
+                         patient.status === 'cancelled' || patient.status === 'canceled' ? 'Cancelled' :
+                         patient.status || 'Active';
     const referringDoctorRaw = referrerByPatientId[patient.id];
     const referringDoctor = referringDoctorRaw ? formatDoctorName(referringDoctorRaw) : 'Unknown Doctor';
 
