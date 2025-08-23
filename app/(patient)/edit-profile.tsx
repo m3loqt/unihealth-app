@@ -11,12 +11,37 @@ import {
   Platform,
   Alert,
   Image,
+  Modal,
 } from 'react-native';
-import { ChevronLeft, User, Mail, Phone, MapPin, Camera, Heart } from 'lucide-react-native';
+import { ChevronLeft, User, Mail, Phone, MapPin, Camera, Heart, ChevronDown } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { usePatientProfile } from '../../src/hooks/data/usePatientProfile';
 import { safeDataAccess } from '../../src/utils/safeDataAccess';
+import { capitalizeRelationship } from '../../src/utils/formatting';
+
+const RELATIONSHIP_OPTIONS = [
+  'Spouse',
+  'Parent',
+  'Child',
+  'Sibling',
+  'Friend',
+  'Relative',
+  'Guardian',
+  'Other',
+];
+
+const BLOOD_TYPE_OPTIONS = [
+  'A+',
+  'A-',
+  'B+',
+  'B-',
+  'AB+',
+  'AB-',
+  'O+',
+  'O-',
+  'Not known yet',
+];
 
 export default function EditProfileScreen() {
   const { user } = useAuth();
@@ -26,6 +51,8 @@ export default function EditProfileScreen() {
     email: '',
     phone: '',
     address: '',
+    bloodType: 'Not known yet',
+    allergies: '',
     profileImage: '',
     emergencyContact: {
       name: '',
@@ -34,6 +61,8 @@ export default function EditProfileScreen() {
     },
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showRelationshipModal, setShowRelationshipModal] = useState(false);
+  const [showBloodTypeModal, setShowBloodTypeModal] = useState(false);
 
   // Load profile data from real-time hook
   useEffect(() => {
@@ -50,10 +79,12 @@ export default function EditProfileScreen() {
         email: profile.email || '',
         phone: profile.contactNumber || '',
         address: profile.address || '',
+        bloodType: safeDataAccess.getBloodType(profile) || 'Not known yet',
+        allergies: profile.allergies ? profile.allergies.join(', ') : '',
         profileImage: profile.profileImage || '',
         emergencyContact: {
           name: profile.emergencyContact?.name || '',
-          relationship: profile.emergencyContact?.relationship || '',
+          relationship: capitalizeRelationship(profile.emergencyContact?.relationship || ''),
           phone: profile.emergencyContact?.phone || '',
         },
       });
@@ -111,6 +142,12 @@ export default function EditProfileScreen() {
       return;
     }
 
+    // Validate relationship
+    if (!profileData.emergencyContact.relationship.trim()) {
+      Alert.alert('Error', 'Relationship is required.');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -120,10 +157,14 @@ export default function EditProfileScreen() {
         contactNumber: profileData.phone,
         // Update address in patients node (editable field)
         address: profileData.address,
+        // Update blood type in patients node (editable field)
+        bloodType: profileData.bloodType === 'Not known yet' ? 'not-known' : profileData.bloodType,
+        // Update allergies in patients node (editable field)
+        allergies: profileData.allergies ? profileData.allergies.split(',').map(allergy => allergy.trim()).filter(allergy => allergy.length > 0) : undefined,
         // Update emergency contact in patients node (editable field)
         emergencyContact: {
           name: profileData.emergencyContact.name.trim(),
-          relationship: profileData.emergencyContact.relationship.trim(),
+          relationship: capitalizeRelationship(profileData.emergencyContact.relationship.trim()),
           phone: profileData.emergencyContact.phone.trim(),
         },
         lastUpdated: new Date().toISOString(),
@@ -136,6 +177,7 @@ export default function EditProfileScreen() {
       console.log('Address being sent:', updateData.address);
       console.log('Address type being sent:', typeof updateData.address);
       console.log('Address length being sent:', updateData.address?.length);
+      console.log('Relationship being sent:', updateData.emergencyContact.relationship);
       console.log('==========================');
 
       // Update profile using the real-time hook
@@ -271,6 +313,37 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
+          {/* Blood Type */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Blood Type</Text>
+            <TouchableOpacity
+              style={styles.inputContainer}
+              onPress={() => setShowBloodTypeModal(true)}
+              activeOpacity={0.7}
+            >
+              <Heart size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <Text style={[styles.input, !profileData.bloodType && styles.placeholder]}>
+                {profileData.bloodType || 'Select your blood type'}
+              </Text>
+              <ChevronDown size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Allergies */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Allergies</Text>
+            <View style={styles.inputContainer}>
+              <User size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={profileData.allergies}
+                onChangeText={(value) => handleInputChange('allergies', value)}
+                placeholder="Enter allergies (comma-separated)"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+          </View>
+
           {/* Emergency Contact Section */}
           <View style={styles.sectionHeader}>
             <Heart size={20} color="#EF4444" />
@@ -295,18 +368,18 @@ export default function EditProfileScreen() {
 
           {/* Emergency Contact Relationship */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Relationship</Text>
-            <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Relationship *</Text>
+            <TouchableOpacity
+              style={styles.inputContainer}
+              onPress={() => setShowRelationshipModal(true)}
+              activeOpacity={0.7}
+            >
               <Heart size={20} color="#9CA3AF" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                value={profileData.emergencyContact.relationship}
-                onChangeText={(value) => handleEmergencyContactChange('relationship', value)}
-                placeholder="e.g., Spouse, Parent, Sibling"
-                placeholderTextColor="#9CA3AF"
-                autoCapitalize="words"
-              />
-            </View>
+              <Text style={[styles.input, !profileData.emergencyContact.relationship && styles.placeholder]}>
+                {profileData.emergencyContact.relationship || 'Select relationship'}
+              </Text>
+              <ChevronDown size={20} color="#9CA3AF" />
+            </TouchableOpacity>
           </View>
 
           {/* Emergency Contact Phone */}
@@ -339,6 +412,88 @@ export default function EditProfileScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Relationship Modal */}
+      <Modal
+        visible={showRelationshipModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowRelationshipModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Relationship</Text>
+              <View style={styles.relationshipOptions}>
+                                 {RELATIONSHIP_OPTIONS.map((relationship) => {
+                   const isSelected = profileData.emergencyContact.relationship.toLowerCase() === relationship.toLowerCase();
+                   return (
+                     <TouchableOpacity
+                       key={relationship}
+                       style={[
+                         styles.relationshipOption,
+                         isSelected && styles.selectedRelationshipOption
+                       ]}
+                       onPress={() => {
+                         handleEmergencyContactChange('relationship', relationship);
+                         setShowRelationshipModal(false);
+                       }}
+                     >
+                       <Text style={[
+                         styles.relationshipOptionText,
+                         isSelected && styles.selectedRelationshipOptionText
+                       ]}>
+                         {relationship}
+                       </Text>
+                     </TouchableOpacity>
+                   );
+                 })}
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Blood Type Modal */}
+      <Modal
+        visible={showBloodTypeModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowBloodTypeModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Blood Type</Text>
+              <View style={styles.relationshipOptions}>
+                {BLOOD_TYPE_OPTIONS.map((bloodType) => {
+                  const isSelected = profileData.bloodType === bloodType;
+                  return (
+                    <TouchableOpacity
+                      key={bloodType}
+                      style={[
+                        styles.relationshipOption,
+                        isSelected && styles.selectedRelationshipOption
+                      ]}
+                      onPress={() => {
+                        handleInputChange('bloodType', bloodType);
+                        setShowBloodTypeModal(false);
+                      }}
+                    >
+                      <Text style={[
+                        styles.relationshipOptionText,
+                        isSelected && styles.selectedRelationshipOptionText
+                      ]}>
+                        {bloodType}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -444,7 +599,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
     paddingHorizontal: 16,
@@ -503,5 +658,56 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: { 
+    width: '90%', 
+    maxWidth: 350 
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  relationshipOptions: { 
+    gap: 8 
+  },
+  relationshipOption: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  selectedRelationshipOption: {
+    backgroundColor: '#1E40AF',
+    borderColor: '#1E40AF',
+  },
+  relationshipOptionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#1F2937',
+  },
+  selectedRelationshipOptionText: { 
+    color: '#FFFFFF' 
+  },
+  placeholder: {
+    color: '#9CA3AF',
+  },
+  modalTrigger: {
+    padding: 4,
   },
 });

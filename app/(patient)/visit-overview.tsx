@@ -31,6 +31,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService, Appointment, Prescription, Certificate, MedicalHistory } from '../../src/services/database/firebase';
 import { safeDataAccess } from '../../src/utils/safeDataAccess';
+import { formatRoute, formatFrequency } from '../../src/utils/formatting';
 
 // Extended interface for visit data that includes additional properties
 interface VisitData extends Appointment {
@@ -426,7 +427,10 @@ export default function VisitOverviewScreen() {
                 </View>
                 <View style={styles.prescriptionDetails}>
                   <Text style={styles.medicationName}>{p.medication || 'Unknown Medication'}</Text>
-                  <Text style={styles.medicationDosage}>{p.dosage || 'N/A'} • {p.frequency || 'N/A'}</Text>
+                  <Text style={styles.medicationDosage}>
+                    {p.dosage || 'N/A'} • {formatFrequency(p.frequency, 'patient')}
+                    {p.route && ` • ${formatRoute(p.route, 'patient')}`}
+                  </Text>
                   <Text style={styles.prescriptionDescription}>{p.description || 'No description provided'}</Text>
                 </View>
                 <View style={styles.prescriptionStatus}>

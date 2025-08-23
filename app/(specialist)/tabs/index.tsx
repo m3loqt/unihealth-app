@@ -48,6 +48,7 @@ import { getFirstName } from '../../../src/utils/string';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
+import { capitalizeRelationship } from '../../../src/utils/formatting';
 import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
@@ -491,7 +492,7 @@ export default function SpecialistHomeScreen() {
           address: patientDetails?.address || qrData.address || '',
           dateOfBirth: patientDetails?.dateOfBirth || '',
           gender: patientDetails?.gender || '',
-          bloodType: patientDetails?.bloodType || '',
+          bloodType: safeDataAccess.getBloodType(patientDetails) || '',
           emergencyContact: patientDetails?.emergencyContact || null,
           createdAt: patientDetails?.createdAt || '',
           lastVisit: patientDetails?.lastVisit || '',
@@ -1207,12 +1208,7 @@ export default function SpecialistHomeScreen() {
                         <Text style={patientModalStyles.infoText}>{scannedPatient.gender}</Text>
                       </View>
                     )}
-                    {scannedPatient.bloodType && (
-                      <View style={patientModalStyles.infoItem}>
-                        <Heart size={16} color="#6B7280" />
-                        <Text style={patientModalStyles.infoText}>Blood Type: {scannedPatient.bloodType}</Text>
-                      </View>
-                    )}
+
                     {scannedPatient.email && (
                       <View style={patientModalStyles.infoItem}>
                         <Mail size={16} color="#6B7280" />
@@ -1245,7 +1241,7 @@ export default function SpecialistHomeScreen() {
                           {scannedPatient.emergencyContact.phone}
                         </Text>
                         <Text style={patientModalStyles.emergencyContactRelationship}>
-                          {scannedPatient.emergencyContact.relationship}
+                          {capitalizeRelationship(scannedPatient.emergencyContact.relationship)}
                         </Text>
                       </View>
                     </View>

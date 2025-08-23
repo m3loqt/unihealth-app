@@ -37,6 +37,8 @@ export interface PatientMedicalHistory {
     dosage: string;
     frequency: string;
     medication: string;
+    duration: string;
+    route?: string;
   }>;
   provider: {
     firstName: string;

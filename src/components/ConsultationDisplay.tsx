@@ -16,6 +16,8 @@ import {
   Activity,
   Stethoscope,
 } from 'lucide-react-native';
+import { formatFrequency, formatRoute } from '../utils/formatting';
+import { useAuth } from '../hooks/auth/useAuth';
 
 interface ConsultationData {
   // Patient History
@@ -66,6 +68,7 @@ export default function ConsultationDisplay({
   consultation,
   onBack,
 }: ConsultationDisplayProps) {
+  const { user } = useAuth(); // Get current user to determine role
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Not specified';
     try {
@@ -153,7 +156,8 @@ export default function ConsultationDisplay({
               {prescription.medication || prescription.description}
             </Text>
             <Text style={styles.prescriptionDetails}>
-              {prescription.dosage} • {prescription.frequency}
+              {prescription.dosage} • {formatFrequency(prescription.frequency, user?.role || 'patient')}
+              {prescription.route && ` • ${formatRoute(prescription.route, user?.role || 'patient')}`}
               {prescription.duration && ` • ${prescription.duration}`}
             </Text>
             {prescription.description && (

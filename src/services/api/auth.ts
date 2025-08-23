@@ -12,6 +12,7 @@ import { ref, set, get, child, remove } from 'firebase/database';
 import { auth, database } from '../../config/firebase';
 import { emailService } from '../email/emailService';
 import { passwordResetService } from '../database/passwordResetService';
+import { capitalizeRelationship } from '../../utils/formatting';
 
 // Static users for testing (keep these)
 export const STATIC_USERS = {
@@ -431,7 +432,7 @@ export const authService = {
         emergencyContact: signUpData.emergencyContactName ? {
           name: signUpData.emergencyContactName,
           phone: signUpData.emergencyContactNumber || '',
-          relationship: signUpData.relationship || ''
+          relationship: capitalizeRelationship(signUpData.relationship || '')
         } : undefined,
         firstName: signUpData.firstName,
         middleName: signUpData.middleName || undefined,
@@ -466,7 +467,7 @@ export const authService = {
         emergencyContact: signUpData.emergencyContactName ? {
           name: signUpData.emergencyContactName,
           phone: signUpData.emergencyContactNumber || '',
-          relationship: signUpData.relationship || ''
+          relationship: capitalizeRelationship(signUpData.relationship || '')
         } : undefined,
         bloodType: signUpData.bloodType || undefined,
         allergies: signUpData.allergies ? signUpData.allergies.split(',').map(allergy => allergy.trim()).filter(allergy => allergy.length > 0) : undefined

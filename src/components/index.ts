@@ -5,6 +5,7 @@ export { Input, Dropdown, DatePicker } from './ui/Input';
 export { default as LoadingState } from './ui/LoadingState';
 export { default as Modal } from './ui/Modal';
 export { default as ErrorBoundary } from './ui/ErrorBoundary';
+export { default as Tooltip } from './ui/Tooltip';
 
 // Shared Components
 export { default as EmptyState } from './shared/EmptyState';
@@ -19,6 +20,9 @@ export { default as SpecialistTabBar } from './navigation/SpecialistTabBar';
 export { default as ConsultationForm } from './ConsultationForm';
 export { default as ConsultationDisplay } from './ConsultationDisplay';
 export { default as AppointmentDetailsModal } from './AppointmentDetailsModal';
+export { default as FrequencySelectionModal } from './FrequencySelectionModal';
+export { default as RouteSelectionModal } from './RouteSelectionModal';
+export { default as DurationUnitSelectionModal } from './DurationUnitSelectionModal';
 
 // Test Components
 export { RealTimeTest } from './RealTimeTest';

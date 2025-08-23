@@ -7,9 +7,6 @@ export interface UsePrescriptionsReturn {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  createPrescription: (prescriptionData: any) => Promise<string | null>;
-  updatePrescription: (id: string, updates: Partial<Prescription>) => Promise<void>;
-  deletePrescription: (id: string) => Promise<void>;
 }
 
 export const usePrescriptions = (): UsePrescriptionsReturn => {
@@ -38,44 +35,9 @@ export const usePrescriptions = (): UsePrescriptionsReturn => {
     await loadPrescriptions();
   }, [loadPrescriptions]);
 
-  const createPrescription = useCallback(async (prescriptionData: any): Promise<string | null> => {
-    if (!user) return null;
 
-    try {
-      setError(null);
-      const prescriptionId = await databaseService.createPrescription(prescriptionData);
-      // No need to manually refresh - real-time listener will handle this
-      return prescriptionId;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create prescription');
-      console.error('Error creating prescription:', err);
-      return null;
-    }
-  }, [user]);
 
-  const updatePrescription = useCallback(async (id: string, updates: Partial<Prescription>): Promise<void> => {
-    try {
-      setError(null);
-      await databaseService.updatePrescription(id, updates);
-      // No need to manually refresh - real-time listener will handle this
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update prescription');
-      console.error('Error updating prescription:', err);
-    }
-  }, []);
-
-  const deletePrescription = useCallback(async (id: string): Promise<void> => {
-    try {
-      setError(null);
-      await databaseService.deletePrescription(id);
-      // No need to manually refresh - real-time listener will handle this
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete prescription');
-      console.error('Error deleting prescription:', err);
-    }
-  }, []);
-
-  // Set up real-time listener for prescriptions
+  // Set up real-time listener for prescriptions from both sources
   useEffect(() => {
     if (!user) {
       setPrescriptions([]);
@@ -85,19 +47,115 @@ export const usePrescriptions = (): UsePrescriptionsReturn => {
 
     setLoading(true);
     
-    // Subscribe to real-time updates
-    const unsubscribe = databaseService.onPrescriptionsChange(
-      user.uid, 
-      (updatedPrescriptions) => {
-        setPrescriptions(updatedPrescriptions);
-        setLoading(false);
-        setError(null);
+    let dedicatedPrescriptions: Prescription[] = [];
+    let medicalHistoryPrescriptions: Prescription[] = [];
+    let currentMedicalHistory: any[] = [];
+    
+    // Subscribe to real-time updates from dedicated prescriptions node
+    const unsubscribePrescriptions = databaseService.onPrescriptionsChange(
+      user.uid,
+      (prescriptions) => {
+        dedicatedPrescriptions = prescriptions;
+        combineAndUpdatePrescriptions();
       }
     );
+    
+    // Subscribe to real-time updates from medical history
+    const unsubscribeMedicalHistory = databaseService.onMedicalHistoryChange(
+      user.uid,
+      (medicalHistory) => {
+        currentMedicalHistory = medicalHistory;
+        // Extract prescriptions from medical history entries
+        const prescriptionsFromEntries: Prescription[] = [];
+        medicalHistory.forEach((entry) => {
+          if (entry.prescriptions) {
+            entry.prescriptions.forEach((prescription: any, index: number) => {
+              // Check if there's a corresponding prescription in the dedicated node
+              const dedicatedPrescription = dedicatedPrescriptions.find(
+                dp => dp.appointmentId === entry.relatedAppointment?.id
+              );
+              
+              prescriptionsFromEntries.push({
+                id: `${entry.id}_prescription_${index}`,
+                patientId: user.uid,
+                specialistId: entry.provider?.id || 'Unknown',
+                medication: prescription.medication,
+                dosage: prescription.dosage,
+                frequency: prescription.frequency || 'As needed',
+                duration: prescription.duration || 'Ongoing',
+                instructions: prescription.instructions || 'As prescribed',
+                // Use dedicated prescription date if available, otherwise fall back to consultation date
+                prescribedDate: dedicatedPrescription?.prescribedDate || entry.consultationDate,
+                status: 'active',
+                route: prescription.route,
+              });
+            });
+          }
+        });
+        
+        medicalHistoryPrescriptions = prescriptionsFromEntries;
+        combineAndUpdatePrescriptions();
+      }
+    );
+    
+    // Function to combine both sources and update state
+    const combineAndUpdatePrescriptions = () => {
+      try {
+        // Create a map of appointmentId to dedicated prescription for quick lookup
+        const dedicatedPrescriptionMap = new Map();
+        dedicatedPrescriptions.forEach(prescription => {
+          if (prescription.appointmentId) {
+            dedicatedPrescriptionMap.set(prescription.appointmentId, prescription);
+          }
+        });
+        
+        // Update medical history prescriptions with the latest dedicated prescription dates
+        const updatedMedicalHistoryPrescriptions = medicalHistoryPrescriptions.map(prescription => {
+          // Try to find the corresponding dedicated prescription by matching the prescription ID pattern
+          const prescriptionIdParts = prescription.id.split('_prescription_');
+          if (prescriptionIdParts.length === 2) {
+            const entryId = prescriptionIdParts[0];
+            const prescriptionIndex = prescriptionIdParts[1];
+            
+            // Find the medical history entry that contains this prescription
+            const entry = currentMedicalHistory?.find(entry => entry.id === entryId);
+            if (entry?.relatedAppointment?.id) {
+              const dedicatedPrescription = dedicatedPrescriptionMap.get(entry.relatedAppointment.id);
+              if (dedicatedPrescription?.prescribedDate) {
+                return {
+                  ...prescription,
+                  prescribedDate: dedicatedPrescription.prescribedDate
+                };
+              }
+            }
+          }
+          
+          return prescription;
+        });
+        
+        // Combine both sources and remove duplicates
+        const allPrescriptions = [...dedicatedPrescriptions, ...updatedMedicalHistoryPrescriptions];
+        const uniquePrescriptions = allPrescriptions.filter((prescription, index, self) => 
+          index === self.findIndex(p => p.id === prescription.id)
+        );
+        
+        const sortedPrescriptions = uniquePrescriptions.sort((a, b) => 
+          new Date(b.prescribedDate).getTime() - new Date(a.prescribedDate).getTime()
+        );
+        
+        setPrescriptions(sortedPrescriptions);
+        setLoading(false);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load prescriptions');
+        setLoading(false);
+      }
+    };
 
     // Cleanup subscription on unmount or user change
     return () => {
-      unsubscribe();
+      unsubscribePrescriptions();
+      unsubscribeMedicalHistory();
     };
   }, [user]);
 
@@ -106,8 +164,5 @@ export const usePrescriptions = (): UsePrescriptionsReturn => {
     loading,
     error,
     refresh,
-    createPrescription,
-    updatePrescription,
-    deletePrescription,
   };
 }; 

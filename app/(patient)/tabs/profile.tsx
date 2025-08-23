@@ -43,6 +43,7 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { usePatientProfile } from '@/hooks/data/usePatientProfile';
 import { useNotifications } from '@/hooks/data/useNotifications';
 import { safeDataAccess } from '@/utils/safeDataAccess';
+import { capitalizeRelationship } from '@/utils/formatting';
 import { RealTimeTest } from '@/components/RealTimeTest';
 import { databaseService } from '@/services/database/firebase';
 
@@ -144,7 +145,7 @@ export default function ProfileScreen() {
     memberSince: '2024',
     emergency: profile.emergencyContact ? {
       name: profile.emergencyContact.name || 'Not provided',
-      relationship: profile.emergencyContact.relationship || 'Not provided',
+      relationship: capitalizeRelationship(profile.emergencyContact.relationship) || 'Not provided',
       phone: profile.emergencyContact.phone || 'Not provided',
     } : {
       name: 'Not provided',
@@ -563,6 +564,7 @@ export default function ProfileScreen() {
                   <MapPin size={16} color="#6B7280" />
                   <Text style={styles.contactText}>{address}</Text>
                 </View>
+
               </View>
               
               {/* Edit Profile Button */}
@@ -587,7 +589,7 @@ export default function ProfileScreen() {
             <View style={styles.emergencyHeaderRow}>
               <Text style={styles.sectionTitle}>Emergency Contact</Text>
               <View style={styles.relationshipTagFixed}>
-                <Text style={styles.relationshipTagText}>{emergency.relationship}</Text>
+                <Text style={styles.relationshipTagText}>{capitalizeRelationship(emergency.relationship)}</Text>
               </View>
             </View>
             <View style={styles.emergencyCard}>

@@ -11,6 +11,8 @@ export interface PatientProfile {
   address?: string;
   dateOfBirth?: string;
   gender?: string;
+  bloodType?: string;
+  allergies?: string[];
   emergencyContact?: {
     name: string;
     phone: string;

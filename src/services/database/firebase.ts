@@ -64,6 +64,7 @@ export interface MedicalHistory {
     dosage: string;
     frequency: string;
     medication: string;
+    duration: string;
   }>;
   presentIllnessHistory?: string;
   provider: {
@@ -99,8 +100,7 @@ export interface Prescription {
   instructions: string;
   prescribedDate: string;
   status: 'active' | 'completed' | 'discontinued';
-  refills?: number;
-  remainingRefills?: number;
+  route?: string;
 }
 
 export interface Certificate {
@@ -1035,75 +1035,61 @@ export const databaseService = {
   // Prescriptions
   async getPrescriptions(userId: string): Promise<Prescription[]> {
     try {
-      const prescriptionsRef = ref(database, 'prescriptions');
-      const snapshot = await get(prescriptionsRef);
+      // Get prescriptions from both dedicated prescriptions node and medical history
+      const [dedicatedPrescriptions, medicalHistorySnapshot] = await Promise.all([
+        this.getPrescriptionsByPatient(userId),
+        get(ref(database, `patientMedicalHistory/${userId}`))
+      ]);
       
-      if (snapshot.exists()) {
-        const prescriptions: Prescription[] = [];
-        snapshot.forEach((childSnapshot) => {
-          const prescription = childSnapshot.val();
-          // Filter client-side by patientId
-          if (prescription.patientId === userId) {
-            prescriptions.push({
-              id: childSnapshot.key,
-              ...prescription
-            });
-          }
-        });
-        return prescriptions.sort((a, b) => new Date(b.prescribedDate).getTime() - new Date(a.prescribedDate).getTime());
+      const prescriptions: Prescription[] = [];
+      
+      if (medicalHistorySnapshot.exists()) {
+        const patientHistory = medicalHistorySnapshot.val();
+
+        if (patientHistory.entries) {
+          Object.keys(patientHistory.entries).forEach((entryKey) => {
+            const entry = patientHistory.entries[entryKey];
+            if (entry.prescriptions) {
+              entry.prescriptions.forEach((prescription: any, index: number) => {
+                // Check if there's a corresponding prescription in the dedicated node
+                const dedicatedPrescription = dedicatedPrescriptions.find(
+                  dp => dp.appointmentId === entry.relatedAppointment?.id
+                );
+                
+                prescriptions.push({
+                  id: `${entryKey}_prescription_${index}`,
+                  patientId: userId,
+                  specialistId: entry.provider?.id || 'Unknown',
+                  medication: prescription.medication,
+                  dosage: prescription.dosage,
+                  frequency: prescription.frequency || 'As needed',
+                  duration: prescription.duration || 'Ongoing',
+                  instructions: prescription.instructions || 'As prescribed',
+                  // Use dedicated prescription date if available, otherwise fall back to consultation date
+                  prescribedDate: dedicatedPrescription?.prescribedDate || entry.consultationDate,
+                  status: 'active',
+                  route: prescription.route,
+                });
+              });
+            }
+          });
+        }
       }
-      return [];
-    } catch (error) {
-      // Suppress Firebase indexing errors
-      if (error instanceof Error && error.message.includes('indexOn')) {
-        console.log('Firebase indexing not configured, using client-side filtering');
-      } else {
-        console.error('Get prescriptions error:', error);
-      }
-      return [];
-    }
-  },
-
-  async createPrescription(prescription: Omit<Prescription, 'id'>): Promise<string> {
-    try {
-      const prescriptionsRef = ref(database, 'prescriptions');
-      const newPrescriptionRef = push(prescriptionsRef);
       
-      const prescriptionData = {
-        ...prescription,
-        prescribedDate: new Date().toISOString(),
-      };
+      // Combine both sources and remove duplicates
+      const allPrescriptions = [...dedicatedPrescriptions, ...prescriptions];
+      const uniquePrescriptions = allPrescriptions.filter((prescription, index, self) => 
+        index === self.findIndex(p => p.id === prescription.id)
+      );
       
-      await set(newPrescriptionRef, prescriptionData);
-      return newPrescriptionRef.key!;
+      return uniquePrescriptions.sort((a, b) => new Date(b.prescribedDate).getTime() - new Date(a.prescribedDate).getTime());
     } catch (error) {
-      console.error('Create prescription error:', error);
+      console.error('Get prescriptions error:', error);
       throw error;
     }
   },
 
-  async updatePrescription(id: string, updates: Partial<Prescription>): Promise<void> {
-    try {
-      const prescriptionRef = ref(database, `prescriptions/${id}`);
-      await update(prescriptionRef, {
-        ...updates,
-        lastUpdated: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error('Update prescription error:', error);
-      throw error;
-    }
-  },
 
-  async deletePrescription(id: string): Promise<void> {
-    try {
-      const prescriptionRef = ref(database, `prescriptions/${id}`);
-      await remove(prescriptionRef);
-    } catch (error) {
-      console.error('Delete prescription error:', error);
-      throw error;
-    }
-  },
 
   // Specialist-specific methods
   async getPatientsBySpecialist(specialistId: string): Promise<Patient[]> {
@@ -1551,12 +1537,12 @@ export const databaseService = {
                     specialistId: entry.provider.id,
                     medication: prescription.medication,
                     dosage: prescription.dosage,
-                    frequency: prescription.frequency,
-                    duration: 'Ongoing',
-                    instructions: 'As prescribed',
+                    frequency: prescription.frequency || 'As needed',
+                    duration: prescription.duration || 'Ongoing',
+                    instructions: prescription.instructions || 'As prescribed',
                     prescribedDate: entry.consultationDate,
                     status: 'active',
-                    remainingRefills: 3, // Default value
+                    route: prescription.route,
                   });
                 });
               }
@@ -1697,6 +1683,8 @@ export const databaseService = {
       // Fields that go to patients node (editable fields)
       if (updates.contactNumber !== undefined) patientUpdates.contactNumber = updates.contactNumber;
       if (updates.address !== undefined) patientUpdates.address = updates.address;
+      if (updates.bloodType !== undefined) patientUpdates.bloodType = updates.bloodType;
+      if (updates.allergies !== undefined) patientUpdates.allergies = updates.allergies;
       if (updates.emergencyContact !== undefined) patientUpdates.emergencyContact = updates.emergencyContact;
       if (updates.lastUpdated !== undefined) patientUpdates.lastUpdated = updates.lastUpdated;
       
@@ -1905,6 +1893,31 @@ export const databaseService = {
     }
   },
 
+  async getPrescriptionsByPatient(patientId: string): Promise<Prescription[]> {
+    try {
+      const prescriptionsRef = ref(database, 'prescriptions');
+      const snapshot = await get(prescriptionsRef);
+      
+      if (snapshot.exists()) {
+        const prescriptions: Prescription[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const prescription = childSnapshot.val();
+          if (prescription.patientId === patientId) {
+            prescriptions.push({
+              id: childSnapshot.key,
+              ...prescription
+            });
+          }
+        });
+        return prescriptions.sort((a, b) => new Date(b.prescribedDate).getTime() - new Date(a.prescribedDate).getTime());
+      }
+      return [];
+    } catch (error) {
+      console.error('Get prescriptions by patient error:', error);
+      return [];
+    }
+  },
+
   async getCertificatesByAppointment(appointmentId: string): Promise<Certificate[]> {
     try {
       const certificatesRef = ref(database, 'certificates');
@@ -1983,7 +1996,8 @@ export const databaseService = {
             date: appointment.appointmentDate,
             time: appointment.appointmentTime,
             doctorName: `${appointment.doctorFirstName || 'Dr.'} ${appointment.doctorLastName || 'Unknown'}`,
-            clinicName: appointment.clinicName || 'Clinic not specified'
+            clinicId: appointment.clinicId,
+            clinicName: appointment.clinicName // Keep for backward compatibility
           }
         );
         console.log('✅ Patient notification created with ID:', patientNotificationId);
@@ -1998,7 +2012,8 @@ export const databaseService = {
             date: appointment.appointmentDate,
             time: appointment.appointmentTime,
             patientName: `${appointment.patientFirstName || 'Unknown'} ${appointment.patientLastName || 'Patient'}`,
-            clinicName: appointment.clinicName || 'Clinic not specified'
+            clinicId: appointment.clinicId,
+            clinicName: appointment.clinicName // Keep for backward compatibility
           }
         );
         console.log('✅ Doctor notification created with ID:', doctorNotificationId);
@@ -2477,32 +2492,7 @@ export const databaseService = {
     return unsubscribe;
   },
 
-  onPrescriptionsChange(patientId: string, callback: (prescriptions: Prescription[]) => void) {
-    const prescriptionsRef = ref(database, 'prescriptions');
-    
-    const unsubscribe = onValue(prescriptionsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const prescriptions: Prescription[] = [];
-        
-        snapshot.forEach((childSnapshot) => {
-          const prescriptionData = childSnapshot.val();
-          // Filter prescriptions by patientId
-          if (prescriptionData.patientId === patientId) {
-            prescriptions.push({
-              id: childSnapshot.key,
-              ...prescriptionData
-            });
-          }
-        });
-        
-        callback(prescriptions.sort((a, b) => new Date(b.prescribedDate).getTime() - new Date(a.prescribedDate).getTime()));
-      } else {
-        callback([]);
-      }
-    });
-    
-    return unsubscribe;
-  },
+
 
   onMedicalHistoryChange(patientId: string, callback: (medicalHistory: MedicalHistory[]) => void) {
     const medicalHistoryRef = ref(database, `patientMedicalHistory/${patientId}/entries`);
@@ -2520,6 +2510,32 @@ export const databaseService = {
         });
         
         callback(medicalHistory.sort((a, b) => new Date(b.consultationDate).getTime() - new Date(a.consultationDate).getTime()));
+      } else {
+        callback([]);
+      }
+    });
+    
+    return unsubscribe;
+  },
+
+  onPrescriptionsChange(patientId: string, callback: (prescriptions: Prescription[]) => void) {
+    const prescriptionsRef = ref(database, 'prescriptions');
+    
+    const unsubscribe = onValue(prescriptionsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const prescriptions: Prescription[] = [];
+        
+        snapshot.forEach((childSnapshot) => {
+          const prescription = childSnapshot.val();
+          if (prescription.patientId === patientId) {
+            prescriptions.push({
+              id: childSnapshot.key,
+              ...prescription
+            });
+          }
+        });
+        
+        callback(prescriptions.sort((a, b) => new Date(b.prescribedDate).getTime() - new Date(a.prescribedDate).getTime()));
       } else {
         callback([]);
       }
@@ -2618,6 +2634,7 @@ export const databaseService = {
           dateOfBirth: patientData?.dateOfBirth,
           gender: patientData?.gender,
           bloodType: patientData?.bloodType,
+          allergies: patientData?.allergies,
           emergencyContact: patientData?.emergencyContact,
           // Timestamps
           createdAt: userData?.createdAt || patientData?.createdAt,

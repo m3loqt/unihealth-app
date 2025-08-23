@@ -29,6 +29,7 @@ import {
   Search,
   Edit,
   Wallet,
+  ChevronDown,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -38,6 +39,8 @@ import { databaseService } from '../../src/services/database/firebase';
 import { ref, update } from 'firebase/database';
 import { database } from '@/config/firebase';
 import { safeDataAccess } from '../../src/utils/safeDataAccess';
+import { FrequencySelectionModal, RouteSelectionModal, DurationUnitSelectionModal } from '../../src/components';
+import { formatFrequency, formatRoute } from '../../src/utils/formatting';
 
 export default function PatientConsultationScreen() {
   const { patientId, consultationId, referralId } = useLocalSearchParams();
@@ -261,6 +264,9 @@ export default function PatientConsultationScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showAddPrescription, setShowAddPrescription] = useState(false);
   const [showAddCertificate, setShowAddCertificate] = useState(false);
+  const [showFrequencyModal, setShowFrequencyModal] = useState(false);
+  const [showRouteModal, setShowRouteModal] = useState(false);
+  const [showDurationUnitModal, setShowDurationUnitModal] = useState(false);
   
   // Step navigation state
   const [currentStep, setCurrentStep] = useState(1);
@@ -269,7 +275,9 @@ export default function PatientConsultationScreen() {
     medication: '',
     dosage: '',
     frequency: '',
-    duration: '',
+    route: '',
+    durationNumber: '',
+    durationUnit: '',
     description: '',
   });
   const [newCertificate, setNewCertificate] = useState({
@@ -613,9 +621,37 @@ export default function PatientConsultationScreen() {
       return;
     }
     
+    // Validate duration fields
+    if (newPrescription.durationNumber && !newPrescription.durationUnit) {
+      Alert.alert('Error', 'Please select a duration unit.');
+      return;
+    }
+    
+    if (newPrescription.durationUnit && !newPrescription.durationNumber) {
+      Alert.alert('Error', 'Please enter a duration number.');
+      return;
+    }
+    
+    // Combine duration number and unit
+    const duration = newPrescription.durationNumber && newPrescription.durationUnit 
+      ? `${newPrescription.durationNumber} ${newPrescription.durationUnit}`
+      : '';
+    
+    // const prescription = {
+    //   id: Date.now(),
+    //   ...newPrescription,
+    //   duration,
+    //   prescribedDate: new Date().toLocaleDateString(),
+    // };
+
     const prescription = {
       id: Date.now(),
-      ...newPrescription,
+      medication: newPrescription.medication,
+      dosage: newPrescription.dosage,
+      frequency: newPrescription.frequency,
+      route: newPrescription.route,
+      duration,
+      description: newPrescription.description,
       prescribedDate: new Date().toLocaleDateString(),
     };
     
@@ -628,7 +664,9 @@ export default function PatientConsultationScreen() {
       medication: '',
       dosage: '',
       frequency: '',
-      duration: '',
+      route: '',
+      durationNumber: '',
+      durationUnit: '',
       description: '',
     });
     
@@ -1500,7 +1538,7 @@ export default function PatientConsultationScreen() {
                       <View style={styles.prescriptionDetails}>
                         <Text style={styles.medicationName}>{prescription.medication}</Text>
                         <Text style={styles.medicationDosage}>
-                          {prescription.dosage} • {prescription.frequency}
+                          {prescription.dosage} • {formatFrequency(prescription.frequency, 'patient')} • {formatRoute(prescription.route, 'patient')}
                         </Text>
                         <Text style={styles.prescriptionDescription}>{prescription.description}</Text>
                       </View>
@@ -1535,26 +1573,63 @@ export default function PatientConsultationScreen() {
                     value={newPrescription.medication}
                     onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, medication: value }))}
                   />
-                  <View style={styles.addFormRow}>
-                    <TextInput
-                      style={[styles.addFormInput, styles.addFormInputHalf]}
-                      placeholder="Dosage (e.g., 10mg)"
-                      value={newPrescription.dosage}
-                      onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, dosage: value }))}
-                    />
-                    <TextInput
-                      style={[styles.addFormInput, styles.addFormInputHalf]}
-                      placeholder="Frequency"
-                      value={newPrescription.frequency}
-                      onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, frequency: value }))}
-                    />
-                  </View>
-                  <TextInput
-                    style={styles.addFormInput}
-                    placeholder="Duration (e.g., 7 days)"
-                    value={newPrescription.duration}
-                    onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, duration: value }))}
-                  />
+                                             <View style={styles.addFormRow}>
+                             <TextInput
+                               style={[styles.addFormInput, styles.addFormInputHalf]}
+                               placeholder="Dosage (e.g., 10mg)"
+                               value={newPrescription.dosage}
+                               onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, dosage: value }))}
+                             />
+                             <TouchableOpacity
+                               style={[styles.addFormInput, styles.addFormInputHalf, styles.frequencyButton]}
+                               onPress={() => setShowFrequencyModal(true)}
+                             >
+                               <View style={styles.frequencyButtonContent}>
+                                 <Text style={newPrescription.frequency ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
+                                   {newPrescription.frequency || 'Frequency'}
+                                 </Text>
+                                 <ChevronDown size={16} color="#6B7280" />
+                               </View>
+                             </TouchableOpacity>
+                           </View>
+                           <View style={styles.addFormRow}>
+                             <TouchableOpacity
+                               style={[styles.addFormInput, styles.addFormInputRoute, styles.frequencyButton]}
+                               onPress={() => setShowRouteModal(true)}
+                             >
+                               <View style={styles.frequencyButtonContent}>
+                                 <Text style={newPrescription.route ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
+                                   {newPrescription.route || 'Route'}
+                                 </Text>
+                                 <ChevronDown size={16} color="#6B7280" />
+                               </View>
+                             </TouchableOpacity>
+                             <TextInput
+                               style={[styles.addFormInput, styles.addFormInputDuration]}
+                               placeholder="Duration"
+                               value={newPrescription.durationNumber}
+                               onChangeText={(value) => {
+                                 // Only allow numbers 1-30
+                                 const numValue = parseInt(value, 10);
+                                 if (value === '' || (numValue >= 1 && numValue <= 30)) {
+                                   setNewPrescription((prev) => ({ ...prev, durationNumber: value }));
+                                 }
+                               }}
+                               keyboardType="numeric"
+                               maxLength={2}
+                             />
+                             <TouchableOpacity
+                               style={[styles.addFormInput, styles.addFormInputUnit, styles.frequencyButton]}
+                               onPress={() => setShowDurationUnitModal(true)}
+                             >
+                               <View style={styles.frequencyButtonContent}>
+                                 <Text style={newPrescription.durationUnit ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
+                                   {newPrescription.durationUnit || 'Unit'}
+                                 </Text>
+                                 <ChevronDown size={16} color="#6B7280" />
+                               </View>
+                             </TouchableOpacity>
+                           </View>
                   <TextInput
                     style={[styles.addFormInput, styles.addFormTextArea]}
                     placeholder="Description/Instructions"
@@ -1573,7 +1648,9 @@ export default function PatientConsultationScreen() {
                           medication: '',
                           dosage: '',
                           frequency: '',
-                          duration: '',
+                          route: '',
+                          durationNumber: '',
+                          durationUnit: '',
                           description: '',
                         });
                       }}
@@ -1925,7 +2002,7 @@ export default function PatientConsultationScreen() {
                         <View key={index} style={styles.prescriptionItem}>
                           <Text style={styles.prescriptionMedication}>{prescription.medication}</Text>
                           <Text style={styles.prescriptionDetailsText}>
-                            {prescription.dosage} • {prescription.frequency}
+                            {prescription.dosage} • {formatFrequency(prescription.frequency, 'patient')} • {formatRoute(prescription.route, 'patient')}
                           </Text>
                           {prescription.description && (
                             <Text style={styles.prescriptionDescriptionText}>{prescription.description}</Text>
@@ -2053,6 +2130,30 @@ export default function PatientConsultationScreen() {
           </SafeAreaView>
         </View>
       </Modal>
+
+      {/* Frequency Selection Modal */}
+      <FrequencySelectionModal
+        visible={showFrequencyModal}
+        onClose={() => setShowFrequencyModal(false)}
+        onSelect={(frequency) => setNewPrescription((prev) => ({ ...prev, frequency }))}
+        userRole="specialist"
+      />
+
+      {/* Route Selection Modal */}
+      <RouteSelectionModal
+        visible={showRouteModal}
+        onClose={() => setShowRouteModal(false)}
+        onSelect={(route) => setNewPrescription((prev) => ({ ...prev, route }))}
+        userRole="specialist"
+      />
+
+      {/* Duration Unit Selection Modal */}
+      <DurationUnitSelectionModal
+        visible={showDurationUnitModal}
+        onClose={() => setShowDurationUnitModal(false)}
+        onSelect={(durationUnit) => setNewPrescription((prev) => ({ ...prev, durationUnit }))}
+        userRole="specialist"
+      />
     </SafeAreaView>
   );
 }
@@ -2457,6 +2558,15 @@ const styles = StyleSheet.create({
   addFormInputHalf: {
     flex: 1,
   },
+  addFormInputRoute: {
+    flex: 10, // 50% of the row (10/20)
+  },
+  addFormInputDuration: {
+    flex: 3, // 15% of the row (3/20)
+  },
+  addFormInputUnit: {
+    flex: 7, // 35% of the row (7/20)
+  },
   addFormTextArea: {
     minHeight: 80,
     textAlignVertical: 'top',
@@ -2492,6 +2602,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
   },
+  frequencyButton: {
+    justifyContent: 'center',
+  },
+  frequencyButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  frequencyButtonText: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+  },
+  frequencyButtonPlaceholder: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+  },
+  
   // Loading Animation
   loadingContainer: {
     flexDirection: 'row',

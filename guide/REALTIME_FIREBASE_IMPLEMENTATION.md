@@ -53,11 +53,11 @@ const { referrals, loading, error, updateReferralStatus } = useReferrals();
 
 #### `usePrescriptions()`
 ```typescript
-const { prescriptions, loading, error, createPrescription, updatePrescription, deletePrescription } = usePrescriptions();
+const { prescriptions, loading, error, refresh } = usePrescriptions();
 ```
-- Real-time updates for prescription changes
+- Real-time updates for prescription changes from medical history
 - Automatic filtering by patient ID
-- Real-time notifications for new prescriptions
+- Read-only access to prescriptions (no create/update/delete operations)
 
 #### `useMedicalHistory()`
 ```typescript

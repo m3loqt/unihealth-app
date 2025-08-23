@@ -186,8 +186,23 @@ export const safeDataAccess = {
   getBloodType(user: any, fallback: string = 'Not specified'): string {
     if (!user) return fallback;
     
-    if (user.bloodType) return user.bloodType;
-    if (user.patientBloodType) return user.patientBloodType;
+    // Check for bloodType in user object
+    if (user.bloodType) {
+      // Handle "not-known" case from database
+      if (user.bloodType === 'not-known') {
+        return 'Not known yet';
+      }
+      return user.bloodType;
+    }
+    
+    // Check for patientBloodType in user object
+    if (user.patientBloodType) {
+      // Handle "not-known" case from database
+      if (user.patientBloodType === 'not-known') {
+        return 'Not known yet';
+      }
+      return user.patientBloodType;
+    }
     
     return fallback;
   },

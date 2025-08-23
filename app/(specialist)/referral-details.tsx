@@ -40,6 +40,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService, Referral, MedicalHistory } from '../../src/services/database/firebase';
 import { safeDataAccess } from '../../src/utils/safeDataAccess';
+import { formatRoute, formatFrequency } from '../../src/utils/formatting';
 
 // Extended interface for referral data that includes additional properties
 interface ReferralData extends Referral {
@@ -54,6 +55,7 @@ interface ReferralData extends Referral {
   clinicAndAddress?: string;
   dateTime?: string;
   specialistClinic?: string;
+  specialistClinicAndAddress?: string;
   
   // Clinical fields from medical history
   presentIllnessHistory?: string;
@@ -195,6 +197,25 @@ const formatClinicAddress = (clinicData: any, fallbackClinicName?: string): stri
 
 // Helper function to merge clinic and address
 const formatClinicAndAddress = (clinicData: any, fallbackClinicName?: string): string => {
+  const clinicName = clinicData?.name || fallbackClinicName || 'Unknown Clinic';
+  const address = formatClinicAddress(clinicData, fallbackClinicName);
+  
+  // If the address is the same as clinic name, just return clinic name
+  if (address === clinicName) {
+    return clinicName;
+  }
+  
+  // If address contains the clinic name, just return the address
+  if (address.includes(clinicName)) {
+    return address;
+  }
+  
+  // Otherwise, combine them
+  return `${clinicName}, ${address}`;
+};
+
+// Helper function to merge specialist clinic and address
+const formatSpecialistClinicAndAddress = (clinicData: any, fallbackClinicName?: string): string => {
   const clinicName = clinicData?.name || fallbackClinicName || 'Unknown Clinic';
   const address = formatClinicAddress(clinicData, fallbackClinicName);
   
@@ -411,6 +432,7 @@ export default function ReferralDetailsScreen() {
           clinicAndAddress: formatClinicAndAddress(clinicData, clinicData?.name || referral.referringClinicName),
           dateTime: formatDateTime(referral.appointmentDate, referral.appointmentTime),
           specialistClinic: specialistClinicData?.name || 'Not assigned',
+          specialistClinicAndAddress: formatSpecialistClinicAndAddress(specialistClinicData, specialistClinicData?.name || 'Not assigned'),
           
           // Clinical fields from medical history
           presentIllnessHistory: medicalHistory?.presentIllnessHistory || '',
@@ -702,9 +724,9 @@ export default function ReferralDetailsScreen() {
                   {referralData.time ? formatTime(referralData.time) : 'Not specified'}
                 </Text>
               </View>
-              <View style={styles.referralDetailsRow}>
+              <View style={styles.referralDetailsRowWrapped}>
                 <Text style={styles.referralLabel}>Specialist Clinic</Text>
-                <Text style={styles.referralValue}>{referralData.specialistClinic || 'Not assigned'}</Text>
+                <Text style={styles.referralValueWrapped}>{referralData.specialistClinicAndAddress || 'Not assigned'}</Text>
               </View>
               {referralData.practiceLocation?.roomOrUnit && (
                 <View style={styles.referralDetailsRow}>
@@ -858,12 +880,16 @@ export default function ReferralDetailsScreen() {
                 </View>
                 <View style={styles.prescriptionDetails}>
                   <Text style={styles.medicationName}>{p.medication || 'Unknown Medication'}</Text>
-                  <Text style={styles.medicationDosage}>{p.dosage || 'N/A'} • {p.frequency || 'N/A'}</Text>
+                  <Text style={styles.medicationDosage}>
+                    {p.dosage || 'N/A'} • {formatFrequency(p.frequency, 'specialist')}
+                    {p.route && ` • ${formatRoute(p.route, 'specialist')}`}
+                    {p.duration && ` • ${p.duration}`}
+                  </Text>
                 </View>
-                <View style={styles.prescriptionStatus}>
+                {/* <View style={styles.prescriptionStatus}>
                   <Text style={styles.remainingDays}>{p.remaining}</Text>
                   <Text style={styles.remainingLabel}>remaining</Text>
-                </View>
+                </View> */}
               </View>
               <View style={styles.prescriptionMeta}>
                 <View style={styles.metaRow}>
