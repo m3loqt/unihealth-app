@@ -24,7 +24,7 @@ import {
 } from 'lucide-react-native';
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Other', 'Prefer not to say'];
-const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
+const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Not known yet'];
 const EDUCATIONAL_ATTAINMENT_OPTIONS = [
   'Elementary',
   'High School',
@@ -324,7 +324,7 @@ export default function SignUpStep1Screen() {
                 <User size={20} color="#9CA3AF" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter allergies (comma-separated, e.g., peanuts, shellfish, penicillin)"
+                  placeholder="Enter allergies (comma-separated)"
                   placeholderTextColor="#9CA3AF"
                   value={formData.allergies}
                   onChangeText={value => handleInputChange('allergies', value)}

@@ -5,12 +5,12 @@
 /**
  * Format a date string to a readable format
  * @param dateString - ISO date string
- * @param format - Format type ('short', 'long', 'time', 'relative')
+ * @param format - Format type ('short', 'long', 'time', 'relative', 'prescription')
  * @returns Formatted date string
  */
 export const formatDate = (
   dateString: string,
-  format: 'short' | 'long' | 'time' | 'relative' = 'short'
+  format: 'short' | 'long' | 'time' | 'relative' | 'prescription' = 'short'
 ): string => {
   try {
     const date = new Date(dateString);
@@ -28,6 +28,12 @@ export const formatDate = (
           year: 'numeric',
           month: 'long',
           day: 'numeric',
+        });
+      case 'prescription':
+        return date.toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
         });
       case 'time':
         return date.toLocaleTimeString('en-US', {

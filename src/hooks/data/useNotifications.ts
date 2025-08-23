@@ -30,6 +30,56 @@ export interface UseNotificationsReturn {
   retry: () => Promise<void>;
 }
 
+// Utility function to process notification messages and replace clinicId with clinic names
+const processNotificationMessage = async (message: string): Promise<string> => {
+  // Check if the message contains a clinicId pattern (e.g., "clinic-123", "clinic_123", or similar)
+  // This pattern looks for clinic IDs that might appear in existing notifications
+  const clinicIdPatterns = [
+    /(?:at|with|to)\s+(clinic-[a-zA-Z0-9-_]+)/gi,
+    /(?:at|with|to)\s+(clinic_[a-zA-Z0-9-_]+)/gi,
+    /(?:at|with|to)\s+([a-zA-Z0-9-_]+clinic)/gi,
+    /(?:at|with|to)\s+([a-zA-Z0-9-_]+)/gi  // More general pattern for any ID-like string
+  ];
+  
+  let processedMessage = message;
+  let hasChanges = false;
+  
+  for (const pattern of clinicIdPatterns) {
+    const matches = processedMessage.match(pattern);
+    
+    if (matches) {
+      for (const match of matches) {
+        const clinicId = match.replace(/(?:at|with|to)\s+/i, '').trim();
+        
+        // Skip if it's already a readable clinic name
+        if (clinicId.toLowerCase().includes('clinic') && clinicId.length > 10) {
+          continue;
+        }
+        
+        // Skip if it's clearly not a clinic ID (contains spaces, is too short, etc.)
+        if (clinicId.length < 3 || clinicId.includes(' ')) {
+          continue;
+        }
+        
+        try {
+          const clinicData = await databaseService.getClinicById(clinicId);
+          if (clinicData?.name) {
+            // Replace the clinicId with the clinic name
+            processedMessage = processedMessage.replace(clinicId, clinicData.name);
+            hasChanges = true;
+            console.log(`🔔 Replaced clinicId "${clinicId}" with clinic name "${clinicData.name}"`);
+          }
+        } catch (error) {
+          console.error('Error fetching clinic name for ID:', clinicId, error);
+          // Keep the original clinicId if we can't fetch the name
+        }
+      }
+    }
+  }
+  
+  return processedMessage;
+};
+
 export const useNotifications = (): UseNotificationsReturn => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -42,6 +92,30 @@ export const useNotifications = (): UseNotificationsReturn => {
   const pageSize = 20;
   const lastTimestamp = useRef<number | undefined>(undefined);
   const abortController = useRef<AbortController | null>(null);
+
+  // Process notifications to replace clinicId with clinic names
+  const processNotifications = useCallback(async (notifications: Notification[]): Promise<Notification[]> => {
+    console.log('🔔 Processing notifications for clinic name replacement...');
+    const processedNotifications = await Promise.all(
+      notifications.map(async (notification) => {
+        const originalMessage = notification.message;
+        const processedMessage = await processNotificationMessage(notification.message);
+        
+        if (originalMessage !== processedMessage) {
+          console.log('🔔 Notification message processed:');
+          console.log('  Original:', originalMessage);
+          console.log('  Processed:', processedMessage);
+        }
+        
+        return {
+          ...notification,
+          message: processedMessage
+        };
+      })
+    );
+    console.log('🔔 Finished processing notifications');
+    return processedNotifications;
+  }, []);
 
   // Load notifications with real-time updates
   const loadNotifications = useCallback(async () => {
@@ -57,7 +131,10 @@ export const useNotifications = (): UseNotificationsReturn => {
       // Get initial notifications
       const initialNotifications = await databaseService.getNotificationsPaginated(user.uid, pageSize);
       console.log('🔔 Initial notifications loaded:', initialNotifications.length);
-      setNotifications(initialNotifications);
+      
+      // Process notifications to replace clinicId with clinic names
+      const processedNotifications = await processNotifications(initialNotifications);
+      setNotifications(processedNotifications);
       
       // Set last timestamp for pagination
       if (initialNotifications.length > 0) {
@@ -71,9 +148,12 @@ export const useNotifications = (): UseNotificationsReturn => {
       
       // Set up real-time listener
       console.log('🔔 Setting up real-time listener...');
-      const unsubscribe = databaseService.onNotificationsChange(user.uid, (updatedNotifications) => {
+      const unsubscribe = databaseService.onNotificationsChange(user.uid, async (updatedNotifications) => {
         console.log('🔔 Real-time update received:', updatedNotifications.length, 'notifications');
-        setNotifications(updatedNotifications);
+        
+        // Process notifications to replace clinicId with clinic names
+        const processedNotifications = await processNotifications(updatedNotifications);
+        setNotifications(processedNotifications);
         
         // Update unread count
         const unread = updatedNotifications.filter(n => !n.read).length;
@@ -89,7 +169,7 @@ export const useNotifications = (): UseNotificationsReturn => {
     } finally {
       setLoading(false);
     }
-  }, [user?.uid]);
+  }, [user?.uid, processNotifications]);
 
   // Load more notifications (pagination)
   const loadMore = useCallback(async () => {
@@ -105,7 +185,9 @@ export const useNotifications = (): UseNotificationsReturn => {
       );
       
       if (moreNotifications.length > 0) {
-        setNotifications(prev => [...prev, ...moreNotifications]);
+        // Process notifications to replace clinicId with clinic names
+        const processedNotifications = await processNotifications(moreNotifications);
+        setNotifications(prev => [...prev, ...processedNotifications]);
         lastTimestamp.current = moreNotifications[moreNotifications.length - 1].timestamp;
         setHasMore(moreNotifications.length === pageSize);
       } else {
@@ -117,7 +199,7 @@ export const useNotifications = (): UseNotificationsReturn => {
     } finally {
       setLoadingMore(false);
     }
-  }, [user?.uid, loadingMore, hasMore]);
+  }, [user?.uid, loadingMore, hasMore, processNotifications]);
 
   // Mark notification as read
   const markAsRead = useCallback(async (notificationId: string) => {

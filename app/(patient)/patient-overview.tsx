@@ -36,6 +36,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService, Patient, Appointment, MedicalHistory, Prescription } from '../../src/services/database/firebase';
 import safeDataAccess from '../../src/utils/safeDataAccess';
+import { capitalizeRelationship, formatRoute } from '../../src/utils/formatting';
 import LoadingState from '../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../src/utils/dataValidation';
@@ -47,6 +48,7 @@ interface PatientData extends Patient {
   dateOfBirth?: string;
   gender?: string;
   bloodType?: string;
+  allergies?: string[];
   phone?: string;
   email?: string;
   address?: string;
@@ -527,12 +529,27 @@ export default function PatientOverviewScreen() {
                   </View>
                   <View style={styles.detailsRow}>
                     <Text style={styles.detailsLabel}>Gender</Text>
-                    <Text style={styles.detailsValue}>{safeDataAccess.getUserGender(patientData)}</Text>
+                    <Text style={styles.detailsValue}>
+                      {safeDataAccess.getUserGender(patientData) === 'Not specified' 
+                        ? 'Not specified' 
+                        : safeDataAccess.getUserGender(patientData).charAt(0).toUpperCase() + safeDataAccess.getUserGender(patientData).slice(1).toLowerCase()
+                      }
+                    </Text>
                   </View>
                   <View style={styles.detailsRow}>
                     <Text style={styles.detailsLabel}>Contact Number</Text>
                     <Text style={styles.detailsValue}>{safeDataAccess.getUserPhone(patientData)}</Text>
                   </View>
+                  <View style={styles.detailsRow}>
+                    <Text style={styles.detailsLabel}>Blood Type</Text>
+                    <Text style={styles.detailsValue}>{safeDataAccess.getBloodType(patientData)}</Text>
+                  </View>
+                  {patientData?.allergies && patientData.allergies.length > 0 && (
+                    <View style={styles.detailsRow}>
+                      <Text style={styles.detailsLabel}>Allergies</Text>
+                      <Text style={styles.detailsValue}>{patientData.allergies.join(', ')}</Text>
+                    </View>
+                  )}
                   <View style={styles.detailsRowNoBorder}>
                     <Text style={styles.detailsLabel}>Address</Text>
                     <Text style={styles.detailsValue}>{safeDataAccess.getUserAddress(patientData)}</Text>
@@ -562,6 +579,7 @@ export default function PatientOverviewScreen() {
                     </View>
                   </>
                 )}
+
                         </View>
             </View>
 
@@ -572,7 +590,7 @@ export default function PatientOverviewScreen() {
                 <View style={styles.emergencyCard}>
                   {patientData.emergencyContact.relationship ? (
                     <View style={styles.relationshipBadgeContainer}>
-                      <Text style={styles.relationshipPill}>{patientData.emergencyContact.relationship || 'Unknown'}</Text>
+                      <Text style={styles.relationshipPill}>{capitalizeRelationship(patientData.emergencyContact.relationship) || 'Unknown'}</Text>
                     </View>
                   ) : null}
                   <View style={styles.emergencyLeft}>
@@ -710,6 +728,7 @@ export default function PatientOverviewScreen() {
                           <Text style={styles.prescriptionMedication}>{prescription?.medication || 'Unknown Medication'}</Text>
                           <Text style={styles.prescriptionDosage}>
                             {prescription?.dosage || 'Dosage not specified'} • {prescription?.frequency || 'Frequency not specified'}
+                            {prescription?.route && ` • ${formatRoute(prescription.route, 'patient')}`}
                           </Text>
                           <Text style={styles.prescriptionDate}>
                             Prescribed: {prescription?.prescribedDate ? formatDate(prescription.prescribedDate) : 'Date not specified'}
@@ -792,7 +811,7 @@ export default function PatientOverviewScreen() {
                           <Clock size={16} color="#6B7280" />
                         </View>
                         <View style={styles.appointmentInfo}>
-                          <Text style={styles.appointmentType}>{appointment?.type || 'Appointment'}</Text>
+                          <Text style={styles.appointmentType}>{formatTypeLabel(appointment?.type) || 'Appointment'}</Text>
                           <Text style={styles.appointmentDate}>
                             {appointment?.appointmentDate || 'Date not specified'} at {(() => {
                               const timeString = appointment?.appointmentTime;

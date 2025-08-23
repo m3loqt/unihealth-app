@@ -4,6 +4,8 @@ import { useRouter, usePathname, type Href } from 'expo-router';
 import { Home, Users, Calendar, User, QrCode, X, AlertCircle as AlertCircleIcon, User as UserIcon, Phone, Mail, MapPin, Heart, Calendar as CalendarIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNotifications } from '../../hooks/data/useNotifications';
+import { capitalizeRelationship } from '../../utils/formatting';
+import safeDataAccess from '../../utils/safeDataAccess';
 import { CameraView, Camera } from 'expo-camera';
 import { BlurView } from 'expo-blur';
 import { databaseService } from '../../services/database/firebase';
@@ -103,7 +105,9 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
           address: patientDetails?.address || qrData.address || '',
           dateOfBirth: patientDetails?.dateOfBirth || '',
           gender: patientDetails?.gender || '',
-          bloodType: patientDetails?.bloodType || '',
+          bloodType: safeDataAccess.getBloodType(patientDetails) || '',
+          allergies: patientDetails?.allergies || [],
+
           emergencyContact: patientDetails?.emergencyContact || null,
           createdAt: patientDetails?.createdAt || '',
           lastVisit: patientDetails?.lastVisit || '',
@@ -395,12 +399,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
                         <Text style={patientModalStyles.infoText}>{scannedPatient.gender}</Text>
                       </View>
                     )}
-                    {scannedPatient.bloodType && (
-                      <View style={patientModalStyles.infoItem}>
-                        <Heart size={16} color="#6B7280" />
-                        <Text style={patientModalStyles.infoText}>Blood Type: {scannedPatient.bloodType}</Text>
-                      </View>
-                    )}
+
                     {scannedPatient.email && (
                       <View style={patientModalStyles.infoItem}>
                         <Mail size={16} color="#6B7280" />
@@ -433,7 +432,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
                           {scannedPatient.emergencyContact.phone}
                         </Text>
                         <Text style={patientModalStyles.emergencyContactRelationship}>
-                          {scannedPatient.emergencyContact.relationship}
+                          {capitalizeRelationship(scannedPatient.emergencyContact.relationship)}
                         </Text>
                       </View>
                     </View>

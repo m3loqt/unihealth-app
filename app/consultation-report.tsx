@@ -20,11 +20,14 @@ import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
 import { Modal, Button } from '../src/components/ui';
 import { COLORS } from '../src/constants/colors';
+import { formatRoute, formatFrequency } from '../src/utils/formatting';
+import { useAuth } from '../src/hooks/auth/useAuth';
 
 type MedicalHistory = any;
 
 export default function ConsultationReportScreen() {
   const { id } = useLocalSearchParams(); // referralId
+  const { user } = useAuth(); // Get current user to determine role
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [referral, setReferral] = useState<any>(null);
@@ -189,7 +192,7 @@ export default function ConsultationReportScreen() {
       : 'No diagnosis recorded';
 
     const meds = Array.isArray(history?.prescriptions) && history?.prescriptions?.length
-      ? history?.prescriptions.map((p: any) => `${buildSafe(p.medication)} ${buildSafe(p.dosage)} • ${buildSafe(p.frequency || '')}`).join('<br/>')
+      ? history?.prescriptions.map((p: any) => `${buildSafe(p.medication)} ${buildSafe(p.dosage)} • ${buildSafe(formatFrequency(p.frequency, user?.role || 'patient'))}${p.route ? ` • ${buildSafe(formatRoute(p.route, user?.role || 'patient'))}` : ''}`).join('<br/>')
       : 'No medications recorded';
 
     const brandPrimary = '#1E40AF';
@@ -483,10 +486,11 @@ export default function ConsultationReportScreen() {
             <table class="data-table">
               <thead>
                 <tr>
-                  <th style="width:40%">Medication</th>
+                  <th style="width:35%">Medication</th>
                   <th style="width:20%">Dosage</th>
                   <th style="width:20%">Frequency</th>
-                  <th style="width:20%">Description</th>
+                  <th style="width:15%">Route</th>
+                  <th style="width:10%">Duration</th>
                 </tr>
               </thead>
               <tbody>
@@ -494,8 +498,9 @@ export default function ConsultationReportScreen() {
                   <tr>
                     <td>${buildSafe(p.medication)}</td>
                     <td>${buildSafe(p.dosage)}</td>
-                    <td>${buildSafe(p.frequency)}</td>
-                    <td>${buildSafe(p.description || '')}</td>
+                    <td>${buildSafe(formatFrequency(p.frequency, user?.role || 'patient'))}</td>
+                    <td>${buildSafe(p.route ? formatRoute(p.route, user?.role || 'patient') : '')}</td>
+                    <td>${buildSafe(p.duration || '')}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -624,7 +629,7 @@ export default function ConsultationReportScreen() {
   </script>
 </body>
 </html>`;
-  }, [clinic, referral, patient, provider, history, logoDataUri]);
+  }, [clinic, referral, patient, provider, history, logoDataUri, user?.role]);
 
   const handleGeneratePdf = async () => {
     try {

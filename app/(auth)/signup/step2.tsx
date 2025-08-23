@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { User, Phone, ChevronDown, ChevronLeft } from 'lucide-react-native';
+import { capitalizeRelationship } from '../../../src/utils/formatting';
 
 const RELATIONSHIP_OPTIONS = [
   'Spouse',
@@ -52,7 +53,7 @@ export default function SignUpStep2Screen() {
   const handleContinue = () => {
     const relationshipValue =
       formData.relationship === 'Other'
-        ? formData.relationshipOther
+        ? capitalizeRelationship(formData.relationshipOther)
         : formData.relationship;
 
     router.push({
