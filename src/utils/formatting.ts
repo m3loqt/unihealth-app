@@ -179,7 +179,7 @@ export const formatEmergencyContact = (contact: any): string => {
   const parts = [
     contact.name,
     contact.phone ? formatPhoneNumber(contact.phone) : '',
-    contact.relationship,
+    capitalizeRelationship(contact.relationship),
   ].filter(Boolean);
   
   return parts.join(' • ');
@@ -335,3 +335,261 @@ export const snakeCaseToTitleCase = (str: string): string => {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }; 
+
+/**
+ * Capitalize emergency contact relationship
+ * @param relationship - The relationship string
+ * @returns Capitalized relationship string
+ */
+export const capitalizeRelationship = (relationship: string): string => {
+  if (!relationship) return '';
+  
+  // Handle common relationship formats
+  const relationshipLower = relationship.toLowerCase().trim();
+  
+  // Map common variations to proper capitalized forms
+  const relationshipMap: Record<string, string> = {
+    'spouse': 'Spouse',
+    'husband': 'Husband',
+    'wife': 'Wife',
+    'parent': 'Parent',
+    'father': 'Father',
+    'mother': 'Mother',
+    'dad': 'Dad',
+    'mom': 'Mom',
+    'child': 'Child',
+    'son': 'Son',
+    'daughter': 'Daughter',
+    'sibling': 'Sibling',
+    'brother': 'Brother',
+    'sister': 'Sister',
+    'friend': 'Friend',
+    'relative': 'Relative',
+    'guardian': 'Guardian',
+    'other': 'Other',
+  };
+  
+  // Check if it's a known relationship
+  if (relationshipMap[relationshipLower]) {
+    return relationshipMap[relationshipLower];
+  }
+  
+  // For custom relationships, capitalize first letter of each word
+  return relationship
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}; 
+
+// Frequency formatting utility
+const FREQUENCY_MAPPING: Record<string, { abbreviation: string; meaning: string }> = {
+  'ac': { abbreviation: 'ac', meaning: 'before meals' },
+  'pc': { abbreviation: 'pc', meaning: 'after meals' },
+  'daily': { abbreviation: 'daily', meaning: 'every day, daily' },
+  'bid': { abbreviation: 'bid', meaning: 'twice a day' },
+  'tid': { abbreviation: 'tid', meaning: 'three times a day' },
+  'qid': { abbreviation: 'qid', meaning: 'four times a day' },
+  'qh': { abbreviation: 'qh', meaning: 'every hour' },
+  'at bedtime': { abbreviation: 'at bedtime', meaning: 'at bedtime, hour of sleep' },
+  'qn': { abbreviation: 'qn', meaning: 'every night' },
+  'stat': { abbreviation: 'stat', meaning: 'immediately' },
+  'q2h': { abbreviation: 'q2h', meaning: 'Every 2 hours' },
+  'q4h': { abbreviation: 'q4h', meaning: 'Every 4 hours' },
+  'q6h': { abbreviation: 'q6h', meaning: 'Every 6 hours' },
+  'q8h': { abbreviation: 'q8h', meaning: 'Every 8 hours' },
+  'q12h': { abbreviation: 'q12h', meaning: 'Every 12 hours' },
+  'every other day': { abbreviation: 'every other day', meaning: 'every other day' },
+  'prn': { abbreviation: 'prn', meaning: 'as needed' },
+  '3 times weekly': { abbreviation: '3 times weekly', meaning: 'three times per week' },
+  'biw': { abbreviation: 'biw', meaning: 'twice per week' },
+  'qw': { abbreviation: 'qw', meaning: 'once per week' },
+};
+
+/**
+ * Format frequency for display based on user role
+ * @param frequency - The frequency value to format
+ * @param userRole - The role of the user ('patient' | 'specialist')
+ * @returns Formatted frequency string
+ */
+export const formatFrequency = (frequency: string, userRole: 'patient' | 'specialist'): string => {
+  if (!frequency) return 'N/A';
+  
+  // Check if the frequency is already in our mapping
+  const mapping = FREQUENCY_MAPPING[frequency.toLowerCase()];
+  if (mapping) {
+    return userRole === 'specialist' ? mapping.abbreviation : mapping.meaning;
+  }
+  
+  // If not in mapping, check if it's a meaning that maps to an abbreviation
+  const meaningMapping = Object.values(FREQUENCY_MAPPING).find(item => 
+    item.meaning.toLowerCase() === frequency.toLowerCase()
+  );
+  if (meaningMapping) {
+    return userRole === 'specialist' ? meaningMapping.abbreviation : meaningMapping.meaning;
+  }
+  
+  // If not found in mapping, return as is
+  return frequency;
+}; 
+
+// Route formatting utility
+const ROUTE_MAPPING: Record<string, { abbreviation: string; meaning: string }> = {
+  'PO': { abbreviation: 'PO', meaning: 'By mouth (oral)' },
+  'IV': { abbreviation: 'IV', meaning: 'Intravenous' },
+  'IM': { abbreviation: 'IM', meaning: 'Intramuscular' },
+  'SC': { abbreviation: 'SC', meaning: 'Subcutaneous' },
+  'SL': { abbreviation: 'SL', meaning: 'Sublingual' },
+  'INH': { abbreviation: 'INH', meaning: 'Inhalation' },
+  'TOP': { abbreviation: 'TOP', meaning: 'Topical' },
+  'RECT': { abbreviation: 'RECT', meaning: 'Rectal' },
+  'NASAL': { abbreviation: 'NASAL', meaning: 'Nasal' },
+  'OPHTH': { abbreviation: 'OPHTH', meaning: 'Ophthalmic' },
+  'OTIC': { abbreviation: 'OTIC', meaning: 'Otic (ear)' },
+  'VAG': { abbreviation: 'VAG', meaning: 'Vaginal' },
+  'BUCCAL': { abbreviation: 'BUCCAL', meaning: 'Buccal' },
+  'TRANSDERMAL': { abbreviation: 'TD', meaning: 'Transdermal' },
+  'INTRADERMAL': { abbreviation: 'ID', meaning: 'Intradermal' },
+  'INTRATHECAL': { abbreviation: 'IT', meaning: 'Intrathecal' },
+  'EPIDURAL': { abbreviation: 'EPIDURAL', meaning: 'Epidural' },
+  'INTRAARTICULAR': { abbreviation: 'IA', meaning: 'Intra-articular' },
+  'INTRAOCULAR': { abbreviation: 'IO', meaning: 'Intraocular' },
+  'HHN': { abbreviation: 'HHN', meaning: 'Handheld nebulizer' },
+  'IVTT': { abbreviation: 'IVTT', meaning: 'Intravenous therapy technique' },
+  'IVP': { abbreviation: 'IVP', meaning: 'Intravenous push' },
+  'IVPB': { abbreviation: 'IVPB', meaning: 'Intravenous piggyback' },
+  'MDI': { abbreviation: 'MDI', meaning: 'Metered-dose inhaler' },
+  'NEB': { abbreviation: 'NEB', meaning: 'Nebulizer' },
+  'NGT': { abbreviation: 'NGT', meaning: 'Nasogastric tube' },
+  'PR': { abbreviation: 'PR', meaning: 'In the rectum' },
+  'S&S': { abbreviation: 'S&S', meaning: 'Swish and swallow' },
+};
+
+/**
+ * Format route for display based on user role
+ * @param route - The route value to format
+ * @param userRole - The role of the user ('patient' | 'specialist')
+ * @returns Formatted route string
+ */
+export const formatRoute = (route: string | undefined, userRole: 'patient' | 'specialist'): string => {
+  if (!route) return '';
+  
+  const upperRoute = route.toUpperCase();
+  const routeInfo = ROUTE_MAPPING[upperRoute];
+  
+  if (routeInfo) {
+    return userRole === 'specialist' ? routeInfo.abbreviation : routeInfo.meaning;
+  }
+  
+  // If not found in map, return as is for specialist, or capitalize for patient
+  return userRole === 'specialist' ? route : route.charAt(0).toUpperCase() + route.slice(1).toLowerCase();
+};
+
+/**
+ * Format prescription duration for display
+ * @param duration - The duration string to format
+ * @returns Formatted duration string
+ */
+export const formatPrescriptionDuration = (duration: string): string => {
+  if (!duration) return 'Duration not specified';
+  
+  // Handle special cases
+  if (duration.toLowerCase().includes('ongoing') || duration.toLowerCase().includes('continuous')) {
+    return 'Ongoing';
+  }
+  
+  // Parse duration string (e.g., "7 days", "2 weeks", "1 month")
+  const durationMatch = duration.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
+  
+  if (!durationMatch) {
+    return duration; // Return as is if we can't parse it
+  }
+  
+  const [, amount, unit] = durationMatch;
+  const durationAmount = parseInt(amount, 10);
+  const durationUnit = unit.toLowerCase();
+  
+  // Format based on unit
+  switch (durationUnit) {
+    case 'day':
+    case 'days':
+      return `${durationAmount} ${durationAmount === 1 ? 'day' : 'days'}`;
+    case 'week':
+    case 'weeks':
+      return `${durationAmount} ${durationAmount === 1 ? 'week' : 'weeks'}`;
+    case 'month':
+    case 'months':
+      return `${durationAmount} ${durationAmount === 1 ? 'month' : 'months'}`;
+    case 'year':
+    case 'years':
+      return `${durationAmount} ${durationAmount === 1 ? 'year' : 'years'}`;
+    default:
+      return duration;
+  }
+};
+
+/**
+ * Calculate prescription status based on creation date and duration
+ * @param prescribedDate - ISO date string when prescription was created
+ * @param duration - Duration string (e.g., "7 days", "2 weeks", "1 month")
+ * @returns 'active' | 'completed' | 'discontinued'
+ */
+export const calculatePrescriptionStatus = (prescribedDate: string, duration: string): 'active' | 'completed' | 'discontinued' => {
+  if (!prescribedDate || !duration) {
+    return 'active'; // Default to active if missing data
+  }
+  
+  // Handle ongoing/continuous prescriptions
+  if (duration.toLowerCase().includes('ongoing') || duration.toLowerCase().includes('continuous')) {
+    return 'active';
+  }
+  
+  try {
+    const prescriptionDate = new Date(prescribedDate);
+    const now = new Date();
+    
+    // Parse duration string (e.g., "7 days", "2 weeks", "1 month")
+    const durationMatch = duration.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
+    
+    if (!durationMatch) {
+      return 'active'; // Default to active if we can't parse duration
+    }
+    
+    const [, amount, unit] = durationMatch;
+    const durationAmount = parseInt(amount, 10);
+    const durationUnit = unit.toLowerCase();
+    
+    // Calculate end date based on duration
+    const endDate = new Date(prescriptionDate);
+    
+    switch (durationUnit) {
+      case 'day':
+      case 'days':
+        endDate.setDate(endDate.getDate() + durationAmount);
+        break;
+      case 'week':
+      case 'weeks':
+        endDate.setDate(endDate.getDate() + (durationAmount * 7));
+        break;
+      case 'month':
+      case 'months':
+        endDate.setMonth(endDate.getMonth() + durationAmount);
+        break;
+      case 'year':
+      case 'years':
+        endDate.setFullYear(endDate.getFullYear() + durationAmount);
+        break;
+      default:
+        return 'active';
+    }
+    
+    // Compare current date with end date
+    if (now > endDate) {
+      return 'completed';
+    } else {
+      return 'active';
+    }
+  } catch (error) {
+    console.error('Error calculating prescription status:', error);
+    return 'active'; // Default to active on error
+  }
+};

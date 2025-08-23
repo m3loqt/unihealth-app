@@ -48,6 +48,7 @@ import { Appointment, Prescription } from '@/services/database/firebase';
 import { getGreeting } from '@/utils/greeting';
 import { getFirstName } from '@/utils/string';
 import { safeDataAccess } from '@/utils/safeDataAccess';
+import { formatFrequency, formatRoute } from '@/utils/formatting';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { dataValidation } from '@/utils/dataValidation';
@@ -579,15 +580,16 @@ export default function HomeScreen() {
                     <View style={styles.prescriptionDetails}>
                       <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
                       <Text style={styles.medicationDosage}>
-                        {prescription.dosage || 'N/A'} • {prescription.frequency || 'N/A'}
+                        {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'patient')}
+                        {prescription.route && ` • ${formatRoute(prescription.route, 'patient')}`}
                       </Text>
                       <Text style={styles.prescriptionDescription}>
                         {prescription.instructions || 'No additional instructions'}
                       </Text>
                     </View>
                     <View style={styles.prescriptionStatus}>
-                      <Text style={styles.remainingDays}>{prescription.remainingRefills || 0}</Text>
-                      <Text style={styles.remainingLabel}>refills left</Text>
+                      <Text style={styles.remainingDays}>-</Text>
+                      <Text style={styles.remainingLabel}>Ongoing</Text>
                     </View>
                   </View>
                 </View>

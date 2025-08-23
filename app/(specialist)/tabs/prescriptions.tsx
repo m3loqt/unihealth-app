@@ -17,10 +17,137 @@ import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService, Prescription } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
+import { formatFrequency, formatRoute, formatPrescriptionDuration } from '../../../src/utils/formatting';
+import { formatDate } from '../../../src/utils/date';
 import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { useDeepMemo } from '../../../src/utils/performance';
+
+// Utility function to calculate prescription status based on duration
+const calculatePrescriptionStatus = (prescription: Prescription): 'active' | 'completed' | 'discontinued' => {
+  // If status is already discontinued, keep it
+  if (prescription.status === 'discontinued') {
+    return 'discontinued';
+  }
+
+  // If duration is "Ongoing" or similar, keep as active
+  if (!prescription.duration || 
+      prescription.duration.toLowerCase().includes('ongoing') || 
+      prescription.duration.toLowerCase().includes('continuous')) {
+    return 'active';
+  }
+
+  try {
+    const prescribedDate = new Date(prescription.prescribedDate);
+    const now = new Date();
+    
+    // Parse duration string (e.g., "7 days", "2 weeks", "1 month")
+    const durationMatch = prescription.duration.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
+    
+    if (!durationMatch) {
+      // If we can't parse the duration, assume it's active
+      return 'active';
+    }
+
+    const [, amount, unit] = durationMatch;
+    const durationAmount = parseInt(amount, 10);
+    const durationUnit = unit.toLowerCase();
+
+    // Calculate end date
+    const endDate = new Date(prescribedDate);
+    
+    switch (durationUnit) {
+      case 'day':
+      case 'days':
+        endDate.setDate(endDate.getDate() + durationAmount);
+        break;
+      case 'week':
+      case 'weeks':
+        endDate.setDate(endDate.getDate() + (durationAmount * 7));
+        break;
+      case 'month':
+      case 'months':
+        endDate.setMonth(endDate.getMonth() + durationAmount);
+        break;
+      case 'year':
+      case 'years':
+        endDate.setFullYear(endDate.getFullYear() + durationAmount);
+        break;
+      default:
+        return 'active';
+    }
+
+    // If current date is past the end date, mark as completed
+    return now > endDate ? 'completed' : 'active';
+  } catch (error) {
+    console.error('Error calculating prescription status:', error);
+    return 'active';
+  }
+};
+
+// Utility function to calculate remaining days for active prescriptions
+const calculateRemainingDays = (prescription: Prescription): number | null => {
+  if (prescription.status !== 'active') {
+    return null;
+  }
+
+  // If duration is "Ongoing" or similar, return null (no end date)
+  if (!prescription.duration || 
+      prescription.duration.toLowerCase().includes('ongoing') || 
+      prescription.duration.toLowerCase().includes('continuous')) {
+    return null;
+  }
+
+  try {
+    const prescribedDate = new Date(prescription.prescribedDate);
+    const now = new Date();
+    
+    // Parse duration string (e.g., "7 days", "2 weeks", "1 month")
+    const durationMatch = prescription.duration.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
+    
+    if (!durationMatch) {
+      return null;
+    }
+
+    const [, amount, unit] = durationMatch;
+    const durationAmount = parseInt(amount, 10);
+    const durationUnit = unit.toLowerCase();
+
+    // Calculate end date
+    const endDate = new Date(prescribedDate);
+    
+    switch (durationUnit) {
+      case 'day':
+      case 'days':
+        endDate.setDate(endDate.getDate() + durationAmount);
+        break;
+      case 'week':
+      case 'weeks':
+        endDate.setDate(endDate.getDate() + (durationAmount * 7));
+        break;
+      case 'month':
+      case 'months':
+        endDate.setMonth(endDate.getMonth() + durationAmount);
+        break;
+      case 'year':
+      case 'years':
+        endDate.setFullYear(endDate.getFullYear() + durationAmount);
+        break;
+      default:
+        return null;
+    }
+
+    // Calculate remaining days
+    const remainingTime = endDate.getTime() - now.getTime();
+    const remainingDays = Math.ceil(remainingTime / (1000 * 60 * 60 * 24));
+    
+    return remainingDays > 0 ? remainingDays : 0;
+  } catch (error) {
+    console.error('Error calculating remaining days:', error);
+    return null;
+  }
+};
 
 export default function SpecialistPrescriptionsScreen() {
   const { user } = useAuth();
@@ -30,6 +157,7 @@ export default function SpecialistPrescriptionsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [patientNames, setPatientNames] = useState<{ [patientId: string]: string }>({});
 
   // Load prescriptions from Firebase
   useEffect(() => {
@@ -46,10 +174,37 @@ export default function SpecialistPrescriptionsScreen() {
       setError(null);
       const specialistPrescriptions = await databaseService.getPrescriptionsBySpecialist(user.uid);
       
-      // Validate prescriptions data
-      const validPrescriptions = dataValidation.validateArray(specialistPrescriptions, dataValidation.isValidPrescription);
+      // Validate prescriptions data and calculate status
+      const validPrescriptions = dataValidation.validateArray(specialistPrescriptions, dataValidation.isValidPrescription)
+        .map(prescription => ({
+          ...prescription,
+          status: calculatePrescriptionStatus(prescription)
+        }));
+      
       console.log('Loaded prescriptions:', validPrescriptions.length);
       setPrescriptions(validPrescriptions);
+      
+      // Load patient names for display
+      const uniquePatientIds = Array.from(new Set(validPrescriptions.map(p => p.patientId)));
+      const patientNamesData: { [patientId: string]: string } = {};
+      
+      for (const patientId of uniquePatientIds) {
+        try {
+          const patientData = await databaseService.getDocument(`users/${patientId}`);
+          if (patientData) {
+            const firstName = patientData.firstName || patientData.first_name || '';
+            const lastName = patientData.lastName || patientData.last_name || '';
+            patientNamesData[patientId] = `${firstName} ${lastName}`.trim() || 'Unknown Patient';
+          } else {
+            patientNamesData[patientId] = 'Unknown Patient';
+          }
+        } catch (error) {
+          console.error('Error loading patient name for ID:', patientId, error);
+          patientNamesData[patientId] = 'Unknown Patient';
+        }
+      }
+      
+      setPatientNames(patientNamesData);
     } catch (error) {
       console.error('Error loading prescriptions:', error);
       setError('Failed to load prescriptions. Please try again.');
@@ -89,30 +244,54 @@ export default function SpecialistPrescriptionsScreen() {
         </View>
         <View style={styles.prescriptionDetails}>
           <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
+          <Text style={styles.patientName}>{patientNames[prescription.patientId] || 'Unknown Patient'}</Text>
           <Text style={styles.medicationDosage}>
-            {prescription.dosage || 'N/A'} • {prescription.frequency || 'N/A'}
+            {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'specialist')}
+            {prescription.route && ` • ${formatRoute(prescription.route, 'specialist')}`}
           </Text>
           <Text style={styles.prescriptionDescription}>
             {prescription.instructions || 'No additional instructions'}
           </Text>
         </View>
         <View style={styles.prescriptionStatus}>
-          <Text style={styles.remainingDays}>{prescription.remainingRefills || 0}</Text>
-          <Text style={styles.remainingLabel}>refills left</Text>
+          {(() => {
+            const remainingDays = calculateRemainingDays(prescription);
+            if (remainingDays !== null) {
+              return (
+                <>
+                  <Text style={styles.remainingDays}>{remainingDays}</Text>
+                  <Text style={styles.remainingLabel}>days left</Text>
+                </>
+              );
+            } else {
+              return (
+                <>
+                  <Text style={styles.remainingDays}>-</Text>
+                  <Text style={styles.remainingLabel}>Ongoing</Text>
+                </>
+              );
+            }
+          })()}
         </View>
       </View>
       <View style={styles.prescriptionMeta}>
         <View style={styles.metaRow}>
           <Text style={styles.metaLabel}>Prescribed on:</Text>
           <Text style={styles.metaValue}>
-            {prescription.prescribedDate ? new Date(prescription.prescribedDate).toLocaleDateString() : 'Date not available'}
+            {prescription.prescribedDate ? formatDate(prescription.prescribedDate, 'prescription') : 'Date not available'}
           </Text>
         </View>
         <View style={styles.metaRow}>
           <Text style={styles.metaLabel}>Duration:</Text>
           <Text style={styles.metaValue}>
-            {prescription.duration || 'Duration not specified'}
+            {formatPrescriptionDuration(prescription.duration)}
           </Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>Status:</Text>
+          <View style={[styles.statusBadge, { backgroundColor: '#DCFCE7', borderColor: '#22C55E' }]}>
+            <Text style={[styles.statusText, { color: '#166534' }]}>Active</Text>
+          </View>
         </View>
       </View>
     </View>
@@ -126,8 +305,10 @@ export default function SpecialistPrescriptionsScreen() {
         </View>
         <View style={styles.prescriptionDetails}>
           <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
+          <Text style={styles.patientName}>{patientNames[prescription.patientId] || 'Unknown Patient'}</Text>
           <Text style={styles.medicationDosage}>
-            {prescription.dosage || 'N/A'} • {prescription.frequency || 'N/A'}
+            {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'specialist')}
+            {prescription.route && ` • ${formatRoute(prescription.route, 'specialist')}`}
           </Text>
           <Text style={styles.prescriptionDescription}>
             {prescription.instructions || 'No additional instructions'}
@@ -141,14 +322,31 @@ export default function SpecialistPrescriptionsScreen() {
         <View style={styles.metaRow}>
           <Text style={styles.metaLabel}>Prescribed on:</Text>
           <Text style={styles.metaValue}>
-            {prescription.prescribedDate ? new Date(prescription.prescribedDate).toLocaleDateString() : 'Date not available'}
+            {prescription.prescribedDate ? formatDate(prescription.prescribedDate, 'prescription') : 'Date not available'}
+          </Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>Duration:</Text>
+          <Text style={styles.metaValue}>
+            {formatPrescriptionDuration(prescription.duration)}
           </Text>
         </View>
         <View style={styles.metaRow}>
           <Text style={styles.metaLabel}>Status:</Text>
-          <Text style={styles.metaValue}>
-            {prescription.status === 'completed' ? 'Completed' : 'Discontinued'}
-          </Text>
+          <View style={[
+            styles.statusBadge, 
+            { 
+              backgroundColor: prescription.status === 'completed' ? '#FEF3C7' : '#FEE2E2',
+              borderColor: prescription.status === 'completed' ? '#F59E0B' : '#EF4444'
+            }
+          ]}>
+            <Text style={[
+              styles.statusText, 
+              { color: prescription.status === 'completed' ? '#92400E' : '#991B1B' }
+            ]}>
+              {prescription.status === 'completed' ? 'Completed' : 'Discontinued'}
+            </Text>
+          </View>
         </View>
       </View>
     </View>
@@ -378,6 +576,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1F2937',
     marginBottom: 2,
+  },
+  patientName: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 4,
+    fontStyle: 'italic',
   },
   medicationDosage: {
     fontSize: 14,

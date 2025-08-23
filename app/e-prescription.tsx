@@ -20,6 +20,8 @@ import { Asset } from 'expo-asset';
 import { Modal, Button } from '../src/components/ui';
 import { COLORS } from '../src/constants/colors';
 import { databaseService } from '../src/services/database/firebase';
+import { formatRoute, formatFrequency } from '../src/utils/formatting';
+import { useAuth } from '../src/hooks/auth/useAuth';
 
 type PrescriptionItem = {
   medication?: string;
@@ -28,10 +30,12 @@ type PrescriptionItem = {
   duration?: string;
   description?: string;
   quantity?: string | number;
+  route?: string;
 };
 
 export default function EPrescriptionScreen() {
   const { id } = useLocalSearchParams(); // referralId
+  const { user } = useAuth(); // Get current user to determine role
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [referral, setReferral] = useState<any>(null);
@@ -293,15 +297,24 @@ export default function EPrescriptionScreen() {
       || String(id)
       || '—'));
 
-    const rows = (Array.isArray(prescriptions) && prescriptions.length)
+    const medicineRows = (Array.isArray(prescriptions) && prescriptions.length)
       ? prescriptions.map((p: any, idx: number) => `
           <tr>
             <td>${safe(p.medication || '')}</td>
             <td>${safe(p.dosage || '')}</td>
+          </tr>
+        `).join('')
+      : `<tr><td colspan="2">No prescriptions recorded</td></tr>`;
+
+    const detailsRows = (Array.isArray(prescriptions) && prescriptions.length)
+      ? prescriptions.map((p: any, idx: number) => `
+          <tr>
+            <td>${safe(formatFrequency(p.frequency, user?.role || 'patient'))}</td>
+            <td>${safe(p.route ? formatRoute(p.route, user?.role || 'patient') : '')}</td>
             <td>${safe(p.duration || p.quantity || '')}</td>
           </tr>
         `).join('')
-      : `<tr><td colspan=\"3\">No prescriptions recorded</td></tr>`;
+      : `<tr><td colspan="3">No prescriptions recorded</td></tr>`;
 
     return `<!DOCTYPE html>
 <html>
@@ -395,23 +408,35 @@ export default function EPrescriptionScreen() {
 
       <div class="body">
 
-        <div class="rx-row">
-          <div class="rx-badge">${rxDataUri ? `<img src="${rxDataUri}" />` : 'Rx'}</div>
-          <div class="rx-table">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th style="width:58%">Medicine Name</th>
-                  <th style="width:22%">Dosage</th>
-                  <th style="width:20%">Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rows}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                 <div class="rx-row">
+           <div class="rx-badge">${rxDataUri ? `<img src="${rxDataUri}" />` : 'Rx'}</div>
+           <div class="rx-table">
+             <table class="data-table">
+               <thead>
+                 <tr>
+                   <th style="width:50%">Medicine Name</th>
+                   <th style="width:50%">Dosage</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 ${medicineRows}
+               </tbody>
+             </table>
+             
+             <table class="data-table" style="margin-top: 16px;">
+               <thead>
+                 <tr>
+                   <th style="width:33%">Frequency</th>
+                   <th style="width:33%">Route</th>
+                   <th style="width:34%">Duration</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 ${detailsRows}
+               </tbody>
+             </table>
+           </div>
+         </div>
         
 
         <div style="padding: 6px 24px 12px;">
@@ -451,7 +476,7 @@ export default function EPrescriptionScreen() {
   </script>
 </body>
 </html>`;
-  }, [clinic, patient, provider, referral, prescriptions, logoDataUri]);
+  }, [clinic, patient, provider, referral, prescriptions, logoDataUri, user?.role]);
 
   const handleGeneratePdf = async () => {
     try {

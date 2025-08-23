@@ -9,6 +9,21 @@ export interface NotificationPayload {
 }
 
 class NotificationService {
+  // Helper method to fetch clinic name by clinicId
+  private async getClinicName(clinicId: string): Promise<string> {
+    try {
+      if (!clinicId) {
+        return 'Clinic not specified';
+      }
+      
+      const clinicData = await databaseService.getClinicById(clinicId);
+      return clinicData?.name || `Clinic ${clinicId}`;
+    } catch (error) {
+      console.error('Error fetching clinic name for ID:', clinicId, error);
+      return `Clinic ${clinicId}`;
+    }
+  }
+
   async createAppointmentStatusNotification(
     userId: string,
     appointmentId: string,
@@ -17,28 +32,34 @@ class NotificationService {
       date: string;
       time: string;
       doctorName: string;
-      clinicName: string;
+      clinicId?: string;
+      clinicName?: string; // Keep for backward compatibility
     }
   ): Promise<string> {
+    // Fetch clinic name using clinicId if available
+    const clinicName = appointmentDetails.clinicId 
+      ? await this.getClinicName(appointmentDetails.clinicId)
+      : appointmentDetails.clinicName || 'Clinic not specified';
+
     const statusMessages = {
       'confirmed': {
         title: 'Appointment Confirmed!',
-        message: `Your appointment with Dr. ${appointmentDetails.doctorName} on ${appointmentDetails.date} at ${appointmentDetails.time} has been confirmed.`,
+        message: `Your appointment with Dr. ${appointmentDetails.doctorName} on ${appointmentDetails.date} at ${appointmentDetails.time} at ${clinicName} has been confirmed.`,
         priority: 'high' as const
       },
       'completed': {
         title: 'Appointment Completed',
-        message: `Your appointment with Dr. ${appointmentDetails.doctorName} has been marked as completed.`,
+        message: `Your appointment with Dr. ${appointmentDetails.doctorName} at ${clinicName} has been marked as completed.`,
         priority: 'medium' as const
       },
       'cancelled': {
         title: 'Appointment Cancelled',
-        message: `Your appointment with Dr. ${appointmentDetails.doctorName} on ${appointmentDetails.date} has been cancelled.`,
+        message: `Your appointment with Dr. ${appointmentDetails.doctorName} on ${appointmentDetails.date} at ${clinicName} has been cancelled.`,
         priority: 'high' as const
       },
       'pending': {
         title: 'Appointment Pending',
-        message: `Your appointment with Dr. ${appointmentDetails.doctorName} on ${appointmentDetails.date} is pending confirmation.`,
+        message: `Your appointment with Dr. ${appointmentDetails.doctorName} on ${appointmentDetails.date} at ${clinicName} is pending confirmation.`,
         priority: 'medium' as const
       }
     };
@@ -70,23 +91,29 @@ class NotificationService {
       date: string;
       time: string;
       patientName: string;
-      clinicName: string;
+      clinicId?: string;
+      clinicName?: string; // Keep for backward compatibility
     }
   ): Promise<string> {
+    // Fetch clinic name using clinicId if available
+    const clinicName = appointmentDetails.clinicId 
+      ? await this.getClinicName(appointmentDetails.clinicId)
+      : appointmentDetails.clinicName || 'Clinic not specified';
+
     const statusMessages = {
       'confirmed': {
         title: 'New Appointment Confirmed',
-        message: `Appointment with ${appointmentDetails.patientName} on ${appointmentDetails.date} at ${appointmentDetails.time} has been confirmed.`,
+        message: `Appointment with ${appointmentDetails.patientName} on ${appointmentDetails.date} at ${appointmentDetails.time} at ${clinicName} has been confirmed.`,
         priority: 'high' as const
       },
       'completed': {
         title: 'Appointment Completed',
-        message: `Appointment with ${appointmentDetails.patientName} has been marked as completed.`,
+        message: `Appointment with ${appointmentDetails.patientName} at ${clinicName} has been marked as completed.`,
         priority: 'medium' as const
       },
       'cancelled': {
         title: 'Appointment Cancelled',
-        message: `Appointment with ${appointmentDetails.patientName} on ${appointmentDetails.date} has been cancelled.`,
+        message: `Appointment with ${appointmentDetails.patientName} on ${appointmentDetails.date} at ${clinicName} has been cancelled.`,
         priority: 'high' as const
       }
     };
@@ -117,23 +144,29 @@ class NotificationService {
     referralDetails: {
       patientName: string;
       specialty: string;
-      clinicName: string;
+      clinicId?: string;
+      clinicName?: string; // Keep for backward compatibility
     }
   ): Promise<string> {
-        const statusMessages = {
+    // Fetch clinic name using clinicId if available
+    const clinicName = referralDetails.clinicId 
+      ? await this.getClinicName(referralDetails.clinicId)
+      : referralDetails.clinicName || 'Clinic not specified';
+
+    const statusMessages = {
       'confirmed': {
         title: 'Referral Confirmed',
-        message: `Your referral to ${referralDetails.specialty} at ${referralDetails.clinicName} has been confirmed.`,
+        message: `Your referral to ${referralDetails.specialty} at ${clinicName} has been confirmed.`,
         priority: 'high' as const
       },
       'cancelled': {
         title: 'Referral Declined',
-        message: `Your referral to ${referralDetails.specialty} at ${referralDetails.clinicName} has been declined.`,
+        message: `Your referral to ${referralDetails.specialty} at ${clinicName} has been declined.`,
         priority: 'high' as const
       },
       'completed': {
         title: 'Referral Completed',
-        message: `Your referral to ${referralDetails.specialty} has been completed.`,
+        message: `Your referral to ${referralDetails.specialty} at ${clinicName} has been completed.`,
         priority: 'medium' as const
       }
     };

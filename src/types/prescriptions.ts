@@ -9,8 +9,7 @@ export interface Prescription {
   instructions: string;
   prescribedDate: string;
   status: 'active' | 'completed' | 'discontinued';
-  refills?: number;
-  remainingRefills?: number;
+  route?: string;
 }
 
 export interface CreatePrescriptionData {
@@ -22,6 +21,5 @@ export interface CreatePrescriptionData {
   duration: string;
   instructions: string;
   status: 'active' | 'completed' | 'discontinued';
-  refills?: number;
-  remainingRefills?: number;
+  route?: string;
 } 
