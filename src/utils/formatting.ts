@@ -462,6 +462,14 @@ const ROUTE_MAPPING: Record<string, { abbreviation: string; meaning: string }> =
   'NGT': { abbreviation: 'NGT', meaning: 'Nasogastric tube' },
   'PR': { abbreviation: 'PR', meaning: 'In the rectum' },
   'S&S': { abbreviation: 'S&S', meaning: 'Swish and swallow' },
+  // Specific ear and eye routes (previously "Write out")
+  'RIGHT EAR': { abbreviation: 'right ear', meaning: 'right ear' },
+  'LEFT EAR': { abbreviation: 'left ear', meaning: 'left ear' },
+  'EACH EAR': { abbreviation: 'each ear', meaning: 'each ear' },
+  'IN THE RIGHT EYE': { abbreviation: 'in the right eye', meaning: 'in the right eye' },
+  'IN THE LEFT EYE': { abbreviation: 'in the left eye', meaning: 'in the left eye' },
+  'IN BOTH EYES': { abbreviation: 'in both eyes', meaning: 'in both eyes' },
+  'SUBCUTANEOUSLY, SUB Q': { abbreviation: 'subcutaneously, Sub q', meaning: 'subcutaneously, Sub q' },
 };
 
 /**
