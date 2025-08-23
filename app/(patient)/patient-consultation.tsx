@@ -283,8 +283,23 @@ export default function PatientConsultationScreen() {
   const [newCertificate, setNewCertificate] = useState({
     type: '',
     description: '',
-    validUntil: '',
-    restrictions: '',
+    // Fit to Work specific fields
+    fitnessStatement: '',
+    workRestrictions: '',
+    nextReviewDate: '',
+    // Medical/Sickness specific fields
+    unfitPeriodStart: '',
+    unfitPeriodEnd: '',
+    medicalAdvice: '',
+    reasonForUnfitness: '',
+    followUpDate: '',
+    // Fit to Travel specific fields
+    travelFitnessStatement: '',
+    travelMode: '',
+    destination: '',
+    travelDate: '',
+    specialConditions: '',
+    validityPeriod: '',
   });
 
   // Medical History Modal State
@@ -705,8 +720,6 @@ export default function PatientConsultationScreen() {
     const certificate = {
       id: Date.now(),
       ...newCertificate,
-      // doctor: 'Dr. Sarah Johnson',
-      // clinic: 'San Francisco General Hospital',
       issuedDate: new Date().toLocaleDateString(),
       issuedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'Valid',
@@ -717,12 +730,27 @@ export default function PatientConsultationScreen() {
       certificates: [...prev.certificates, certificate],
     }));
     
-    setNewCertificate({
-      type: '',
-      description: '',
-      validUntil: '',
-      restrictions: '',
-    });
+            setNewCertificate({
+          type: '',
+          description: '',
+          // Fit to Work specific fields
+          fitnessStatement: '',
+          workRestrictions: '',
+          nextReviewDate: '',
+          // Medical/Sickness specific fields
+          unfitPeriodStart: '',
+          unfitPeriodEnd: '',
+          medicalAdvice: '',
+          reasonForUnfitness: '',
+          followUpDate: '',
+          // Fit to Travel specific fields
+          travelFitnessStatement: '',
+          travelMode: '',
+          destination: '',
+          travelDate: '',
+          specialConditions: '',
+          validityPeriod: '',
+        });
     
     setShowAddCertificate(false);
     setHasChanges(true);
@@ -1695,30 +1723,38 @@ export default function PatientConsultationScreen() {
                         <Text style={styles.certificateType}>{certificate.type}</Text>
                         <Text style={styles.certificateDescription}>{certificate.description}</Text>
                       </View>
-                      <TouchableOpacity
-                        style={styles.removeButton}
-                        onPress={() => handleRemoveCertificate(certificate.id)}
-                      >
-                        <Trash2 size={16} color="#EF4444" />
-                      </TouchableOpacity>
+                      <View style={styles.certificateActions}>
+                        <TouchableOpacity
+                          style={styles.viewCertificateButton}
+                          onPress={() => {
+                            // Navigate to appropriate certificate view based on type
+                            const route = certificate.type === 'Fit to Work Certificate' 
+                              ? '/e-certificate-fit-to-work'
+                              : certificate.type === 'Medical/Sickness Certificate'
+                              ? '/e-certificate-medical-sickness'
+                              : certificate.type === 'Fit to Travel Certificate'
+                              ? '/e-certificate-fit-to-travel'
+                              : '/e-certificate-fit-to-work'; // fallback
+                            
+                            router.push(`${route}?id=${consultationIdString || referralIdString}&certificateId=${certificate.id}`);
+                          }}
+                        >
+                          <Eye size={16} color="#1E40AF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.removeButton}
+                          onPress={() => handleRemoveCertificate(certificate.id)}
+                        >
+                          <Trash2 size={16} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                     <View style={styles.certificateMeta}>
                       <View style={styles.metaRow}>
                         <Text style={styles.metaLabel}>Issued:</Text>
                         <Text style={styles.metaValue}>{certificate.issuedDate}</Text>
                       </View>
-                      {certificate.validUntil && (
-                        <View style={styles.metaRow}>
-                          <Text style={styles.metaLabel}>Valid until:</Text>
-                          <Text style={styles.metaValue}>{certificate.validUntil}</Text>
-                        </View>
-                      )}
-                      {certificate.restrictions && (
-                        <View style={styles.metaRow}>
-                          <Text style={styles.metaLabel}>Restrictions:</Text>
-                          <Text style={styles.metaValue}>{certificate.restrictions}</Text>
-                        </View>
-                      )}
+
                     </View>
                   </View>
                 ))
@@ -1728,12 +1764,28 @@ export default function PatientConsultationScreen() {
               {showAddCertificate && (
                 <View style={styles.addForm}>
                   <Text style={styles.addFormTitle}>Issue New Certificate</Text>
-                  <TextInput
-                    style={styles.addFormInput}
-                    placeholder="Certificate type (e.g., Fit to Work)"
-                    value={newCertificate.type}
-                    onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, type: value }))}
-                  />
+                  <View style={styles.addFormInput}>
+                    <Text style={styles.addFormLabel}>Certificate Type</Text>
+                    <View style={styles.certificateTypeSelector}>
+                      {['Fit to Work Certificate', 'Medical/Sickness Certificate', 'Fit to Travel Certificate'].map((certType) => (
+                        <TouchableOpacity
+                          key={certType}
+                          style={[
+                            styles.certificateTypeOption,
+                            newCertificate.type === certType && styles.certificateTypeOptionSelected
+                          ]}
+                          onPress={() => setNewCertificate((prev) => ({ ...prev, type: certType }))}
+                        >
+                          <Text style={[
+                            styles.certificateTypeOptionText,
+                            newCertificate.type === certType && styles.certificateTypeOptionTextSelected
+                          ]}>
+                            {certType}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
                   <TextInput
                     style={[styles.addFormInput, styles.addFormTextArea]}
                     placeholder="Description/Medical findings"
@@ -1743,18 +1795,119 @@ export default function PatientConsultationScreen() {
                     numberOfLines={3}
                     textAlignVertical="top"
                   />
-                  <TextInput
-                    style={styles.addFormInput}
-                    placeholder="Valid until (optional)"
-                    value={newCertificate.validUntil}
-                    onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, validUntil: value }))}
-                  />
-                  <TextInput
-                    style={[styles.addFormInput, styles.addFormTextArea]}
-                    placeholder="Restrictions (optional)"
-                    value={newCertificate.restrictions}
-                    onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, restrictions: value }))}
-                  />
+
+
+                  {/* Dynamic fields based on certificate type */}
+                  {newCertificate.type === 'Fit to Work Certificate' && (
+                    <>
+                      <TextInput
+                        style={[styles.addFormInput, styles.addFormTextArea]}
+                        placeholder="Fitness Statement (e.g., Patient is medically fit to return to work)"
+                        value={newCertificate.fitnessStatement}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, fitnessStatement: value }))}
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                      />
+                      <TextInput
+                        style={styles.addFormInput}
+                        placeholder="Work Restrictions (e.g., None, Light duty only)"
+                        value={newCertificate.workRestrictions}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, workRestrictions: value }))}
+                      />
+                      <TextInput
+                        style={styles.addFormInput}
+                        placeholder="Next Review Date (optional)"
+                        value={newCertificate.nextReviewDate}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, nextReviewDate: value }))}
+                      />
+                    </>
+                  )}
+
+                  {newCertificate.type === 'Medical/Sickness Certificate' && (
+                    <>
+                      <TextInput
+                        style={styles.addFormInput}
+                        placeholder="Unfit Period Start (e.g., Aug 20, 2025)"
+                        value={newCertificate.unfitPeriodStart}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, unfitPeriodStart: value }))}
+                      />
+                      <TextInput
+                        style={styles.addFormInput}
+                        placeholder="Unfit Period End (e.g., Aug 22, 2025)"
+                        value={newCertificate.unfitPeriodEnd}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, unfitPeriodEnd: value }))}
+                      />
+                      <TextInput
+                        style={[styles.addFormInput, styles.addFormTextArea]}
+                        placeholder="Reason for Unfitness (e.g., Medical condition requiring rest)"
+                        value={newCertificate.reasonForUnfitness}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, reasonForUnfitness: value }))}
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                      />
+                      <TextInput
+                        style={[styles.addFormInput, styles.addFormTextArea]}
+                        placeholder="Medical Advice (e.g., Patient is advised to rest and refrain from work)"
+                        value={newCertificate.medicalAdvice}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, medicalAdvice: value }))}
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                      />
+                      <TextInput
+                        style={styles.addFormInput}
+                        placeholder="Follow-up Date (optional)"
+                        value={newCertificate.followUpDate}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, followUpDate: value }))}
+                      />
+                    </>
+                  )}
+
+                  {newCertificate.type === 'Fit to Travel Certificate' && (
+                    <>
+                      <TextInput
+                        style={[styles.addFormInput, styles.addFormTextArea]}
+                        placeholder="Travel Fitness Statement (e.g., Patient is medically fit to travel)"
+                        value={newCertificate.travelFitnessStatement}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, travelFitnessStatement: value }))}
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                      />
+                      <TextInput
+                        style={styles.addFormInput}
+                        placeholder="Mode of Travel (e.g., Air, Sea, Land)"
+                        value={newCertificate.travelMode}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, travelMode: value }))}
+                      />
+                      <TextInput
+                        style={styles.addFormInput}
+                        placeholder="Destination (e.g., International, Domestic)"
+                        value={newCertificate.destination}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, destination: value }))}
+                      />
+                      <TextInput
+                        style={styles.addFormInput}
+                        placeholder="Travel Date (e.g., Aug 25, 2025)"
+                        value={newCertificate.travelDate}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, travelDate: value }))}
+                      />
+                      <TextInput
+                        style={styles.addFormInput}
+                        placeholder="Special Conditions (e.g., None, Wheelchair assistance)"
+                        value={newCertificate.specialConditions}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, specialConditions: value }))}
+                      />
+                      <TextInput
+                        style={styles.addFormInput}
+                        placeholder="Validity Period (e.g., 30 days from issue)"
+                        value={newCertificate.validityPeriod}
+                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, validityPeriod: value }))}
+                      />
+                    </>
+                  )}
                   <View style={styles.addFormActions}>
                     <TouchableOpacity
                       style={styles.cancelButton}
@@ -1763,8 +1916,23 @@ export default function PatientConsultationScreen() {
                         setNewCertificate({
                           type: '',
                           description: '',
-                          validUntil: '',
-                          restrictions: '',
+                          // Fit to Work specific fields
+                          fitnessStatement: '',
+                          workRestrictions: '',
+                          nextReviewDate: '',
+                          // Medical/Sickness specific fields
+                          unfitPeriodStart: '',
+                          unfitPeriodEnd: '',
+                          medicalAdvice: '',
+                          reasonForUnfitness: '',
+                          followUpDate: '',
+                          // Fit to Travel specific fields
+                          travelFitnessStatement: '',
+                          travelMode: '',
+                          destination: '',
+                          travelDate: '',
+                          specialConditions: '',
+                          validityPeriod: '',
                         });
                       }}
                     >
@@ -2022,9 +2190,7 @@ export default function PatientConsultationScreen() {
                         <View key={index} style={styles.certificateItem}>
                           <Text style={styles.certificateTypeText}>{certificate.type}</Text>
                           <Text style={styles.certificateDescriptionText}>{certificate.description}</Text>
-                          {certificate.validUntil && (
-                            <Text style={styles.certificateValidUntil}>Valid until: {certificate.validUntil}</Text>
-                          )}
+
                         </View>
                       ))}
                     </View>
@@ -2770,11 +2936,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 4,
   },
-  certificateValidUntil: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
-  },
+
   medicalHistoryEmptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -3037,6 +3199,53 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#374151',
     flex: 1,
+  },
+  
+  // Certificate Type Selector Styles
+  addFormLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  certificateTypeSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  certificateTypeOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  certificateTypeOptionSelected: {
+    backgroundColor: '#1E40AF',
+    borderColor: '#1E40AF',
+  },
+  certificateTypeOptionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+  },
+  certificateTypeOptionTextSelected: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter-Medium',
+  },
+  
+  // Certificate Actions Styles
+  certificateActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  viewCertificateButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
 });
 
