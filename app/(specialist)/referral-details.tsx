@@ -1001,7 +1001,8 @@ export default function ReferralDetailsScreen() {
                           params: { 
                             certificateId: cert.id,
                             consultationId: referralData.referralConsultationId || '',
-                            referralId: String(id)
+                            referralId: String(id),
+                            patientId: referralData.patientId || ''
                           }
                         });
                       } else if (certificateType?.includes('medical') || certificateType?.includes('sickness')) {
@@ -1010,7 +1011,8 @@ export default function ReferralDetailsScreen() {
                           params: { 
                             certificateId: cert.id,
                             consultationId: referralData.referralConsultationId || '',
-                            referralId: String(id)
+                            referralId: String(id),
+                            patientId: referralData.patientId || ''
                           }
                         });
                       } else if (certificateType?.includes('fit to travel')) {
@@ -1019,7 +1021,8 @@ export default function ReferralDetailsScreen() {
                           params: { 
                             certificateId: cert.id,
                             consultationId: referralData.referralConsultationId || '',
-                            referralId: String(id)
+                            referralId: String(id),
+                            patientId: referralData.patientId || ''
                           }
                         });
                       } else {
@@ -1029,7 +1032,8 @@ export default function ReferralDetailsScreen() {
                           params: { 
                             certificateId: cert.id,
                             consultationId: referralData.referralConsultationId || '',
-                            referralId: String(id)
+                            referralId: String(id),
+                            patientId: referralData.patientId || ''
                           }
                         });
                       }

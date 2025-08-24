@@ -44,7 +44,7 @@ type CertificateData = {
 };
 
 export default function FitToTravelCertificateScreen() {
-  const { id, certificateId } = useLocalSearchParams();
+  const { id, certificateId, patientId } = useLocalSearchParams();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,30 +88,54 @@ export default function FitToTravelCertificateScreen() {
         
         setReferral(refData);
         
-        const [clinicData, userData, patientProfileData, specialistData, specialistUserDoc] = await Promise.all([
-          dataSource.referringClinicId ? databaseService.getDocument(`clinics/${dataSource.referringClinicId}`) : null,
-          dataSource.patientId ? databaseService.getDocument(`users/${dataSource.patientId}`) : null,
-          dataSource.patientId ? databaseService.getDocument(`patients/${dataSource.patientId}`) : null,
-          dataSource.assignedSpecialistId ? databaseService.getSpecialistProfile(dataSource.assignedSpecialistId) : null,
-          dataSource.assignedSpecialistId ? databaseService.getDocument(`users/${dataSource.assignedSpecialistId}`) : null,
-        ]);
+                 // Determine the doctor ID based on data source type
+         const doctorId = dataSource.assignedSpecialistId || dataSource.doctorId;
+         
+         // Also try to get doctor info from medical history if available
+         let medicalHistoryDoctor = null;
+         if (dataSource?.referralConsultationId || dataSource?.consultationId) {
+           try {
+             const consultationId = dataSource.referralConsultationId || dataSource.consultationId;
+             const mh = await databaseService.getDocument(
+               `patientMedicalHistory/${dataSource.patientId}/entries/${consultationId}`
+             );
+             if (mh?.provider?.id) {
+               medicalHistoryDoctor = mh.provider;
+             }
+           } catch {}
+         }
+         
+         const [clinicData, userData, patientProfileData, specialistData, specialistUserDoc] = await Promise.all([
+           dataSource.referringClinicId ? databaseService.getDocument(`clinics/${dataSource.referringClinicId}`) : null,
+           (patientId || dataSource.patientId) ? databaseService.getDocument(`users/${patientId || dataSource.patientId}`) : null,
+           (patientId || dataSource.patientId) ? databaseService.getDocument(`patients/${patientId || dataSource.patientId}`) : null,
+           doctorId ? databaseService.getSpecialistProfile(doctorId) : null,
+           doctorId ? databaseService.getDocument(`users/${doctorId}`) : null,
+         ]);
+        
+        // Debug logging
+        console.log('Data Source:', dataSource);
+        console.log('Doctor ID:', doctorId);
+        console.log('Medical History Doctor:', medicalHistoryDoctor);
+        console.log('Specialist Data:', specialistData);
+        console.log('Specialist User Doc:', specialistUserDoc);
         
         setClinic(clinicData);
         setPatient({ ...(userData || {}), ...(patientProfileData || {}) });
         setProvider(specialistData);
         setProviderUser(specialistUserDoc);
 
-        if (certificateId) {
-          try {
-            const medicalHistory = await databaseService.getMedicalHistoryByAppointment(String(id), dataSource.patientId);
-            if (medicalHistory?.certificates) {
-              const foundCertificate = medicalHistory.certificates.find((c: any) => c.id === certificateId);
-              if (foundCertificate) {
-                setCertificate(foundCertificate);
-              }
-            }
-          } catch {}
-        }
+                 if (certificateId) {
+           try {
+             const medicalHistory = await databaseService.getMedicalHistoryByAppointment(String(id), patientId || dataSource.patientId);
+             if (medicalHistory?.certificates) {
+               const foundCertificate = medicalHistory.certificates.find((c: any) => c.id === certificateId);
+               if (foundCertificate) {
+                 setCertificate(foundCertificate);
+               }
+             }
+           } catch {}
+         }
 
         if (!certificate) {
           const today = new Date();
@@ -287,14 +311,14 @@ export default function FitToTravelCertificateScreen() {
     .label { color: ${subtle}; font-size: 12px; margin: 6px 0 2px; font-weight: 500; }
     .value { font-size: 13px; line-height: 1.6; }
     .strong { font-weight: 600; color: #111827; }
-    .certificate-title { font-weight: 700; font-size: 18px; color: #1F2937; margin: 20px 0 16px; text-align: center; }
+    .certificate-title { font-weight: 700; font-size: 20px; color: #1F2937; margin: 30px 0 20px; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
 
     .body { flex: 1; display: flex; flex-direction: column; padding: 0 24px; }
     .footer { padding: 8px 16px; color: ${subtle}; font-size: 11px; background: #F9FAFB; display: flex; align-items: center; justify-content: space-between; }
     .divider { height: 1px; background: ${border}; width: calc(100% - 48px); margin: 10px auto; }
     .divider-wider { width: calc(100% - 30px); }
     
-    .certificate-content { margin: 20px 0; line-height: 1.8; font-size: 15px; color: #374151; }
+         .certificate-content { margin: 20px 0; line-height: 1.8; font-size: 13px; color: #374151; }
     .certificate-statement { margin: 16px 0; padding: 16px; background: #F9FAFB; border-left: 4px solid ${brandPrimary}; border-radius: 4px; }
     .certificate-statement-text { font-size: 16px; line-height: 1.7; color: #1F2937; }
     
@@ -311,6 +335,8 @@ export default function FitToTravelCertificateScreen() {
     .signature-name { color: #374151; font-size: 14px; font-weight: 700; }
     .signature-caption { color: ${subtle}; font-size: 12px; margin-top: 6px; }
     .signature-label { color: ${subtle}; font-size: 11px; margin-top: 6px; }
+    
+    .disclaimer { text-align: center; padding: 16px 0; }
 
     @media screen and (max-width: 640px) { .certificate-content { font-size: 14px; } .travel-details-grid { grid-template-columns: 1fr; } }
     @media print { .preview { padding: 0; } .page { box-shadow: none; width: 8.5in; height: 11in; border: none; margin: 0 auto; max-width: 8.5in; } }
@@ -323,80 +349,100 @@ export default function FitToTravelCertificateScreen() {
       <div class="watermark">${logoDataUri ? `<img src="${logoDataUri}" />` : ''}</div>
       <div class="header"><span class="brand-left">UNIHEALTH</span><span class="brand-right">Medical Certificate</span></div>
       
-      <div class="top">
-        <div class="row">
-          <div class="cell">
-            <p class="label">Patient</p>
-            <div class="value" style="font-size:16px; font-weight:700;">${patientName}</div>
-            <p class="label">Age</p>
-            <div class="value strong">${ageText}</div>
-            <p class="label">Sex</p>
-            <div class="value strong">${gender}</div>
-          </div>
-          <div class="cell" style="text-align:right">
-            <p class="label">Certificate ID</p>
-            <div class="value strong" style="font-size:16px; font-weight:700;">${certificateId}</div>
-            <p class="label">Date Issued</p>
-            <div class="value strong">${dateIssued}</div>
-            <p class="label">Examination Date</p>
-            <div class="value strong">${examinationDate}</div>
-          </div>
-        </div>
-      </div>
+             <div class="top">
+         <div class="row">
+           <div class="cell">
+             <p class="label">Certificate ID</p>
+             <div class="value strong">${certificateId}</div>
+             <p class="label">Date Issued</p>
+             <div class="value strong">${(() => {
+               if (certificate?.createdAt) {
+                 try {
+                   const issuedDate = new Date(certificate.createdAt);
+                   if (!isNaN(issuedDate.getTime())) {
+                     return issuedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                   }
+                 } catch {}
+               }
+               return new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+             })()}</div>
+           </div>
+           <div class="cell" style="text-align:right">
+             <p class="label">Valid Until</p>
+             <div class="value strong">${(() => {
+               try {
+                 let issuedDate;
+                 if (certificate?.createdAt) {
+                   issuedDate = new Date(certificate.createdAt);
+                 } else {
+                   issuedDate = new Date();
+                 }
+                 
+                 if (!isNaN(issuedDate.getTime())) {
+                   const validUntil = new Date(issuedDate);
+                   validUntil.setFullYear(validUntil.getFullYear() + 1);
+                   return validUntil.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                 }
+               } catch {}
+               return '—';
+             })()}</div>
+           </div>
+         </div>
+       </div>
       
       <div class="divider divider-wider"></div>
 
       <div class="body">
         <h1 class="certificate-title">FIT TO TRAVEL CERTIFICATE</h1>
         
-        <div class="certificate-content">
-          <p>This is to certify that <strong>${patientName}</strong>, ${ageText}, ${gender}, was examined on <strong>${examinationDate}</strong> and is found to be medically fit to travel.</p>
-          
-          <div class="travel-details">
-            <div class="travel-details-title">Travel Information</div>
-            <div class="travel-details-grid">
-              <div class="travel-detail-item">
-                <div class="travel-detail-label">Mode of Travel:</div>
-                <div class="travel-detail-value">${travelMode}</div>
-              </div>
-              <div class="travel-detail-item">
-                <div class="travel-detail-label">Destination:</div>
-                <div class="travel-detail-value">${destination}</div>
-              </div>
-              <div class="travel-detail-item">
-                <div class="travel-detail-label">Travel Date:</div>
-                <div class="travel-detail-value">${travelDate}</div>
-              </div>
-              <div class="travel-detail-item">
-                <div class="travel-detail-label">Special Conditions:</div>
-                <div class="travel-detail-value">${specialConditions}</div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="certificate-statement">
-            <div class="certificate-statement-text">
-              <strong>Medical Assessment:</strong><br/>
-              ${travelFitnessStatement}
-            </div>
-          </div>
-          
-          <p><strong>Certificate Validity:</strong> ${validityPeriod}</p>
-          
-          <p>This certificate confirms that the patient has been medically cleared for travel and is free from any contagious diseases that would pose a risk to other travelers.</p>
-        </div>
+                 <div class="certificate-content">
+           <p style="text-indent: 20px;">This is to certify that <strong>${patientName}</strong>, ${ageText}, ${gender}, was examined on <strong>${examinationDate}</strong> and is found to be medically fit to travel.</p>
+           
+           <div class="travel-details">
+             <div class="travel-details-title">Travel Information</div>
+             <div class="travel-details-grid">
+               <div class="travel-detail-item">
+                 <div class="travel-detail-label">Mode of Travel:</div>
+                 <div class="travel-detail-value">${travelMode}</div>
+               </div>
+               <div class="travel-detail-item">
+                 <div class="travel-detail-label">Destination:</div>
+                 <div class="travel-detail-value">${destination}</div>
+               </div>
+               <div class="travel-detail-item">
+                 <div class="travel-detail-label">Travel Date:</div>
+                 <div class="travel-detail-value">${travelDate}</div>
+               </div>
+               <div class="travel-detail-item">
+                 <div class="travel-detail-label">Special Conditions:</div>
+                 <div class="travel-detail-value">${specialConditions}</div>
+               </div>
+             </div>
+           </div>
+           
+           <p style="text-indent: 20px;">This certificate confirms that the patient has been medically cleared for travel and is free from any contagious diseases that would pose a risk to other travelers.</p>
+         </div>
 
         <div class="signature-section">
           <div class="signature-wrap">
-            <div class="signature-label">Attending Physician</div>
+            <div class="signature-label">Issuing Doctor</div>
             <div class="signature-name">Dr. ${doctorName}</div>
             <div class="signature-line"></div>
-            ${provider?.prcId ? `<div class="signature-caption">PRC License No.: ${safe(provider.prcId)}</div>` : ''}
-            ${provider?.phone || provider?.contactNumber ? `<div class="signature-caption">Contact: ${safe(provider.phone || provider.contactNumber)}</div>` : ''}
-            ${providerUser?.email ? `<div class="signature-caption">Email: ${safe(providerUser.email)}</div>` : ''}
+            <div class="signature-caption">PRC #: ${safe(provider?.prcId || 'Not Available')}</div>
+            <div class="signature-caption">Email: ${safe(provider?.email || providerUser?.email || 'Not Available')}</div>
+            <div class="signature-caption">Contact: ${safe(provider?.phone || provider?.contactNumber || providerUser?.phone || providerUser?.contactNumber || 'Not Available')}</div>
           </div>
         </div>
       </div>
+
+      <div class="divider divider-wider"></div>
+      
+             <div class="disclaimer">
+         <p style="text-align: center; font-size: 10px; color: #6B7280; margin: 16px 0; font-style: italic; line-height: 1.4;">
+           This certificate is issued based on medical examination findings and<br/>
+           is valid for the specified period only.
+         </p>
+       </div>
 
       <div class="footer">
         <span class="footer-left">Generated by UniHealth • ${new Date().toLocaleString()}</span>
