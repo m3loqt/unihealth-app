@@ -14,7 +14,7 @@ import {
   Alert,
 } from 'react-native';
 import {
-  FileText, Search, Download, Eye, Shield, Activity, Syringe, Heart, Stethoscope,
+  FileText, Search, Shield, Activity, Syringe, Heart, Stethoscope,
   Import as SortAsc, ChevronDown, Check
 } from 'lucide-react-native';
 import { router } from 'expo-router';
@@ -76,11 +76,72 @@ export default function CertificatesScreen() {
     try {
       setLoading(true);
       setError(null);
-      const certificates = await databaseService.getCertificates(user.uid);
       
-      // Validate certificates data
-      const validCertificates = dataValidation.validateArray(certificates, dataValidation.isValidCertificate);
-      setUserCertificates(validCertificates);
+      // Get certificates from patientMedicalHistory node
+      const medicalHistory = await databaseService.getMedicalHistoryByPatient(user.uid);
+      
+      // Extract all certificates from medical history entries
+      const allCertificates: any[] = [];
+      medicalHistory.forEach((entry) => {
+        if (entry.certificates && Array.isArray(entry.certificates)) {
+          entry.certificates.forEach((cert) => {
+            allCertificates.push({
+              ...cert,
+                             // Add consultation info for routing
+               consultationId: entry.id,
+               consultationDate: entry.consultationDate,
+               provider: entry.provider,
+               // Additional doctor details for enhanced display
+               doctorDetails: {
+                 id: entry.provider?.id,
+                 firstName: entry.provider?.firstName,
+                 lastName: entry.provider?.lastName,
+                 providerType: entry.provider?.providerType,
+                 sourceSystem: entry.provider?.sourceSystem,
+               },
+              // Map certificate fields to match the expected structure
+              id: cert.id || `${entry.id}_${cert.type}_${Date.now()}`,
+              issueDate: cert.createdAt || entry.consultationDate,
+              expiryDate: cert.validUntil || '',
+              status: (() => {
+                if (cert.validUntil) {
+                  return new Date(cert.validUntil) < new Date() ? 'Expired' : 'Valid';
+                }
+                // If no expiry date, check if it's older than 1 year
+                const issueDate = new Date(cert.createdAt || entry.consultationDate);
+                const oneYearAgo = new Date();
+                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                return issueDate < oneYearAgo ? 'Expired' : 'Valid';
+              })(),
+                             specialistId: (() => {
+                 // Try to get doctor name from multiple sources
+                 if (entry.provider?.firstName && entry.provider?.lastName) {
+                   return `Dr. ${entry.provider.firstName} ${entry.provider.lastName}`;
+                 }
+                 if (entry.provider?.firstName) {
+                   return `Dr. ${entry.provider.firstName}`;
+                 }
+                 if (entry.provider?.lastName) {
+                   return `Dr. ${entry.provider.lastName}`;
+                 }
+                 // Fallback to provider ID if available
+                 if (entry.provider?.id) {
+                   return `Dr. ${entry.provider.id}`;
+                 }
+                 return 'Dr. Unknown Doctor';
+               })(),
+              description: cert.description || cert.type,
+            });
+          });
+        }
+      });
+      
+      // Sort by issue date (newest first)
+      const sortedCertificates = allCertificates.sort((a, b) => 
+        new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()
+      );
+      
+      setUserCertificates(sortedCertificates);
     } catch (error) {
       console.error('Error loading certificates:', error);
       setError('Failed to load certificates. Please try again.');
@@ -100,7 +161,8 @@ export default function CertificatesScreen() {
       .filter((cert) => {
         const matchesSearch =
           cert.type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          cert.specialistId?.toLowerCase().includes(searchQuery.toLowerCase());
+          cert.specialistId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          cert.description?.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus =
           statusFilter === 'all' || cert.status?.toLowerCase() === statusFilter;
         return matchesSearch && matchesStatus;
@@ -246,36 +308,41 @@ export default function CertificatesScreen() {
     );
   };
 
-  const renderCertificateCard = (certificate: Certificate) => (
+  const renderCertificateCard = (certificate: any) => (
     <TouchableOpacity
       key={certificate.id}
       style={[styles.certificateCard, { width: cardWidth }]}
       activeOpacity={0.7}
-      onPress={() => router.push(`/certificate-details?id=${certificate.id}`)}
+      onPress={() => {
+        // Route to the appropriate e-certificate based on type
+        let route = '/e-certificate-fit-to-work'; // default fallback
+        
+        if (certificate.type === 'Fit to Work Certificate') {
+          route = '/e-certificate-fit-to-work';
+        } else if (certificate.type === 'Medical/Sickness Certificate') {
+          route = '/e-certificate-medical-sickness';
+        } else if (certificate.type === 'Fit to Travel Certificate') {
+          route = '/e-certificate-fit-to-travel';
+        }
+        
+        // Pass the consultation ID and certificate ID for proper data loading
+        router.push(`${route}?id=${certificate.consultationId}&certificateId=${certificate.id}`);
+      }}
     >
       {renderPDFThumbnail(certificate)}
       <View style={styles.cardContent}>
         <Text style={styles.certificateType} numberOfLines={2}>
           {certificate.type || 'Medical Certificate'}
         </Text>
+        <Text style={styles.issuedByLabel} numberOfLines={1}>
+          Issued by
+        </Text>
         <Text style={styles.doctorName} numberOfLines={1}>
-          {certificate.specialistId || 'Doctor not specified'}
+          {certificate.specialistId || 'Dr. Unknown Doctor'}
         </Text>
         <Text style={styles.issuedDate}>
           {certificate.issueDate ? new Date(certificate.issueDate).toLocaleDateString() : 'Date not specified'}
         </Text>
-        <View style={styles.gridActions}>
-          <TouchableOpacity style={styles.secondaryButton}>
-            <Eye 
-              size={20} 
-              color="#374151" 
-              onPress={() => router.push(`/certificate-details?id=${certificate.id}`)}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.primaryButton}>
-            <Download size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
       </View>
     </TouchableOpacity>
   );
@@ -627,10 +694,18 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   certificateType: {
-    fontSize:16,
-        color: '#1F2937',
+    fontSize: 16,
+    color: '#1F2937',
     marginBottom: 4,
     lineHeight: 18,
+  },
+  issuedByLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginBottom: 2,
+    fontFamily: 'Inter-Regular',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   doctorName: {
     fontSize: 13,
@@ -641,34 +716,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
-  },
-  gridActions: {
-    flexDirection: 'row',
-    marginTop: 16,
-    alignSelf: 'stretch',
-    justifyContent: 'space-between',
-  },
-  primaryButton: {
-    flex: 1,
-    backgroundColor: '#1E40AF',
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginLeft: 4,
-  },
-  secondaryButton: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginRight: 4,
   },
   emptyState: {
     alignItems: 'center',
