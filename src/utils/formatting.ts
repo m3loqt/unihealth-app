@@ -432,6 +432,180 @@ export const formatFrequency = (frequency: string, userRole: 'patient' | 'specia
   return frequency;
 }; 
 
+// Formula formatting utility
+const FORMULA_MAPPING: Record<string, { 
+  abbreviation: string; 
+  meaning: string; 
+  unit: string;
+  takeUnit: string;
+  totalQuantityUnit: string;
+}> = {
+  'Cap, caps': { 
+    abbreviation: 'Cap, caps', 
+    meaning: 'Capsule', 
+    unit: 'mg or g',
+    takeUnit: 'capsule(s)',
+    totalQuantityUnit: 'capsule(s)'
+  },
+  'El, elix': { 
+    abbreviation: 'El, elix', 
+    meaning: 'Elixir', 
+    unit: 'mL',
+    takeUnit: 'mL(s)',
+    totalQuantityUnit: 'bottle(s)'
+  },
+  'sol': { 
+    abbreviation: 'sol', 
+    meaning: 'Solution', 
+    unit: 'mL',
+    takeUnit: 'mL(s) or drop(s)',
+    totalQuantityUnit: 'bottle(s) or mL(s)'
+  },
+  'Sp': { 
+    abbreviation: 'Sp', 
+    meaning: 'Spirit', 
+    unit: 'mL',
+    takeUnit: 'mL(s)',
+    totalQuantityUnit: 'bottle(s)'
+  },
+  'Sup, supp': { 
+    abbreviation: 'Sup, supp', 
+    meaning: 'Suppository', 
+    unit: 'mg or g',
+    takeUnit: 'suppository(ies)',
+    totalQuantityUnit: 'suppository(ies)'
+  },
+  'Susp': { 
+    abbreviation: 'Susp', 
+    meaning: 'Suspension', 
+    unit: 'mg or mL',
+    takeUnit: 'mL(s)',
+    totalQuantityUnit: 'bottle(s)'
+  },
+  'Syr': { 
+    abbreviation: 'Syr', 
+    meaning: 'Syrup', 
+    unit: 'mL',
+    takeUnit: 'mL(s)',
+    totalQuantityUnit: 'bottle(s)'
+  },
+  'tab, tabs': { 
+    abbreviation: 'tab, tabs', 
+    meaning: 'Tablet', 
+    unit: 'mg or g',
+    takeUnit: 'tablet(s)',
+    totalQuantityUnit: 'tablet(s)'
+  },
+  'tr, tinct.': { 
+    abbreviation: 'tr, tinct.', 
+    meaning: 'Tincture', 
+    unit: 'mL',
+    takeUnit: 'mL(s)',
+    totalQuantityUnit: 'bottle(s)'
+  },
+  'Ung, oint.': { 
+    abbreviation: 'Ung, oint.', 
+    meaning: 'Ointment', 
+    unit: 'g',
+    takeUnit: 'grams',
+    totalQuantityUnit: 'tube(s)'
+  },
+  'Cream': { 
+    abbreviation: 'Cream', 
+    meaning: 'Cream', 
+    unit: 'g',
+    takeUnit: 'grams',
+    totalQuantityUnit: 'tube(s)'
+  },
+  'Inhaler': { 
+    abbreviation: 'Inhaler', 
+    meaning: 'Inhaler', 
+    unit: 'puff',
+    takeUnit: 'puff(s)',
+    totalQuantityUnit: 'inhaler(s)'
+  },
+};
+
+/**
+ * Format formula for display based on user role
+ * @param formula - The formula value to format
+ * @param userRole - The role of the user ('patient' | 'specialist')
+ * @returns Formatted formula string
+ */
+export const formatFormula = (formula: string | undefined, userRole: 'patient' | 'specialist'): string => {
+  if (!formula) return '';
+  
+  const formulaInfo = FORMULA_MAPPING[formula];
+  
+  if (formulaInfo) {
+    return userRole === 'specialist' ? formulaInfo.abbreviation : formulaInfo.meaning;
+  }
+  
+  // If not found in map, return as is for specialist, or capitalize for patient
+  return userRole === 'specialist' ? formula : formula.charAt(0).toUpperCase() + formula.slice(1).toLowerCase();
+};
+
+/**
+ * Get unit for formula
+ * @param formula - The formula value
+ * @returns Unit string
+ */
+export const getFormulaUnit = (formula: string | undefined): string => {
+  if (!formula) return '';
+  
+  const formulaInfo = FORMULA_MAPPING[formula];
+  return formulaInfo ? formulaInfo.unit : '';
+};
+
+/**
+ * Get take unit for formula
+ * @param formula - The formula value
+ * @returns Take unit string
+ */
+export const getFormulaTakeUnit = (formula: string | undefined): string => {
+  if (!formula) return '';
+  
+  const formulaInfo = FORMULA_MAPPING[formula];
+  return formulaInfo ? formulaInfo.takeUnit : '';
+};
+
+/**
+ * Get total quantity unit for formula
+ * @param formula - The formula value
+ * @returns Total quantity unit string
+ */
+export const getFormulaTotalQuantityUnit = (formula: string | undefined): string => {
+  if (!formula) return '';
+  
+  const formulaInfo = FORMULA_MAPPING[formula];
+  return formulaInfo ? formulaInfo.totalQuantityUnit : '';
+};
+
+/**
+ * Determine appropriate unit based on formula and value
+ * @param formula - The formula value
+ * @param value - The numeric value
+ * @returns Appropriate unit (mg, g, mL, etc.)
+ */
+export const determineUnit = (formula: string | undefined, value: number): string => {
+  if (!formula) return '';
+  
+  const unit = getFormulaUnit(formula);
+  
+  if (unit === 'mg or g') {
+    // Use mg for values < 1, g for values >= 1
+    return value < 1 ? 'mg' : 'g';
+  }
+  
+  if (unit === 'mg or mL') {
+    // Use mg for values < 1, mL for values >= 1
+    return value < 1 ? 'mg' : 'mL';
+  }
+  
+  // Return the unit as is for other cases
+  return unit;
+};
+
 // Route formatting utility
 const ROUTE_MAPPING: Record<string, { abbreviation: string; meaning: string }> = {
   'PO': { abbreviation: 'PO', meaning: 'By mouth (oral)' },
