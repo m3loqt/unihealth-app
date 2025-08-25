@@ -23,6 +23,7 @@ export { default as AppointmentDetailsModal } from './AppointmentDetailsModal';
 export { default as FrequencySelectionModal } from './FrequencySelectionModal';
 export { default as RouteSelectionModal } from './RouteSelectionModal';
 export { default as DurationUnitSelectionModal } from './DurationUnitSelectionModal';
+export { default as FormulaSelectionModal } from './FormulaSelectionModal';
 
 // Test Components
 export { RealTimeTest } from './RealTimeTest';

@@ -17,7 +17,7 @@ import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService, Prescription } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
-import { formatFrequency, formatRoute, formatPrescriptionDuration } from '../../../src/utils/formatting';
+import { formatFrequency, formatRoute, formatPrescriptionDuration, formatFormula } from '../../../src/utils/formatting';
 import { formatDate } from '../../../src/utils/date';
 import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
@@ -248,6 +248,9 @@ export default function SpecialistPrescriptionsScreen() {
           <Text style={styles.medicationDosage}>
             {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'specialist')}
             {prescription.route && ` • ${formatRoute(prescription.route, 'specialist')}`}
+            {prescription.formula && ` • ${formatFormula(prescription.formula, 'specialist')}`}
+            {prescription.take && ` • Take: ${prescription.take}`}
+            {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
           </Text>
           <Text style={styles.prescriptionDescription}>
             {prescription.instructions || 'No additional instructions'}
@@ -309,6 +312,9 @@ export default function SpecialistPrescriptionsScreen() {
           <Text style={styles.medicationDosage}>
             {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'specialist')}
             {prescription.route && ` • ${formatRoute(prescription.route, 'specialist')}`}
+            {prescription.formula && ` • ${formatFormula(prescription.formula, 'specialist')}`}
+            {prescription.take && ` • Take: ${prescription.take}`}
+            {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
           </Text>
           <Text style={styles.prescriptionDescription}>
             {prescription.instructions || 'No additional instructions'}

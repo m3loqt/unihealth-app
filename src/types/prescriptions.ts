@@ -10,6 +10,9 @@ export interface Prescription {
   prescribedDate: string;
   status: 'active' | 'completed' | 'discontinued';
   route?: string;
+  formula?: string;
+  take?: string;
+  totalQuantity?: string;
 }
 
 export interface CreatePrescriptionData {
@@ -22,4 +25,7 @@ export interface CreatePrescriptionData {
   instructions: string;
   status: 'active' | 'completed' | 'discontinued';
   route?: string;
+  formula?: string;
+  take?: string;
+  totalQuantity?: string;
 } 

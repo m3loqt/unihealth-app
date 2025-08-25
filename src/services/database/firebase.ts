@@ -101,6 +101,9 @@ export interface Prescription {
   prescribedDate: string;
   status: 'active' | 'completed' | 'discontinued';
   route?: string;
+  formula?: string;
+  take?: string;
+  totalQuantity?: string;
 }
 
 export interface Certificate {
@@ -3212,6 +3215,103 @@ export const databaseService = {
     } catch (error) {
       console.error('❌ Create referral error:', error);
       throw new Error('Failed to create referral');
+    }
+  },
+
+  // Check if feedback already exists for an appointment
+  async checkFeedbackExists(appointmentId: string): Promise<boolean> {
+    try {
+      const feedbackSnapshot = await get(ref(database, 'feedback'));
+      const feedbackData = feedbackSnapshot.val();
+      
+      if (feedbackData) {
+        const feedbackEntries = Object.values(feedbackData);
+        return feedbackEntries.some((feedback: any) => feedback.appointmentId === appointmentId);
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking feedback existence:', error);
+      return false;
+    }
+  },
+
+  // Submit feedback
+  async submitFeedback(feedbackData: {
+    appointmentId: string;
+    referralId?: string;
+    patientId: string;
+    patientName: string;
+    patientEmail: string;
+    doctorId: string;
+    doctorName: string;
+    clinicId: string;
+    clinicName: string;
+    appointmentDate: string;
+    serviceType: 'appointment' | 'referral';
+    treatmentType: string;
+    rating: number;
+    comment: string;
+    tags: string[];
+    isAnonymous: boolean;
+  }): Promise<string> {
+    try {
+      console.log('🔔 Submitting feedback...');
+      
+      // Check if feedback already exists for this appointment
+      const feedbackExists = await this.checkFeedbackExists(feedbackData.appointmentId);
+      if (feedbackExists) {
+        throw new Error('Feedback already submitted for this appointment');
+      }
+
+      // Prepare feedback data with required fields
+      const completeFeedbackData = {
+        ...feedbackData,
+        status: '', // blank status as requested
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+
+      // Use Firebase push to generate the feedbackId
+      const feedbackId = await this.pushDocument('feedback', completeFeedbackData);
+      console.log('✅ Feedback submitted with ID:', feedbackId);
+      
+      return feedbackId;
+    } catch (error) {
+      console.error('❌ Submit feedback error:', error);
+      throw error;
+    }
+  },
+
+  // Get feedback by appointment ID
+  async getFeedbackByAppointmentId(appointmentId: string): Promise<any> {
+    try {
+      const feedbackSnapshot = await get(ref(database, 'feedback'));
+      const feedbackData = feedbackSnapshot.val();
+      
+      if (feedbackData) {
+        const feedbackEntries = Object.values(feedbackData);
+        return feedbackEntries.find((feedback: any) => feedback.appointmentId === appointmentId);
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting feedback by appointment ID:', error);
+      return null;
+    }
+  },
+
+  // Get all feedback (for admin/specialist view)
+  async getAllFeedback(): Promise<any[]> {
+    try {
+      const feedbackSnapshot = await get(ref(database, 'feedback'));
+      const feedbackData = feedbackSnapshot.val();
+      
+      if (feedbackData) {
+        return Object.values(feedbackData);
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting all feedback:', error);
+      return [];
     }
   },
 };  
