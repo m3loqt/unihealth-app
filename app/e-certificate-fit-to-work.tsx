@@ -66,9 +66,10 @@ export default function FitToWorkCertificateScreen() {
         setLoading(true);
         setError(null);
         
-        // Load referral or appointment data
+        // Load referral, appointment, or medical history data
         let refData = null;
         let appointmentData = null;
+        let medicalHistoryData = null;
         
         try {
           refData = await databaseService.getReferralById(String(id));
@@ -80,7 +81,19 @@ export default function FitToWorkCertificateScreen() {
           } catch {}
         }
         
-        const dataSource = refData || appointmentData;
+        if (!refData && !appointmentData) {
+          // Try to load as medical history entry
+          try {
+            const patientIdToUse = patientId || user?.uid;
+            if (patientIdToUse) {
+              medicalHistoryData = await databaseService.getDocument(
+                `patientMedicalHistory/${patientIdToUse}/entries/${id}`
+              );
+            }
+          } catch {}
+        }
+        
+        const dataSource = refData || appointmentData || medicalHistoryData;
         if (!dataSource) {
           setError('Consultation not found');
           setLoading(false);
@@ -89,52 +102,68 @@ export default function FitToWorkCertificateScreen() {
         
         setReferral(refData);
         
-                 // Related entities
-         // Determine the doctor ID based on data source type
-         const doctorId = dataSource.assignedSpecialistId || dataSource.doctorId;
+        // Related entities - Get doctor details from the correct source
+        let doctorId = null;
+        let doctorData = null;
+        let doctorUserData = null;
+        
+        if (medicalHistoryData?.provider?.id) {
+          // If we have medical history data, use the provider from there
+          doctorId = medicalHistoryData.provider.id;
+          doctorData = medicalHistoryData.provider;
+          try {
+            doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
+          } catch {}
+        } else if (dataSource.assignedSpecialistId) {
+          // Fallback to referral's assigned specialist
+          doctorId = dataSource.assignedSpecialistId;
+          try {
+            doctorData = await databaseService.getSpecialistProfile(doctorId);
+            doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
+          } catch {}
+        } else if (dataSource.doctorId) {
+          // Fallback to appointment's doctor
+          doctorId = dataSource.doctorId;
+          try {
+            doctorData = await databaseService.getSpecialistProfile(doctorId);
+            doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
+          } catch {}
+        }
          
-         // Also try to get doctor info from medical history if available
-         let medicalHistoryDoctor = null;
-         if (dataSource?.referralConsultationId || dataSource?.consultationId) {
-           try {
-             const consultationId = dataSource.referralConsultationId || dataSource.consultationId;
-             const mh = await databaseService.getDocument(
-               `patientMedicalHistory/${dataSource.patientId}/entries/${consultationId}`
-             );
-             if (mh?.provider?.id) {
-               medicalHistoryDoctor = mh.provider;
-             }
-           } catch {}
-         }
-         
-         const [clinicData, userData, patientProfileData, specialistData, specialistUserDoc] = await Promise.all([
+         const [clinicData, userData, patientProfileData] = await Promise.all([
            dataSource.referringClinicId ? databaseService.getDocument(`clinics/${dataSource.referringClinicId}`) : null,
            (patientId || dataSource.patientId) ? databaseService.getDocument(`users/${patientId || dataSource.patientId}`) : null,
            (patientId || dataSource.patientId) ? databaseService.getDocument(`patients/${patientId || dataSource.patientId}`) : null,
-           doctorId ? databaseService.getSpecialistProfile(doctorId) : null,
-           doctorId ? databaseService.getDocument(`users/${doctorId}`) : null,
          ]);
         
         // Debug logging
         console.log('Data Source:', dataSource);
         console.log('Doctor ID:', doctorId);
-        console.log('Medical History Doctor:', medicalHistoryDoctor);
-        console.log('Specialist Data:', specialistData);
-        console.log('Specialist User Doc:', specialistUserDoc);
+        console.log('Doctor Data:', doctorData);
+        console.log('Doctor User Data:', doctorUserData);
         
         setClinic(clinicData);
         setPatient({ ...(userData || {}), ...(patientProfileData || {}) });
-        setProvider(specialistData);
-        setProviderUser(specialistUserDoc);
+        setProvider(doctorData);
+        setProviderUser(doctorUserData);
 
                  // Load certificate data if certificateId is provided
          if (certificateId) {
            try {
-             const medicalHistory = await databaseService.getMedicalHistoryByAppointment(String(id), patientId || dataSource.patientId);
-             if (medicalHistory?.certificates) {
-               const foundCertificate = medicalHistory.certificates.find((c: any) => c.id === certificateId);
+             // If we have medical history data directly, use it
+             if (medicalHistoryData?.certificates) {
+               const foundCertificate = medicalHistoryData.certificates.find((c: any) => c.id === certificateId);
                if (foundCertificate) {
                  setCertificate(foundCertificate);
+               }
+             } else {
+               // Fallback to loading via appointment/referral
+               const medicalHistory = await databaseService.getMedicalHistoryByAppointment(String(id), patientId || dataSource.patientId);
+               if (medicalHistory?.certificates) {
+                 const foundCertificate = medicalHistory.certificates.find((c: any) => c.id === certificateId);
+                 if (foundCertificate) {
+                   setCertificate(foundCertificate);
+                 }
                }
              }
            } catch {}
@@ -349,18 +378,18 @@ export default function FitToWorkCertificateScreen() {
     .label { color: ${subtle}; font-size: 12px; margin: 6px 0 2px; font-weight: 500; }
     .value { font-size: 13px; line-height: 1.6; }
     .strong { font-weight: 600; color: #111827; }
-    .certificate-title { font-weight: 700; font-size: 20px; color: #1F2937; margin: 30px 0 20px; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+    .certificate-title { font-weight: 700; font-size: 18px; color: #1F2937; margin: 20px 0 15px; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
 
     .body { flex: 1; display: flex; flex-direction: column; padding: 0 24px; }
     .footer { padding: 8px 16px; color: ${subtle}; font-size: 11px; background: #F9FAFB; display: flex; align-items: center; justify-content: space-between; }
     .divider { height: 1px; background: ${border}; width: calc(100% - 48px); margin: 10px auto; }
     .divider-wider { width: calc(100% - 30px); }
     
-         .certificate-content { margin: 20px 0; line-height: 1.8; font-size: 13px; color: #374151; }
+         .certificate-content { margin: 15px 0; line-height: 1.6; font-size: 12px; color: #374151; }
     .certificate-statement { margin: 16px 0; padding: 16px; background: #F9FAFB; border-left: 4px solid ${brandPrimary}; border-radius: 4px; }
     .certificate-statement-text { font-size: 16px; line-height: 1.7; color: #1F2937; }
     
-    .signature-section { margin-top: 40px; text-align: right; }
+    .signature-section { margin-top: 30px; text-align: right; }
     .signature-wrap { text-align: left; display: inline-block; }
     .signature-line { height: 1px; background: ${border}; margin: 4px 0 6px 0; width: 200px; }
     .signature-name { color: #374151; font-size: 14px; font-weight: 700; }
