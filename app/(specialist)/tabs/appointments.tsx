@@ -40,6 +40,7 @@ import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { useDeepMemo } from '../../../src/utils/performance';
+import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
 import { AppointmentDetailsModal } from '../../../src/components';
 
 export default function SpecialistAppointmentsScreen() {
@@ -1012,15 +1013,7 @@ export default function SpecialistAppointmentsScreen() {
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Appointments</Text>
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={() => router.push('/(specialist)/tabs/profile')}
-        >
-          <User size={24} color="#6B7280" />
-        </TouchableOpacity>
-      </View>
+      <SpecialistHeader title="Appointments" />
 
       {/* Search */}
       <View style={styles.searchContainer}>

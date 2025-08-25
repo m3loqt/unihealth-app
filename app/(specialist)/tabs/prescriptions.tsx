@@ -23,6 +23,7 @@ import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { useDeepMemo } from '../../../src/utils/performance';
+import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
 
 // Utility function to calculate prescription status based on duration
 const calculatePrescriptionStatus = (prescription: Prescription): 'active' | 'completed' | 'discontinued' => {
@@ -462,9 +463,7 @@ export default function SpecialistPrescriptionsScreen() {
     <ErrorBoundary>
       <SafeAreaView style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Prescriptions Issued</Text>
-      </View>
+      <SpecialistHeader title="Prescriptions Issued" />
       <View style={styles.filtersContainer}>
         <ScrollView
           horizontal
