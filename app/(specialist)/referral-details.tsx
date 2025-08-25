@@ -507,7 +507,19 @@ export default function ReferralDetailsScreen() {
                prescribedBy: prescription.prescribedBy || prescriberFromId || resolvedProviderName,
              };
            });
-           referralCertificates = medicalHistory.certificates || [];
+           referralCertificates = (medicalHistory.certificates || []).map((certificate: any, index: number) => {
+             // Get the issuing doctor from the certificate or fallback to the provider/specialist
+             const issuingDoctor = certificate.doctor || certificate.prescribedBy || certificate.specialistName || 
+               (providerId && idToName[providerId]) || assignedSpecialistName || 'Unknown Doctor';
+             
+             return {
+               id: certificate.id || `${referral.referralConsultationId || 'mh'}-cert-${index}`,
+               ...certificate,
+               doctor: issuingDoctor,
+               // Ensure we have a proper date field
+               issuedDate: certificate.issuedDate || certificate.createdAt || certificate.consultationDate
+             };
+           });
            console.log('🔍 Extracted prescriptions and certificates from medical history:', {
              prescriptions: referralPrescriptions.length,
              certificates: referralCertificates.length
@@ -551,6 +563,23 @@ export default function ReferralDetailsScreen() {
                    : 'Unknown Doctor'
                )
              }));
+             
+             // Enrich certificates with specialist names
+             referralCertificates = (referralCertificates || []).map((cert: any, index: number) => {
+               const issuingDoctor = cert.doctor || cert.prescribedBy || cert.specialistName || 
+                 (cert.specialistId && specialistIdToName[cert.specialistId]) || 
+                 ((referral as any)?.assignedSpecialistFirstName && (referral as any)?.assignedSpecialistLastName
+                   ? `${(referral as any)?.assignedSpecialistFirstName || ''} ${(referral as any)?.assignedSpecialistLastName || ''}`.trim()
+                   : 'Unknown Doctor');
+               
+               return {
+                 id: cert.id || `${referral.clinicAppointmentId || 'appt'}-cert-${index}`,
+                 ...cert,
+                 doctor: issuingDoctor,
+                 // Ensure we have a proper date field
+                 issuedDate: cert.issuedDate || cert.createdAt || cert.consultationDate
+               };
+             });
            } catch (fallbackError) {
              console.log('Fallback method also failed for prescriptions/certificates:', fallbackError);
            }
@@ -558,6 +587,15 @@ export default function ReferralDetailsScreen() {
          
          setPrescriptions(referralPrescriptions);
          setCertificates(referralCertificates);
+         
+         // Debug: Log the processed certificates
+         console.log('🔍 Processed certificates:', referralCertificates.map(cert => ({
+           id: cert.id,
+           type: cert.type,
+           doctor: cert.doctor,
+           issuedDate: cert.issuedDate,
+           createdAt: cert.createdAt
+         })));
       }
     } catch (error) {
       console.error('Error loading referral data:', error);
@@ -749,8 +787,8 @@ export default function ReferralDetailsScreen() {
         </View>
 
         {/* --- CLINICAL SUMMARY (moved above Prescriptions) --- */}
-        <View style={styles.sectionSpacing}>
-          <Text style={styles.sectionTitle}>Clinical Summary</Text>
+        <View style={[styles.sectionSpacing, { marginBottom: 20 }]}>
+          <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>Clinical Summary</Text>
           {referralData.status.toLowerCase() !== 'completed' ? (
             <View style={styles.emptyStateCard}>
               <FileText size={48} color="#9CA3AF" />
@@ -870,8 +908,8 @@ export default function ReferralDetailsScreen() {
         </View>
 
         {/* --- PRESCRIPTIONS (moved below Clinical Summary) --- */}
-        <View style={styles.sectionSpacing}>
-          <Text style={styles.sectionTitle}>Prescriptions</Text>
+        <View style={[styles.sectionSpacing, { marginBottom: 20 }]}>
+          <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>Prescriptions</Text>
           {referralData.status.toLowerCase() === 'completed' && prescriptions.length ? prescriptions.map((p, idx) => (
             <View key={p.id || idx} style={[styles.cardBox, styles.cardBoxPrescription]}>
               <View style={styles.prescriptionHeader}>
@@ -919,12 +957,18 @@ export default function ReferralDetailsScreen() {
         </View>
 
         {/* --- MEDICAL CERTIFICATES --- */}
-        <View style={styles.sectionSpacing}>
-          <Text style={styles.sectionTitle}>Medical Certificates</Text>
+        <View style={[styles.sectionSpacing, { marginBottom: 20 }]}>
+          <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>Medical Certificates</Text>
           {referralData.status.toLowerCase() === 'completed' && certificates.length ? certificates.map((cert) => {
             const statusStyle = getCertStatusStyles(cert.status);
+            // Get the issuing doctor from the certificate data or fallback to the assigned specialist
+            const issuingDoctor = cert.doctor || cert.prescribedBy || cert.specialistName || 
+              ((referralData as any)?.assignedSpecialistFirstName && (referralData as any)?.assignedSpecialistLastName
+                ? `${(referralData as any).assignedSpecialistFirstName} ${(referralData as any).assignedSpecialistLastName}`
+                : 'Unknown Doctor');
+            
             return (
-              <View key={cert.id} style={styles.cardBox}>
+              <View key={cert.id} style={[styles.cardBox, styles.cardBoxCertificate]}>
                 <View style={styles.certificateIconTitleRow}>
                   <View style={styles.uniformIconCircle}>
                     <FileText size={20} color="#1E3A8A" />
@@ -940,14 +984,62 @@ export default function ReferralDetailsScreen() {
                 <View style={styles.certificateDivider} />
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued by:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.doctor || 'Unknown Doctor'}</Text>
+                  <Text style={styles.certificateInfoValue}>{issuingDoctor}</Text>
                 </View>
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued on:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.issuedDate || 'Date not specified'}</Text>
+                  <Text style={styles.certificateInfoValue}>{cert.issuedDate || cert.createdAt || 'Date not specified'}</Text>
                 </View>
                 <View style={styles.certificateActions}>
-                  <TouchableOpacity style={[styles.secondaryButton, { marginRight: 9 }]}>
+                  <TouchableOpacity 
+                    style={[styles.secondaryButton, { marginRight: 9 }]}
+                    onPress={() => {
+                      // Route to the corresponding certificate screen based on type
+                      const certificateType = cert.type?.toLowerCase();
+                      if (certificateType?.includes('fit to work')) {
+                        router.push({
+                          pathname: '/e-certificate-fit-to-work',
+                          params: { 
+                            certificateId: cert.id,
+                            consultationId: referralData.referralConsultationId || '',
+                            referralId: String(id),
+                            patientId: referralData.patientId || ''
+                          }
+                        });
+                      } else if (certificateType?.includes('medical') || certificateType?.includes('sickness')) {
+                        router.push({
+                          pathname: '/e-certificate-medical-sickness',
+                          params: { 
+                            certificateId: cert.id,
+                            consultationId: referralData.referralConsultationId || '',
+                            referralId: String(id),
+                            patientId: referralData.patientId || ''
+                          }
+                        });
+                      } else if (certificateType?.includes('fit to travel')) {
+                        router.push({
+                          pathname: '/e-certificate-fit-to-travel',
+                          params: { 
+                            certificateId: cert.id,
+                            consultationId: referralData.referralConsultationId || '',
+                            referralId: String(id),
+                            patientId: referralData.patientId || ''
+                          }
+                        });
+                      } else {
+                        // Fallback for unknown certificate types
+                        router.push({
+                          pathname: '/e-certificate-fit-to-work',
+                          params: { 
+                            certificateId: cert.id,
+                            consultationId: referralData.referralConsultationId || '',
+                            referralId: String(id),
+                            patientId: referralData.patientId || ''
+                          }
+                        });
+                      }
+                    }}
+                  >
                     <Eye size={18} color="#374151" />
                     <Text style={styles.secondaryButtonText}>View</Text>
                   </TouchableOpacity>
@@ -1284,6 +1376,10 @@ const styles = StyleSheet.create({
   // Compact variant for prescription cards to remove large top spacing
   cardBoxPrescription: {
     paddingTop: 16,
+  },
+  // Compact variant for certificate cards to remove large top spacing
+  cardBoxCertificate: {
+    paddingTop: 16, // Use normal padding instead of the large 84px padding
   },
   referralDivider: {
     height: 1,
