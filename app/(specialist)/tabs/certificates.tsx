@@ -25,6 +25,7 @@ import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { useDeepMemo } from '../../../src/utils/performance';
+import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = (screenWidth - 64) / 2;
@@ -295,9 +296,7 @@ export default function SpecialistCertificatesScreen() {
         barStyle="dark-content"
       />
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Certificates Issued</Text>
-      </View>
+      <SpecialistHeader title="Certificates Issued" />
       {/* Filters Container */}
       <View style={styles.filtersContainer}>
         <View style={styles.searchRow}>

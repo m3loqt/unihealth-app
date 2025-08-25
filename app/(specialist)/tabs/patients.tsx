@@ -21,6 +21,7 @@ import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { useDeepMemo } from '../../../src/utils/performance';
+import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
 
 // Extended interface for what the database service actually returns
 interface SpecialistPatient extends Patient {
@@ -292,15 +293,7 @@ export default function SpecialistPatientsScreen() {
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Patients</Text>
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={() => router.push('/(specialist)/tabs/profile')}
-        >
-          <User size={24} color="#6B7280" />
-        </TouchableOpacity>
-      </View>
+      <SpecialistHeader title="Patients" />
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>

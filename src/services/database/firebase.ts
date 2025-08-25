@@ -3337,4 +3337,49 @@ export const databaseService = {
       return [];
     }
   },
+
+  // Get specialist schedules by specialist ID
+  async getSpecialistSchedules(specialistId: string): Promise<any> {
+    try {
+      const schedulesRef = ref(database, `specialistSchedules/${specialistId}`);
+      const snapshot = await get(schedulesRef);
+      
+      if (snapshot.exists()) {
+        return snapshot.val();
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting specialist schedules:', error);
+      return null;
+    }
+  },
+
+  // Get referrals for a specialist to check booked appointments
+  async getSpecialistReferrals(specialistId: string): Promise<any[]> {
+    try {
+      const referralsRef = ref(database, 'referrals');
+      const snapshot = await get(referralsRef);
+      
+      if (snapshot.exists()) {
+        const referralsData = snapshot.val();
+        const referralsArray: any[] = [];
+        
+        // Iterate through all referrals to find those assigned to this specialist
+        Object.entries(referralsData).forEach(([referralId, referralData]: [string, any]) => {
+          if (referralData.assignedSpecialistId === specialistId) {
+            referralsArray.push({
+              id: referralId,
+              ...referralData
+            });
+          }
+        });
+        
+        return referralsArray;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting specialist referrals:', error);
+      return [];
+    }
+  },
 };  

@@ -50,6 +50,7 @@ import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { performanceUtils } from '../../../src/utils/performance';
+import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
 
 export default function SpecialistProfileScreen() {
   const { user, signOut } = useAuth();
@@ -691,22 +692,7 @@ export default function SpecialistProfileScreen() {
         }
       >
         {/* Header */}
-        <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity
-            style={styles.bellButton}
-            onPress={handleOpenNotifications}
-          >
-            <Bell size={28} color="#1E40AF" />
-            {notifications.filter(n => !n.read).length > 0 && (
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>
-                  {notifications.filter(n => !n.read).length > 9 ? '9+' : notifications.filter(n => !n.read).length.toString()}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
+        <SpecialistHeader title="Profile" />
 
         {/* Loading and Error States */}
         {profileLoading ? (
