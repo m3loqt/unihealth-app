@@ -21,7 +21,7 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { usePrescriptions } from '@/hooks/data/usePrescriptions';
 import { Prescription } from '@/services/database/firebase';
 import { safeDataAccess } from '@/utils/safeDataAccess';
-import { formatFrequency, formatRoute, formatPrescriptionDuration } from '@/utils/formatting';
+import { formatFrequency, formatRoute, formatPrescriptionDuration, formatFormula } from '@/utils/formatting';
 import { formatDate } from '@/utils/date';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
@@ -211,6 +211,9 @@ export default function PrescriptionsScreen() {
           <Text style={styles.medicationDosage}>
             {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'patient')}
             {prescription.route && ` • ${formatRoute(prescription.route, 'patient')}`}
+            {prescription.formula && ` • ${formatFormula(prescription.formula, 'patient')}`}
+            {prescription.take && ` • Take: ${prescription.take}`}
+            {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
           </Text>
           <Text style={styles.prescriptionDescription}>
             {prescription.instructions || 'No additional instructions'}
@@ -271,6 +274,9 @@ export default function PrescriptionsScreen() {
           <Text style={styles.medicationDosage}>
             {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'patient')}
             {prescription.route && ` • ${formatRoute(prescription.route, 'patient')}`}
+            {prescription.formula && ` • ${formatFormula(prescription.formula, 'patient')}`}
+            {prescription.take && ` • Take: ${prescription.take}`}
+            {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
           </Text>
           <Text style={styles.prescriptionDescription}>
             {prescription.instructions || 'No additional instructions'}

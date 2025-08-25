@@ -48,7 +48,7 @@ import { Appointment, Prescription } from '@/services/database/firebase';
 import { getGreeting } from '@/utils/greeting';
 import { getFirstName } from '@/utils/string';
 import { safeDataAccess } from '@/utils/safeDataAccess';
-import { formatFrequency, formatRoute } from '@/utils/formatting';
+import { formatFrequency, formatRoute, formatFormula } from '@/utils/formatting';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { dataValidation } from '@/utils/dataValidation';
@@ -582,6 +582,9 @@ export default function HomeScreen() {
                       <Text style={styles.medicationDosage}>
                         {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'patient')}
                         {prescription.route && ` • ${formatRoute(prescription.route, 'patient')}`}
+                        {prescription.formula && ` • ${formatFormula(prescription.formula, 'patient')}`}
+                        {prescription.take && ` • Take: ${prescription.take}`}
+                        {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
                       </Text>
                       <Text style={styles.prescriptionDescription}>
                         {prescription.instructions || 'No additional instructions'}

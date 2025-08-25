@@ -16,7 +16,7 @@ import {
   Activity,
   Stethoscope,
 } from 'lucide-react-native';
-import { formatFrequency, formatRoute } from '../utils/formatting';
+import { formatFrequency, formatRoute, formatFormula } from '../utils/formatting';
 import { useAuth } from '../hooks/auth/useAuth';
 
 interface ConsultationData {
@@ -158,6 +158,7 @@ export default function ConsultationDisplay({
             <Text style={styles.prescriptionDetails}>
               {prescription.dosage} • {formatFrequency(prescription.frequency, user?.role || 'patient')}
               {prescription.route && ` • ${formatRoute(prescription.route, user?.role || 'patient')}`}
+              {prescription.formula && ` • ${formatFormula(prescription.formula, user?.role || 'patient')}`}
               {prescription.duration && ` • ${prescription.duration}`}
             </Text>
             {prescription.description && (
