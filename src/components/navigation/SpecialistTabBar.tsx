@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Text, Modal, Alert, Pressable, Dimensions, StatusBar, SafeAreaView } from 'react-native';
-import { useRouter, usePathname, type Href } from 'expo-router';
+import { View, TouchableOpacity, StyleSheet, Text, Animated, Dimensions, LayoutAnimation, Platform, UIManager, Modal, Alert, Pressable, StatusBar, SafeAreaView } from 'react-native';
+import { useRouter, usePathname } from 'expo-router';
 import { Home, Users, Calendar, User, QrCode, X, AlertCircle as AlertCircleIcon, User as UserIcon, Phone, Mail, MapPin, Heart, Calendar as CalendarIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNotifications } from '../../hooks/data/useNotifications';
@@ -9,6 +9,7 @@ import safeDataAccess from '../../utils/safeDataAccess';
 import { CameraView, Camera } from 'expo-camera';
 import { BlurView } from 'expo-blur';
 import { databaseService } from '../../services/database/firebase';
+import { COLORS } from '../../constants/colors';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -16,22 +17,10 @@ interface SpecialistTabBarProps {
   activeTab?: string;
 }
 
-// Icon prop shape for lucide-react-native components
-type IconComponent = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
-
-// Strongly-typed route union for expo-router
-type RoutePath =
-  | '/(specialist)/tabs'
-  | '/(specialist)/tabs/patients'
-  | '/(specialist)/tabs/appointments'
-  | '/(specialist)/tabs/profile';
-
-type Tab = {
-  name: 'index' | 'patients' | 'qr-code' | 'appointments' | 'profile';
-  icon: IconComponent;
-  route: RoutePath | null; // null for action button
-  isAction?: boolean;
-};
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -45,6 +34,65 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
   const [scanned, setScanned] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [scannedPatient, setScannedPatient] = useState<any>(null);
+
+  const TABS = [
+    { name: 'index', icon: Home, route: '/(specialist)/tabs', label: 'Home', isAction: false },
+    { name: 'patients', icon: Users, route: '/(specialist)/tabs/patients', label: 'Patients', isAction: false },
+    { name: 'qr-code', icon: QrCode, route: null, label: 'QR Code', isAction: true },
+    { name: 'appointments', icon: Calendar, route: '/(specialist)/tabs/appointments', label: 'Schedule', isAction: false },
+    { name: 'profile', icon: User, route: '/(specialist)/tabs/profile', label: 'Profile', isAction: false },
+  ] as const;
+
+  // Animation values for each tab
+  const animatedValues = React.useRef(
+    TABS.reduce((acc, tab) => {
+      acc[tab.name] = new Animated.Value(0);
+      return acc;
+    }, {} as Record<string, Animated.Value>)
+  ).current;
+
+  const getActiveTab = () => {
+    if (activeTab) return activeTab;
+
+    if (pathname === '/(specialist)/tabs' || pathname === '/(specialist)/tabs/') {
+      return 'index';
+    }
+
+    const segments = pathname.split('/');
+    const lastSegment = segments[segments.length - 1];
+
+    if (lastSegment === 'patients') return 'patients';
+    if (lastSegment === 'appointments') return 'appointments';
+    if (lastSegment === 'profile') return 'profile';
+
+    return 'index';
+  };
+
+  const currentActiveTab = getActiveTab();
+
+  // Optimized animations for smooth, fast transitions
+  React.useEffect(() => {
+    LayoutAnimation.configureNext({
+      duration: 250,
+      create: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+      update: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        springDamping: 0.9,
+      },
+    });
+
+    TABS.forEach((tab) => {
+      const isActive = currentActiveTab === tab.name;
+      Animated.timing(animatedValues[tab.name], {
+        toValue: isActive ? 1 : 0,
+        duration: 250,
+        useNativeDriver: false,
+      }).start();
+    });
+  }, [currentActiveTab]);
 
   // Debug logging
   useEffect(() => {
@@ -167,67 +215,178 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
     setScannedPatient(null);
   };
 
-  const TABS: Readonly<Tab[]> = [
-    { name: 'index',        icon: Home,     route: '/(specialist)/tabs' },
-    { name: 'patients',     icon: Users,    route: '/(specialist)/tabs/patients' },
-    { name: 'qr-code',      icon: QrCode,   route: null, isAction: true },
-    { name: 'appointments', icon: Calendar, route: '/(specialist)/tabs/appointments' },
-    { name: 'profile',      icon: User,     route: '/(specialist)/tabs/profile' },
-  ] as const;
-
-  const getActiveTab = (): Tab['name'] | undefined => {
-    if (activeTab) return activeTab as Tab['name'];
-    if (pathname === '/(specialist)/tabs' || pathname === '/(specialist)/tabs/') return 'index';
-    return pathname.split('/').pop() as Tab['name'] | undefined;
-  };
-
-  const currentActiveTab = getActiveTab();
-
   return (
     <>
-      <View style={[styles.tabContainer, { paddingBottom: Math.max(insets.bottom * 0.1, 0) }]}>
-        {TABS.map(({ name, icon: Icon, route, isAction }) => {
-          const isFocused = currentActiveTab === name;
-          const showBadge = name === 'profile' && (unreadCount ?? 0) > 0;
+      <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 6) }]}>
+        <View style={styles.tabBar}>
+          {TABS.map(({ name, icon: Icon, route, label, isAction }) => {
+            const isFocused = currentActiveTab === name;
+            const showBadge = name === 'profile' && unreadCount > 0;
+            const animatedValue = animatedValues[name];
 
-          if (isAction) {
-            // QR Code button - now matches other buttons
+            if (isAction) {
+              // QR Code button with modern styling
+              return (
+                <Animated.View
+                  key={name}
+                  style={[
+                    styles.tabButton,
+                    {
+                      flex: animatedValue.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 1.6],
+                      }),
+                    },
+                  ]}
+                >
+                  <TouchableOpacity
+                    onPress={handleScanQR}
+                    style={styles.touchable}
+                    activeOpacity={0.8}
+                  >
+                    <Animated.View
+                      style={[
+                        styles.pillContainer,
+                        {
+                          backgroundColor: animatedValue.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['transparent', COLORS.white],
+                          }),
+                          paddingHorizontal: animatedValue.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [12, 14],
+                          }),
+                          transform: [
+                            {
+                              scale: animatedValue.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [1, 1.02],
+                              }),
+                            },
+                          ],
+                        },
+                      ]}
+                    >
+                      <Animated.View style={styles.iconContainer}>
+                        <Icon
+                          size={20}
+                          color={isFocused ? COLORS.primary : COLORS.white}
+                          strokeWidth={isFocused ? 2.5 : 2}
+                          style={styles.icon}
+                        />
+                      </Animated.View>
+                      {isFocused && (
+                        <Animated.View
+                          style={[
+                            styles.labelContainer,
+                            {
+                              opacity: animatedValue,
+                              transform: [
+                                {
+                                  translateX: animatedValue.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [-4, 0],
+                                  }),
+                                },
+                              ],
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.label, { color: COLORS.primary }]}>
+                            {label}
+                          </Text>
+                        </Animated.View>
+                      )}
+                    </Animated.View>
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            }
+
             return (
-              <TouchableOpacity
+              <Animated.View
                 key={name}
-                onPress={handleScanQR}
-                style={styles.tab}
-                activeOpacity={0.9}
+                style={[
+                  styles.tabButton,
+                  {
+                    flex: animatedValue.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.6],
+                    }),
+                  },
+                ]}
               >
-                <View style={styles.iconWrapper}>
-                  <Icon size={22} color="#FFFFFF" strokeWidth={2} />
-                </View>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => route && router.push(route)}
+                  style={styles.touchable}
+                  activeOpacity={0.8}
+                >
+                  <Animated.View
+                    style={[
+                      styles.pillContainer,
+                      {
+                        backgroundColor: animatedValue.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['transparent', COLORS.white],
+                        }),
+                        paddingHorizontal: animatedValue.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [12, 14],
+                        }),
+                        transform: [
+                          {
+                            scale: animatedValue.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [1, 1.02],
+                            }),
+                          },
+                        ],
+                      },
+                    ]}
+                  >
+                    <Animated.View style={styles.iconContainer}>
+                      <Icon
+                        size={20}
+                        color={isFocused ? COLORS.primary : COLORS.white}
+                        strokeWidth={isFocused ? 2.5 : 2}
+                        style={styles.icon}
+                      />
+                    </Animated.View>
+                    {isFocused && (
+                      <Animated.View
+                        style={[
+                          styles.labelContainer,
+                          {
+                            opacity: animatedValue,
+                            transform: [
+                              {
+                                translateX: animatedValue.interpolate({
+                                  inputRange: [0, 1],
+                                  outputRange: [-4, 0],
+                                }),
+                              },
+                            ],
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.label, { color: COLORS.primary }]}>
+                          {label}
+                        </Text>
+                      </Animated.View>
+                    )}
+                    {showBadge && (
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>
+                          {unreadCount > 99 ? '99+' : unreadCount.toString()}
+                        </Text>
+                      </View>
+                    )}
+                  </Animated.View>
+                </TouchableOpacity>
+              </Animated.View>
             );
-          }
-
-          return (
-            <TouchableOpacity
-              key={name}
-              onPress={() => {
-                if (route) router.push(route as Href);
-              }}
-              style={styles.tab}
-              activeOpacity={0.9}
-            >
-              <View style={styles.iconWrapper}>
-                <Icon size={22} color="#FFFFFF" strokeWidth={isFocused ? 2.5 : 2} />
-                {showBadge && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>
-                      {(unreadCount ?? 0) > 99 ? '99+' : String(unreadCount ?? 0)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+          })}
+        </View>
       </View>
 
       {/* === QR SCANNER MODAL === */}
@@ -465,52 +624,79 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
 }
 
 const styles = StyleSheet.create({
-  tabContainer: {
+  container: {
     position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 20,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 1000,
+  },
+  tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#1E40AF',
-    borderRadius: 20,
-    height: 70,
-    justifyContent: 'space-around',
+    backgroundColor: COLORS.primaryDark,
+    marginHorizontal: 14,
+    marginBottom: 8,
+    borderRadius: 24,
+    height: 60,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
     elevation: 10,
-    zIndex: 10,
   },
-  tab: {
-    flex: 1,
+  tabButton: {
     alignItems: 'center',
     justifyContent: 'center',
+    height: '100%',
   },
-  iconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
+  touchable: {
     alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    width: '100%',
+  },
+  pillContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 15,
+    minHeight: 36,
+  },
+  iconContainer: {
+    marginRight: 6,
+  },
+  icon: {},
+  labelContainer: { justifyContent: 'center' },
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: 0.2,
   },
   badge: {
     position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: 'red',
+    top: -6,
+    right: -6,
+    backgroundColor: COLORS.error,
     borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    minWidth: 18,
+    height: 18,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
+    borderWidth: 2,
+    borderColor: COLORS.primaryDark,
   },
   badgeText: {
-    color: 'white',
-    fontSize: 12,
+    color: COLORS.white,
+    fontSize: 10,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 
