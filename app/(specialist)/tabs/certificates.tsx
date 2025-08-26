@@ -69,11 +69,42 @@ export default function SpecialistCertificatesScreen() {
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('🔍 Loading certificates for specialist:', user.uid);
       const specialistCertificates = await databaseService.getCertificatesBySpecialist(user.uid);
+      console.log('📋 Raw certificates from database:', specialistCertificates);
+      
+      // Enrich certificates with patient names
+      const enrichedCertificates = await Promise.all(
+        specialistCertificates.map(async (cert) => {
+          try {
+            const patientProfile = await databaseService.getPatientProfile(cert.patientId);
+            const patientName = patientProfile 
+              ? `${patientProfile.firstName || ''} ${patientProfile.lastName || ''}`.trim() || 'Unknown Patient'
+              : 'Unknown Patient';
+            
+            return {
+              ...cert,
+              patientName,
+              // Convert status for display
+              displayStatus: cert.status === 'active' ? 'Valid' : 'Expired'
+            };
+          } catch (error) {
+            console.error('Error fetching patient profile for certificate:', error);
+            return {
+              ...cert,
+              patientName: 'Unknown Patient',
+              displayStatus: cert.status === 'active' ? 'Valid' : 'Expired'
+            };
+          }
+        })
+      );
+      
+      console.log('👥 Enriched certificates:', enrichedCertificates);
       
       // Validate certificates data
-      const validCertificates = dataValidation.validateArray(specialistCertificates, dataValidation.isValidCertificate);
-      console.log('Loaded certificates:', validCertificates.length);
+      const validCertificates = dataValidation.validateArray(enrichedCertificates, dataValidation.isValidCertificate);
+      console.log('✅ Valid certificates after validation:', validCertificates.length);
       setCertificates(validCertificates);
     } catch (error) {
       console.error('Error loading certificates:', error);
@@ -100,9 +131,10 @@ export default function SpecialistCertificatesScreen() {
       .filter((cert) => {
         const matchesSearch =
           cert.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          cert.patientId.toLowerCase().includes(searchQuery.toLowerCase());
+          (cert as any).patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          cert.description.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus =
-          statusFilter === 'all' || cert.status.toLowerCase() === statusFilter;
+          statusFilter === 'all' || (cert as any).displayStatus.toLowerCase() === statusFilter;
         return matchesSearch && matchesStatus;
       })
       .sort((a, b) => {
@@ -112,7 +144,7 @@ export default function SpecialistCertificatesScreen() {
           case 'type':
             return a.type.localeCompare(b.type);
           case 'patient':
-            return a.patientId.localeCompare(b.patientId);
+            return (a as any).patientName.localeCompare((b as any).patientName);
           case 'validUntil':
             return new Date(b.expiryDate || '').getTime() - new Date(a.expiryDate || '').getTime();
           default:
@@ -201,11 +233,16 @@ export default function SpecialistCertificatesScreen() {
   };
 
   const renderCertificateCard = (certificate: Certificate) => {
-    const statusColors = getStatusColors(certificate.status);
+    const statusColors = getStatusColors((certificate as any).displayStatus || certificate.status);
     return (
-      <View
+      <TouchableOpacity
         key={certificate.id}
         style={[styles.certificateCard, { width: cardWidth }]}
+        activeOpacity={0.7}
+        onPress={() => {
+          // Route to certificate details
+          router.push(`/(specialist)/certificate-details?id=${certificate.id}`);
+        }}
       >
         <View style={styles.pdfThumbnail}>
           <View style={styles.pdfPages}>
@@ -223,7 +260,7 @@ export default function SpecialistCertificatesScreen() {
             ]}
           >
             <Text style={[styles.statusLabelText, { color: statusColors.text }]}>
-              {certificate.status}
+              {(certificate as any).displayStatus || certificate.status}
             </Text>
           </View>
           <View
@@ -239,14 +276,22 @@ export default function SpecialistCertificatesScreen() {
           <Text style={styles.certificateType} numberOfLines={2}>
             {certificate.type || 'Medical Certificate'}
           </Text>
+          <Text style={styles.patientLabel} numberOfLines={1}>
+            Patient
+          </Text>
           <Text style={styles.doctorName} numberOfLines={1}>
-            {certificate.patientId || 'Patient ID not available'}
+            {(certificate as any).patientName || 'Unknown Patient'}
           </Text>
           <Text style={styles.issuedDate}>
             {certificate.issueDate ? new Date(certificate.issueDate).toLocaleDateString() : 'Date not specified'}
           </Text>
           <View style={styles.gridActions}>
-            <TouchableOpacity style={styles.secondaryButton}>
+            <TouchableOpacity 
+              style={styles.secondaryButton}
+              onPress={() => {
+                router.push(`/(specialist)/certificate-details?id=${certificate.id}`);
+              }}
+            >
               <Eye size={20} color="#374151" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.primaryButton}>
@@ -254,7 +299,7 @@ export default function SpecialistCertificatesScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -600,6 +645,14 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 4,
     lineHeight: 18,
+  },
+  patientLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginBottom: 2,
+    fontFamily: 'Inter-Regular',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   doctorName: {
     fontSize: 13,
