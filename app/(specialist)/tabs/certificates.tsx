@@ -240,8 +240,20 @@ export default function SpecialistCertificatesScreen() {
         style={[styles.certificateCard, { width: cardWidth }]}
         activeOpacity={0.7}
         onPress={() => {
-          // Route to certificate details
-          router.push(`/(specialist)/certificate-details?id=${certificate.id}`);
+          // Route to the appropriate e-certificate based on type
+          let route = '/e-certificate-fit-to-work'; // default fallback
+          
+          if (certificate.type === 'Fit to Work Certificate') {
+            route = '/e-certificate-fit-to-work';
+          } else if (certificate.type === 'Medical/Sickness Certificate') {
+            route = '/e-certificate-medical-sickness';
+          } else if (certificate.type === 'Fit to Travel Certificate') {
+            route = '/e-certificate-fit-to-travel';
+          }
+          
+          // Pass the certificate ID and patient ID for proper data loading
+          // Note: consultationId/appointmentId will be loaded from the certificate data in the e-certificate screens
+          router.push(`${route}?certificateId=${certificate.id}&patientId=${certificate.patientId}` as any);
         }}
       >
         <View style={styles.pdfThumbnail}>
@@ -289,7 +301,20 @@ export default function SpecialistCertificatesScreen() {
             <TouchableOpacity 
               style={styles.secondaryButton}
               onPress={() => {
-                router.push(`/(specialist)/certificate-details?id=${certificate.id}`);
+                // Route to the appropriate e-certificate based on type
+                let route = '/e-certificate-fit-to-work'; // default fallback
+                
+                if (certificate.type === 'Fit to Work Certificate') {
+                  route = '/e-certificate-fit-to-work';
+                } else if (certificate.type === 'Medical/Sickness Certificate') {
+                  route = '/e-certificate-medical-sickness';
+                } else if (certificate.type === 'Fit to Travel Certificate') {
+                  route = '/e-certificate-fit-to-travel';
+                }
+                
+                // Pass the certificate ID and patient ID for proper data loading
+                // Note: consultationId/appointmentId will be loaded from the certificate data in the e-certificate screens
+                router.push(`${route}?certificateId=${certificate.id}&patientId=${certificate.patientId}` as any);
               }}
             >
               <Eye size={20} color="#374151" />
