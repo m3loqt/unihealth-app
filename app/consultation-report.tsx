@@ -20,7 +20,7 @@ import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
 import { Modal, Button } from '../src/components/ui';
 import { COLORS } from '../src/constants/colors';
-import { formatRoute, formatFrequency } from '../src/utils/formatting';
+import { formatRoute, formatFrequency, formatFormula } from '../src/utils/formatting';
 import { useAuth } from '../src/hooks/auth/useAuth';
 
 type MedicalHistory = any;
@@ -192,7 +192,7 @@ export default function ConsultationReportScreen() {
       : 'No diagnosis recorded';
 
     const meds = Array.isArray(history?.prescriptions) && history?.prescriptions?.length
-      ? history?.prescriptions.map((p: any) => `${buildSafe(p.medication)} ${buildSafe(p.dosage)} • ${buildSafe(formatFrequency(p.frequency, user?.role || 'patient'))}${p.route ? ` • ${buildSafe(formatRoute(p.route, user?.role || 'patient'))}` : ''}`).join('<br/>')
+      ? history?.prescriptions.map((p: any) => `${buildSafe(p.medication)} ${buildSafe(p.dosage)} • ${buildSafe(formatFrequency(p.frequency, user?.role || 'patient'))}${p.route ? ` • ${buildSafe(formatRoute(p.route, user?.role || 'patient'))}` : ''}${p.formula ? ` • ${buildSafe(formatFormula(p.formula, user?.role || 'patient'))}` : ''}`).join('<br/>')
       : 'No medications recorded';
 
     const brandPrimary = '#1E40AF';

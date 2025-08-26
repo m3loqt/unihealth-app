@@ -1,16 +1,12 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Modal as RNModal,
   StyleSheet,
-  TouchableWithoutFeedback,
-  Animated,
-  Dimensions,
+  Pressable,
   ViewStyle,
 } from 'react-native';
 import { COLORS } from '../../constants/colors';
-
-const { height: screenHeight } = Dimensions.get('window');
 
 export interface ModalProps {
   visible: boolean;
@@ -35,39 +31,6 @@ export const Modal: React.FC<ModalProps> = ({
   style,
   contentStyle,
 }) => {
-  const fadeAnim = new Animated.Value(0);
-  const slideAnim = new Animated.Value(screenHeight);
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: screenHeight,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [visible]);
-
   const handleBackdropPress = () => {
     if (showBackdrop) {
       onClose();
@@ -80,34 +43,39 @@ export const Modal: React.FC<ModalProps> = ({
       transparent
       animationType={animationType}
       onRequestClose={onClose}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Modal dialog"
     >
       <View style={styles.container}>
         {showBackdrop && (
-          <TouchableWithoutFeedback onPress={handleBackdropPress}>
-            <Animated.View
+          <Pressable 
+            onPress={handleBackdropPress}
+            style={styles.backdrop}
+            accessibilityRole="button"
+            accessibilityLabel="Close modal"
+          >
+            <View
               style={[
-                styles.backdrop,
+                styles.backdropOverlay,
                 {
-                  opacity: fadeAnim,
                   backgroundColor: `rgba(0, 0, 0, ${backdropOpacity})`,
                 },
               ]}
             />
-          </TouchableWithoutFeedback>
+          </Pressable>
         )}
-        <Animated.View
+        <View
           style={[
             styles.content,
-            {
-              transform: [{ translateY: slideAnim }],
-            },
             style,
           ]}
+          accessibilityRole="dialog"
+          accessibilityLabel={title || "Modal content"}
         >
           <View style={[styles.modalContent, contentStyle]}>
             {children}
           </View>
-        </Animated.View>
+        </View>
       </View>
     </RNModal>
   );
@@ -118,8 +86,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1000,
   },
   backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1001,
+  },
+  backdropOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -130,6 +107,7 @@ const styles = StyleSheet.create({
     width: '90%',
     maxWidth: 400,
     maxHeight: '80%',
+    zIndex: 1002,
   },
   modalContent: {
     backgroundColor: COLORS.white,

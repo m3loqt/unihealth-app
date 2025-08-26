@@ -39,8 +39,9 @@ import { databaseService } from '../../src/services/database/firebase';
 import { ref, update } from 'firebase/database';
 import { database } from '@/config/firebase';
 import { safeDataAccess } from '../../src/utils/safeDataAccess';
-import { FrequencySelectionModal, RouteSelectionModal, DurationUnitSelectionModal } from '../../src/components';
-import { formatFrequency, formatRoute } from '../../src/utils/formatting';
+import { FrequencySelectionModal, RouteSelectionModal, DurationUnitSelectionModal, FormulaSelectionModal } from '../../src/components';
+import { DynamicUnitInput, PrescriptionUnitInputs } from '../../src/components/ui';
+import { formatFrequency, formatRoute, formatFormula, determineUnit } from '../../src/utils/formatting';
 
 export default function PatientConsultationScreen() {
   const { patientId, consultationId, referralId } = useLocalSearchParams();
@@ -267,6 +268,7 @@ export default function PatientConsultationScreen() {
   const [showFrequencyModal, setShowFrequencyModal] = useState(false);
   const [showRouteModal, setShowRouteModal] = useState(false);
   const [showDurationUnitModal, setShowDurationUnitModal] = useState(false);
+  const [showFormulaModal, setShowFormulaModal] = useState(false);
   
   // Step navigation state
   const [currentStep, setCurrentStep] = useState(1);
@@ -279,6 +281,9 @@ export default function PatientConsultationScreen() {
     durationNumber: '',
     durationUnit: '',
     description: '',
+    formula: '',
+    take: '',
+    totalQuantity: '',
   });
   const [newCertificate, setNewCertificate] = useState({
     type: '',
@@ -667,6 +672,9 @@ export default function PatientConsultationScreen() {
       route: newPrescription.route,
       duration,
       description: newPrescription.description,
+      formula: newPrescription.formula,
+      take: newPrescription.take,
+      totalQuantity: newPrescription.totalQuantity,
       prescribedDate: new Date().toLocaleDateString(),
     };
     
@@ -683,6 +691,9 @@ export default function PatientConsultationScreen() {
       durationNumber: '',
       durationUnit: '',
       description: '',
+      formula: '',
+      take: '',
+      totalQuantity: '',
     });
     
     setShowAddPrescription(false);
@@ -1567,6 +1578,9 @@ export default function PatientConsultationScreen() {
                         <Text style={styles.medicationName}>{prescription.medication}</Text>
                         <Text style={styles.medicationDosage}>
                           {prescription.dosage} • {formatFrequency(prescription.frequency, 'patient')} • {formatRoute(prescription.route, 'patient')}
+                          {prescription.formula && ` • ${formatFormula(prescription.formula, 'patient')}`}
+                          {prescription.take && ` • Take: ${prescription.take}`}
+                          {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
                         </Text>
                         <Text style={styles.prescriptionDescription}>{prescription.description}</Text>
                       </View>
@@ -1582,6 +1596,18 @@ export default function PatientConsultationScreen() {
                         <Text style={styles.metaLabel}>Duration:</Text>
                         <Text style={styles.metaValue}>{prescription.duration || 'Not specified'}</Text>
                       </View>
+                      {prescription.take && (
+                        <View style={styles.metaRow}>
+                          <Text style={styles.metaLabel}>Take:</Text>
+                          <Text style={styles.metaValue}>{prescription.take}</Text>
+                        </View>
+                      )}
+                      {prescription.totalQuantity && (
+                        <View style={styles.metaRow}>
+                          <Text style={styles.metaLabel}>Total Quantity:</Text>
+                          <Text style={styles.metaValue}>{prescription.totalQuantity}</Text>
+                        </View>
+                      )}
                       <View style={styles.metaRow}>
                         <Text style={styles.metaLabel}>Prescribed by:</Text>
                         <Text style={styles.metaValue}>{prescription.prescribedBy}</Text>
@@ -1601,63 +1627,95 @@ export default function PatientConsultationScreen() {
                     value={newPrescription.medication}
                     onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, medication: value }))}
                   />
-                                             <View style={styles.addFormRow}>
-                             <TextInput
-                               style={[styles.addFormInput, styles.addFormInputHalf]}
-                               placeholder="Dosage (e.g., 10mg)"
-                               value={newPrescription.dosage}
-                               onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, dosage: value }))}
-                             />
-                             <TouchableOpacity
-                               style={[styles.addFormInput, styles.addFormInputHalf, styles.frequencyButton]}
-                               onPress={() => setShowFrequencyModal(true)}
-                             >
-                               <View style={styles.frequencyButtonContent}>
-                                 <Text style={newPrescription.frequency ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
-                                   {newPrescription.frequency || 'Frequency'}
-                                 </Text>
-                                 <ChevronDown size={16} color="#6B7280" />
-                               </View>
-                             </TouchableOpacity>
-                           </View>
-                           <View style={styles.addFormRow}>
-                             <TouchableOpacity
-                               style={[styles.addFormInput, styles.addFormInputRoute, styles.frequencyButton]}
-                               onPress={() => setShowRouteModal(true)}
-                             >
-                               <View style={styles.frequencyButtonContent}>
-                                 <Text style={newPrescription.route ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
-                                   {newPrescription.route || 'Route'}
-                                 </Text>
-                                 <ChevronDown size={16} color="#6B7280" />
-                               </View>
-                             </TouchableOpacity>
-                             <TextInput
-                               style={[styles.addFormInput, styles.addFormInputDuration]}
-                               placeholder="Duration"
-                               value={newPrescription.durationNumber}
-                               onChangeText={(value) => {
-                                 // Only allow numbers 1-30
-                                 const numValue = parseInt(value, 10);
-                                 if (value === '' || (numValue >= 1 && numValue <= 30)) {
-                                   setNewPrescription((prev) => ({ ...prev, durationNumber: value }));
-                                 }
-                               }}
-                               keyboardType="numeric"
-                               maxLength={2}
-                             />
-                             <TouchableOpacity
-                               style={[styles.addFormInput, styles.addFormInputUnit, styles.frequencyButton]}
-                               onPress={() => setShowDurationUnitModal(true)}
-                             >
-                               <View style={styles.frequencyButtonContent}>
-                                 <Text style={newPrescription.durationUnit ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
-                                   {newPrescription.durationUnit || 'Unit'}
-                                 </Text>
-                                 <ChevronDown size={16} color="#6B7280" />
-                               </View>
-                             </TouchableOpacity>
-                           </View>
+                  
+                  {/* Row 2: Dosage + Formulation */}
+                  <View style={styles.addFormRow}>
+                    <TextInput
+                      style={[styles.addFormInput, styles.addFormInputHalf]}
+                      placeholder="Dosage (e.g., 10mg)"
+                      value={newPrescription.dosage}
+                      onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, dosage: value }))}
+                    />
+                    <TouchableOpacity
+                      style={[styles.addFormInput, styles.addFormInputHalf, styles.frequencyButton]}
+                      onPress={() => setShowFormulaModal(true)}
+                    >
+                      <View style={styles.frequencyButtonContent}>
+                        <Text style={newPrescription.formula ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
+                          {newPrescription.formula || 'Formulation'}
+                        </Text>
+                        <ChevronDown size={16} color="#6B7280" />
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Row 3: Take & Total Quantity with Dynamic Units */}
+                  <PrescriptionUnitInputs
+                    formula={newPrescription.formula}
+                    takeValue={newPrescription.take}
+                    onTakeChange={(value) => setNewPrescription((prev) => ({ ...prev, take: value }))}
+                    totalValue={newPrescription.totalQuantity}
+                    onTotalChange={(value) => setNewPrescription((prev) => ({ ...prev, totalQuantity: value }))}
+                    takePlaceholder="Take amount"
+                    totalPlaceholder="Total quantity"
+                  />
+                  
+                  {/* Row 4: Frequency + Route */}
+                  <View style={styles.addFormRow}>
+                    <TouchableOpacity
+                      style={[styles.addFormInput, styles.addFormInputHalf, styles.frequencyButton]}
+                      onPress={() => setShowFrequencyModal(true)}
+                    >
+                      <View style={styles.frequencyButtonContent}>
+                        <Text style={newPrescription.frequency ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
+                          {newPrescription.frequency || 'Frequency'}
+                        </Text>
+                        <ChevronDown size={16} color="#6B7280" />
+                      </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.addFormInput, styles.addFormInputHalf, styles.frequencyButton]}
+                      onPress={() => setShowRouteModal(true)}
+                    >
+                      <View style={styles.frequencyButtonContent}>
+                        <Text style={newPrescription.route ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
+                          {newPrescription.route || 'Route'}
+                        </Text>
+                        <ChevronDown size={16} color="#6B7280" />
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Row 5: Duration */}
+                  <View style={styles.addFormRow}>
+                    <View style={[styles.addFormInput, styles.addFormInputHalf, { flexDirection: 'row', gap: 8 }]}>
+                      <TextInput
+                        style={[styles.addFormInput, { flex: 1, marginBottom: 0 }]}
+                        placeholder="Duration"
+                        value={newPrescription.durationNumber}
+                        onChangeText={(value) => {
+                          // Only allow numbers 1-30
+                          const numValue = parseInt(value, 10);
+                          if (value === '' || (numValue >= 1 && numValue <= 30)) {
+                            setNewPrescription((prev) => ({ ...prev, durationNumber: value }));
+                          }
+                        }}
+                        keyboardType="numeric"
+                        maxLength={2}
+                      />
+                      <TouchableOpacity
+                        style={[styles.addFormInput, { flex: 1, marginBottom: 0 }, styles.frequencyButton]}
+                        onPress={() => setShowDurationUnitModal(true)}
+                      >
+                        <View style={styles.frequencyButtonContent}>
+                          <Text style={newPrescription.durationUnit ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
+                            {newPrescription.durationUnit || 'Unit'}
+                          </Text>
+                          <ChevronDown size={16} color="#6B7280" />
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                   <TextInput
                     style={[styles.addFormInput, styles.addFormTextArea]}
                     placeholder="Description/Instructions"
@@ -1680,6 +1738,9 @@ export default function PatientConsultationScreen() {
                           durationNumber: '',
                           durationUnit: '',
                           description: '',
+                          formula: '',
+                          take: '',
+                          totalQuantity: '',
                         });
                       }}
                     >
@@ -2318,6 +2379,14 @@ export default function PatientConsultationScreen() {
         visible={showDurationUnitModal}
         onClose={() => setShowDurationUnitModal(false)}
         onSelect={(durationUnit) => setNewPrescription((prev) => ({ ...prev, durationUnit }))}
+        userRole="specialist"
+      />
+
+      {/* Formula Selection Modal */}
+      <FormulaSelectionModal
+        visible={showFormulaModal}
+        onClose={() => setShowFormulaModal(false)}
+        onSelect={(formula) => setNewPrescription((prev) => ({ ...prev, formula }))}
         userRole="specialist"
       />
     </SafeAreaView>

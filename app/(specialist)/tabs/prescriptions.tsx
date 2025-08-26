@@ -17,12 +17,13 @@ import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService, Prescription } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
-import { formatFrequency, formatRoute, formatPrescriptionDuration } from '../../../src/utils/formatting';
+import { formatFrequency, formatRoute, formatPrescriptionDuration, formatFormula } from '../../../src/utils/formatting';
 import { formatDate } from '../../../src/utils/date';
 import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { useDeepMemo } from '../../../src/utils/performance';
+import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
 
 // Utility function to calculate prescription status based on duration
 const calculatePrescriptionStatus = (prescription: Prescription): 'active' | 'completed' | 'discontinued' => {
@@ -248,6 +249,9 @@ export default function SpecialistPrescriptionsScreen() {
           <Text style={styles.medicationDosage}>
             {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'specialist')}
             {prescription.route && ` • ${formatRoute(prescription.route, 'specialist')}`}
+            {prescription.formula && ` • ${formatFormula(prescription.formula, 'specialist')}`}
+            {prescription.take && ` • Take: ${prescription.take}`}
+            {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
           </Text>
           <Text style={styles.prescriptionDescription}>
             {prescription.instructions || 'No additional instructions'}
@@ -309,6 +313,9 @@ export default function SpecialistPrescriptionsScreen() {
           <Text style={styles.medicationDosage}>
             {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'specialist')}
             {prescription.route && ` • ${formatRoute(prescription.route, 'specialist')}`}
+            {prescription.formula && ` • ${formatFormula(prescription.formula, 'specialist')}`}
+            {prescription.take && ` • Take: ${prescription.take}`}
+            {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
           </Text>
           <Text style={styles.prescriptionDescription}>
             {prescription.instructions || 'No additional instructions'}
@@ -456,9 +463,7 @@ export default function SpecialistPrescriptionsScreen() {
     <ErrorBoundary>
       <SafeAreaView style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Prescriptions Issued</Text>
-      </View>
+      <SpecialistHeader title="Prescriptions Issued" />
       <View style={styles.filtersContainer}>
         <ScrollView
           horizontal

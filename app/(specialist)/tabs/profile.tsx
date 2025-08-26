@@ -50,6 +50,7 @@ import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { performanceUtils } from '../../../src/utils/performance';
+import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
 
 export default function SpecialistProfileScreen() {
   const { user, signOut } = useAuth();
@@ -119,6 +120,7 @@ export default function SpecialistProfileScreen() {
     prcId: profile.prcId || '',
     prcExpiryDate: profile.prcExpiryDate || '',
     professionalFee: profile.professionalFee ? `₱${profile.professionalFee}` : '',
+    professionalFeeStatus: profile.professionalFeeStatus || '',
     gender: profile.gender || '',
     dateOfBirth: profile.dateOfBirth || '',
     civilStatus: profile.civilStatus || '',
@@ -136,6 +138,7 @@ export default function SpecialistProfileScreen() {
     prcId: '',
     prcExpiryDate: '',
     professionalFee: '',
+    professionalFeeStatus: '',
     gender: '',
     dateOfBirth: '',
     civilStatus: '',
@@ -691,22 +694,7 @@ export default function SpecialistProfileScreen() {
         }
       >
         {/* Header */}
-        <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity
-            style={styles.bellButton}
-            onPress={handleOpenNotifications}
-          >
-            <Bell size={28} color="#1E40AF" />
-            {notifications.filter(n => !n.read).length > 0 && (
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>
-                  {notifications.filter(n => !n.read).length > 9 ? '9+' : notifications.filter(n => !n.read).length.toString()}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
+        <SpecialistHeader title="Profile" />
 
         {/* Loading and Error States */}
         {profileLoading ? (
@@ -790,7 +778,19 @@ export default function SpecialistProfileScreen() {
             {professionalFee && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Professional Fee:</Text>
-                <Text style={styles.infoValue}>{professionalFee}</Text>
+                <View style={styles.feeContainer}>
+                  <Text style={styles.infoValue}>{professionalFee}</Text>
+                  {profileData.professionalFeeStatus && (
+                    <View style={[
+                      styles.feeStatusPill,
+                      { backgroundColor: profileData.professionalFeeStatus === 'confirmed' ? '#10B981' : '#F59E0B' }
+                    ]}>
+                      <Text style={styles.feeStatusText}>
+                        {profileData.professionalFeeStatus === 'confirmed' ? 'Confirmed' : 'Pending'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
             )}
             {status && (
@@ -854,6 +854,8 @@ export default function SpecialistProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+
           </>
         )}
       </ScrollView>
@@ -1185,7 +1187,19 @@ export default function SpecialistProfileScreen() {
                          {professionalFee && (
                            <View style={styles.modalInfoRow}>
                              <Text style={styles.modalInfoLabel}>Professional Fee</Text>
-                             <Text style={styles.modalInfoValue}>{professionalFee}</Text>
+                             <View style={styles.modalFeeContainer}>
+                               <Text style={styles.modalInfoValue}>{professionalFee}</Text>
+                               {profileData.professionalFeeStatus && (
+                                 <View style={[
+                                   styles.modalFeeStatusPill,
+                                   { backgroundColor: profileData.professionalFeeStatus === 'confirmed' ? '#10B981' : '#F59E0B' }
+                                 ]}>
+                                   <Text style={styles.modalFeeStatusText}>
+                                     {profileData.professionalFeeStatus === 'confirmed' ? 'Confirmed' : 'Pending'}
+                                   </Text>
+                                 </View>
+                               )}
+                             </View>
                            </View>
                          )}
                          {status && (
@@ -2195,6 +2209,42 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#1E40AF',
   },
+  // Fee status styles
+  feeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  feeStatusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  feeStatusText: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
+  },
+  modalFeeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalFeeStatusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  modalFeeStatusText: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
+  },
+
   emptyNotificationText: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
