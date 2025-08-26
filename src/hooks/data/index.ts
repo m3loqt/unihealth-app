@@ -5,4 +5,5 @@ export * from './useMedicalHistory';
 export * from './useCertificates';
 export * from './useNotifications';
 export * from './usePatientProfile';
-export * from './useSpecialistProfile'; 
+export * from './useSpecialistProfile';
+export * from './useSpecialistSchedules'; 

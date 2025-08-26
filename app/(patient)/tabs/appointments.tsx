@@ -80,6 +80,16 @@ export default function AppointmentsScreen() {
   const [feedbackStars, setFeedbackStars] = useState(0);
   const [feedbackReason, setFeedbackReason] = useState('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [existingFeedback, setExistingFeedback] = useState<{[appointmentId: string]: boolean}>({});
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  
+  // Available tags for feedback
+  const availableTags = [
+    'excellent', 'good', 'satisfied', 'professional', 'knowledgeable', 
+    'friendly', 'helpful', 'caring', 'efficient', 'thorough', 
+    'needs_improvement', 'long_wait', 'communication_issues'
+  ];
 
   // --- Medical History state ---
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistory | null>(null);
@@ -146,6 +156,21 @@ export default function AppointmentsScreen() {
       console.log('Loaded appointments:', validAppointments.length);
       console.log('Appointments:', validAppointments);
       setAppointments(validAppointments);
+
+      // Check for existing feedback for completed appointments
+      const feedbackChecks: {[appointmentId: string]: boolean} = {};
+      for (const appointment of validAppointments) {
+        if (appointment.status === 'completed') {
+          try {
+            const feedbackExists = await databaseService.checkFeedbackExists(appointment.id!);
+            feedbackChecks[appointment.id!] = feedbackExists;
+          } catch (error) {
+            console.error('Error checking feedback for appointment:', appointment.id, error);
+            feedbackChecks[appointment.id!] = false;
+          }
+        }
+      }
+      setExistingFeedback(feedbackChecks);
     } catch (error) {
       console.error('Error loading appointments:', error);
       setError('Failed to load appointments. Please try again.');
@@ -163,6 +188,99 @@ export default function AppointmentsScreen() {
   const handleRetry = () => {
     setError(null);
     loadAppointments();
+  };
+
+  // Handle tag selection
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags(prev => {
+      if (prev.includes(tag)) {
+        return prev.filter(t => t !== tag);
+      } else {
+        return [...prev, tag];
+      }
+    });
+  };
+
+  // Submit feedback function
+  const handleSubmitFeedback = async () => {
+    if (!feedbackAppointment || !feedbackStars) return;
+    
+    // Ensure at least one tag is selected
+    if (selectedTags.length === 0) {
+      Alert.alert('Please select at least one tag to describe your experience.');
+      return;
+    }
+
+    try {
+      setSubmittingFeedback(true);
+      
+      // Get patient data
+      const patientData = await databaseService.getDocument(`users/${user?.uid}`);
+      const patientName = patientData ? `${patientData.firstName || patientData.first_name || ''} ${patientData.lastName || patientData.last_name || ''}`.trim() : 'Unknown Patient';
+      const patientEmail = user?.email || '';
+
+      // Get doctor data
+      const doctorData = await databaseService.getDoctorById(feedbackAppointment.doctorId);
+      const doctorName = doctorData ? `${doctorData.firstName || ''} ${doctorData.lastName || ''}`.trim() : 'Unknown Doctor';
+
+      // Get clinic data
+      const clinicData = await databaseService.getClinicById(feedbackAppointment.clinicId);
+      const clinicName = clinicData?.name || 'Unknown Clinic';
+
+      // Determine service type and treatment type
+      const serviceType = feedbackAppointment.relatedReferralId ? 'referral' : 'appointment';
+      const treatmentType = feedbackAppointment.appointmentPurpose || 'General Consultation';
+
+      // Use selected tags from user
+      const tags = selectedTags;
+
+      const feedbackData = {
+        appointmentId: feedbackAppointment.id!,
+        referralId: feedbackAppointment.relatedReferralId,
+        patientId: feedbackAppointment.patientId,
+        patientName,
+        patientEmail,
+        doctorId: feedbackAppointment.doctorId,
+        doctorName,
+        clinicId: feedbackAppointment.clinicId,
+        clinicName,
+        appointmentDate: feedbackAppointment.appointmentDate,
+        serviceType,
+        treatmentType,
+        rating: feedbackStars,
+        comment: feedbackReason,
+        tags,
+        isAnonymous: false, // Default to false, can be made configurable
+      };
+
+      await databaseService.submitFeedback(feedbackData);
+      
+      // Update existing feedback state
+      setExistingFeedback(prev => ({
+        ...prev,
+        [feedbackAppointment.id!]: true
+      }));
+      
+      setFeedbackSubmitted(true);
+      setTimeout(() => {
+        setShowFeedbackModal(false);
+        setFeedbackSubmitted(false);
+        setFeedbackStars(0);
+        setFeedbackReason('');
+        setSelectedTags([]);
+        setFeedbackAppointment(null);
+        setSubmittingFeedback(false);
+      }, 1200);
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      Alert.alert(
+        'Error',
+        error.message === 'Feedback already submitted for this appointment' 
+          ? 'You have already submitted feedback for this appointment.'
+          : 'Failed to submit feedback. Please try again.'
+      );
+      setSubmittingFeedback(false);
+    }
   };
 
   // Load clinic and specialist data for an appointment
@@ -623,7 +741,7 @@ export default function AppointmentsScreen() {
         )}
 
         <View style={styles.appointmentActions}>
-          {isCompleted ? (
+          {isCompleted && !existingFeedback[appointment.id!] ? (
             <TouchableOpacity
               style={styles.outlinedButton}
               onPress={() => {
@@ -636,6 +754,10 @@ export default function AppointmentsScreen() {
             >
               <Text style={styles.outlinedButtonText}>Give Feedback</Text>
             </TouchableOpacity>
+          ) : isCompleted && existingFeedback[appointment.id!] ? (
+            <View style={styles.feedbackSubmittedContainer}>
+              <Text style={styles.feedbackSubmittedText}>✓ Feedback Submitted</Text>
+            </View>
           ) : null}
         </View>
       </TouchableOpacity>
@@ -742,6 +864,32 @@ export default function AppointmentsScreen() {
                   returnKeyType="done"
                 />
               </View>
+              
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionLabel}>
+                  Select tags that describe your experience
+                </Text>
+                <View style={styles.tagsContainer}>
+                  {availableTags.map((tag) => (
+                    <TouchableOpacity
+                      key={tag}
+                      style={[
+                        styles.tagButton,
+                        selectedTags.includes(tag) && styles.tagButtonSelected
+                      ]}
+                      onPress={() => handleTagToggle(tag)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.tagText,
+                        selectedTags.includes(tag) && styles.tagTextSelected
+                      ]}>
+                        {tag.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
               {feedbackSubmitted ? (
                 <View style={{ alignItems: 'center', marginTop: 16 }}>
                   <Text style={{ fontSize: 16, color: '#1E40AF', fontWeight: '600' }}>
@@ -753,21 +901,14 @@ export default function AppointmentsScreen() {
   <TouchableOpacity
     style={[
       styles.feedbackModalButton,
-      (!feedbackStars || feedbackSubmitted) && { opacity: 0.5 },
+      (!feedbackStars || selectedTags.length === 0 || feedbackSubmitted || submittingFeedback) && { opacity: 0.5 },
     ]}
-    disabled={!feedbackStars || feedbackSubmitted}
-    onPress={() => {
-      setFeedbackSubmitted(true);
-      setTimeout(() => {
-        setShowFeedbackModal(false);
-        setFeedbackSubmitted(false);
-        setFeedbackStars(0);
-        setFeedbackReason('');
-        setFeedbackAppointment(null);
-      }, 1200);
-    }}
+    disabled={!feedbackStars || selectedTags.length === 0 || feedbackSubmitted || submittingFeedback}
+    onPress={handleSubmitFeedback}
   >
-    <Text style={styles.feedbackModalButtonText}>Submit Feedback</Text>
+    <Text style={styles.feedbackModalButtonText}>
+      {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+    </Text>
   </TouchableOpacity>
 </View>
 
@@ -1614,5 +1755,45 @@ feedbackModalButton: {
     color: '#1F2937',
     fontFamily: 'Inter-SemiBold',
     marginBottom: 12,
+  },
+  feedbackSubmittedContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#22C55E',
+  },
+  feedbackSubmittedText: {
+    fontSize: 14,
+    color: '#166534',
+    fontFamily: 'Inter-Medium',
+  },
+  // Tag selection styles
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  tagButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  tagButtonSelected: {
+    backgroundColor: '#1E40AF',
+    borderColor: '#1E40AF',
+  },
+  tagText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+  },
+  tagTextSelected: {
+    color: '#FFFFFF',
   },
 });

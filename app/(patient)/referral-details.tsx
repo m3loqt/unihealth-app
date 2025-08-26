@@ -31,7 +31,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService, Referral, MedicalHistory } from '../../src/services/database/firebase';
-import { formatRoute, formatFrequency } from '../../src/utils/formatting';
+import { formatRoute, formatFrequency, formatFormula } from '../../src/utils/formatting';
 
 interface ReferralData extends Referral {
   patientName?: string;
@@ -667,6 +667,7 @@ export default function PatientReferralDetailsScreen() {
                   <Text style={styles.medicationDosage}>
                     {p.dosage || 'N/A'} • {formatFrequency(p.frequency, 'patient')}
                     {p.route && ` • ${formatRoute(p.route, 'patient')}`}
+                    {p.formula && ` • ${formatFormula(p.formula, 'patient')}`}
                   </Text>
                 </View>
                 <View style={styles.prescriptionStatus}>
