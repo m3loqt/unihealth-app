@@ -44,8 +44,9 @@ export const isValidCertificate = (certificate: any): certificate is Certificate
   return (
     certificate &&
     typeof certificate === 'object' &&
-    typeof certificate.id === 'string' &&
-    certificate.id.length > 0
+    (typeof certificate.id === 'string' || typeof certificate.id === 'number') &&
+    certificate.id !== null &&
+    certificate.id !== undefined
   );
 };
 
