@@ -40,7 +40,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService, Referral, MedicalHistory } from '../../src/services/database/firebase';
 import { safeDataAccess } from '../../src/utils/safeDataAccess';
-import { formatRoute, formatFrequency } from '../../src/utils/formatting';
+import { formatRoute, formatFrequency, formatFormula } from '../../src/utils/formatting';
 
 // Extended interface for referral data that includes additional properties
 interface ReferralData extends Referral {
@@ -921,6 +921,7 @@ export default function ReferralDetailsScreen() {
                   <Text style={styles.medicationDosage}>
                     {p.dosage || 'N/A'} • {formatFrequency(p.frequency, 'specialist')}
                     {p.route && ` • ${formatRoute(p.route, 'specialist')}`}
+                    {p.formula && ` • ${formatFormula(p.formula, 'specialist')}`}
                     {p.duration && ` • ${p.duration}`}
                   </Text>
                 </View>

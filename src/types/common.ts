@@ -64,4 +64,34 @@ export interface UserPreferences {
   language: string;
   notifications: boolean;
   biometricEnabled: boolean;
+}
+
+export interface Feedback {
+  id: string;
+  appointmentId: string;
+  referralId?: string;
+  patientId: string;
+  patientName: string;
+  patientEmail: string;
+  doctorId: string;
+  doctorName: string;
+  clinicId: string;
+  clinicName: string;
+  appointmentDate: string;
+  serviceType: 'appointment' | 'referral';
+  treatmentType: string;
+  rating: number;
+  comment: string;
+  tags: string[];
+  isAnonymous: boolean;
+  status: string; // blank status as requested
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface FeedbackFormData {
+  rating: number;
+  comment: string;
+  tags: string[];
+  isAnonymous: boolean;
 } 

@@ -53,6 +53,7 @@ import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { useDeepMemo } from '../../../src/utils/performance';
+import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -579,36 +580,7 @@ export default function SpecialistHomeScreen() {
           }
         >
         {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.userName}>Dr. {user?.firstName || (user as any)?.name || 'Specialist'}</Text>
-          </View>
-          <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconButton}>
-              <Bell size={24} color="#6B7280" />
-              {/* {notifications > 0 && (
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.notificationText}>{notifications}</Text>
-                </View>
-              )} */}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/(specialist)/tabs/profile')}>
-              {user?.firstName || (user as any)?.name ? (
-                <View style={styles.profileInitials}>
-                  <Text style={styles.profileInitialsText}>
-                    {getFirstName((user as any).name || user.firstName).charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              ) : (
-                <Image
-                  source={{ uri: 'https://via.placeholder.com/36' }}
-                  style={styles.profileImage}
-                />
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+        <SpecialistHeader showGreeting={true} />
 
         {/* Dashboard */}
         <View style={styles.section}>

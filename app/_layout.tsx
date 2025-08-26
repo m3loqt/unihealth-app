@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '../src/hooks/useFrameworkReady';
+import { useSuppressWarnings } from '../src/hooks/useSuppressWarnings';
 import { useFonts } from 'expo-font';
 import {
   Inter_400Regular,
@@ -17,6 +18,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   useFrameworkReady();
+  useSuppressWarnings(); // Suppress TouchableMixin deprecation warnings
 
   const [fontsLoaded, fontError] = useFonts({
     'Inter-Regular': Inter_400Regular,
@@ -35,7 +37,7 @@ export default function RootLayout() {
   useEffect(() => {
     // TODO: Replace with your actual Google Cloud API key
     // initializeGoogleSpeechToText('YOUR_GOOGLE_CLOUD_API_KEY');
-    console.log('Google Speech-to-Text service ready to initialize');
+    // Google Speech-to-Text service ready to initialize
   }, []);
 
   if (!fontsLoaded && !fontError) {
@@ -56,6 +58,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)/signup/step3" />
         <Stack.Screen name="(patient)/tabs" />
         <Stack.Screen name="(specialist)/tabs" />
+        <Stack.Screen name="(specialist)/schedule" />
         <Stack.Screen name="(specialist)/referral-details" />
         <Stack.Screen name="+not-found" />
       </Stack>

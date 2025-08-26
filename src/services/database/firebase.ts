@@ -124,6 +124,9 @@ export interface Prescription {
   prescribedDate: string;
   status: 'active' | 'completed' | 'discontinued';
   route?: string;
+  formula?: string;
+  take?: string;
+  totalQuantity?: string;
 }
 
 export interface Certificate {
@@ -1584,37 +1587,89 @@ export const databaseService = {
 
   async getCertificatesBySpecialist(specialistId: string): Promise<Certificate[]> {
     try {
-      // Get certificates from patientMedicalHistory entries (medical certificates would be entries with specific types)
+      console.log('🔍 Searching for certificates by specialist ID:', specialistId);
+      
+      // Get certificates from patientMedicalHistory entries
       const medicalHistoryRef = ref(database, 'patientMedicalHistory');
       const snapshot = await get(medicalHistoryRef);
       
       if (snapshot.exists()) {
         const certificates: Certificate[] = [];
+        let totalEntries = 0;
+        let matchingEntries = 0;
         
         snapshot.forEach((patientSnapshot) => {
           const patientHistory = patientSnapshot.val();
           if (patientHistory.entries) {
             Object.keys(patientHistory.entries).forEach((entryKey) => {
               const entry = patientHistory.entries[entryKey];
-              // Check if this entry was created by the specialist and is a certificate type
-              if (entry.provider && entry.provider.id === specialistId && 
-                  (entry.type === 'Medical Certificate' || entry.type === 'Fit to Work' || entry.type === 'Medical Clearance')) {
-                certificates.push({
-                  id: entryKey,
-                  patientId: entry.patientId,
-                  specialistId: entry.provider.id,
-                  type: entry.type,
-                  issueDate: entry.consultationDate,
-                  status: 'active',
-                  description: entry.clinicalSummary || entry.treatmentPlan || 'Medical certificate issued',
-                });
+              totalEntries++;
+              
+              console.log('📋 Checking entry:', entryKey);
+              console.log('👨‍⚕️ Entry provider ID:', entry.provider?.id);
+              console.log('🎯 Looking for specialist ID:', specialistId);
+              console.log('✅ Match?', entry.provider?.id === specialistId);
+              
+              // Check if this entry was created by the specialist (provider.id matches specialist UID)
+              if (entry.provider && entry.provider.id === specialistId) {
+                matchingEntries++;
+                console.log('🎉 Found matching entry! Provider:', entry.provider);
+                
+                // Check for certificates node under this PMH entry
+                if (entry.certificates && Array.isArray(entry.certificates)) {
+                  console.log('📜 Found certificates array with', entry.certificates.length, 'certificates');
+                  
+                  entry.certificates.forEach((cert: any, certIndex: number) => {
+                    console.log('📄 Processing certificate:', certIndex, cert);
+                    
+                    // Create a unique ID for the certificate
+                    const certificateId = String(cert.id || `${entryKey}_cert_${certIndex}`);
+                    
+                    // Determine certificate status
+                    let status: 'active' | 'expired' = 'active';
+                    if (cert.validUntil) {
+                      status = new Date(cert.validUntil) < new Date() ? 'expired' : 'active';
+                    } else {
+                      // If no expiry date, check if it's older than 1 year
+                      const issueDate = new Date(cert.createdAt || entry.consultationDate);
+                      const oneYearAgo = new Date();
+                      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                      status = issueDate < oneYearAgo ? 'expired' : 'active';
+                    }
+                    
+                    const certificateData = {
+                      id: certificateId,
+                      patientId: entry.patientId,
+                      specialistId: entry.provider.id,
+                      type: cert.type || 'Medical Certificate',
+                      issueDate: cert.createdAt || entry.consultationDate,
+                      expiryDate: cert.validUntil || '',
+                      status: status,
+                      description: cert.description || cert.type || 'Medical certificate issued',
+                      medicalFindings: cert.medicalFindings,
+                      restrictions: cert.restrictions,
+                      documentUrl: cert.documentUrl,
+                    };
+                    
+                    console.log('✅ Adding certificate:', certificateData);
+                    certificates.push(certificateData);
+                  });
+                } else {
+                  console.log('❌ No certificates array found in entry');
+                }
               }
             });
           }
         });
         
+        console.log('📊 Summary:');
+        console.log('   Total entries checked:', totalEntries);
+        console.log('   Matching entries found:', matchingEntries);
+        console.log('   Certificates found:', certificates.length);
+        
         return certificates.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
       }
+      console.log('❌ No patientMedicalHistory data found');
       return [];
     } catch (error) {
       console.error('Get certificates by specialist error:', error);
@@ -1779,11 +1834,36 @@ export const databaseService = {
       if (updates.medicalLicenseNumber !== undefined) doctorUpdates.medicalLicenseNumber = updates.medicalLicenseNumber;
       if (updates.prcId !== undefined) doctorUpdates.prcId = updates.prcId;
       if (updates.prcExpiryDate !== undefined) doctorUpdates.prcExpiryDate = updates.prcExpiryDate;
-      if (updates.professionalFee !== undefined) doctorUpdates.professionalFee = updates.professionalFee;
       if (updates.gender !== undefined) doctorUpdates.gender = updates.gender;
       if (updates.dateOfBirth !== undefined) doctorUpdates.dateOfBirth = updates.dateOfBirth;
       if (updates.civilStatus !== undefined) doctorUpdates.civilStatus = updates.civilStatus;
       if (updates.lastUpdated !== undefined) doctorUpdates.lastUpdated = updates.lastUpdated;
+      
+      // Handle professional fee with status tracking
+      if (updates.professionalFee !== undefined) {
+        doctorUpdates.professionalFee = updates.professionalFee;
+        
+        // Get current professional fee to check if it's being changed
+        const doctorRef = ref(database, `doctors/${specialistId}`);
+        const doctorSnapshot = await get(doctorRef);
+        if (doctorSnapshot.exists()) {
+          const currentData = doctorSnapshot.val();
+          const currentFee = currentData.professionalFee;
+          const currentStatus = currentData.professionalFeeStatus;
+          
+          // If professional fee is being changed, set status to pending
+          if (currentFee !== updates.professionalFee) {
+            doctorUpdates.professionalFeeStatus = 'pending';
+            console.log('Professional fee changed, setting status to pending');
+          } else if (updates.professionalFeeStatus !== undefined) {
+            // If status is explicitly provided in updates, use it
+            doctorUpdates.professionalFeeStatus = updates.professionalFeeStatus;
+          }
+        } else {
+          // If no existing data, set status to pending for new fee
+          doctorUpdates.professionalFeeStatus = 'pending';
+        }
+      }
       
       // Update users node if there are user-specific updates
       if (Object.keys(userUpdates).length > 0) {
@@ -1812,6 +1892,27 @@ export const databaseService = {
       console.log('Specialist profile update completed successfully');
     } catch (error) {
       console.error('Update specialist profile error:', error);
+      throw error;
+    }
+  },
+
+  // Function to manually update professional fee status (for admin/testing purposes)
+  async updateProfessionalFeeStatus(specialistId: string, status: 'pending' | 'confirmed'): Promise<void> {
+    try {
+      const doctorRef = ref(database, `doctors/${specialistId}`);
+      const doctorSnapshot = await get(doctorRef);
+      
+      if (doctorSnapshot.exists()) {
+        await update(doctorRef, {
+          professionalFeeStatus: status,
+          lastUpdated: new Date().toISOString(),
+        });
+        console.log(`Professional fee status updated to: ${status}`);
+      } else {
+        throw new Error('Specialist not found');
+      }
+    } catch (error) {
+      console.error('Update professional fee status error:', error);
       throw error;
     }
   },
@@ -3235,6 +3336,222 @@ export const databaseService = {
     } catch (error) {
       console.error('❌ Create referral error:', error);
       throw new Error('Failed to create referral');
+    }
+  },
+
+  // Check if feedback already exists for an appointment
+  async checkFeedbackExists(appointmentId: string): Promise<boolean> {
+    try {
+      const feedbackSnapshot = await get(ref(database, 'feedback'));
+      const feedbackData = feedbackSnapshot.val();
+      
+      if (feedbackData) {
+        const feedbackEntries = Object.values(feedbackData);
+        return feedbackEntries.some((feedback: any) => feedback.appointmentId === appointmentId);
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking feedback existence:', error);
+      return false;
+    }
+  },
+
+  // Submit feedback
+  async submitFeedback(feedbackData: {
+    appointmentId: string;
+    referralId?: string;
+    patientId: string;
+    patientName: string;
+    patientEmail: string;
+    doctorId: string;
+    doctorName: string;
+    clinicId: string;
+    clinicName: string;
+    appointmentDate: string;
+    serviceType: 'appointment' | 'referral';
+    treatmentType: string;
+    rating: number;
+    comment: string;
+    tags: string[];
+    isAnonymous: boolean;
+  }): Promise<string> {
+    try {
+      console.log('🔔 Submitting feedback...');
+      
+      // Check if feedback already exists for this appointment
+      const feedbackExists = await this.checkFeedbackExists(feedbackData.appointmentId);
+      if (feedbackExists) {
+        throw new Error('Feedback already submitted for this appointment');
+      }
+
+      // Prepare feedback data with required fields
+      const completeFeedbackData = {
+        ...feedbackData,
+        status: '', // blank status as requested
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+
+      // Use Firebase push to generate the feedbackId
+      const feedbackId = await this.pushDocument('feedback', completeFeedbackData);
+      console.log('✅ Feedback submitted with ID:', feedbackId);
+      
+      return feedbackId;
+    } catch (error) {
+      console.error('❌ Submit feedback error:', error);
+      throw error;
+    }
+  },
+
+  // Get feedback by appointment ID
+  async getFeedbackByAppointmentId(appointmentId: string): Promise<any> {
+    try {
+      const feedbackSnapshot = await get(ref(database, 'feedback'));
+      const feedbackData = feedbackSnapshot.val();
+      
+      if (feedbackData) {
+        const feedbackEntries = Object.values(feedbackData);
+        return feedbackEntries.find((feedback: any) => feedback.appointmentId === appointmentId);
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting feedback by appointment ID:', error);
+      return null;
+    }
+  },
+
+  // Get all feedback (for admin/specialist view)
+  async getAllFeedback(): Promise<any[]> {
+    try {
+      const feedbackSnapshot = await get(ref(database, 'feedback'));
+      const feedbackData = feedbackSnapshot.val();
+      
+      if (feedbackData) {
+        return Object.values(feedbackData);
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting all feedback:', error);
+      return [];
+    }
+  },
+
+  // Get specialist schedules by specialist ID
+  async getSpecialistSchedules(specialistId: string): Promise<any> {
+    console.log('🗑️ getSpecialistSchedules called with specialistId:', specialistId);
+    try {
+      const schedulesRef = ref(database, `specialistSchedules/${specialistId}`);
+      const snapshot = await get(schedulesRef);
+      
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        console.log('🗑️ Found schedules data:', data);
+        return data;
+      }
+      console.log('🗑️ No schedules found for specialist:', specialistId);
+      return null;
+    } catch (error) {
+      console.error('❌ Error getting specialist schedules:', error);
+      return null;
+    }
+  },
+
+  // Get referrals for a specialist to check booked appointments
+  async getSpecialistReferrals(specialistId: string): Promise<any[]> {
+    try {
+      const referralsRef = ref(database, 'referrals');
+      const snapshot = await get(referralsRef);
+      
+      if (snapshot.exists()) {
+        const referralsData = snapshot.val();
+        const referralsArray: any[] = [];
+        
+        // Iterate through all referrals to find those assigned to this specialist
+        Object.entries(referralsData).forEach(([referralId, referralData]: [string, any]) => {
+          if (referralData.assignedSpecialistId === specialistId) {
+            referralsArray.push({
+              id: referralId,
+              ...referralData
+            });
+          }
+        });
+        
+        return referralsArray;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting specialist referrals:', error);
+      return [];
+    }
+  },
+
+  // Add a new specialist schedule
+  async addSpecialistSchedule(specialistId: string, scheduleData: any): Promise<string> {
+    console.log('🔍 addSpecialistSchedule called');
+    console.log('🔍 specialistId:', specialistId);
+    console.log('🔍 scheduleData:', scheduleData);
+    
+    try {
+      const schedulesRef = ref(database, `specialistSchedules/${specialistId}`);
+      const newScheduleRef = push(schedulesRef);
+      
+      if (newScheduleRef.key) {
+        console.log('🔍 Saving schedule to database...');
+        await set(newScheduleRef, scheduleData);
+        console.log('✅ Specialist schedule added with ID:', newScheduleRef.key);
+        return newScheduleRef.key;
+      } else {
+        throw new Error('Failed to generate schedule ID');
+      }
+    } catch (error) {
+      console.error('❌ Add specialist schedule error:', error);
+      throw error;
+    }
+  },
+
+  // Update an existing specialist schedule
+  async updateSpecialistSchedule(specialistId: string, scheduleId: string, updateData: any): Promise<void> {
+    try {
+      const scheduleRef = ref(database, `specialistSchedules/${specialistId}/${scheduleId}`);
+      await update(scheduleRef, updateData);
+      console.log('✅ Specialist schedule updated:', scheduleId);
+    } catch (error) {
+      console.error('❌ Update specialist schedule error:', error);
+      throw error;
+    }
+  },
+
+  // Delete a specialist schedule
+  async deleteSpecialistSchedule(specialistId: string, scheduleId: string): Promise<void> {
+    console.log('🗑️ deleteSpecialistSchedule called with specialistId:', specialistId, 'scheduleId:', scheduleId);
+    try {
+      const scheduleRef = ref(database, `specialistSchedules/${specialistId}/${scheduleId}`);
+      console.log('🗑️ Attempting to delete schedule at path:', `specialistSchedules/${specialistId}/${scheduleId}`);
+      await remove(scheduleRef);
+      console.log('✅ Specialist schedule deleted:', scheduleId);
+    } catch (error) {
+      console.error('❌ Delete specialist schedule error:', error);
+      throw error;
+    }
+  },
+
+  // Get all clinics for schedule management
+  async getAllClinics(): Promise<any[]> {
+    try {
+      const clinicsRef = ref(database, 'clinics');
+      const snapshot = await get(clinicsRef);
+      
+      if (snapshot.exists()) {
+        const clinicsData = snapshot.val();
+        return Object.entries(clinicsData).map(([id, data]: [string, any]) => ({
+          id,
+          ...data
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting clinics:', error);
+      return [];
     }
   },
 };  
