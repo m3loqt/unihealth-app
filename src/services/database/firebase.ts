@@ -1782,11 +1782,36 @@ export const databaseService = {
       if (updates.medicalLicenseNumber !== undefined) doctorUpdates.medicalLicenseNumber = updates.medicalLicenseNumber;
       if (updates.prcId !== undefined) doctorUpdates.prcId = updates.prcId;
       if (updates.prcExpiryDate !== undefined) doctorUpdates.prcExpiryDate = updates.prcExpiryDate;
-      if (updates.professionalFee !== undefined) doctorUpdates.professionalFee = updates.professionalFee;
       if (updates.gender !== undefined) doctorUpdates.gender = updates.gender;
       if (updates.dateOfBirth !== undefined) doctorUpdates.dateOfBirth = updates.dateOfBirth;
       if (updates.civilStatus !== undefined) doctorUpdates.civilStatus = updates.civilStatus;
       if (updates.lastUpdated !== undefined) doctorUpdates.lastUpdated = updates.lastUpdated;
+      
+      // Handle professional fee with status tracking
+      if (updates.professionalFee !== undefined) {
+        doctorUpdates.professionalFee = updates.professionalFee;
+        
+        // Get current professional fee to check if it's being changed
+        const doctorRef = ref(database, `doctors/${specialistId}`);
+        const doctorSnapshot = await get(doctorRef);
+        if (doctorSnapshot.exists()) {
+          const currentData = doctorSnapshot.val();
+          const currentFee = currentData.professionalFee;
+          const currentStatus = currentData.professionalFeeStatus;
+          
+          // If professional fee is being changed, set status to pending
+          if (currentFee !== updates.professionalFee) {
+            doctorUpdates.professionalFeeStatus = 'pending';
+            console.log('Professional fee changed, setting status to pending');
+          } else if (updates.professionalFeeStatus !== undefined) {
+            // If status is explicitly provided in updates, use it
+            doctorUpdates.professionalFeeStatus = updates.professionalFeeStatus;
+          }
+        } else {
+          // If no existing data, set status to pending for new fee
+          doctorUpdates.professionalFeeStatus = 'pending';
+        }
+      }
       
       // Update users node if there are user-specific updates
       if (Object.keys(userUpdates).length > 0) {
@@ -1815,6 +1840,27 @@ export const databaseService = {
       console.log('Specialist profile update completed successfully');
     } catch (error) {
       console.error('Update specialist profile error:', error);
+      throw error;
+    }
+  },
+
+  // Function to manually update professional fee status (for admin/testing purposes)
+  async updateProfessionalFeeStatus(specialistId: string, status: 'pending' | 'confirmed'): Promise<void> {
+    try {
+      const doctorRef = ref(database, `doctors/${specialistId}`);
+      const doctorSnapshot = await get(doctorRef);
+      
+      if (doctorSnapshot.exists()) {
+        await update(doctorRef, {
+          professionalFeeStatus: status,
+          lastUpdated: new Date().toISOString(),
+        });
+        console.log(`Professional fee status updated to: ${status}`);
+      } else {
+        throw new Error('Specialist not found');
+      }
+    } catch (error) {
+      console.error('Update professional fee status error:', error);
       throw error;
     }
   },
@@ -3340,16 +3386,20 @@ export const databaseService = {
 
   // Get specialist schedules by specialist ID
   async getSpecialistSchedules(specialistId: string): Promise<any> {
+    console.log('🗑️ getSpecialistSchedules called with specialistId:', specialistId);
     try {
       const schedulesRef = ref(database, `specialistSchedules/${specialistId}`);
       const snapshot = await get(schedulesRef);
       
       if (snapshot.exists()) {
-        return snapshot.val();
+        const data = snapshot.val();
+        console.log('🗑️ Found schedules data:', data);
+        return data;
       }
+      console.log('🗑️ No schedules found for specialist:', specialistId);
       return null;
     } catch (error) {
-      console.error('Error getting specialist schedules:', error);
+      console.error('❌ Error getting specialist schedules:', error);
       return null;
     }
   },
@@ -3379,6 +3429,76 @@ export const databaseService = {
       return [];
     } catch (error) {
       console.error('Error getting specialist referrals:', error);
+      return [];
+    }
+  },
+
+  // Add a new specialist schedule
+  async addSpecialistSchedule(specialistId: string, scheduleData: any): Promise<string> {
+    console.log('🔍 addSpecialistSchedule called');
+    console.log('🔍 specialistId:', specialistId);
+    console.log('🔍 scheduleData:', scheduleData);
+    
+    try {
+      const schedulesRef = ref(database, `specialistSchedules/${specialistId}`);
+      const newScheduleRef = push(schedulesRef);
+      
+      if (newScheduleRef.key) {
+        console.log('🔍 Saving schedule to database...');
+        await set(newScheduleRef, scheduleData);
+        console.log('✅ Specialist schedule added with ID:', newScheduleRef.key);
+        return newScheduleRef.key;
+      } else {
+        throw new Error('Failed to generate schedule ID');
+      }
+    } catch (error) {
+      console.error('❌ Add specialist schedule error:', error);
+      throw error;
+    }
+  },
+
+  // Update an existing specialist schedule
+  async updateSpecialistSchedule(specialistId: string, scheduleId: string, updateData: any): Promise<void> {
+    try {
+      const scheduleRef = ref(database, `specialistSchedules/${specialistId}/${scheduleId}`);
+      await update(scheduleRef, updateData);
+      console.log('✅ Specialist schedule updated:', scheduleId);
+    } catch (error) {
+      console.error('❌ Update specialist schedule error:', error);
+      throw error;
+    }
+  },
+
+  // Delete a specialist schedule
+  async deleteSpecialistSchedule(specialistId: string, scheduleId: string): Promise<void> {
+    console.log('🗑️ deleteSpecialistSchedule called with specialistId:', specialistId, 'scheduleId:', scheduleId);
+    try {
+      const scheduleRef = ref(database, `specialistSchedules/${specialistId}/${scheduleId}`);
+      console.log('🗑️ Attempting to delete schedule at path:', `specialistSchedules/${specialistId}/${scheduleId}`);
+      await remove(scheduleRef);
+      console.log('✅ Specialist schedule deleted:', scheduleId);
+    } catch (error) {
+      console.error('❌ Delete specialist schedule error:', error);
+      throw error;
+    }
+  },
+
+  // Get all clinics for schedule management
+  async getAllClinics(): Promise<any[]> {
+    try {
+      const clinicsRef = ref(database, 'clinics');
+      const snapshot = await get(clinicsRef);
+      
+      if (snapshot.exists()) {
+        const clinicsData = snapshot.val();
+        return Object.entries(clinicsData).map(([id, data]: [string, any]) => ({
+          id,
+          ...data
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting clinics:', error);
       return [];
     }
   },

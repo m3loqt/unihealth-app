@@ -10,6 +10,7 @@ import {
   Platform,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {
   ChevronLeft,
@@ -18,67 +19,48 @@ import {
   Clock,
   MapPin,
   User,
+  Plus,
 } from 'lucide-react-native';
 import { router, useNavigation } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
+import { useSpecialistSchedules } from '../../src/hooks/data/useSpecialistSchedules';
 import { databaseService } from '../../src/services/database/firebase';
 import LoadingState from '../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../src/components/ui/ErrorBoundary';
+import ScheduleForm from '../../src/components/ScheduleForm';
+import ScheduleList from '../../src/components/ScheduleList';
 
-interface ScheduleSlot {
-  time: string;
-  defaultStatus: 'available' | 'booked' | 'unavailable';
-  durationMinutes: number;
-  isBooked?: boolean; // New field to track if this slot is actually booked
-}
-
-interface ScheduleDay {
-  date: string;
-  dayName: string;
-  dayNumber: number;
-  isToday: boolean;
-  isPast: boolean;
-  slots: ScheduleSlot[];
-  hasSchedule: boolean;
-}
-
-interface SpecialistSchedule {
-  id: string;
-  createdAt: string;
-  isActive: boolean;
-  lastUpdated: string;
-  practiceLocation: {
-    clinicId: string;
-    roomOrUnit: string;
-  };
-  recurrence: {
-    dayOfWeek: { [key: string]: number };
-    type: string;
-    scheduleType: string;
-  };
-  slotTemplate: { [key: string]: { defaultStatus: string; durationMinutes: number } };
-  specialistId: string;
-  validFrom: string;
-}
+import { ScheduleSlot, ScheduleDay, SpecialistSchedule, ScheduleFormData, Clinic } from '../../src/types/schedules';
 
 export default function SpecialistScheduleScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [schedules, setSchedules] = useState<SpecialistSchedule[]>([]);
-  const [clinicData, setClinicData] = useState<{[key: string]: any}>({});
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [referrals, setReferrals] = useState<any[]>([]);
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<SpecialistSchedule | null>(null);
+  const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
+  const [clinicData, setClinicData] = useState<{[key: string]: any}>({});
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Use the custom hook for schedule management
+  const {
+    schedules,
+    referrals,
+    loading,
+    error,
+    loadSchedules,
+    addSchedule,
+    updateSchedule,
+    deleteSchedule,
+  } = useSpecialistSchedules(user?.uid || '');
 
   // Generate calendar data for the current month
   const calendarData = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     
-    console.log('Generating calendar for:', year, month, 'Current date:', currentDate);
+    // Remove console.log to reduce noise
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
@@ -103,8 +85,8 @@ export default function SpecialistScheduleScreen() {
         if (!schedule.isActive || new Date(schedule.validFrom) > date) return false;
         
         const dayOfWeek = date.getDay(); // 0-6 (Sunday-Saturday)
-        // Check if the day of week matches any of the values in dayOfWeek object
-        return Object.values(schedule.recurrence.dayOfWeek).includes(dayOfWeek);
+        // Check if the day of week matches any of the values in dayOfWeek array
+        return schedule.recurrence.dayOfWeek.includes(dayOfWeek);
       });
 
       // Generate slots for this day if it has a schedule
@@ -113,27 +95,27 @@ export default function SpecialistScheduleScreen() {
         const activeSchedule = schedules.find(schedule => {
           if (!schedule.isActive || new Date(schedule.validFrom) > date) return false;
           const dayOfWeek = date.getDay(); // 0-6 (Sunday-Saturday)
-          // Check if the day of week matches any of the values in dayOfWeek object
-          return Object.values(schedule.recurrence.dayOfWeek).includes(dayOfWeek);
+          // Check if the day of week matches any of the values in dayOfWeek array
+          return schedule.recurrence.dayOfWeek.includes(dayOfWeek);
         });
 
-                          if (activeSchedule) {
-           slots = Object.entries(activeSchedule.slotTemplate).map(([time, slot]) => {
-             // Simple check: is this specific date and time slot booked?
-             const isBooked = referrals.some(referral => 
-               referral.assignedSpecialistId === user?.uid &&
-               referral.appointmentDate === dateString &&
-               referral.appointmentTime === time &&
-               (referral.status === 'confirmed' || referral.status === 'completed')
-             );
+        if (activeSchedule) {
+          slots = Object.entries(activeSchedule.slotTemplate).map(([time, slot]) => {
+            // Simple check: is this specific date and time slot booked?
+            const isBooked = referrals.some(referral => 
+              referral.assignedSpecialistId === user?.uid &&
+              referral.appointmentDate === dateString &&
+              referral.appointmentTime === time &&
+              (referral.status === 'confirmed' || referral.status === 'completed')
+            );
 
-             return {
-               time,
-               defaultStatus: slot.defaultStatus as 'available' | 'booked' | 'unavailable',
-               durationMinutes: slot.durationMinutes,
-               isBooked: isBooked,
-             };
-           });
+            return {
+              time,
+              defaultStatus: slot.defaultStatus as 'available' | 'booked' | 'unavailable',
+              durationMinutes: slot.durationMinutes,
+              isBooked: isBooked,
+            };
+          });
         }
       }
 
@@ -151,36 +133,12 @@ export default function SpecialistScheduleScreen() {
     return days;
   }, [currentDate, schedules, referrals]);
 
-  // Load specialist schedules
-  const loadSchedules = async () => {
-    if (!user?.uid) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Get specialist schedules and referrals in parallel
-      const [specialistSchedulesData, referralsData] = await Promise.all([
-        databaseService.getSpecialistSchedules(user.uid),
-        databaseService.getSpecialistReferrals(user.uid)
-      ]);
-      
-      // Set referrals data
-      console.log('Loaded referrals:', referralsData);
-      setReferrals(referralsData || []);
-      
-      if (specialistSchedulesData) {
-        const schedulesArray: SpecialistSchedule[] = Object.entries(specialistSchedulesData).map(([id, data]: [string, any]) => ({
-          id,
-          ...data,
-        }));
-
-        console.log('Loaded schedules:', schedulesArray);
-        setSchedules(schedulesArray);
-
-        // Load clinic data for all schedules
+  // Load clinic data for schedules
+  useEffect(() => {
+    const loadClinicData = async () => {
+      if (schedules.length > 0) {
         const clinicIds = new Set<string>();
-        schedulesArray.forEach(schedule => {
+        schedules.forEach(schedule => {
           if (schedule.practiceLocation?.clinicId) {
             clinicIds.add(schedule.practiceLocation.clinicId);
           }
@@ -200,17 +158,10 @@ export default function SpecialistScheduleScreen() {
         const clinicDataMap = Object.assign({}, ...clinicResults);
         setClinicData(clinicDataMap);
       }
-    } catch (error) {
-      console.error('Error loading schedules:', error);
-      setError('Failed to load schedule data');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  useEffect(() => {
-    loadSchedules();
-  }, [user]);
+    loadClinicData();
+  }, [schedules]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -219,8 +170,73 @@ export default function SpecialistScheduleScreen() {
   };
 
   const handleRetry = () => {
-    setError(null);
     loadSchedules();
+  };
+
+  // Schedule management handlers
+  const handleAddSchedule = () => {
+    if (!user?.uid) {
+      Alert.alert('Error', 'User not authenticated. Please sign in again.');
+      return;
+    }
+    setFormMode('add');
+    setEditingSchedule(null);
+    setShowScheduleForm(true);
+  };
+
+  const handleEditSchedule = (schedule: SpecialistSchedule) => {
+    setFormMode('edit');
+    setEditingSchedule(schedule);
+    setShowScheduleForm(true);
+  };
+
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    try {
+      await deleteSchedule(scheduleId);
+      Alert.alert(
+        'Success',
+        'Schedule has been successfully deleted!',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Failed to delete schedule. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleSubmitSchedule = async (formData: ScheduleFormData) => {
+    console.log('🔍 handleSubmitSchedule called in schedule screen');
+    console.log('🔍 formMode:', formMode);
+    console.log('🔍 formData:', formData);
+    
+    try {
+      if (formMode === 'add') {
+        console.log('🔍 Adding new schedule...');
+        await addSchedule(formData);
+        console.log('✅ Schedule added successfully');
+        Alert.alert(
+          'Success', 
+          'Schedule has been successfully added!',
+          [{ text: 'OK' }]
+        );
+      } else if (formMode === 'edit' && editingSchedule) {
+        console.log('🔍 Updating existing schedule...');
+        await updateSchedule(editingSchedule.id, formData);
+        console.log('✅ Schedule updated successfully');
+        Alert.alert(
+          'Success', 
+          'Schedule has been successfully updated!',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('❌ Schedule screen - Error submitting schedule:', error);
+      throw error;
+    }
   };
 
   const goToPreviousMonth = () => {
@@ -331,8 +347,8 @@ export default function SpecialistScheduleScreen() {
 
     const activeSchedule = schedules.find(schedule => {
       if (!schedule.isActive || new Date(schedule.validFrom) > selectedDate) return false;
-      const dayOfWeek = selectedDate.getDay().toString();
-      return schedule.recurrence.dayOfWeek[dayOfWeek] !== undefined;
+      const dayOfWeek = selectedDate.getDay();
+      return schedule.recurrence.dayOfWeek.includes(dayOfWeek);
     });
 
     if (!activeSchedule) return null;
@@ -429,9 +445,14 @@ export default function SpecialistScheduleScreen() {
               <ChevronLeft size={24} color="#1E40AF" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>My Schedule</Text>
-            <TouchableOpacity onPress={goToToday} style={styles.todayButton}>
-              <Text style={styles.todayButtonText}>Today</Text>
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity onPress={goToToday} style={styles.todayButton}>
+                <Text style={styles.todayButtonText}>Today</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleAddSchedule} style={styles.addButton}>
+                <Plus size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Calendar */}
@@ -443,7 +464,28 @@ export default function SpecialistScheduleScreen() {
 
           {/* Selected Date Details */}
           {renderSelectedDateDetails()}
+
+          {/* Schedule Management Section */}
+          <View style={styles.scheduleManagementContainer}>
+            <ScheduleList
+              schedules={schedules}
+              clinics={Object.values(clinicData).filter(Boolean)}
+              referrals={referrals}
+              onEdit={handleEditSchedule}
+              onDelete={handleDeleteSchedule}
+              onAddNew={handleAddSchedule}
+            />
+          </View>
         </ScrollView>
+
+        {/* Schedule Form Modal */}
+        <ScheduleForm
+          visible={showScheduleForm}
+          onClose={() => setShowScheduleForm(false)}
+          onSubmit={handleSubmitSchedule}
+          schedule={editingSchedule}
+          mode={formMode}
+        />
       </SafeAreaView>
     </ErrorBoundary>
   );
@@ -484,6 +526,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  addButton: {
+    backgroundColor: '#1E40AF',
+    padding: 8,
+    borderRadius: 8,
   },
   calendarContainer: {
     backgroundColor: '#FFFFFF',
@@ -671,5 +723,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
+  },
+  scheduleManagementContainer: {
+    marginTop: 8,
   },
 });
