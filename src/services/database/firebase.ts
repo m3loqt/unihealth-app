@@ -1587,37 +1587,89 @@ export const databaseService = {
 
   async getCertificatesBySpecialist(specialistId: string): Promise<Certificate[]> {
     try {
-      // Get certificates from patientMedicalHistory entries (medical certificates would be entries with specific types)
+      console.log('🔍 Searching for certificates by specialist ID:', specialistId);
+      
+      // Get certificates from patientMedicalHistory entries
       const medicalHistoryRef = ref(database, 'patientMedicalHistory');
       const snapshot = await get(medicalHistoryRef);
       
       if (snapshot.exists()) {
         const certificates: Certificate[] = [];
+        let totalEntries = 0;
+        let matchingEntries = 0;
         
         snapshot.forEach((patientSnapshot) => {
           const patientHistory = patientSnapshot.val();
           if (patientHistory.entries) {
             Object.keys(patientHistory.entries).forEach((entryKey) => {
               const entry = patientHistory.entries[entryKey];
-              // Check if this entry was created by the specialist and is a certificate type
-              if (entry.provider && entry.provider.id === specialistId && 
-                  (entry.type === 'Medical Certificate' || entry.type === 'Fit to Work' || entry.type === 'Medical Clearance')) {
-                certificates.push({
-                  id: entryKey,
-                  patientId: entry.patientId,
-                  specialistId: entry.provider.id,
-                  type: entry.type,
-                  issueDate: entry.consultationDate,
-                  status: 'active',
-                  description: entry.clinicalSummary || entry.treatmentPlan || 'Medical certificate issued',
-                });
+              totalEntries++;
+              
+              console.log('📋 Checking entry:', entryKey);
+              console.log('👨‍⚕️ Entry provider ID:', entry.provider?.id);
+              console.log('🎯 Looking for specialist ID:', specialistId);
+              console.log('✅ Match?', entry.provider?.id === specialistId);
+              
+              // Check if this entry was created by the specialist (provider.id matches specialist UID)
+              if (entry.provider && entry.provider.id === specialistId) {
+                matchingEntries++;
+                console.log('🎉 Found matching entry! Provider:', entry.provider);
+                
+                // Check for certificates node under this PMH entry
+                if (entry.certificates && Array.isArray(entry.certificates)) {
+                  console.log('📜 Found certificates array with', entry.certificates.length, 'certificates');
+                  
+                  entry.certificates.forEach((cert: any, certIndex: number) => {
+                    console.log('📄 Processing certificate:', certIndex, cert);
+                    
+                    // Create a unique ID for the certificate
+                    const certificateId = String(cert.id || `${entryKey}_cert_${certIndex}`);
+                    
+                    // Determine certificate status
+                    let status: 'active' | 'expired' = 'active';
+                    if (cert.validUntil) {
+                      status = new Date(cert.validUntil) < new Date() ? 'expired' : 'active';
+                    } else {
+                      // If no expiry date, check if it's older than 1 year
+                      const issueDate = new Date(cert.createdAt || entry.consultationDate);
+                      const oneYearAgo = new Date();
+                      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+                      status = issueDate < oneYearAgo ? 'expired' : 'active';
+                    }
+                    
+                    const certificateData = {
+                      id: certificateId,
+                      patientId: entry.patientId,
+                      specialistId: entry.provider.id,
+                      type: cert.type || 'Medical Certificate',
+                      issueDate: cert.createdAt || entry.consultationDate,
+                      expiryDate: cert.validUntil || '',
+                      status: status,
+                      description: cert.description || cert.type || 'Medical certificate issued',
+                      medicalFindings: cert.medicalFindings,
+                      restrictions: cert.restrictions,
+                      documentUrl: cert.documentUrl,
+                    };
+                    
+                    console.log('✅ Adding certificate:', certificateData);
+                    certificates.push(certificateData);
+                  });
+                } else {
+                  console.log('❌ No certificates array found in entry');
+                }
               }
             });
           }
         });
         
+        console.log('📊 Summary:');
+        console.log('   Total entries checked:', totalEntries);
+        console.log('   Matching entries found:', matchingEntries);
+        console.log('   Certificates found:', certificates.length);
+        
         return certificates.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
       }
+      console.log('❌ No patientMedicalHistory data found');
       return [];
     } catch (error) {
       console.error('Get certificates by specialist error:', error);
