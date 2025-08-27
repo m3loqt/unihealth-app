@@ -210,31 +210,37 @@ export default function PrescriptionsScreen() {
           <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
           <Text style={styles.medicationDosage}>
             {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'patient')}
-            {prescription.route && ` • ${formatRoute(prescription.route, 'patient')}`}
             {prescription.formula && ` • ${formatFormula(prescription.formula, 'patient')}`}
             {prescription.take && ` • Take: ${prescription.take}`}
             {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
           </Text>
+          {prescription.route && (
+            <Text style={styles.medicationRoute}>
+              {formatRoute(prescription.route, 'patient')}
+            </Text>
+          )}
           <Text style={styles.prescriptionDescription}>
             {prescription.instructions || 'No additional instructions'}
           </Text>
         </View>
         <View style={styles.prescriptionStatus}>
+          <View style={styles.statusBadge}>
+            <CheckCircle size={16} color="#6B7280" style={styles.statusIcon} />
+            <Text style={styles.statusText}>Active</Text>
+          </View>
           {(() => {
             const remainingDays = calculateRemainingDays(prescription);
             if (remainingDays !== null) {
               return (
-                <>
-                  <Text style={styles.remainingDays}>{remainingDays}</Text>
-                  <Text style={styles.remainingLabel}>days left</Text>
-                </>
+                <Text style={styles.remainingDays}>
+                  {remainingDays} days left
+                </Text>
               );
             } else {
               return (
-                <>
-                  <Text style={styles.remainingDays}>-</Text>
-                  <Text style={styles.remainingLabel}>Ongoing</Text>
-                </>
+                <Text style={styles.remainingDays}>
+                  Ongoing
+                </Text>
               );
             }
           })()}
@@ -253,12 +259,6 @@ export default function PrescriptionsScreen() {
             {formatPrescriptionDuration(prescription.duration)}
           </Text>
         </View>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Status:</Text>
-          <View style={[styles.statusBadge, { backgroundColor: '#DCFCE7', borderColor: '#22C55E' }]}>
-            <Text style={[styles.statusText, { color: '#166534' }]}>Active</Text>
-          </View>
-        </View>
       </View>
     </View>
   );
@@ -273,17 +273,30 @@ export default function PrescriptionsScreen() {
           <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
           <Text style={styles.medicationDosage}>
             {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'patient')}
-            {prescription.route && ` • ${formatRoute(prescription.route, 'patient')}`}
             {prescription.formula && ` • ${formatFormula(prescription.formula, 'patient')}`}
             {prescription.take && ` • Take: ${prescription.take}`}
             {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
           </Text>
+          {prescription.route && (
+            <Text style={styles.medicationRoute}>
+              {formatRoute(prescription.route, 'patient')}
+            </Text>
+          )}
           <Text style={styles.prescriptionDescription}>
             {prescription.instructions || 'No additional instructions'}
           </Text>
         </View>
         <View style={styles.prescriptionStatus}>
-          <CheckCircle size={20} color="#10B981" />
+          <View style={styles.statusBadge}>
+            {prescription.status === 'completed' ? (
+              <CheckCircle size={16} color="#6B7280" style={styles.statusIcon} />
+            ) : (
+              <Pill size={16} color="#6B7280" style={styles.statusIcon} />
+            )}
+            <Text style={styles.statusText}>
+              {prescription.status === 'completed' ? 'Completed' : 'Discontinued'}
+            </Text>
+          </View>
         </View>
       </View>
       <View style={styles.prescriptionMeta}>
@@ -298,23 +311,6 @@ export default function PrescriptionsScreen() {
           <Text style={styles.metaValue}>
             {formatPrescriptionDuration(prescription.duration)}
           </Text>
-        </View>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Status:</Text>
-          <View style={[
-            styles.statusBadge, 
-            { 
-              backgroundColor: prescription.status === 'completed' ? '#FEF3C7' : '#FEE2E2',
-              borderColor: prescription.status === 'completed' ? '#F59E0B' : '#EF4444'
-            }
-          ]}>
-            <Text style={[
-              styles.statusText, 
-              { color: prescription.status === 'completed' ? '#92400E' : '#991B1B' }
-            ]}>
-              {prescription.status === 'completed' ? 'Completed' : 'Discontinued'}
-            </Text>
-          </View>
         </View>
       </View>
     </View>
@@ -621,14 +617,13 @@ const styles = StyleSheet.create({
   },
   prescriptionStatus: {
     alignItems: 'flex-end',
+    gap: 8,
   },
   remainingDays: {
     fontSize: 14,
-    color: '#1F2937',
-  },
-  remainingLabel: {
-    fontSize: 12,
     color: '#6B7280',
+    marginTop: 4,
+    textAlign: 'right',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -644,6 +639,15 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     color: '#374151',
+    fontFamily: 'Inter-Medium',
+  },
+  statusIcon: {
+    marginRight: 4,
+  },
+  medicationRoute: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 4,
   },
   prescriptionMeta: {
     gap: 4,

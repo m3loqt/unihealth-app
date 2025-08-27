@@ -184,26 +184,11 @@ export default function CertificatesScreen() {
   }, [userCertificates, searchQuery, statusFilter, sortBy]);
 
   const getStatusColors = (status: string) => {
-    switch (status) {
-      case 'Valid':
-        return {
-          bg: '#EFF6FF',
-          text: '#1E40AF',
-          border: '#93C5FD',
-        };
-      case 'Expired':
-        return {
-          bg: '#FEF2F2',
-          text: '#EF4444',
-          border: '#FCA5A5',
-        };
-      default:
-        return {
-          bg: '#F3F4F6',
-          text: '#6B7280',
-          border: '#E5E7EB',
-        };
-    }
+    return {
+      bg: '#F9FAFB',
+      text: '#374151',
+      border: '#D1D5DB',
+    };
   };
 
   // --- Improved Sort Dropdown ---
@@ -300,7 +285,7 @@ export default function CertificatesScreen() {
             },
           ]}
         >
-          <Text style={[styles.statusLabelText, { color: statusColors.text }]}>
+          <Text style={styles.statusLabelText}>
             {certificate.status}
           </Text>
         </View>
@@ -689,6 +674,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
     letterSpacing: 0.1,
+    color: '#374151',
   },
   cardContent: {
     alignItems: 'flex-start',

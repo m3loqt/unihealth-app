@@ -579,20 +579,95 @@ export default function HomeScreen() {
                     </View>
                     <View style={styles.prescriptionDetails}>
                       <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
+                      
+                      {/* Primary prescription details */}
                       <Text style={styles.medicationDosage}>
                         {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'patient')}
-                        {prescription.route && ` • ${formatRoute(prescription.route, 'patient')}`}
                         {prescription.formula && ` • ${formatFormula(prescription.formula, 'patient')}`}
                         {prescription.take && ` • Take: ${prescription.take}`}
                         {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
                       </Text>
-                      <Text style={styles.prescriptionDescription}>
-                        {prescription.instructions || 'No additional instructions'}
-                      </Text>
+                      
+                      {/* Route information */}
+                      {prescription.route && (
+                        <Text style={styles.medicationRoute}>
+                          {formatRoute(prescription.route, 'patient')}
+                        </Text>
+                      )}
+                      
+                      {/* Instructions */}
+                      {prescription.instructions && (
+                        <Text style={styles.prescriptionDescription}>
+                          {prescription.instructions}
+                        </Text>
+                      )}
                     </View>
+                    
+                    {/* Days left section */}
                     <View style={styles.prescriptionStatus}>
-                      <Text style={styles.remainingDays}>-</Text>
-                      <Text style={styles.remainingLabel}>Ongoing</Text>
+                      {(() => {
+                        // Calculate remaining days logic similar to prescriptions.tsx
+                        if (!prescription.duration || 
+                            prescription.duration.toLowerCase().includes('ongoing') || 
+                            prescription.duration.toLowerCase().includes('continuous')) {
+                          return (
+                            <Text style={styles.remainingDays}>Ongoing</Text>
+                          );
+                        }
+                        
+                        try {
+                          const prescribedDate = new Date(prescription.prescribedDate);
+                          const now = new Date();
+                          const durationMatch = prescription.duration.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
+                          
+                          if (durationMatch) {
+                            const [, amount, unit] = durationMatch;
+                            const durationAmount = parseInt(amount, 10);
+                            const durationUnit = unit.toLowerCase();
+                            
+                            const endDate = new Date(prescribedDate);
+                            switch (durationUnit) {
+                              case 'day':
+                              case 'days':
+                                endDate.setDate(endDate.getDate() + durationAmount);
+                                break;
+                              case 'week':
+                              case 'weeks':
+                                endDate.setDate(endDate.getDate() + (durationAmount * 7));
+                                break;
+                              case 'month':
+                              case 'months':
+                                endDate.setMonth(endDate.getMonth() + durationAmount);
+                                break;
+                              case 'year':
+                              case 'years':
+                                endDate.setFullYear(endDate.getFullYear() + durationAmount);
+                                break;
+                            }
+                            
+                            const remainingTime = endDate.getTime() - now.getTime();
+                            const remainingDays = Math.ceil(remainingTime / (1000 * 60 * 60 * 24));
+                            
+                            if (remainingDays > 0) {
+                              return (
+                                <Text style={styles.remainingDays}>
+                                  {remainingDays} days left
+                                </Text>
+                              );
+                            } else {
+                              return (
+                                <Text style={styles.remainingDays}>Expired</Text>
+                              );
+                            }
+                          }
+                        } catch (error) {
+                          console.error('Error calculating remaining days:', error);
+                        }
+                        
+                        return (
+                          <Text style={styles.remainingDays}>Ongoing</Text>
+                        );
+                      })()}
                     </View>
                   </View>
                 </View>
@@ -1089,7 +1164,18 @@ const styles = StyleSheet.create({
   medicationDosage: { 
     fontSize: 14, 
     color: '#6B7280', 
-    marginTop: 2 
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  medicationRoute: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  remainingDays: {
+    fontSize: 14,
+    color: '#1F2937',
+    textAlign: 'right',
   },
   prescriptionDescription: { 
     fontSize: 14, 
@@ -1097,16 +1183,10 @@ const styles = StyleSheet.create({
     marginTop: 4 
   },
   prescriptionStatus: { 
-    alignItems: 'flex-end' 
+    alignItems: 'flex-end',
+    gap: 8,
   },
-  remainingDays: { 
-    fontSize: 14, 
-    color: '#1F2937' 
-  },
-  remainingLabel: { 
-    fontSize: 12, 
-    color: '#6B7280' 
-  },
+
   // Empty state styles
   emptyStateCard: {
     backgroundColor: '#F9FAFB',

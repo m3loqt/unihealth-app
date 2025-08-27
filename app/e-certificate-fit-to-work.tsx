@@ -110,22 +110,23 @@ export default function FitToWorkCertificateScreen() {
         if (medicalHistoryData?.provider?.id) {
           // If we have medical history data, use the provider from there
           doctorId = medicalHistoryData.provider.id;
-          doctorData = medicalHistoryData.provider;
           try {
+            // Always get the full doctor profile from doctors collection for PRC info
+            doctorData = await databaseService.getDocument(`doctors/${doctorId}`);
             doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
           } catch {}
         } else if (dataSource.assignedSpecialistId) {
           // Fallback to referral's assigned specialist
           doctorId = dataSource.assignedSpecialistId;
           try {
-            doctorData = await databaseService.getSpecialistProfile(doctorId);
+            doctorData = await databaseService.getDocument(`doctors/${doctorId}`);
             doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
           } catch {}
         } else if (dataSource.doctorId) {
           // Fallback to appointment's doctor
           doctorId = dataSource.doctorId;
           try {
-            doctorData = await databaseService.getSpecialistProfile(doctorId);
+            doctorData = await databaseService.getDocument(`doctors/${doctorId}`);
             doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
           } catch {}
         }
@@ -296,6 +297,11 @@ export default function FitToWorkCertificateScreen() {
   };
 
   const html = useMemo(() => {
+    // Don't generate HTML if still loading or missing critical data
+    if (loading || !provider || !patient) {
+      return '';
+    }
+
     const brandPrimary = '#1E40AF';
     const subtle = '#6B7280';
     const border = '#E5E7EB';
@@ -363,8 +369,49 @@ export default function FitToWorkCertificateScreen() {
     .preview { display: flex; flex-direction: column; align-items: center; padding: 16px; }
     .page { width: 100%; max-width: 8.5in; background: #FFFFFF; box-shadow: 0 2px 16px rgba(0,0,0,0.08); position: relative; border: 1px solid ${border}; display: flex; flex-direction: column; box-sizing: border-box; }
     .page .header, .page .top, .page .footer, .page .body { position: relative; z-index: 1; }
-    .watermark { position: absolute; left: 0; right: 0; bottom: 56px; top: auto; display: flex; align-items: center; justify-content: center; opacity: 0.1; z-index: 0; pointer-events: none; }
-    .watermark img { max-width: 65%; max-height: 65%; object-fit: contain; }
+            .watermark { 
+          position: absolute; 
+          left: 0; 
+          right: 0; 
+          bottom: 56px; 
+          top: auto; 
+          display: flex; 
+          align-items: center; 
+          justify-content: center; 
+          opacity: 0.1; 
+          z-index: 0; 
+          pointer-events: none; 
+        }
+        
+        .watermark img { 
+          max-width: 65%; 
+          max-height: 65%; 
+          object-fit: contain; 
+        }
+        
+        .watermark-pattern {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          opacity: 0.08;
+          z-index: 0;
+          pointer-events: none;
+          overflow: hidden;
+        }
+        
+        .watermark-logo-small {
+          position: absolute;
+          opacity: 0.12;
+          transform: rotate(-30deg);
+        }
+        
+        .watermark-logo-small img {
+          max-width: 60px;
+          max-height: 60px;
+          object-fit: contain;
+        }
 
     .header { padding: 10px 16px; background: ${brandPrimary}; color: #fff; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; letter-spacing: 0.3px; }
     .brand-left { font-weight: 800; }
@@ -406,7 +453,21 @@ export default function FitToWorkCertificateScreen() {
 <body>
   <div class="preview">
     <div class="page">
-      <div class="watermark">${logoDataUri ? `<img src="${logoDataUri}" />` : ''}</div>
+              <div class="watermark">${logoDataUri ? `<img src="${logoDataUri}" />` : ''}</div>
+        <div class="watermark-pattern">
+          ${logoDataUri ? `
+            <div class="watermark-logo-small" style="top: 10%; left: 5%;"><img src="${logoDataUri}" /></div>
+            <div class="watermark-logo-small" style="top: 25%; left: 15%;"><img src="${logoDataUri}" /></div>
+            <div class="watermark-logo-small" style="top: 40%; left: 25%;"><img src="${logoDataUri}" /></div>
+            <div class="watermark-logo-small" style="top: 55%; left: 35%;"><img src="${logoDataUri}" /></div>
+            <div class="watermark-logo-small" style="top: 70%; left: 45%;"><img src="${logoDataUri}" /></div>
+            <div class="watermark-logo-small" style="top: 85%; left: 55%;"><img src="${logoDataUri}" /></div>
+            <div class="watermark-logo-small" style="top: 15%; left: 65%;"><img src="${logoDataUri}" /></div>
+            <div class="watermark-logo-small" style="top: 30%; left: 75%;"><img src="${logoDataUri}" /></div>
+            <div class="watermark-logo-small" style="top: 45%; left: 85%;"><img src="${logoDataUri}" /></div>
+            <div class="watermark-logo-small" style="top: 60%; left: 95%;"><img src="${logoDataUri}" /></div>
+          ` : ''}
+        </div>
       <div class="header"><span class="brand-left">UNIHEALTH</span><span class="brand-right">Medical Certificate</span></div>
       
              <div class="top">
@@ -467,8 +528,7 @@ export default function FitToWorkCertificateScreen() {
             <div class="signature-name">Dr. ${doctorName}</div>
             <div class="signature-line"></div>
             <div class="signature-caption">PRC #: ${safe(provider?.prcId || 'Not Available')}</div>
-            <div class="signature-caption">Email: ${safe(provider?.email || providerUser?.email || 'Not Available')}</div>
-            <div class="signature-caption">Contact: ${safe(provider?.phone || provider?.contactNumber || providerUser?.phone || providerUser?.contactNumber || 'Not Available')}</div>
+            <div class="signature-caption">Email: ${safe(providerUser?.email || provider?.email || 'Not Available')}</div>
           </div>
         </div>
       </div>
@@ -573,12 +633,20 @@ export default function FitToWorkCertificateScreen() {
           </View>
         )}
         {!error && (
-          <WebView
-            ref={webViewRef}
-            originWhitelist={["*"]}
-            source={{ html }}
-            style={{ flex: 1, backgroundColor: '#F3F4F6' }}
-          />
+          <>
+            {loading || !html ? (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3F4F6' }}>
+                <Text style={{ fontSize: 16, color: '#6B7280' }}>Loading certificate...</Text>
+              </View>
+            ) : (
+              <WebView
+                ref={webViewRef}
+                originWhitelist={["*"]}
+                source={{ html }}
+                style={{ flex: 1, backgroundColor: '#F3F4F6' }}
+              />
+            )}
+          </>
         )}
       </View>
 

@@ -25,7 +25,7 @@ export default function TabBar({ activeTab }: TabBarProps) {
 
   const TABS = [
     { name: 'index', icon: Home, route: '/(patient)/tabs', label: 'Home' },
-    { name: 'appointments', icon: Calendar, route: '/(patient)/tabs/appointments', label: 'Schedule' },
+    { name: 'appointments', icon: Calendar, route: '/(patient)/tabs/appointments', label: 'Visits' },
     { name: 'prescriptions', icon: Pill, route: '/(patient)/tabs/prescriptions', label: 'Medicines' },
     { name: 'certificates', icon: FileText, route: '/(patient)/tabs/certificates', label: 'Records' },
     { name: 'profile', icon: User, route: '/(patient)/tabs/profile', label: 'Profile' },
@@ -119,7 +119,7 @@ export default function TabBar({ activeTab }: TabBarProps) {
                       }),
                       paddingHorizontal: animatedValue.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [12, 14], // Reduced padding change
+                        outputRange: [12, 18], // Increased padding for active tab
                       }),
                       transform: [
                         {
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 14,
     marginBottom: 8,
     borderRadius: 24,
-    height: 60,
+    height: 65,
     paddingHorizontal: 8,
     paddingVertical: 8,
     alignItems: 'center',
@@ -219,9 +219,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 15,
-    minHeight: 36,
+    paddingVertical: 13,
+    borderRadius: 18,
+    minHeight: 40,
   },
   iconContainer: {
     marginRight: 6,

@@ -27,6 +27,8 @@ yarn-error.*
 .DS_Store
 *.pem
 
+odyssey-test-db-default-rtdb-export (6).json
+
 # local env files
 .env*.local
 .env
