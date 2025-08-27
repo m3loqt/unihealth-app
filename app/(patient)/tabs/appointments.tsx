@@ -28,14 +28,14 @@ import {
   Star,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '@/hooks/auth/useAuth';
-import { databaseService, Appointment, MedicalHistory } from '@/services/database/firebase';
+import { useAuth } from '../../../src/hooks/auth/useAuth';
+import { databaseService, Appointment, MedicalHistory } from '../../../src/services/database/firebase';
 import { AppointmentDetailsModal } from '../../../src/components';
-import { safeDataAccess } from '@/utils/safeDataAccess';
-import LoadingState from '@/components/ui/LoadingState';
-import ErrorBoundary from '@/components/ui/ErrorBoundary';
-import { dataValidation } from '@/utils/dataValidation';
-import { performanceUtils } from '@/utils/performance';
+import { safeDataAccess } from '../../../src/utils/safeDataAccess';
+import LoadingState from '../../../src/components/ui/LoadingState';
+import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
+import { dataValidation } from '../../../src/utils/dataValidation';
+import { performanceUtils } from '../../../src/utils/performance';
 
 export default function AppointmentsScreen() {
   const { filter } = useLocalSearchParams();
@@ -228,7 +228,7 @@ export default function AppointmentsScreen() {
       const clinicName = clinicData?.name || 'Unknown Clinic';
 
       // Determine service type and treatment type
-      const serviceType = feedbackAppointment.relatedReferralId ? 'referral' : 'appointment';
+      const serviceType: 'appointment' | 'referral' = feedbackAppointment.relatedReferralId ? 'referral' : 'appointment';
       const treatmentType = feedbackAppointment.appointmentPurpose || 'General Consultation';
 
       // Use selected tags from user
@@ -508,7 +508,7 @@ export default function AppointmentsScreen() {
         return <Hourglass size={14} color="#6B7280" />;
       case 'completed':
         return <Check size={14} color="#6B7280" />;
-      case 'canceled':
+      case 'cancelled':
         return <XCircle size={14} color="#6B7280" />;
       default:
         return null;
@@ -584,10 +584,12 @@ export default function AppointmentsScreen() {
             </View>
           </View>
           <View style={styles.appointmentHeaderRight}>
-            <View style={styles.statusBadge}>
-              {getStatusIcon(referral?.status)}
-              <Text style={styles.statusText}>{capitalize(referral?.status || 'unknown')}</Text>
-            </View>
+                         <View style={styles.statusBadge}>
+               {getStatusIcon(referral?.status)}
+               <Text style={styles.statusText}>
+                 {capitalize(referral?.status || 'unknown')}
+               </Text>
+             </View>
           </View>
         </View>
 
@@ -701,10 +703,12 @@ export default function AppointmentsScreen() {
             </View>
           </View>
           <View style={styles.appointmentHeaderRight}>
-            <View style={styles.statusBadge}>
-              {getStatusIcon(appointment.status)}
-              <Text style={styles.statusText}>{capitalize(appointment.status)}</Text>
-            </View>
+                         <View style={styles.statusBadge}>
+               {getStatusIcon(appointment.status)}
+               <Text style={styles.statusText}>
+                 {capitalize(appointment.status)}
+               </Text>
+             </View>
           </View>
         </View>
 
@@ -925,7 +929,7 @@ export default function AppointmentsScreen() {
       <SafeAreaView style={styles.container}>
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Appointments</Text>
+        <Text style={styles.headerTitle}>Visits</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity 
             style={styles.addButton}
@@ -1184,10 +1188,13 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
     backgroundColor: '#F9FAFB',
   },
+
   statusText: {
     fontSize: 12,
     color: '#374151',
+    fontFamily: 'Inter-Medium',
   },
+
   subtleDivider: {
     height: 1,
     backgroundColor: '#F3F4F6',
@@ -1757,16 +1764,11 @@ feedbackModalButton: {
     marginBottom: 12,
   },
   feedbackSubmittedContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#DCFCE7',
-    borderWidth: 1,
-    borderColor: '#22C55E',
+    alignItems: 'flex-end',
   },
   feedbackSubmittedText: {
     fontSize: 14,
-    color: '#166534',
+    color: '#1E40AF',
     fontFamily: 'Inter-Medium',
   },
   // Tag selection styles
