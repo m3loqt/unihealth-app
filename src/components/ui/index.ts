@@ -6,4 +6,5 @@ export { default as Tooltip } from './Tooltip';
 export { DynamicUnitInput } from './DynamicUnitInput';
 export { PrescriptionUnitInputs } from './PrescriptionUnitInputs';
 export { default as TimePicker } from './TimePicker';
-export { default as DatePicker } from './DatePicker'; 
+export { default as DatePicker } from './DatePicker';
+export { default as GlobalLoader } from './GlobalLoader'; 

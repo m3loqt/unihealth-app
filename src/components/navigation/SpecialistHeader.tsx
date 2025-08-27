@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, StatusBar } from 'react-native';
 import { Bell, Calendar, User } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../hooks/auth/useAuth';
@@ -10,13 +10,15 @@ interface SpecialistHeaderProps {
   showGreeting?: boolean;
   showNotificationBadge?: boolean;
   notificationCount?: number;
+  onNotificationPress?: () => void;
 }
 
 export default function SpecialistHeader({ 
   title, 
   showGreeting = false, 
   showNotificationBadge = true,
-  notificationCount = 0 
+  notificationCount = 0,
+  onNotificationPress
 }: SpecialistHeaderProps) {
   const { user } = useAuth();
 
@@ -41,7 +43,10 @@ export default function SpecialistHeader({
       </View>
       
       <View style={styles.headerIcons}>
-        <TouchableOpacity style={styles.iconButton}>
+        <TouchableOpacity 
+          style={styles.iconButton}
+          onPress={onNotificationPress}
+        >
           <Bell size={24} color="#6B7280" />
           {showNotificationBadge && notificationCount > 0 && (
             <View style={styles.notificationBadge}>
@@ -87,7 +92,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 16 : 16,
     paddingBottom: 24,
     backgroundColor: '#FFFFFF',
   },

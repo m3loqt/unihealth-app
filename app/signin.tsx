@@ -13,8 +13,6 @@ import {
   Alert,
   Pressable,
   Dimensions,
-  Animated,
-  Easing,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Stethoscope, Eye, EyeOff, Mail, Lock, Fingerprint, User, AlertCircle, X, CheckCircle } from 'lucide-react-native';
@@ -22,48 +20,16 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../src/hooks/auth/useAuth';
 import { performBiometricLogin, isBiometricLoginAvailable, saveBiometricCredentials, checkBiometricSupport } from '../src/hooks/auth/useBiometricAuth';
 import { safeDataAccess } from '../src/utils/safeDataAccess';
+import { GlobalLoader } from '../src/components/ui';
+import { useGlobalLoader } from '../src/hooks/ui';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const RotatingStethoscope: React.FC<{ size?: number }> = ({ size = 38 }) => {
-  const spinAnim = useRef(new Animated.Value(0)).current;
-  const loopRef = useRef<Animated.CompositeAnimation | null>(null);
-  useEffect(() => {
-    loopRef.current = Animated.loop(
-      Animated.timing(spinAnim, {
-        toValue: 1,
-        duration: 1000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
-    loopRef.current.start();
-    return () => {
-      loopRef.current && loopRef.current.stop();
-      spinAnim.stopAnimation();
-      spinAnim.setValue(0);
-    };
-  }, [spinAnim]);
-  const rotate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  return (
-    <Animated.View
-      style={{
-        transform: [{ rotate }],
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        backgroundColor: '#DBEAFE',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Stethoscope size={size} color="#1E40AF" />
-    </Animated.View>
-  );
-};
+
 
 export default function SignInScreen() {
   const { signIn } = useAuth();
+  const loader = useGlobalLoader();
   const [showRoleModal, setShowRoleModal] = useState(true);
   const [selectedRole, setSelectedRole] = useState('');
   const [formData, setFormData] = useState({
@@ -71,7 +37,6 @@ export default function SignInScreen() {
     password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [nextRoute, setNextRoute] = useState('/(tabs)');
   const [errorMessage, setErrorMessage] = useState('');
@@ -119,7 +84,7 @@ export default function SignInScreen() {
   const handleSignIn = async () => {
     setErrorMessage('');
     if (!validateForm()) return;
-    setIsLoading(true);
+    loader.show('Signing in...');
 
     const { email, password } = formData;
 
@@ -146,7 +111,7 @@ export default function SignInScreen() {
       console.error('Sign in error:', error);
       setErrorMessage('An error occurred during sign in. Please try again.');
     } finally {
-      setIsLoading(false);
+      loader.hide();
     }
   };
 
@@ -160,7 +125,7 @@ export default function SignInScreen() {
       const credentials = await performBiometricLogin();
       if (credentials) {
         // Sign in with the retrieved credentials
-        setIsLoading(true);
+        loader.show('Signing in with biometric...');
         const userProfile = await signIn(credentials.email, credentials.password);
         if (userProfile) {
           const targetRoute = userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
@@ -175,7 +140,7 @@ export default function SignInScreen() {
     } catch (error) {
       setErrorMessage('Biometric authentication failed. Please try again.');
     } finally {
-      setIsLoading(false);
+      loader.hide();
     }
   };
 
@@ -294,14 +259,12 @@ export default function SignInScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Loading Overlay during Sign In */}
-      <Modal visible={isLoading} transparent animationType="fade" onRequestClose={() => {}}>
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingCard}>
-            <RotatingStethoscope />
-            <Text style={styles.loadingLabel}>Signing in...</Text>
-          </View>
-        </View>
-      </Modal>
+      <GlobalLoader
+        visible={loader.visible}
+        message={loader.message}
+        showProgress={loader.showProgress}
+        progress={loader.progress}
+      />
       {/* Success Login Modal */}
       <Modal
         visible={showWelcomeModal}
@@ -468,16 +431,16 @@ export default function SignInScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.centerContent}>
-            {/* Header */}
-            <View style={styles.headerContainer}>
-              <View style={styles.logoContainer}>
-                <Stethoscope size={32} color="#1E40AF" strokeWidth={2} />
-                <Text style={styles.logoText}>
-                  Uni<Text style={styles.logoBlue}>HEALTH</Text>
-                </Text>
-              </View>
-              <Text style={styles.tagline}>Your Health, Unified as One</Text>
-            </View>
+                         {/* Header */}
+             <View style={styles.headerContainer}>
+               <View style={styles.logoContainer}>
+                 <Stethoscope size={32} color="#1E40AF" strokeWidth={2} />
+                 <Text style={styles.logoText}>
+                   Uni<Text style={styles.logoBlue}>HEALTH</Text>
+                 </Text>
+               </View>
+               <Text style={styles.tagline}>Your Health, Unified as One</Text>
+             </View>
 
             {/* Form */}
             <View style={styles.formContainer}>
@@ -520,16 +483,16 @@ export default function SignInScreen() {
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
 
-              {/* Sign In Button */}
-              <TouchableOpacity
-                style={[styles.signInButton, isLoading && styles.buttonDisabled]}
-                onPress={handleSignIn}
-                disabled={isLoading}
-              >
-                <Text style={styles.signInButtonText}>
-                  {isLoading ? 'Signing In...' : 'Sign In'}
-                </Text>
-              </TouchableOpacity>
+                             {/* Sign In Button */}
+               <TouchableOpacity
+                 style={[styles.signInButton, loader.visible && styles.buttonDisabled]}
+                 onPress={handleSignIn}
+                 disabled={loader.visible}
+               >
+                 <Text style={styles.signInButtonText}>
+                   {loader.visible ? 'Signing In...' : 'Sign In'}
+                 </Text>
+               </TouchableOpacity>
 
               {/* Subtle Message Box */}
               {errorMessage ? (
@@ -587,27 +550,7 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   keyboardAvoid: { flex: 1 },
-  loadingOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 22,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  loadingLabel: {
-    marginTop: 12,
-    fontSize: 15,
-    color: '#1F2937',
-    fontFamily: 'Inter-Medium',
-  },
+
   scrollContent: {
     flexGrow: 1,
     flex: 1,

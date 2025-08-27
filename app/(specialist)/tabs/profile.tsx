@@ -694,7 +694,11 @@ export default function SpecialistProfileScreen() {
         }
       >
         {/* Header */}
-        <SpecialistHeader title="Profile" />
+        <SpecialistHeader 
+          title="Profile" 
+          onNotificationPress={handleOpenNotifications}
+          notificationCount={notifications.filter(n => !n.read).length}
+        />
 
         {/* Loading and Error States */}
         {profileLoading ? (
@@ -1399,7 +1403,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   scrollView: { flex: 1 },
   headerRow: {
@@ -1418,12 +1421,13 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     backgroundColor: '#F9FAFB',
-    margin: 24,
+    marginHorizontal: 24,
+    marginTop: 2,
+    marginBottom: 15,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 15,
   },
   profileHeader: {
     flexDirection: 'row',
