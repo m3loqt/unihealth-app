@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '../src/hooks/useFrameworkReady';
@@ -12,8 +12,9 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '../src/hooks/auth/useAuth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
+// Keep the splash screen visible while we fetch the initial state
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -33,13 +34,6 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  // Initialize Google Speech-to-Text service
-  useEffect(() => {
-    // TODO: Replace with your actual Google Cloud API key
-    // initializeGoogleSpeechToText('YOUR_GOOGLE_CLOUD_API_KEY');
-    // Google Speech-to-Text service ready to initialize
-  }, []);
-
   if (!fontsLoaded && !fontError) {
     return null;
   }
@@ -47,8 +41,8 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
         <Stack.Screen name="splash" />
+        <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="signin" />
         <Stack.Screen name="(auth)/forgot-password" />

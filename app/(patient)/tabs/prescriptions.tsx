@@ -35,59 +35,61 @@ const calculatePrescriptionStatus = (prescription: Prescription): 'active' | 'co
     return 'discontinued';
   }
 
-  // If duration is "Ongoing" or similar, keep as active
-  if (!prescription.duration || 
-      prescription.duration.toLowerCase().includes('ongoing') || 
-      prescription.duration.toLowerCase().includes('continuous')) {
-    return 'active';
+  // If status is already completed, keep it
+  if (prescription.status === 'completed') {
+    return 'completed';
   }
 
-  try {
-    const prescribedDate = new Date(prescription.prescribedDate);
-    const now = new Date();
-    
-    // Parse duration string (e.g., "7 days", "2 weeks", "1 month")
-    const durationMatch = prescription.duration.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
-    
-    if (!durationMatch) {
-      // If we can't parse the duration, assume it's active
-      return 'active';
+  // Check if the prescription has expired
+  if (prescription.prescribedDate) {
+    try {
+      const prescribedDate = new Date(prescription.prescribedDate);
+      const now = new Date();
+      
+      // Parse duration string (e.g., "7 days", "2 weeks", "1 month")
+      const durationMatch = prescription.duration.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
+      
+      if (durationMatch) {
+        const [, amount, unit] = durationMatch;
+        const durationAmount = parseInt(amount, 10);
+        const durationUnit = unit.toLowerCase();
+
+        // Calculate end date
+        const endDate = new Date(prescribedDate);
+        
+        switch (durationUnit) {
+          case 'day':
+          case 'days':
+            endDate.setDate(endDate.getDate() + durationAmount);
+            break;
+          case 'week':
+          case 'weeks':
+            endDate.setDate(endDate.getDate() + (durationUnit === 'week' ? durationAmount * 7 : durationAmount * 7));
+            break;
+          case 'month':
+          case 'months':
+            endDate.setMonth(endDate.getMonth() + durationAmount);
+            break;
+          case 'year':
+          case 'years':
+            endDate.setFullYear(endDate.getFullYear() + durationAmount);
+            break;
+          default:
+            return 'active';
+        }
+
+        // If current date is past the end date, mark as completed
+        if (now > endDate) {
+          return 'completed';
+        }
+      }
+    } catch (error) {
+      console.error('Error calculating prescription status:', error);
     }
-
-    const [, amount, unit] = durationMatch;
-    const durationAmount = parseInt(amount, 10);
-    const durationUnit = unit.toLowerCase();
-
-    // Calculate end date
-    const endDate = new Date(prescribedDate);
-    
-    switch (durationUnit) {
-      case 'day':
-      case 'days':
-        endDate.setDate(endDate.getDate() + durationAmount);
-        break;
-      case 'week':
-      case 'weeks':
-        endDate.setDate(endDate.getDate() + (durationAmount * 7));
-        break;
-      case 'month':
-      case 'months':
-        endDate.setMonth(endDate.getMonth() + durationAmount);
-        break;
-      case 'year':
-      case 'years':
-        endDate.setFullYear(endDate.getFullYear() + durationAmount);
-        break;
-      default:
-        return 'active';
-    }
-
-    // If current date is past the end date, mark as completed
-    return now > endDate ? 'completed' : 'active';
-  } catch (error) {
-    console.error('Error calculating prescription status:', error);
-    return 'active';
   }
+
+  // If we can't determine the status or it's still valid, keep as active
+  return 'active';
 };
 
 // Utility function to calculate remaining days for active prescriptions
@@ -173,10 +175,66 @@ export default function PrescriptionsScreen() {
   // Validate prescriptions data and calculate status
   const validPrescriptions = useDeepMemo(() => 
     dataValidation.validateArray(prescriptions, dataValidation.isValidPrescription)
-      .map(prescription => ({
-        ...prescription,
-        status: calculatePrescriptionStatus(prescription)
-      })), [prescriptions]
+      .map(prescription => {
+        // If status is already completed or discontinued, keep it
+        if (prescription.status === 'completed' || prescription.status === 'discontinued') {
+          return prescription;
+        }
+        
+        // Check if prescription has expired
+        if (prescription.prescribedDate && prescription.duration) {
+          try {
+            const prescribedDate = new Date(prescription.prescribedDate);
+            const now = new Date();
+            
+            // Parse duration string (e.g., "7 days", "2 weeks", "1 month")
+            const durationMatch = prescription.duration.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
+            
+            if (durationMatch) {
+              const [, amount, unit] = durationMatch;
+              const durationAmount = parseInt(amount, 10);
+              const durationUnit = unit.toLowerCase();
+              
+              // Calculate end date
+              const endDate = new Date(prescription.prescribedDate);
+              
+              switch (durationUnit) {
+                case 'day':
+                case 'days':
+                  endDate.setDate(endDate.getDate() + durationAmount);
+                  break;
+                case 'week':
+                case 'weeks':
+                  endDate.setDate(endDate.getDate() + (durationUnit === 'week' ? durationAmount * 7 : durationAmount * 7));
+                  break;
+                case 'month':
+                case 'months':
+                  endDate.setMonth(endDate.getMonth() + durationAmount);
+                  break;
+                case 'year':
+                case 'years':
+                  endDate.setFullYear(endDate.getFullYear() + durationAmount);
+                  break;
+                default:
+                  break;
+              }
+              
+              // If current date is past the end date, mark as completed
+              if (now > endDate) {
+                return {
+                  ...prescription,
+                  status: 'completed'
+                };
+              }
+            }
+          } catch (error) {
+            console.error('Error checking prescription expiration:', error);
+          }
+        }
+        
+        // If we can't determine the status or it's still valid, keep as active
+        return prescription;
+      }), [prescriptions]
   );
 
   const handleRetry = () => {
@@ -193,6 +251,7 @@ export default function PrescriptionsScreen() {
   
   // Debug logging
   console.log('Total prescriptions:', validPrescriptions.length);
+  console.log('Prescription statuses:', validPrescriptions.map(p => ({ id: p.id, status: p.status, originalStatus: p.status })));
   console.log('Active prescriptions:', activePrescriptions.length);
   console.log('Past prescriptions:', pastPrescriptions.length);
   console.log('Available statuses:', Array.from(new Set(validPrescriptions.map(p => p.status))));

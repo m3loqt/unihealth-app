@@ -140,9 +140,66 @@ export default function HomeScreen() {
       setPrescriptionsLoading(true);
       const prescriptions = await databaseService.getPrescriptions(user.uid);
       const validPrescriptions = dataValidation.validateArray(prescriptions, dataValidation.isValidPrescription);
-      const active = validPrescriptions.filter(prescription =>
-        prescription.status === 'active'
-      ).slice(0, 3);
+      
+      // Debug logging
+      console.log('All prescriptions:', prescriptions.map(p => ({ id: p.id, status: p.status, prescribedDate: p.prescribedDate, duration: p.duration })));
+      console.log('Valid prescriptions:', validPrescriptions.map(p => ({ id: p.id, status: p.status, prescribedDate: p.prescribedDate, duration: p.duration })));
+      
+      // Filter for active prescriptions only
+      const active = validPrescriptions.filter(prescription => {
+        // Check if prescription is expired
+        if (prescription.status === 'active' && prescription.prescribedDate && prescription.duration) {
+          try {
+            const prescribedDate = new Date(prescription.prescribedDate);
+            const now = new Date();
+            
+            // Parse duration string (e.g., "7 days", "2 weeks", "1 month")
+            const durationMatch = prescription.duration.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
+            
+            if (durationMatch) {
+              const [, amount, unit] = durationMatch;
+              const durationAmount = parseInt(amount, 10);
+              const durationUnit = unit.toLowerCase();
+              
+              // Calculate end date
+              const endDate = new Date(prescription.prescribedDate);
+              
+              switch (durationUnit) {
+                case 'day':
+                case 'days':
+                  endDate.setDate(endDate.getDate() + durationAmount);
+                  break;
+                case 'week':
+                case 'weeks':
+                  endDate.setDate(endDate.getDate() + (durationUnit === 'week' ? durationAmount * 7 : durationAmount * 7));
+                  break;
+                case 'month':
+                case 'months':
+                  endDate.setMonth(endDate.getMonth() + durationAmount);
+                  break;
+                case 'year':
+                case 'years':
+                  endDate.setFullYear(endDate.getFullYear() + durationAmount);
+                  break;
+                default:
+                  return true; // Keep as active if we can't parse the duration
+              }
+              
+              // If current date is past the end date, filter out
+              if (now > endDate) {
+                return false;
+              }
+            }
+          } catch (error) {
+            console.error('Error checking prescription expiration:', error);
+          }
+        }
+        
+        return prescription.status === 'active';
+      }).slice(0, 3);
+      
+      console.log('Filtered active prescriptions:', active.map(p => ({ id: p.id, status: p.status, prescribedDate: p.prescribedDate, duration: p.duration })));
+      
       setActivePrescriptions(active);
       setPrescriptionsLoading(false);
       

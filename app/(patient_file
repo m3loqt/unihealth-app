@@ -1,0 +1,67 @@
+// Utility function to calculate remaining days for active prescriptions
+const calculateRemainingDays = (prescription: Prescription): number | null => {
+  if (prescription.status !== 'active') {
+    return null;
+  }
+
+  // If duration is "Ongoing" or similar, return null (no end date)
+  if (!prescription.duration || 
+      prescription.duration.toLowerCase().includes('ongoing') || 
+      prescription.duration.toLowerCase().includes('continuous')) {
+    return null;
+  }
+
+  try {
+    const prescribedDate = new Date(prescription.prescribedDate);
+    const now = new Date();
+    
+    // Parse duration string (e.g., "7 days", "2 weeks", "1 month")
+    const durationMatch = prescription.duration.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
+    
+    if (!durationMatch) {
+      return null;
+    }
+
+    const [, amount, unit] = durationMatch;
+    const durationAmount = parseInt(amount, 10);
+    const durationUnit = unit.toLowerCase();
+
+    // Calculate end date
+    const endDate = new Date(prescribedDate);
+    
+    switch (durationUnit) {
+      case 'day':
+      case 'days':
+        endDate.setDate(endDate.getDate() + durationAmount);
+        break;
+      case 'week':
+      case 'weeks':
+        endDate.setDate(endDate.getDate() + (durationUnit === 'week' ? durationAmount * 7 : durationAmount * 7));
+        break;
+      case 'month':
+      case 'months':
+        endDate.setMonth(endDate.getMonth() + durationAmount);
+        break;
+      case 'year':
+      case 'years':
+        endDate.setFullYear(endDate.getTime() + durationAmount);
+        break;
+      default:
+        return null;
+    }
+
+    // If current date is past the end date, return 0 (expired)
+    if (now > endDate) {
+      return 0;
+    }
+
+    // Calculate remaining days
+    const remainingTime = endDate.getTime() - now.getTime();
+    const remainingDays = Math.ceil(remainingTime / (1000 * 60 * 60 * 24));
+    
+    return remainingDays > 0 ? remainingDays : 0;
+  } catch (error) {
+    console.error('Error calculating remaining days:', error);
+    return null;
+  }
+};
