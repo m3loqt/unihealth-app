@@ -16,7 +16,7 @@ import {
   Modal,
 } from 'react-native';
 import {
-  FileText, Search, Download, Eye, ChevronDown, Check, Bell, RefreshCw, Trash2
+  FileText, Search, Download, Eye, ChevronDown, Check, Bell, RefreshCw, Trash2, CheckCircle
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
@@ -289,25 +289,23 @@ export default function SpecialistCertificatesScreen() {
           router.push(`${route}?certificateId=${certificate.id}&patientId=${certificate.patientId}` as any);
         }}
       >
-        <View style={styles.pdfThumbnail}>
-          <View style={styles.pdfPages}>
-            <View style={[styles.pdfPage, styles.pdfPageMain]} />
-            <View style={[styles.pdfPage, styles.pdfPageShadow]} />
-          </View>
-          <View
-            style={[
-              styles.statusLabel,
-              {
-                backgroundColor: statusColors.bg,
-                borderColor: statusColors.border,
-                zIndex: 99,
-              },
-            ]}
-          >
-            <Text style={[styles.statusLabelText, { color: statusColors.text }]}>
-              {(certificate as any).displayStatus || certificate.status}
-            </Text>
-          </View>
+                  <View style={styles.pdfThumbnail}>
+            <View style={styles.pdfPages}>
+              <View style={[styles.pdfPage, styles.pdfPageMain]} />
+              <View style={[styles.pdfPage, styles.pdfPageShadow]} />
+            </View>
+            <View style={styles.statusLabel}>
+              <View style={styles.statusBadge}>
+                {((certificate as any).displayStatus || certificate.status) === 'Valid' ? (
+                  <CheckCircle size={14} color="#6B7280" />
+                ) : (
+                  <FileText size={14} color="#6B7280" />
+                )}
+                <Text style={styles.statusLabelText}>
+                  {(certificate as any).displayStatus || certificate.status}
+                </Text>
+              </View>
+            </View>
           <View
             style={[
               styles.certificateIconOverlay,
@@ -583,20 +581,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  headerTitle: {
-    fontSize: 24,
-    color: '#1F2937',
   },
   filtersContainer: {
     backgroundColor: '#FFFFFF',
@@ -781,10 +765,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-end',
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusIcon: {
+    marginRight: 0,
   },
   statusLabelText: {
     fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
     letterSpacing: 0.1,
   },
   cardContent: {

@@ -291,21 +291,23 @@ export default function SpecialistPrescriptionsScreen() {
           </Text>
         </View>
         <View style={styles.prescriptionStatus}>
+          <View style={styles.statusBadge}>
+            <CheckCircle size={16} color="#6B7280" style={styles.statusIcon} />
+            <Text style={styles.statusText}>Active</Text>
+          </View>
           {(() => {
             const remainingDays = calculateRemainingDays(prescription);
             if (remainingDays !== null) {
               return (
-                <>
-                  <Text style={styles.remainingDays}>{remainingDays}</Text>
-                  <Text style={styles.remainingLabel}>days left</Text>
-                </>
+                <Text style={styles.remainingDays}>
+                  {remainingDays} days left
+                </Text>
               );
             } else {
               return (
-                <>
-                  <Text style={styles.remainingDays}>-</Text>
-                  <Text style={styles.remainingLabel}>Ongoing</Text>
-                </>
+                <Text style={styles.remainingDays}>
+                  Ongoing
+                </Text>
               );
             }
           })()}
@@ -324,12 +326,7 @@ export default function SpecialistPrescriptionsScreen() {
             {formatPrescriptionDuration(prescription.duration)}
           </Text>
         </View>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Status:</Text>
-          <View style={[styles.statusBadge, { backgroundColor: '#DCFCE7', borderColor: '#22C55E' }]}>
-            <Text style={[styles.statusText, { color: '#166534' }]}>Active</Text>
-          </View>
-        </View>
+
       </View>
     </View>
   );
@@ -355,7 +352,16 @@ export default function SpecialistPrescriptionsScreen() {
           </Text>
         </View>
         <View style={styles.prescriptionStatus}>
-          <CheckCircle size={20} color="#10B981" />
+          <View style={styles.statusBadge}>
+            {prescription.status === 'completed' ? (
+              <CheckCircle size={16} color="#6B7280" style={styles.statusIcon} />
+            ) : (
+              <Pill size={16} color="#6B7280" style={styles.statusIcon} />
+            )}
+            <Text style={styles.statusText}>
+              {prescription.status === 'completed' ? 'Completed' : 'Discontinued'}
+            </Text>
+          </View>
         </View>
       </View>
       <View style={styles.prescriptionMeta}>
@@ -371,37 +377,27 @@ export default function SpecialistPrescriptionsScreen() {
             {formatPrescriptionDuration(prescription.duration)}
           </Text>
         </View>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Status:</Text>
-          <View style={[
-            styles.statusBadge, 
-            { 
-              backgroundColor: prescription.status === 'completed' ? '#FEF3C7' : '#FEE2E2',
-              borderColor: prescription.status === 'completed' ? '#F59E0B' : '#EF4444'
-            }
-          ]}>
-            <Text style={[
-              styles.statusText, 
-              { color: prescription.status === 'completed' ? '#92400E' : '#991B1B' }
-            ]}>
-              {prescription.status === 'completed' ? 'Completed' : 'Discontinued'}
-            </Text>
-          </View>
-        </View>
+
       </View>
     </View>
   );
 
   const renderEmptyState = (type: string) => (
     <View style={styles.emptyState}>
-      <Pill size={48} color="#9CA3AF" />
-      <Text style={styles.emptyStateTitle}>
-        No {type.toLowerCase()} prescriptions
+      <View style={styles.emptyIcon}>
+        <Pill size={48} color="#9CA3AF" />
+      </View>
+      <Text style={styles.emptyTitle}>
+        {loading ? 'Loading prescriptions...' : type === 'All' ? 'No prescriptions found' : `No ${type.toLowerCase()} prescriptions found`}
       </Text>
-      <Text style={styles.emptyStateText}>
-        {type === 'Active' 
-          ? 'No active prescriptions found for your patients.'
-          : 'No past prescriptions found for your patients.'
+      <Text style={styles.emptyDescription}>
+        {loading 
+          ? 'Please wait while we load your prescriptions...'
+          : type === 'Active' 
+            ? 'Your active prescriptions will appear here once prescribed to your patients.'
+            : type === 'Past'
+            ? 'Your completed or discontinued prescriptions will appear here.'
+            : 'Your prescriptions will appear here once prescribed to your patients.'
         }
       </Text>
     </View>
@@ -502,31 +498,35 @@ export default function SpecialistPrescriptionsScreen() {
           notificationCount={notifications.filter(n => !n.read).length}
         />
       <View style={styles.filtersContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersContent}
-        >
-          {['All', 'Active', 'Past'].map((filter) => (
-            <TouchableOpacity
-              key={filter}
-              style={[
-                styles.filterButton,
-                activeTab === filter && styles.activeFilterButton,
-              ]}
-              onPress={() => setActiveTab(filter)}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  activeTab === filter && styles.activeFilterText,
-                ]}
-              >
-                {filter}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View style={styles.filtersBarRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersContent}
+          >
+            <View style={styles.filtersLeft}>
+              {['All', 'Active', 'Past'].map((filter) => (
+                <TouchableOpacity
+                  key={filter}
+                  style={[
+                    styles.filterButton,
+                    activeTab === filter && styles.activeFilterButton,
+                  ]}
+                  onPress={() => setActiveTab(filter)}
+                >
+                  <Text
+                    style={[
+                      styles.filterText,
+                      activeTab === filter && styles.activeFilterText,
+                    ]}
+                  >
+                    {filter}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
       </View>
       {renderContent()}
       
@@ -626,30 +626,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  headerTitle: {
-    fontSize: 24,
-    color: '#1F2937',
-  },
+
   filtersContainer: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    paddingBottom: 12,
+    paddingTop: 0,
+  },
+  filtersBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    gap: 10,
+    position: 'relative',
+    zIndex: 1,
   },
   filtersContent: {
-    paddingHorizontal: 24,
-    gap: 12,
+    gap: 10,
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  filtersLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   filterButton: {
     paddingHorizontal: 16,
@@ -658,6 +660,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    marginRight: 6,
   },
   activeFilterButton: {
     backgroundColor: '#1E40AF',
@@ -724,15 +727,9 @@ const styles = StyleSheet.create({
   },
   prescriptionStatus: {
     alignItems: 'flex-end',
+    gap: 8,
   },
-  remainingDays: {
-    fontSize: 14,
-    color: '#1F2937',
-  },
-  remainingLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
+
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -747,6 +744,10 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     color: '#374151',
+    fontFamily: 'Inter-Medium',
+  },
+  statusIcon: {
+    marginRight: 4,
   },
   prescriptionMeta: {
     gap: 4,
@@ -789,59 +790,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#374151',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyStateText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 64,
-    paddingHorizontal: 32,
-  },
-  loadingText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginTop: 16,
-    textAlign: 'center',
-  },
+
   errorContainer: {
+    padding: 20,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
     backgroundColor: '#FEF2F2',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#FECACA',
+    margin: 20,
   },
   errorText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
+    fontSize: 14,
     color: '#DC2626',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+    fontFamily: 'Inter-Regular',
   },
   retryButton: {
     backgroundColor: '#DC2626',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
   },
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
   },
 });
 
