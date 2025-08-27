@@ -456,7 +456,20 @@ export default function AppointmentsScreen() {
   // Performance optimization: memoize filtered appointments
   const filteredAppointments = performanceUtils.useDeepMemo(() => {
     if (activeFilter === 'All') {
-      return appointments;
+      // Sort appointments so Pending comes first, then Confirmed, then Completed, then Cancelled
+      return [...appointments].sort((a, b) => {
+        const statusOrder = {
+          'pending': 1,
+          'confirmed': 2,
+          'completed': 3,
+          'cancelled': 4,
+        };
+        
+        const aOrder = statusOrder[a.status.toLowerCase()] || 5;
+        const bOrder = statusOrder[b.status.toLowerCase()] || 5;
+        
+        return aOrder - bOrder;
+      });
     }
     
     const filterStatus = activeFilter.toLowerCase();
@@ -479,24 +492,35 @@ export default function AppointmentsScreen() {
       return s === filterStatus;
     };
 
-    appointments.forEach(appointment => {
-      if (appointment.relatedReferralId) {
-        const referral = referrals[appointment.relatedReferralId];
-        const isLoading = loadingReferrals[appointment.relatedReferralId];
+    const referralItems = appointments
+      .filter(appointment => appointment.relatedReferralId)
+      .map(appointment => ({
+        id: appointment.id || appointment.relatedReferralId,
+        type: 'referral',
+        appointment,
+        referral: referrals[appointment.relatedReferralId],
+        loading: loadingReferrals[appointment.relatedReferralId],
+      }))
+      .filter(item => item.referral && matchesFilter(item.referral.status));
 
-        if (!referral || matchesFilter(referral.status || '')) {
-          referralCards.push({
-            id: appointment.id || appointment.relatedReferralId,
-            type: 'referral',
-            appointment,
-            referral,
-            loading: isLoading,
-          });
-        }
-      }
-    });
+    // Sort referral items by status priority (same as appointments)
+    if (activeFilter === 'All') {
+      referralItems.sort((a, b) => {
+        const statusOrder = {
+          'pending': 1,
+          'confirmed': 2,
+          'completed': 3,
+          'cancelled': 4,
+        };
+        
+        const aOrder = statusOrder[a.referral?.status?.toLowerCase()] || 5;
+        const bOrder = statusOrder[b.referral?.status?.toLowerCase()] || 5;
+        
+        return aOrder - bOrder;
+      });
+    }
 
-    return referralCards;
+    return referralItems;
   };
 
 
