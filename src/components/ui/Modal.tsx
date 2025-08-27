@@ -43,16 +43,12 @@ export const Modal: React.FC<ModalProps> = ({
       transparent
       animationType={animationType}
       onRequestClose={onClose}
-      accessibilityViewIsModal={true}
-      accessibilityLabel="Modal dialog"
     >
       <View style={styles.container}>
         {showBackdrop && (
           <Pressable 
             onPress={handleBackdropPress}
             style={styles.backdrop}
-            accessibilityRole="button"
-            accessibilityLabel="Close modal"
           >
             <View
               style={[
@@ -69,8 +65,6 @@ export const Modal: React.FC<ModalProps> = ({
             styles.content,
             style,
           ]}
-          accessibilityRole="dialog"
-          accessibilityLabel={title || "Modal content"}
         >
           <View style={[styles.modalContent, contentStyle]}>
             {children}

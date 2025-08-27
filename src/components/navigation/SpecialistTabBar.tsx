@@ -54,6 +54,9 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
   const getActiveTab = () => {
     if (activeTab) return activeTab;
 
+    // If QR modal is open, keep QR tab active
+    if (showQRModal) return 'qr-code';
+
     if (pathname === '/(specialist)/tabs' || pathname === '/(specialist)/tabs/') {
       return 'index';
     }
@@ -254,7 +257,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
                           }),
                           paddingHorizontal: animatedValue.interpolate({
                             inputRange: [0, 1],
-                            outputRange: [12, 14],
+                            outputRange: [12, 18],
                           }),
                           transform: [
                             {
@@ -329,10 +332,10 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
                           inputRange: [0, 1],
                           outputRange: ['transparent', COLORS.white],
                         }),
-                        paddingHorizontal: animatedValue.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [12, 14],
-                        }),
+                                                  paddingHorizontal: animatedValue.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [12, 18],
+                          }),
                         transform: [
                           {
                             scale: animatedValue.interpolate({
@@ -638,7 +641,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 14,
     marginBottom: 8,
     borderRadius: 24,
-    height: 60,
+    height: 65,
     paddingHorizontal: 8,
     paddingVertical: 8,
     alignItems: 'center',
@@ -663,9 +666,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 15,
-    minHeight: 36,
+    paddingVertical: 13,
+    borderRadius: 18,
+    minHeight: 40,
   },
   iconContainer: {
     marginRight: 6,
