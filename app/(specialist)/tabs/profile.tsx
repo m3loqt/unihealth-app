@@ -718,6 +718,7 @@ export default function SpecialistProfileScreen() {
           <>
             {/* Profile Card */}
         <View style={styles.profileCard}>
+          {/* Profile Header with Image and Basic Info */}
           <View style={styles.profileHeader}>
             <View style={styles.profileImageContainer}>
               {profileImage ? (
@@ -734,37 +735,77 @@ export default function SpecialistProfileScreen() {
                 </View>
               )}
             </View>
-                         <View style={styles.profileInfo}>
-               <Text style={styles.userName}>Dr. {name || 'Unknown Doctor'}</Text>
-               <Text style={styles.userSpecialty}>{specialization || 'General Medicine'}</Text>
-               {experience && <Text style={styles.experience}>{experience} experience</Text>}
-             </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.userName}>Dr. {name || 'Unknown Doctor'}</Text>
+              <View style={styles.specialtyRow}>
+                <Text style={styles.userSpecialty}>{specialization || 'General Medicine'}</Text>
+                {memoizedClinicNames.length > 0 && (
+                  <Text style={styles.clinicAffiliation}>
+                    @ {memoizedClinicNames.slice(0, 2).join(', ')}
+                    {memoizedClinicNames.length > 2 ? ` +${memoizedClinicNames.length - 2} more` : ''}
+                  </Text>
+                )}
+              </View>
+              {experience && <Text style={styles.experience}>{experience} experience</Text>}
+            </View>
           </View>
-          
-                     {/* Essential Contact Info */}
-           <View style={styles.contactInfo}>
-             <View style={styles.contactItems}>
-               {memoizedClinicNames.length > 0 && (
-                 <View style={styles.contactItem}>
-                   <Building size={16} color="#6B7280" />
-                   <Text style={styles.contactText}>
-                     {memoizedClinicNames.slice(0, 2).join(', ')}
-                     {memoizedClinicNames.length > 2 ? ` +${memoizedClinicNames.length - 2} more` : ''}
-                   </Text>
-                 </View>
-               )}
-               <View style={styles.contactItem}>
-                 <Mail size={16} color="#6B7280" />
-                 <Text style={styles.contactText}>{email || 'Email not provided'}</Text>
-               </View>
-               {phone && (
-                 <View style={styles.contactItem}>
-                   <Phone size={16} color="#6B7280" />
-                   <Text style={styles.contactText}>{phone}</Text>
-                 </View>
-               )}
-             </View>
-           </View>
+
+          {/* Personal Information Section */}
+          <View style={styles.personalInfo}>
+            <Text style={styles.contactInfoTitle}>Personal Details</Text>
+            <View style={styles.personalInfoRow}>
+              {gender && (
+                <View style={styles.personalInfoItem}>
+                  <User size={16} color="#6B7280" />
+                  <Text style={styles.personalInfoText}>
+                    {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                  </Text>
+                </View>
+              )}
+              {dateOfBirth && (
+                <View style={styles.personalInfoItem}>
+                  <Calendar size={16} color="#6B7280" />
+                  <Text style={styles.personalInfoText}>
+                    {formatDateSafely(dateOfBirth)}
+                  </Text>
+                </View>
+              )}
+              {civilStatus && (
+                <View style={styles.personalInfoItem}>
+                  <User size={16} color="#6B7280" />
+                  <Text style={styles.personalInfoText}>
+                    {civilStatus.charAt(0).toUpperCase() + civilStatus.slice(1)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Contact Information Section */}
+          <View style={styles.contactInfo}>
+            <Text style={styles.contactInfoTitle}>Contact Information</Text>
+            <View style={styles.contactItems}>
+              <View style={styles.contactItem}>
+                <Mail size={16} color="#6B7280" />
+                <Text style={styles.contactText}>{email || 'Email not provided'}</Text>
+              </View>
+              {phone && (
+                <View style={styles.contactItem}>
+                  <Phone size={16} color="#6B7280" />
+                  <Text style={styles.contactText}>{phone}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Edit Profile Button */}
+          <TouchableOpacity
+            style={styles.editProfileButton}
+            onPress={() => setShowFullProfileModal(true)}
+          >
+            <Edit size={18} color="#FFFFFF" />
+            <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
         </View>
 
 
@@ -779,11 +820,25 @@ export default function SpecialistProfileScreen() {
                 <Text style={styles.infoValue}>{medicalLicenseNumber}</Text>
               </View>
             )}
+            {prcId && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>PRC ID:</Text>
+                <Text style={styles.infoValue}>{prcId}</Text>
+              </View>
+            )}
+            {prcExpiryDate && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>PRC Expiry Date:</Text>
+                <Text style={styles.infoValue}>
+                  {formatDateSafely(prcExpiryDate)}
+                </Text>
+              </View>
+            )}
             {professionalFee && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Professional Fee:</Text>
                 <View style={styles.feeContainer}>
-                  <Text style={styles.infoValue}>{professionalFee}</Text>
+                  <Text style={styles.feeAmount}>{professionalFee}</Text>
                   {profileData.professionalFeeStatus && (
                     <View style={[
                       styles.feeStatusPill,
@@ -1461,6 +1516,17 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 3,
   },
+  specialtyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  clinicAffiliation: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
   userSpecialty: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
@@ -1523,7 +1589,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   contactInfo: { 
-    marginTop: 16,
+    marginTop: 8,
   },
   contactInfoTitle: {
     fontSize: 16,
@@ -1543,6 +1609,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#374151',
+  },
+  personalInfo: { 
+    marginTop: 8,
+  },
+  personalInfoItems: {
+    gap: 12,
+  },
+  personalInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingBottom: 8,
+  },
+
+  personalInfoText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+  },
+  editProfileButton: {
+    backgroundColor: '#1E40AF',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 32,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  editProfileButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+  },
+  infoSection: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#6B7280',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   card: {
     backgroundColor: '#F9FAFB',
@@ -1939,24 +2051,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-     editProfileButton: {
-     flexDirection: 'row',
-     alignItems: 'center',
-     justifyContent: 'center',
-     backgroundColor: '#1E40AF',
-     paddingVertical: 16,
-     paddingHorizontal: 24,
-     borderRadius: 12,
-     gap: 8,
-     shadowColor: '#1E40AF',
-     shadowOffset: {
-       width: 0,
-       height: 2,
-     },
-     shadowOpacity: 0.1,
-     shadowRadius: 4,
-     elevation: 2,
-   },
+
    editButtonContainer: {
      paddingVertical: 20,
      paddingHorizontal: 24,
@@ -1970,11 +2065,7 @@ const styles = StyleSheet.create({
      width: '100%',
      justifyContent: 'center',
    },
-  editProfileButtonText: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#FFFFFF',
-  },
+
   editButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -2218,6 +2309,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  feeAmount: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    textAlign: 'right',
   },
   feeStatusPill: {
     paddingHorizontal: 8,
