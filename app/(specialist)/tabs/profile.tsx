@@ -426,6 +426,7 @@ export default function SpecialistProfileScreen() {
     console.log('Current profileData:', profileData);
     
     setIsEditing(true);
+    setShowFullProfileModal(true);
     // Ensure profile data is available before setting editable data
     if (profile) {
       const initialData = {
@@ -737,15 +738,13 @@ export default function SpecialistProfileScreen() {
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.userName}>Dr. {name || 'Unknown Doctor'}</Text>
-              <View style={styles.specialtyRow}>
-                <Text style={styles.userSpecialty}>{specialization || 'General Medicine'}</Text>
-                {memoizedClinicNames.length > 0 && (
-                  <Text style={styles.clinicAffiliation}>
-                    @ {memoizedClinicNames.slice(0, 2).join(', ')}
-                    {memoizedClinicNames.length > 2 ? ` +${memoizedClinicNames.length - 2} more` : ''}
-                  </Text>
-                )}
-              </View>
+              <Text style={styles.userSpecialty}>{specialization || 'General Medicine'}</Text>
+              {memoizedClinicNames.length > 0 && (
+                <Text style={styles.clinicAffiliation}>
+                  @ {memoizedClinicNames.slice(0, 2).join(', ')}
+                  {memoizedClinicNames.length > 2 ? ` +${memoizedClinicNames.length - 2} more` : ''}
+                </Text>
+              )}
               {experience && <Text style={styles.experience}>{experience} experience</Text>}
             </View>
           </View>
@@ -801,7 +800,7 @@ export default function SpecialistProfileScreen() {
           {/* Edit Profile Button */}
           <TouchableOpacity
             style={styles.editProfileButton}
-            onPress={() => setShowFullProfileModal(true)}
+            onPress={handleEditProfile}
           >
             <Edit size={18} color="#FFFFFF" />
             <Text style={styles.editProfileButtonText}>Edit Profile</Text>
@@ -838,16 +837,13 @@ export default function SpecialistProfileScreen() {
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Professional Fee:</Text>
                 <View style={styles.feeContainer}>
-                  <Text style={styles.feeAmount}>{professionalFee}</Text>
-                  {profileData.professionalFeeStatus && (
-                    <View style={[
-                      styles.feeStatusPill,
-                      { backgroundColor: profileData.professionalFeeStatus === 'confirmed' ? '#10B981' : '#F59E0B' }
-                    ]}>
-                      <Text style={styles.feeStatusText}>
-                        {profileData.professionalFeeStatus === 'confirmed' ? 'Confirmed' : 'Pending'}
-                      </Text>
-                    </View>
+                  <Text style={styles.feeAmount}>
+                    ₱{(profile as any)?.feeChangeRequest?.previousFee || professionalFee}
+                  </Text>
+                  {(profile as any)?.feeChangeRequest?.requestedFee && (
+                    <Text style={styles.requestedFeeText}>
+                      (Requested: ₱{(profile as any).feeChangeRequest.requestedFee})
+                    </Text>
                   )}
                 </View>
               </View>
@@ -864,13 +860,7 @@ export default function SpecialistProfileScreen() {
               </View>
             )}
           </View>
-          <TouchableOpacity 
-            style={styles.viewFullProfileButton}
-            onPress={() => setShowFullProfileModal(true)}
-          >
-            <Text style={styles.viewFullProfileText}>View Full Profile</Text>
-            <ChevronRight size={16} color="#1E40AF" />
-          </TouchableOpacity>
+
         </View>
 
 
@@ -1247,16 +1237,13 @@ export default function SpecialistProfileScreen() {
                            <View style={styles.modalInfoRow}>
                              <Text style={styles.modalInfoLabel}>Professional Fee</Text>
                              <View style={styles.modalFeeContainer}>
-                               <Text style={styles.modalInfoValue}>{professionalFee}</Text>
-                               {profileData.professionalFeeStatus && (
-                                 <View style={[
-                                   styles.modalFeeStatusPill,
-                                   { backgroundColor: profileData.professionalFeeStatus === 'confirmed' ? '#10B981' : '#F59E0B' }
-                                 ]}>
-                                   <Text style={styles.modalFeeStatusText}>
-                                     {profileData.professionalFeeStatus === 'confirmed' ? 'Confirmed' : 'Pending'}
-                                   </Text>
-                                 </View>
+                               <Text style={styles.modalInfoValue}>
+                                 ₱{(profile as any)?.feeChangeRequest?.previousFee || professionalFee}
+                               </Text>
+                               {(profile as any)?.feeChangeRequest?.requestedFee && (
+                                 <Text style={styles.modalRequestedFeeText}>
+                                   (Requested: ₱{(profile as any).feeChangeRequest.requestedFee})
+                                 </Text>
                                )}
                              </View>
                            </View>
@@ -1329,7 +1316,7 @@ export default function SpecialistProfileScreen() {
            </View>
          </View>
        </Modal>
-
+dk
       {/* Notification Modal */}
       <Modal
         visible={showNotificationModal}
@@ -1523,15 +1510,16 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   clinicAffiliation: {
-    fontSize: 16,
+    fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+    marginBottom: 4,
   },
   userSpecialty: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
-    color: '#1E40AF',
-    marginBottom: 2,
+    color: '#6B7280',
+    marginBottom: 4,
   },
   licenseNumber: {
     fontSize: 13,
@@ -1574,8 +1562,10 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   personalInfoItem: {
-    flex: 1,
-    minWidth: '45%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 'auto',
   },
   personalInfoLabel: {
     fontSize: 12,
@@ -1589,7 +1579,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   contactInfo: { 
-    marginTop: 8,
+    marginTop: 16,
   },
   contactInfoTitle: {
     fontSize: 16,
@@ -1619,8 +1609,9 @@ const styles = StyleSheet.create({
   personalInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'flex-start',
     paddingBottom: 8,
+    gap: 24,
   },
 
   personalInfoText: {
@@ -1632,6 +1623,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E40AF',
     paddingVertical: 12,
     borderRadius: 8,
+    justifyContent: 'center',
     alignItems: 'center',
     marginTop: 32,
     flexDirection: 'row',
@@ -2306,9 +2298,9 @@ const styles = StyleSheet.create({
   },
   // Fee status styles
   feeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 0,
     flex: 1,
     justifyContent: 'flex-end',
   },
@@ -2317,6 +2309,20 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
     textAlign: 'right',
+  },
+  previousFeeText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'right',
+    marginTop: 2,
+  },
+  requestedFeeText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    textAlign: 'right',
+    marginLeft: 8,
   },
   feeStatusPill: {
     paddingHorizontal: 8,
@@ -2331,9 +2337,23 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   modalFeeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 0,
+  },
+  modalPreviousFeeText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'right',
+    marginTop: 2,
+  },
+  modalRequestedFeeText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    textAlign: 'right',
+    marginLeft: 8,
   },
   modalFeeStatusPill: {
     paddingHorizontal: 8,
