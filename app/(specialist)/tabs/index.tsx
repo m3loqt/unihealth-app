@@ -153,7 +153,7 @@ export default function SpecialistHomeScreen() {
     if (user && user.uid && nextAppointments.length > 0) {
       generateChartData();
     }
-  }, [chartRange, user, nextAppointments]);
+  }, [chartRange, user]); // Remove nextAppointments dependency to prevent unnecessary regeneration
 
   // Initialize chart data when component mounts
   useEffect(() => {
@@ -365,8 +365,8 @@ export default function SpecialistHomeScreen() {
       const start = new Date();
       start.setDate(start.getDate() - 6);
       const data: any[] = [];
-      // Use realistic weekly data that shows a trend
-      const values = [45, 38, 52, 41, 67, 58, 72]; // Sample weekly trend
+      // Use data that matches the first image: starts around 270-280, dips to 240, peaks at 450-470, then to 350-370, ending near 500
+      const values = [280, 240, 470, 350, 370, 72, 0]; // Matching the first image trend with realistic values
       for (let i = 0; i < 7; i++) {
         const d = new Date(start);
         d.setDate(start.getDate() + i);
@@ -386,8 +386,8 @@ export default function SpecialistHomeScreen() {
         const date = new Date(year, now.getMonth() - (5 - m), 1);
         const monthIdx = date.getMonth();
         const label = months[monthIdx];
-        // Use more realistic and varied data for better visualization
-        const values = [320, 280, 470, 190, 380, 420]; // Sample monthly data
+        // Use data that matches the second image: starts around 250, peaks at 489 in March, drops to below 100 in May
+        const values = [250, 240, 489, 150, 80, 200]; // Matching the second image trend
         const value = values[m] || Math.floor(Math.random() * 200) + 100;
         data.push({ value, label });
       }
@@ -398,8 +398,8 @@ export default function SpecialistHomeScreen() {
     const newChartData = chartRange === 'weekly' ? buildWeekly() : buildMonthly();
     setChartData(newChartData);
     
-    // Reset selected band when data changes
-    setSelectedBand(null);
+    // Don't reset selected band when data changes to keep selection persistent
+    // setSelectedBand(null);
     
     // Initialize animations for new data
     newChartData.forEach(item => {
@@ -414,10 +414,13 @@ export default function SpecialistHomeScreen() {
       const start = new Date();
       start.setDate(start.getDate() - 6);
       setChartTitle('Weekly Overview');
-      setChartSubtitle(`${start.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })} - ${now.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}`);
+      setChartSubtitle(`${start.getDate()} ${start.toLocaleDateString('en-US', { month: 'long' })} - ${now.getDate()} ${now.toLocaleDateString('en-US', { month: 'long' })}`);
     } else {
       setChartTitle('Monthly Trends');
-      setChartSubtitle(now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+      // Format like "15 April - 21 April" for monthly view
+      const startMonth = new Date(now.getFullYear(), now.getMonth() - 5, 15);
+      const endMonth = new Date(now.getFullYear(), now.getMonth(), 21);
+      setChartSubtitle(`${startMonth.getDate()} ${startMonth.toLocaleDateString('en-US', { month: 'long' })} - ${endMonth.getDate()} ${endMonth.toLocaleDateString('en-US', { month: 'long' })}`);
     }
   };
 
@@ -425,15 +428,28 @@ export default function SpecialistHomeScreen() {
     const newSelection = selectedBand === label ? null : label;
     setSelectedBand(newSelection);
     
-    // Animate band selection
+    // Quick pop effect - bright flash for 0.05 seconds
     chartData.forEach(item => {
       const animation = bandAnimations.get(item.label);
       if (animation) {
-        Animated.timing(animation, {
-          toValue: item.label === newSelection ? 1 : 0,
-          duration: 200,
-          useNativeDriver: false,
-        }).start();
+        if (item.label === newSelection) {
+          // Super quick bright flash
+          Animated.sequence([
+            Animated.timing(animation, {
+              toValue: 1,
+              duration: 50, // 0.05 seconds = 50ms
+              useNativeDriver: false,
+            }),
+            Animated.timing(animation, {
+              toValue: 0,
+              duration: 50, // Quick fade out
+              useNativeDriver: false,
+            })
+          ]).start();
+        } else {
+          // Reset animation
+          animation.setValue(0);
+        }
       }
     });
   };
@@ -668,7 +684,7 @@ export default function SpecialistHomeScreen() {
               {/* Chart Header with Left-Aligned Overview and Right-Aligned Filter */}
               <View style={styles.chartHeaderNew}>
                 <View style={styles.chartHeaderLeft}>
-           
+                  <Text style={styles.chartTitle}>{chartTitle}</Text>
                   <Text style={styles.chartSubtitle}>{chartSubtitle}</Text>
                 </View>
                 <View style={styles.chartHeaderRight}>
@@ -721,97 +737,195 @@ export default function SpecialistHomeScreen() {
                   <Text style={styles.yAxisLabel}>0</Text>
                 </View>
                 
-                {/* Custom Vertical Bands - Render first as background */}
-                <View style={styles.bandsContainer}>
-                  {chartData.map((item, index) => (
-                    <TouchableOpacity
-                      key={item.label}
-                      style={[
-                        styles.band,
-                        selectedBand === item.label && styles.bandSelected
-                      ]}
-                      onPress={() => handleBandSelection(item.label)}
-                      activeOpacity={0.8}
-                    >
-                      {/* Band gradient background */}
-                      <Animated.View style={[
-                        styles.bandBackground,
-                        selectedBand === item.label && styles.bandBackgroundSelected,
-                        {
-                          opacity: bandAnimations.get(item.label)?.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.7, 0.9],
-                          })
+                {/* Custom Vertical Bars - Render as actual bars */}
+                <View style={styles.barsContainer}>
+                  {chartData.map((item, index) => {
+                    const maxValue = Math.max(...chartData.map(d => d.value));
+                    const barHeight = (item.value / maxValue) * 180; // 180 is the chart height
+                    const isSelected = selectedBand === item.label;
+                    const chartPadding = 30; // Chart padding from left edge
+                    const barWidth = (SCREEN_WIDTH - (chartPadding * 2)) / chartData.length; // Use screen width minus padding
+                    const barLeft = chartPadding + (index * barWidth); // Calculate left position
+                    
+
+                    
+                    return (
+                      <TouchableOpacity
+                        key={item.label}
+                        style={[
+                          styles.bar,
+                          isSelected && styles.barSelected,
+                          { 
+                            width: Math.max(barWidth - 4, 20), // Ensure minimum width for clickability
+                            position: 'absolute',
+                            left: barLeft, // Use calculated position
+                            height: 180, // Full chart height for clickable area
+                            zIndex: 1, // Keep bars at same level as line chart
+                            paddingHorizontal: 2, // Add small padding for better touch target
+                            // Make bars clickable without blocking line chart visibility
+                            backgroundColor: 'transparent',
+                            borderWidth: 1,
+                            borderColor: 'rgba(0,0,0,0.01)' // Very subtle border for clickability
+                          }
+                        ]}
+                        onPress={() => handleBandSelection(item.label)}
+                        activeOpacity={0.6}
+                      >
+                        {/* Bar background - positioned at bottom */}
+                        <View style={[
+                          styles.barBackground,
+                          isSelected && styles.barBackgroundSelected,
+                          { 
+                            height: barHeight,
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0
+                          }
+                        ]}>
+                          {/* Bar gradient effect */}
+                          <View style={styles.barGradientTop} />
+                          <View style={styles.barGradientMiddle} />
+                          <View style={styles.barGradientBottom} />
+                        </View>
+                        
+
+                        
+
+                        
+                        {/* Simple click effect overlay */}
+                        {isSelected && (
+                          <Animated.View 
+                            style={[
+                              styles.barClickEffect,
+                              {
+                                opacity: bandAnimations.get(item.label)?.interpolate({
+                                  inputRange: [0, 1],
+                                  outputRange: [0, 0.3],
+                                }) || 0,
+                              }
+                            ]}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                
+                {/* Custom Line Chart - Render below bars */}
+                <View style={styles.lineChartContainer}>
+                  {/* Draw a simple line connecting the bar centers */}
+                  <View style={styles.customLineChart}>
+                    {chartData.map((item, index) => {
+                      if (index === 0) return null; // Skip first item
+                      
+                      const maxValue = Math.max(...chartData.map(d => d.value));
+                      const chartHeight = 180;
+                      const chartPadding = 30;
+                      const barWidth = (SCREEN_WIDTH - (chartPadding * 2)) / chartData.length;
+                      
+                      const prevItem = chartData[index - 1];
+                      const prevX = chartPadding + ((index - 1) * barWidth) + (barWidth / 2);
+                      const prevY = 10 + (chartHeight - (prevItem.value / maxValue) * chartHeight);
+                      
+                      const currentX = chartPadding + (index * barWidth) + (barWidth / 2);
+                      const currentY = 10 + (chartHeight - (item.value / maxValue) * chartHeight);
+                      
+                      return (
+                        <View
+                          key={`line-${index}`}
+                          style={[
+                            styles.lineSegment,
+                            {
+                              left: prevX,
+                              top: prevY,
+                              width: Math.sqrt(Math.pow(currentX - prevX, 2) + Math.pow(currentY - prevY, 2)),
+                              transform: [{
+                                rotate: `${Math.atan2(currentY - prevY, currentX - prevX)}rad`
+                              }],
+                              transformOrigin: '0 0'
+                            }
+                          ]}
+                        />
+                      );
+                    })}
+                    
+                    {/* Draw data points */}
+                    {chartData.map((item, index) => {
+                      const maxValue = Math.max(...chartData.map(d => d.value));
+                      const chartHeight = 180;
+                      const chartPadding = 30;
+                      const barWidth = (SCREEN_WIDTH - (chartPadding * 2)) / chartData.length;
+                      const x = chartPadding + (index * barWidth) + (barWidth / 2);
+                      const y = 10 + (chartHeight - (item.value / maxValue) * chartHeight);
+                      
+                      return (
+                        <View
+                          key={`point-${index}`}
+                          style={[
+                            styles.dataPoint,
+                            {
+                              left: x - 6,
+                              top: y - 6,
+                              opacity: selectedBand === item.label ? 1 : 0
+                            }
+                          ]}
+                        />
+                      );
+                    })}
+                  </View>
+                </View>
+                
+                {/* Custom X-axis Labels below bars */}
+                <View style={styles.xAxisLabelsContainer}>
+                  {chartData.map((item, index) => {
+                    const chartPadding = 30;
+                    const barWidth = (SCREEN_WIDTH - (chartPadding * 2)) / chartData.length;
+                    const leftPosition = chartPadding + (index * barWidth) + (barWidth / 2) - 15; // Center label under bar
+                    
+                    return (
+                      <View key={`${item.label}-${index}`} style={[
+                        styles.xAxisLabel,
+                        { 
+                          position: 'absolute',
+                          left: leftPosition,
+                          width: 30
                         }
                       ]}>
-                        {/* Gradient effect layers */}
-                        <View style={styles.gradientTop} />
-                        <View style={styles.gradientMiddle} />
-                        <View style={styles.gradientBottom} />
-                      </Animated.View>
-                    </TouchableOpacity>
-                  ))}
+                        <Text style={styles.xAxisLabelText}>{item.label}</Text>
+                      </View>
+                    );
+                  })}
                 </View>
                 
-                {/* Line Chart - Render on top of bands */}
-                <View style={styles.lineChartContainer}>
-                  <LineChart
-                    data={chartData}
-                    curved
-                    thickness={2}
-                    color="#8BA4FF"
-                    height={200}
-                    hideRules
-                    hideAxesAndRules
-                    yAxisThickness={0}
-                    yAxisColor="transparent"
-                    yAxisTextStyle={{color:'transparent'}}
-                    xAxisColor="transparent"
-                    xAxisThickness={0}
-                    xAxisLabelTexts={[]}
-                    xAxisLabelTextStyle={{color:'transparent'}}
-                    hideDataPoints={false}
-                    showDataPointOnFocus={true}
-                    dataPointsRadius={3}
-                    dataPointsColor="#8BA4FF"
-                    dataPointsShape="circle"
-                    initialSpacing={25}
-                    spacing={40}
-                    noOfSections={4}
-                    pointerConfig={{
-                      pointerStripHeight: 140,
-                      pointerColor: '#8BA4FF',
-                      radius: 4,
-                      activatePointersOnLongPress: true,
-                      pointerLabelComponent: (items) => {
-                        const value = items[0]?.value ?? 0;
-                        const label = items[0]?.label ?? '';
-                        return (
-                          <View style={styles.pointerPill}>
-                            <Text style={styles.pointerValue}>{value}</Text>
-                            <Text style={styles.pointerLabel}>total appointments</Text>
-                          </View>
-                        );
+                {/* Selected Point Dot - Removed to hide moon-like icon when bar is clicked */}
+                
+                {/* Custom Tooltip - Show when bar is selected */}
+                {selectedBand && (() => {
+                  const selectedItem = chartData.find(item => item.label === selectedBand);
+                  if (!selectedItem) return null;
+                  
+                  const barIndex = chartData.findIndex(item => item.label === selectedBand);
+                  const chartWidth = SCREEN_WIDTH;
+                  const chartPadding = 30;
+                  const barWidth = (chartWidth - (chartPadding * 2)) / chartData.length;
+                  const leftPosition = chartPadding + (barIndex * barWidth) + (barWidth / 2) - 60;
+                  const topPosition = 10 + (180 - Math.max(...chartData.map(d => d.value)) / Math.max(...chartData.map(d => d.value)) * 180) - 80;
+                  
+                  return (
+                    <View style={[
+                      styles.customTooltip,
+                      {
+                        left: leftPosition,
+                        top: topPosition,
+                        position: 'absolute'
                       }
-                    }}
-                  />
-                </View>
-                
-                {/* Custom X-axis Labels below bands */}
-                <View style={styles.xAxisLabelsContainer}>
-                  {chartData.map((item, index) => (
-                    <View key={item.label} style={styles.xAxisLabel}>
-                      <Text style={styles.xAxisLabelText}>{item.label}</Text>
+                    ]}>
+                      <Text style={styles.tooltipValue}>{selectedItem.value}</Text>
+                      <Text style={styles.tooltipLabel}>total appointments</Text>
                     </View>
-                  ))}
-                </View>
-                
-                {/* Selected Point Dot */}
-                {selectedBand && (
-                  <View style={styles.selectedDot}>
-                    <View style={styles.dotInner} />
-                  </View>
-                )}
+                  );
+                })()}
               </View>
             </View>
           )}
@@ -1832,50 +1946,73 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     color: '#1F2937',
     marginBottom: 6,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   chartSubtitle: {
     fontSize: 15,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     marginTop: 10,
+    textAlign: 'left',
   },
   chartWrapper: {
     position: 'relative',
     height: 240,
-    marginHorizontal: 4,
-  },
-  bandsContainer: {
-    position: 'absolute',
-    top: 10,
-    left: 30,
-    right: 0,
-    bottom: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'stretch',
-    zIndex: 0,
-    paddingHorizontal: 0,
+    width: '100%', // Use full width
     marginHorizontal: 0,
   },
-  band: {
-    flex: 1,
-    marginHorizontal: 2,
-    borderRadius: 6,
-    overflow: 'hidden',
+  barsContainer: {
+    position: 'absolute',
+    top: 10,
+    left: 0,
+    right: 0,
+    bottom: 20,
+    zIndex: 1, // Keep bars at same level as line chart
+    paddingHorizontal: 0, // Remove padding to avoid positioning conflicts
+    marginHorizontal: 0,
   },
-  bandSelected: {
+  bar: {
+    marginHorizontal: 1,
+    borderRadius: 6,
+    overflow: 'visible', // Allow full height clickable area
+    justifyContent: 'flex-end', // Align bar content to bottom
+    zIndex: 1, // Keep bars at same level as line chart
+    // Remove background to allow line chart to be visible
+  },
+  barSelected: {
     borderWidth: 1,
     borderColor: '#D6E2FF',
   },
-  bandBackground: {
-    flex: 1,
+  barBackground: {
     backgroundColor: '#F0F4FF',
+    opacity: 0.8,
+    borderRadius: 6,
+    minHeight: 20, // Ensure minimum height for visibility
+    width: '100%',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  barBackgroundSelected: {
+    backgroundColor: '#E7EEFF',
+    opacity: 1.0,
+    // Remove static border, will use animated glow instead
+  },
+  barGradientTop: {
+    flex: 3,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.9,
+  },
+  barGradientMiddle: {
+    flex: 2,
+    backgroundColor: '#F7FAFF',
     opacity: 0.7,
   },
-  bandBackgroundSelected: {
-    backgroundColor: '#E7EEFF',
-    opacity: 0.9,
+  barGradientBottom: {
+    flex: 1,
+    backgroundColor: '#EDF4FF',
+    opacity: 0.5,
   },
   lineChartContainer: {
     position: 'absolute',
@@ -1883,26 +2020,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 200,
-    zIndex: 2,
-    paddingHorizontal: 30,
+    width: 360,
+    zIndex: 2, // Increase z-index to be above bars for visibility
+    paddingHorizontal: 0,
     marginRight: 0,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  gradientTop: {
-    flex: 3,
-    backgroundColor: '#FFFFFF',
-    opacity: 0.9,
-  },
-  gradientMiddle: {
-    flex: 2,
-    backgroundColor: '#F7FAFF',
-    opacity: 0.7,
-  },
-  gradientBottom: {
-    flex: 1,
-    backgroundColor: '#EDF4FF',
-    opacity: 0.5,
+
   },
   selectedDot: {
     position: 'absolute',
@@ -1950,20 +2074,16 @@ const styles = StyleSheet.create({
   xAxisLabelsContainer: {
     position: 'absolute',
     bottom: 0,
-    left: 30,
+    left: 0,
     right: 0,
     height: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    zIndex: 1,
+    zIndex: 1, // Keep below bars
     paddingHorizontal: 0,
     marginHorizontal: 0,
   },
   xAxisLabel: {
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
   },
   xAxisLabelText: {
     fontSize: 12,
@@ -1980,13 +2100,86 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    zIndex: 1,
+    zIndex: 1, // Keep below bars
     paddingVertical: 10,
   },
   yAxisLabel: {
     fontSize: 10,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+  },
+  customTooltip: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 80,
+    zIndex: 4, // Ensure tooltip is above everything
+  },
+  tooltipValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    textAlign: 'center',
+  },
+  tooltipLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  customLineChart: {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+  },
+  lineSegment: {
+    position: 'absolute',
+    height: 4, // Even thicker line for better visibility
+    backgroundColor: '#8BA4FF',
+    borderRadius: 2,
+    zIndex: 2, // Ensure line segments are above bars
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  dataPoint: {
+    position: 'absolute',
+    width: 12, // Larger for better visibility
+    height: 12,
+    backgroundColor: '#8BA4FF',
+    borderRadius: 6,
+    borderWidth: 3, // Thicker border for better visibility
+    borderColor: '#FFFFFF',
+    zIndex: 2, // Ensure data points are above bars
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+
+  barClickEffect: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFFFFF', // Bright white flash
+    borderRadius: 6,
+    opacity: 0.9, // Much more visible
   },
 });
 
