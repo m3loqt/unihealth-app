@@ -31,6 +31,7 @@ import {
   CheckCircle,
   XCircle,
   Plus,
+  ChevronDown,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
@@ -90,6 +91,15 @@ export default function PatientOverviewScreen() {
   const [resolvedDOB, setResolvedDOB] = useState<string | null>(null);
   const [resolvedAge, setResolvedAge] = useState<number | null>(null);
   const [confirmedReferrals, setConfirmedReferrals] = useState<any[]>([]);
+  
+     // New state for collapsible sections
+   const [showAllPrescriptions, setShowAllPrescriptions] = useState(false);
+   const [showAllRecords, setShowAllRecords] = useState(false);
+   
+   // Pagination state
+   const [prescriptionPage, setPrescriptionPage] = useState(1);
+   const [medicalHistoryPage, setMedicalHistoryPage] = useState(1);
+   const itemsPerPage = 5;
 
   // Load patient data from Firebase
   useEffect(() => {
@@ -799,8 +809,8 @@ export default function PatientOverviewScreen() {
             {activePrescriptions.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Active Prescriptions</Text>
-                <View style={styles.prescriptionsContainer}>
-                  {activePrescriptions.slice(0, 3).map((prescription) => (
+                                 <View style={styles.prescriptionsContainer}>
+                   {activePrescriptions.slice((prescriptionPage - 1) * itemsPerPage, prescriptionPage * itemsPerPage).map((prescription) => (
                     <View key={prescription.id} style={styles.prescriptionCard}>
                       <View style={styles.prescriptionHeader}>
                         <View style={styles.prescriptionIcon}>
@@ -822,21 +832,52 @@ export default function PatientOverviewScreen() {
                       </View>
                     </View>
                   ))}
+                  
+                  {/* Pagination controls above the View all button */}
                   {activePrescriptions.length > 3 && (
-                    <TouchableOpacity style={styles.viewMoreButton}                      onPress={() => {
-                       if (user?.role === 'specialist') {
-                         // For specialists, route to prescriptions tab with patient name filter
-                         const patientName = safeDataAccess.getUserFullName(patientData, '');
-                         router.push(`/(specialist)/tabs/prescriptions?search=${patientName}`);
-                       } else {
-                         // For patients, route to their own prescriptions
-                         router.push('/(patient)/tabs/prescriptions');
-                       }
-                     }}>
-                      <Text style={styles.viewMoreText}>View all {activePrescriptions.length} prescriptions</Text>
-                      <ChevronRight size={16} color="#1E40AF" />
-                    </TouchableOpacity>
+                    <View style={styles.paginationContainer}>
+                      <View style={styles.paginationControls}>
+                        <TouchableOpacity 
+                          style={[styles.paginationButton, prescriptionPage === 1 && styles.paginationButtonDisabled]}
+                          onPress={() => setPrescriptionPage(Math.max(1, prescriptionPage - 1))}
+                          disabled={prescriptionPage === 1}
+                        >
+                          <ChevronLeft size={16} color={prescriptionPage === 1 ? "#9CA3AF" : "#1E40AF"} />
+                        </TouchableOpacity>
+                        
+                        {Array.from({ length: Math.ceil(activePrescriptions.length / itemsPerPage) }, (_, i) => i + 1).map((pageNum) => (
+                          <TouchableOpacity
+                            key={pageNum}
+                            style={[styles.paginationPageButton, prescriptionPage === pageNum && styles.paginationPageButtonActive]}
+                            onPress={() => setPrescriptionPage(pageNum)}
+                          >
+                            <Text style={[styles.paginationPageText, prescriptionPage === pageNum && styles.paginationPageTextActive]}>
+                              {pageNum}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                        
+                        <TouchableOpacity 
+                          style={[styles.paginationButton, prescriptionPage === Math.ceil(activePrescriptions.length / itemsPerPage) && styles.paginationButtonDisabled]}
+                          onPress={() => setPrescriptionPage(Math.min(Math.ceil(activePrescriptions.length / itemsPerPage), prescriptionPage + 1))}
+                          disabled={prescriptionPage === Math.ceil(activePrescriptions.length / itemsPerPage)}
+                        >
+                          <ChevronRight size={16} color={prescriptionPage === Math.ceil(activePrescriptions.length / itemsPerPage) ? "#9CA3AF" : "#1E40AF"} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   )}
+                  
+                  
+                  
+                                     {/* Page info text */}
+                   {activePrescriptions.length > itemsPerPage && (
+                     <View style={styles.pageInfoContainer}>
+                       <Text style={styles.pageInfoText}>
+                         Page {prescriptionPage} of {Math.ceil(activePrescriptions.length / itemsPerPage)}
+                       </Text>
+                     </View>
+                   )}
                 </View>
               </View>
             )}
@@ -845,8 +886,8 @@ export default function PatientOverviewScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Medical History</Text>
               {medicalHistory.length > 0 ? (
-                <View style={styles.historyContainer}>
-                  {medicalHistory.slice(0, 5).map((item: MedicalHistory) => (
+                                 <View style={styles.historyContainer}>
+                   {medicalHistory.slice((medicalHistoryPage - 1) * itemsPerPage, medicalHistoryPage * itemsPerPage).map((item: MedicalHistory) => (
                     <TouchableOpacity
                       key={item.id}
                       style={styles.consultationCard}
@@ -872,20 +913,52 @@ export default function PatientOverviewScreen() {
                       </View>
                     </TouchableOpacity>
                   ))}
+                  
+                  {/* Pagination controls above the View all button */}
                   {medicalHistory.length > 5 && (
-                    <TouchableOpacity style={styles.viewMoreButton}                      onPress={() => {
-                       if (user?.role === 'specialist') {
-                         // For specialists, route to appointments tab with patient name filter for completed appointments
-                         const patientName = safeDataAccess.getUserFullName(patientData, '');
-                         router.push(`/(specialist)/tabs/appointments?filter=completed&search=${patientName}`);
-                       } else {
-                         // For patients, route to their own appointments
-                       }
-                     }}>
-                      <Text style={styles.viewMoreText}>View all {medicalHistory.length} records</Text>
-                      <ChevronRight size={16} color="#1E40AF" />
-                    </TouchableOpacity>
+                    <View style={styles.paginationContainer}>
+                      <View style={styles.paginationControls}>
+                        <TouchableOpacity 
+                          style={[styles.paginationButton, medicalHistoryPage === 1 && styles.paginationButtonDisabled]}
+                          onPress={() => setMedicalHistoryPage(Math.max(1, medicalHistoryPage - 1))}
+                          disabled={medicalHistoryPage === 1}
+                        >
+                          <ChevronLeft size={16} color={medicalHistoryPage === 1 ? "#9CA3AF" : "#1E40AF"} />
+                        </TouchableOpacity>
+                        
+                        {Array.from({ length: Math.ceil(medicalHistory.length / itemsPerPage) }, (_, i) => i + 1).map((pageNum) => (
+                          <TouchableOpacity
+                            key={pageNum}
+                            style={[styles.paginationPageButton, medicalHistoryPage === pageNum && styles.paginationPageButtonActive]}
+                            onPress={() => setMedicalHistoryPage(pageNum)}
+                          >
+                            <Text style={[styles.paginationPageText, medicalHistoryPage === pageNum && styles.paginationPageTextActive]}>
+                              {pageNum}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                        
+                        <TouchableOpacity 
+                          style={[styles.paginationButton, medicalHistoryPage === Math.ceil(medicalHistory.length / itemsPerPage) && styles.paginationButtonDisabled]}
+                          onPress={() => setMedicalHistoryPage(Math.min(Math.ceil(medicalHistory.length / itemsPerPage), medicalHistoryPage + 1))}
+                          disabled={medicalHistoryPage === Math.ceil(medicalHistory.length / itemsPerPage)}
+                        >
+                          <ChevronRight size={16} color={medicalHistoryPage === Math.ceil(medicalHistory.length / itemsPerPage) ? "#9CA3AF" : "#1E40AF"} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   )}
+                  
+                  
+                  
+                                     {/* Page info text */}
+                   {medicalHistory.length > itemsPerPage && (
+                     <View style={styles.pageInfoContainer}>
+                       <Text style={styles.pageInfoText}>
+                         Page {medicalHistoryPage} of {Math.ceil(medicalHistory.length / itemsPerPage)}
+                       </Text>
+                     </View>
+                   )}
                 </View>
               ) : (
                 <View style={styles.noConsultationCard}>
@@ -1522,5 +1595,79 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-});
+  // Collapsible section styles
+  collapsibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 4,
+  },
+  collapsibleHeaderText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#1E40AF',
+  },
+  collapsibleContent: {
+    gap: 12,
+  },
+  // Pagination styles
+  paginationContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginTop: 4,
+  },
+  paginationControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  paginationButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  paginationButtonDisabled: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+  },
+  paginationPageButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  paginationPageButtonActive: {
+    backgroundColor: '#1E40AF',
+    borderColor: '#1E40AF',
+  },
+  paginationPageText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+  },
+     paginationPageTextActive: {
+     color: '#FFFFFF',
+   },
+   // Page info styles
+   pageInfoContainer: {
+     alignItems: 'center',
+     paddingVertical: 8,
+     marginTop: 4,
+   },
+   pageInfoText: {
+     fontSize: 13,
+     fontFamily: 'Inter-Regular',
+     color: '#6B7280',
+   },
+ });
  
