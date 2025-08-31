@@ -565,9 +565,9 @@ export default function PatientOverviewScreen() {
           <ChevronLeft size={24} color="#1E40AF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Patient Overview</Text>
-        <TouchableOpacity style={styles.newConsultationButton} onPress={handleNewConsultation}>
+        {/* <TouchableOpacity style={styles.newConsultationButton} onPress={handleNewConsultation}>
           <Plus size={20} color="#1E40AF" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       <ScrollView
@@ -795,12 +795,12 @@ export default function PatientOverviewScreen() {
                 <View style={styles.noConsultationCard}>
                   <FileText size={32} color="#9CA3AF" />
                   <Text style={styles.noConsultationText}>No active consultation</Text>
-                  <Text style={styles.noConsultationSubtext}>
+                  {/* <Text style={styles.noConsultationSubtext}>
                     Start a new consultation to begin patient care
                   </Text>
                   <TouchableOpacity style={styles.startConsultationButton} onPress={handleNewConsultation}>
                     <Text style={styles.startConsultationButtonText}>Start Consultation</Text>
-                  </TouchableOpacity>
+                  </TouchableOpacity> */}
                 </View>
               )}
             </View>
@@ -1027,7 +1027,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 16,
@@ -1047,6 +1046,9 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
+    textAlign: 'center',
+    flex: 1,
+    paddingLeft: -10,
   },
   newConsultationButton: {
     width: 40,
