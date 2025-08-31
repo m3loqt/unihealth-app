@@ -658,9 +658,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingBottom: 8,
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -686,7 +684,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
     paddingBottom: 12,
-    paddingTop: 0,
+    paddingTop: 8,
   },
   filtersBarRow: {
     flexDirection: 'row',
@@ -801,6 +799,11 @@ const styles = StyleSheet.create({
   },
   statusIcon: {
     marginRight: 4,
+  },
+  remainingDays: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
   },
   prescriptionMeta: {
     gap: 4,
