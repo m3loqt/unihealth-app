@@ -231,7 +231,8 @@ export default function VisitOverviewScreen() {
           let medicalHistory = null;
           if (appointment.status.toLowerCase() === 'completed') {
             try {
-              medicalHistory = await databaseService.getMedicalHistoryByAppointment(id as string, user.uid);
+              // Use the patient ID from the appointment, not the current user's ID
+              medicalHistory = await databaseService.getMedicalHistoryByAppointment(id as string, appointment.patientId);
             } catch (error) {
               console.log('No medical history found for this appointment:', error);
             }

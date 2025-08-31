@@ -123,6 +123,42 @@ export default function PatientOverviewScreen() {
         setMedicalHistory(patientMedicalHistory);
         setPrescriptions(validPrescriptions);
 
+        // Debug logging for medical history
+        console.log('🔍 MEDICAL HISTORY DEBUG:', {
+          count: patientMedicalHistory?.length || 0,
+          items: patientMedicalHistory?.map(item => ({
+            id: item.id,
+            type: item.type,
+            consultationDate: item.consultationDate,
+            relatedAppointment: item.relatedAppointment,
+            relatedReferral: (item as any)?.relatedReferral,
+            provider: item.provider,
+            // Add more fields to help debug routing
+            consultationId: (item as any)?.consultationId,
+            referralId: (item as any)?.referralId
+          }))
+        });
+
+        // Debug logging for appointments
+        console.log('🔍 APPOINTMENTS DEBUG:', {
+          count: validAppointments?.length || 0,
+          items: validAppointments?.map(item => ({
+            id: item.id,
+            type: item.type,
+            status: item.status,
+            appointmentConsultationId: item.appointmentConsultationId,
+            consultationId: item.consultationId
+          }))
+        });
+
+        // Debug logging for user role
+        console.log('🔍 USER ROLE DEBUG:', {
+          userId: user?.uid,
+          userRole: user?.role,
+          userEmail: user?.email,
+          isSpecialist: user?.role === 'specialist'
+        });
+
         // Derive Joined Date from multiple sources (patients/users.createdAt, earliest appointment/referral)
         try {
           const dateCandidates: number[] = [];
@@ -323,6 +359,39 @@ export default function PatientOverviewScreen() {
 
   const handleMedicalHistoryPress = async (historyItem: MedicalHistory) => {
     try {
+      console.log('🔍 MEDICAL HISTORY PRESS DEBUG:', {
+        historyItemId: historyItem.id,
+        historyItemType: historyItem.type,
+        relatedAppointment: (historyItem as any)?.relatedAppointment,
+        hasRelatedAppointment: !!(historyItem as any)?.relatedAppointment?.id,
+        userRole: user?.role
+      });
+
+      // First, check if this medical history item has a related referral ID
+      if ((historyItem as any)?.relatedReferral?.id) {
+        // If it has a related referral, route to referral details
+        console.log('🔍 Routing to referral details with referral ID:', (historyItem as any).relatedReferral.id);
+        router.push(`/(specialist)/referral-details?id=${(historyItem as any).relatedReferral.id}`);
+        return;
+      }
+
+      // Check if this medical history item has a related appointment ID
+      if ((historyItem as any)?.relatedAppointment?.id) {
+        // If it has a related appointment, route to visit overview
+        console.log('🔍 Routing to visit overview with appointment ID:', (historyItem as any).relatedAppointment.id);
+        console.log('🔍 Full route path:', `/visit-overview?id=${(historyItem as any).relatedAppointment.id}`);
+        console.log('🔍 Current user role:', user?.role);
+        console.log('🔍 Attempting to navigate...');
+        try {
+          router.push(`/visit-overview?id=${(historyItem as any).relatedAppointment.id}`);
+          console.log('🔍 Navigation successful');
+        } catch (error) {
+          console.error('🔍 Navigation error:', error);
+        }
+        return;
+      }
+
+      // Check if this medical history item has a consultation ID that matches a referral
       const allReferrals = await databaseService.getDocument('referrals');
       const patientIdStr = String(id);
       let matchedReferralId: string | null = null;
@@ -330,10 +399,11 @@ export default function PatientOverviewScreen() {
       if (allReferrals) {
         for (const [refId, r] of Object.entries(allReferrals as Record<string, any>)) {
           if (r?.patientId === patientIdStr) {
+            // Check if this medical history item matches a referral consultation
             if (
               r?.referralConsultationId === historyItem.id ||
               r?.consultationId === historyItem.id ||
-              (historyItem as any)?.relatedAppointment?.id === r?.clinicAppointmentId
+              r?.clinicConsultationId === historyItem.id
             ) {
               matchedReferralId = refId;
               break;
@@ -343,12 +413,24 @@ export default function PatientOverviewScreen() {
       }
 
       if (matchedReferralId) {
+        // Route to referral details for both patients and specialists
+        console.log('🔍 Routing to referral details with referral ID:', matchedReferralId);
         router.push(`/(specialist)/referral-details?id=${matchedReferralId}`);
       } else {
-        router.push(`/visit-overview?id=${historyItem.id}`);
+        // If no referral found and no appointment, show an alert
+        Alert.alert(
+          'Visit Details Unavailable',
+          'This medical record does not have associated visit details. Please contact your healthcare provider for more information.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (e) {
-      router.push(`/visit-overview?id=${historyItem.id}`);
+      console.error('Error handling medical history press:', e);
+      Alert.alert(
+        'Error',
+        'Unable to load visit details. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -741,7 +823,16 @@ export default function PatientOverviewScreen() {
                     </View>
                   ))}
                   {activePrescriptions.length > 3 && (
-                    <TouchableOpacity style={styles.viewMoreButton}>
+                    <TouchableOpacity style={styles.viewMoreButton}                      onPress={() => {
+                       if (user?.role === 'specialist') {
+                         // For specialists, route to prescriptions tab with patient name filter
+                         const patientName = safeDataAccess.getUserFullName(patientData, '');
+                         router.push(`/(specialist)/tabs/prescriptions?search=${patientName}`);
+                       } else {
+                         // For patients, route to their own prescriptions
+                         router.push('/(patient)/tabs/prescriptions');
+                       }
+                     }}>
                       <Text style={styles.viewMoreText}>View all {activePrescriptions.length} prescriptions</Text>
                       <ChevronRight size={16} color="#1E40AF" />
                     </TouchableOpacity>
@@ -782,7 +873,15 @@ export default function PatientOverviewScreen() {
                     </TouchableOpacity>
                   ))}
                   {medicalHistory.length > 5 && (
-                    <TouchableOpacity style={styles.viewMoreButton}>
+                    <TouchableOpacity style={styles.viewMoreButton}                      onPress={() => {
+                       if (user?.role === 'specialist') {
+                         // For specialists, route to appointments tab with patient name filter for completed appointments
+                         const patientName = safeDataAccess.getUserFullName(patientData, '');
+                         router.push(`/(specialist)/tabs/appointments?filter=completed&search=${patientName}`);
+                       } else {
+                         // For patients, route to their own appointments
+                       }
+                     }}>
                       <Text style={styles.viewMoreText}>View all {medicalHistory.length} records</Text>
                       <ChevronRight size={16} color="#1E40AF" />
                     </TouchableOpacity>
