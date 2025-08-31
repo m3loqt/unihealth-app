@@ -1316,7 +1316,7 @@ export default function SpecialistProfileScreen() {
            </View>
          </View>
        </Modal>
-dk
+
       {/* Notification Modal */}
       <Modal
         visible={showNotificationModal}

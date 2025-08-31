@@ -12,9 +12,10 @@ import {
   RefreshControl,
   ActivityIndicator,
   Modal,
+  TextInput,
 } from 'react-native';
-import { Pill, CircleCheck as CheckCircle, Bell, RefreshCw, Trash2, Check } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { Pill, CircleCheck as CheckCircle, Bell, RefreshCw, Trash2, Check, Search } from 'lucide-react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { useNotifications } from '../../../src/hooks/data/useNotifications';
 import { databaseService, Prescription } from '../../../src/services/database/firebase';
@@ -153,6 +154,7 @@ const calculateRemainingDays = (prescription: Prescription): number | null => {
 };
 
 export default function SpecialistPrescriptionsScreen() {
+  const { search } = useLocalSearchParams();
   const { user } = useAuth();
   const { 
     notifications, 
@@ -199,6 +201,13 @@ export default function SpecialistPrescriptionsScreen() {
       loadPrescriptions();
     }
   }, [user]);
+
+  // Handle search parameter from URL
+  useEffect(() => {
+    if (search) {
+      setSearchQuery(String(search));
+    }
+  }, [search]);
 
   const loadPrescriptions = async () => {
     if (!user) return;
@@ -268,7 +277,11 @@ export default function SpecialistPrescriptionsScreen() {
   );
 
   const filterPrescriptions = (list: Prescription[]) =>
-    list.filter((item: Prescription) => item.medication?.toLowerCase().includes(searchQuery.toLowerCase()));
+    list.filter((item: Prescription) => {
+      const medicationMatch = item.medication?.toLowerCase().includes(searchQuery.toLowerCase());
+      const patientNameMatch = patientNames[item.patientId]?.toLowerCase().includes(searchQuery.toLowerCase());
+      return medicationMatch || patientNameMatch;
+    });
 
   const renderActivePrescription = (prescription: Prescription) => (
     <View key={prescription.id} style={styles.prescriptionCard}>
@@ -497,37 +510,51 @@ export default function SpecialistPrescriptionsScreen() {
           onNotificationPress={handleOpenNotifications}
           notificationCount={notifications.filter(n => !n.read).length}
         />
-      <View style={styles.filtersContainer}>
-        <View style={styles.filtersBarRow}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filtersContent}
-          >
-            <View style={styles.filtersLeft}>
-              {['All', 'Active', 'Past'].map((filter) => (
-                <TouchableOpacity
-                  key={filter}
-                  style={[
-                    styles.filterButton,
-                    activeTab === filter && styles.activeFilterButton,
-                  ]}
-                  onPress={() => setActiveTab(filter)}
-                >
-                  <Text
-                    style={[
-                      styles.filterText,
-                      activeTab === filter && styles.activeFilterText,
-                    ]}
-                  >
-                    {filter}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-      </View>
+             {/* Search Bar */}
+       <View style={styles.searchContainer}>
+         <View style={styles.searchInputContainer}>
+           <Search size={20} color="#9CA3AF" style={styles.searchIcon} />
+           <TextInput
+             style={styles.searchInput}
+             placeholder="Search prescriptions or patient names..."
+             placeholderTextColor="#9CA3AF"
+             value={searchQuery}
+             onChangeText={setSearchQuery}
+           />
+         </View>
+       </View>
+
+       <View style={styles.filtersContainer}>
+         <View style={styles.filtersBarRow}>
+           <ScrollView
+             horizontal
+             showsHorizontalScrollIndicator={false}
+             contentContainerStyle={styles.filtersContent}
+           >
+             <View style={styles.filtersLeft}>
+               {['All', 'Active', 'Past'].map((filter) => (
+                 <TouchableOpacity
+                   key={filter}
+                   style={[
+                     styles.filterButton,
+                     activeTab === filter && styles.activeFilterButton,
+                   ]}
+                   onPress={() => setActiveTab(filter)}
+                 >
+                   <Text
+                     style={[
+                       styles.filterText,
+                       activeTab === filter && styles.activeFilterText,
+                     ]}
+                   >
+                     {filter}
+                   </Text>
+                 </TouchableOpacity>
+               ))}
+             </View>
+           </ScrollView>
+         </View>
+       </View>
       {renderContent()}
       
       {/* === NOTIFICATION MODAL === */}
@@ -628,6 +655,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
+  searchContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1F2937',
+    fontFamily: 'Inter-Regular',
+  },
   filtersContainer: {
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,

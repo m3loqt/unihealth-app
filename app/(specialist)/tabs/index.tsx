@@ -45,11 +45,13 @@ import {
 } from 'lucide-react-native';
 // @ts-ignore - library has no types bundled
 import { LineChart } from 'react-native-gifted-charts';
+import { Svg, Path, Circle } from 'react-native-svg';
 import { router } from 'expo-router';
 import { getGreeting } from '../../../src/utils/greeting';
 import { getFirstName } from '../../../src/utils/string';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { useNotifications } from '../../../src/hooks/data/useNotifications';
+import { useReferrals } from '../../../src/hooks/data/useReferrals';
 import { databaseService } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 import { capitalizeRelationship } from '../../../src/utils/formatting';
@@ -72,6 +74,12 @@ export default function SpecialistHomeScreen() {
     deleteNotification,
     refresh: refreshNotifications
   } = useNotifications();
+  
+  const { 
+    referrals, 
+    loading: referralsLoading, 
+    error: referralsError 
+  } = useReferrals();
   
   const [dashboardData, setDashboardData] = useState({
     totalPatients: 0,
@@ -107,7 +115,7 @@ export default function SpecialistHomeScreen() {
   const [chartRange, setChartRange] = useState<'weekly' | 'monthly'>('weekly');
   const [chartData, setChartData] = useState<{value: number; label: string}[]>([]);
   const [selectedBand, setSelectedBand] = useState<string | null>(null);
-  const [chartTitle, setChartTitle] = useState('Patient Growth & Completed Appointments');
+  const [chartTitle, setChartTitle] = useState('Appointments Overview');
   const [chartSubtitle, setChartSubtitle] = useState('');
   const [bandAnimations] = useState(() => 
     new Map<string, Animated.Value>()
@@ -155,12 +163,19 @@ export default function SpecialistHomeScreen() {
     }
   }, [chartRange, user]); // Remove nextAppointments dependency to prevent unnecessary regeneration
 
-  // Initialize chart data when component mounts
+  // Initialize chart data when component mounts and when referrals are loaded
   useEffect(() => {
-    if (user && user.uid) {
+    if (user && user.uid && referrals.length >= 0 && !referralsLoading) {
       generateChartData();
     }
-  }, [user]);
+  }, [user, referrals, referralsLoading]);
+
+  // Regenerate chart data when chart range changes (only if referrals are loaded)
+  useEffect(() => {
+    if (user && user.uid && referrals.length >= 0 && !referralsLoading) {
+      generateChartData();
+    }
+  }, [chartRange, user, referrals, referralsLoading]);
 
   // Request camera permission when QR modal is opened
   useEffect(() => {
@@ -356,46 +371,101 @@ export default function SpecialistHomeScreen() {
     setRefreshing(false);
   };
 
-  const generateChartData = () => {
-    if (!user) return;
-    
-    // Build chart datasets based on current range
-    const buildWeekly = () => {
+  // Function to aggregate referral data by date for chart
+  const aggregateReferralData = (range: 'weekly' | 'monthly') => {
+    if (!referrals || referrals.length === 0) {
+      // Return empty data if no referrals
+      if (range === 'weekly') {
+        return { data: Array(7).fill(0).map((_, i) => {
+          const days = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
+          return { value: 0, label: days[i] };
+        }), totalCount: 0 };
+      } else {
+        const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+        const now = new Date();
+        const year = now.getFullYear();
+        return { data: Array(6).fill(0).map((_, i) => {
+          const date = new Date(year, now.getMonth() - (5 - i), 1);
+          const monthIdx = date.getMonth();
+          return { value: 0, label: months[monthIdx] };
+        }), totalCount: 0 };
+      }
+    }
+
+    if (range === 'weekly') {
       const days = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
       const start = new Date();
       start.setDate(start.getDate() - 6);
-      const data: any[] = [];
-      // Use data that matches the first image: starts around 270-280, dips to 240, peaks at 450-470, then to 350-370, ending near 500
-      const values = [280, 240, 470, 350, 370, 72, 0]; // Matching the first image trend with realistic values
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(start);
-        d.setDate(start.getDate() + i);
-        const label = days[i];
-        const value = values[i] || Math.floor(Math.random() * 30) + 20;
-        data.push({ value, label });
-      }
-      return data;
-    };
-    
-    const buildMonthly = () => {
+      
+      // Initialize data array with 0 values
+      const data = days.map((day, index) => {
+        const date = new Date(start);
+        date.setDate(start.getDate() + index);
+        return { value: 0, label: day, date: date.toISOString().split('T')[0] };
+      });
+
+      // Count referrals for each day
+      referrals.forEach(referral => {
+        const referralDate = new Date(referral.appointmentDate);
+        const dateStr = referralDate.toISOString().split('T')[0];
+        
+        // Find matching day in our data array
+        const dayIndex = data.findIndex(item => item.date === dateStr);
+        if (dayIndex !== -1) {
+          data[dayIndex].value += 1;
+        }
+      });
+
+      // Remove date property and return data with total count
+      const totalCount = data.reduce((sum, item) => sum + item.value, 0);
+      return { 
+        data: data.map(({ value, label }) => ({ value, label })), 
+        totalCount 
+      };
+    } else {
+      // Monthly aggregation
       const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
       const now = new Date();
       const year = now.getFullYear();
-      const data: any[] = [];
-      for (let m = 0; m < 6; m++) {
-        const date = new Date(year, now.getMonth() - (5 - m), 1);
+      
+      // Initialize data array with 0 values for last 6 months
+      const data = Array(6).fill(0).map((_, i) => {
+        const date = new Date(year, now.getMonth() - (5 - i), 1);
         const monthIdx = date.getMonth();
-        const label = months[monthIdx];
-        // Use data that matches the second image: starts around 250, peaks at 489 in March, drops to below 100 in May
-        const values = [250, 240, 489, 150, 80, 200]; // Matching the second image trend
-        const value = values[m] || Math.floor(Math.random() * 200) + 100;
-        data.push({ value, label });
-      }
-      return data;
-    };
+        return { value: 0, label: months[monthIdx], month: monthIdx, year: date.getFullYear() };
+      });
+
+      // Count referrals for each month
+      referrals.forEach(referral => {
+        const referralDate = new Date(referral.appointmentDate);
+        const referralMonth = referralDate.getMonth();
+        const referralYear = referralDate.getFullYear();
+        
+        // Find matching month in our data array
+        const monthIndex = data.findIndex(item => 
+          item.month === referralMonth && item.year === referralYear
+        );
+        if (monthIndex !== -1) {
+          data[monthIndex].value += 1;
+        }
+      });
+
+      // Remove month and year properties and return data with total count
+      const totalCount = data.reduce((sum, item) => sum + item.value, 0);
+      return { 
+        data: data.map(({ value, label }) => ({ value, label })), 
+        totalCount 
+      };
+    }
+  };
+
+  const generateChartData = () => {
+    if (!user) return;
     
-    // Set chart data based on current range
-    const newChartData = chartRange === 'weekly' ? buildWeekly() : buildMonthly();
+    // Use real referral data instead of hardcoded values
+    const result = aggregateReferralData(chartRange);
+    const newChartData = result.data;
+    const totalCount = result.totalCount;
     setChartData(newChartData);
     
     // Don't reset selected band when data changes to keep selection persistent
@@ -415,12 +485,14 @@ export default function SpecialistHomeScreen() {
       start.setDate(start.getDate() - 6);
       setChartTitle('Weekly Overview');
       setChartSubtitle(`${start.getDate()} ${start.toLocaleDateString('en-US', { month: 'long' })} - ${now.getDate()} ${now.toLocaleDateString('en-US', { month: 'long' })}`);
+      // • Period Appointments: ${totalCount}
     } else {
       setChartTitle('Monthly Trends');
       // Format like "15 April - 21 April" for monthly view
       const startMonth = new Date(now.getFullYear(), now.getMonth() - 5, 15);
       const endMonth = new Date(now.getFullYear(), now.getMonth(), 21);
       setChartSubtitle(`${startMonth.getDate()} ${startMonth.toLocaleDateString('en-US', { month: 'long' })} - ${endMonth.getDate()} ${endMonth.toLocaleDateString('en-US', { month: 'long' })}`);
+      // • Period Appointments: ${totalCount}
     }
   };
 
@@ -682,7 +754,7 @@ export default function SpecialistHomeScreen() {
           ) : (
             <View>
               {/* Chart Header with Left-Aligned Overview and Right-Aligned Filter */}
-              <View style={styles.chartHeaderNew}>
+              <View style={[styles.chartHeaderNew, { zIndex: 30 }]}>
                 <View style={styles.chartHeaderLeft}>
                   <Text style={styles.chartTitle}>{chartTitle}</Text>
                   <Text style={styles.chartSubtitle}>{chartSubtitle}</Text>
@@ -698,7 +770,7 @@ export default function SpecialistHomeScreen() {
                   
                   {/* Dropdown Menu */}
                   {showDropdown && (
-                    <View style={styles.dropdownMenu}>
+                    <View style={[styles.dropdownMenu, { zIndex: 35 }]}>
                       <TouchableOpacity 
                         style={[
                           styles.dropdownItem,
@@ -730,200 +802,314 @@ export default function SpecialistHomeScreen() {
               
               {/* Chart Container */}
               <View style={styles.chartWrapper}>
-                {/* Custom Y-axis Labels */}
-                <View style={styles.yAxisLabelsContainer}>
-                  <Text style={styles.yAxisLabel}>500</Text>
-                  <Text style={styles.yAxisLabel}>250</Text>
-                  <Text style={styles.yAxisLabel}>0</Text>
-                </View>
-                
-                {/* Custom Vertical Bars - Render as actual bars */}
-                <View style={styles.barsContainer}>
-                  {chartData.map((item, index) => {
-                    const maxValue = Math.max(...chartData.map(d => d.value));
-                    const barHeight = (item.value / maxValue) * 180; // 180 is the chart height
-                    const isSelected = selectedBand === item.label;
-                    const chartPadding = 30; // Chart padding from left edge
-                    const barWidth = (SCREEN_WIDTH - (chartPadding * 2)) / chartData.length; // Use screen width minus padding
-                    const barLeft = chartPadding + (index * barWidth); // Calculate left position
-                    
 
-                    
-                    return (
-                      <TouchableOpacity
-                        key={item.label}
-                        style={[
-                          styles.bar,
-                          isSelected && styles.barSelected,
-                          { 
-                            width: Math.max(barWidth - 4, 20), // Ensure minimum width for clickability
-                            position: 'absolute',
-                            left: barLeft, // Use calculated position
-                            height: 180, // Full chart height for clickable area
-                            zIndex: 1, // Keep bars at same level as line chart
-                            paddingHorizontal: 2, // Add small padding for better touch target
-                            // Make bars clickable without blocking line chart visibility
-                            backgroundColor: 'transparent',
-                            borderWidth: 1,
-                            borderColor: 'rgba(0,0,0,0.01)' // Very subtle border for clickability
-                          }
-                        ]}
-                        onPress={() => handleBandSelection(item.label)}
-                        activeOpacity={0.6}
-                      >
-                        {/* Bar background - positioned at bottom */}
-                        <View style={[
-                          styles.barBackground,
-                          isSelected && styles.barBackgroundSelected,
-                          { 
-                            height: barHeight,
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0
-                          }
-                        ]}>
-                          {/* Bar gradient effect */}
-                          <View style={styles.barGradientTop} />
-                          <View style={styles.barGradientMiddle} />
-                          <View style={styles.barGradientBottom} />
-                        </View>
-                        
-
-                        
-
-                        
-                        {/* Simple click effect overlay */}
-                        {isSelected && (
-                          <Animated.View 
-                            style={[
-                              styles.barClickEffect,
-                              {
-                                opacity: bandAnimations.get(item.label)?.interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: [0, 0.3],
-                                }) || 0,
-                              }
-                            ]}
-                          />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                
-                {/* Custom Line Chart - Render below bars */}
-                <View style={styles.lineChartContainer}>
-                  {/* Draw a simple line connecting the bar centers */}
-                  <View style={styles.customLineChart}>
-                    {chartData.map((item, index) => {
-                      if (index === 0) return null; // Skip first item
-                      
-                      const maxValue = Math.max(...chartData.map(d => d.value));
-                      const chartHeight = 180;
-                      const chartPadding = 30;
-                      const barWidth = (SCREEN_WIDTH - (chartPadding * 2)) / chartData.length;
-                      
-                      const prevItem = chartData[index - 1];
-                      const prevX = chartPadding + ((index - 1) * barWidth) + (barWidth / 2);
-                      const prevY = 10 + (chartHeight - (prevItem.value / maxValue) * chartHeight);
-                      
-                      const currentX = chartPadding + (index * barWidth) + (barWidth / 2);
-                      const currentY = 10 + (chartHeight - (item.value / maxValue) * chartHeight);
-                      
-                      return (
-                        <View
-                          key={`line-${index}`}
-                          style={[
-                            styles.lineSegment,
-                            {
-                              left: prevX,
-                              top: prevY,
-                              width: Math.sqrt(Math.pow(currentX - prevX, 2) + Math.pow(currentY - prevY, 2)),
-                              transform: [{
-                                rotate: `${Math.atan2(currentY - prevY, currentX - prevX)}rad`
-                              }],
-                              transformOrigin: '0 0'
-                            }
-                          ]}
-                        />
-                      );
-                    })}
-                    
-                    {/* Draw data points */}
-                    {chartData.map((item, index) => {
-                      const maxValue = Math.max(...chartData.map(d => d.value));
-                      const chartHeight = 180;
-                      const chartPadding = 30;
-                      const barWidth = (SCREEN_WIDTH - (chartPadding * 2)) / chartData.length;
-                      const x = chartPadding + (index * barWidth) + (barWidth / 2);
-                      const y = 10 + (chartHeight - (item.value / maxValue) * chartHeight);
-                      
-                      return (
-                        <View
-                          key={`point-${index}`}
-                          style={[
-                            styles.dataPoint,
-                            {
-                              left: x - 6,
-                              top: y - 6,
-                              opacity: selectedBand === item.label ? 1 : 0
-                            }
-                          ]}
-                        />
-                      );
-                    })}
-                  </View>
-                </View>
-                
-                {/* Custom X-axis Labels below bars */}
-                <View style={styles.xAxisLabelsContainer}>
-                  {chartData.map((item, index) => {
-                    const chartPadding = 30;
-                    const barWidth = (SCREEN_WIDTH - (chartPadding * 2)) / chartData.length;
-                    const leftPosition = chartPadding + (index * barWidth) + (barWidth / 2) - 15; // Center label under bar
-                    
-                    return (
-                      <View key={`${item.label}-${index}`} style={[
-                        styles.xAxisLabel,
-                        { 
-                          position: 'absolute',
-                          left: leftPosition,
-                          width: 30
-                        }
-                      ]}>
-                        <Text style={styles.xAxisLabelText}>{item.label}</Text>
-                      </View>
-                    );
-                  })}
-                </View>
-                
-                {/* Selected Point Dot - Removed to hide moon-like icon when bar is clicked */}
-                
-                {/* Custom Tooltip - Show when bar is selected */}
-                {selectedBand && (() => {
-                  const selectedItem = chartData.find(item => item.label === selectedBand);
-                  if (!selectedItem) return null;
+                {/* Calculate y-axis scale once for the entire chart */}
+                {(() => {
+                  const maxValue = Math.max(...chartData.map(d => d.value));
                   
-                  const barIndex = chartData.findIndex(item => item.label === selectedBand);
-                  const chartWidth = SCREEN_WIDTH;
-                  const chartPadding = 30;
-                  const barWidth = (chartWidth - (chartPadding * 2)) / chartData.length;
-                  const leftPosition = chartPadding + (barIndex * barWidth) + (barWidth / 2) - 60;
-                  const topPosition = 10 + (180 - Math.max(...chartData.map(d => d.value)) / Math.max(...chartData.map(d => d.value)) * 180) - 80;
+                  // Calculate dynamic y-axis maximum with smart padding
+                  const calculateYAxisMax = (max: number) => {
+                    if (max <= 2) return 5;        // 2 referrals → y-axis goes to 5
+                    if (max <= 5) return max + 2;   // 3-5 referrals → add 2 padding
+                    if (max <= 10) return max + 3;  // 6-10 referrals → add 3 padding
+                    if (max <= 20) return max + 5;  // 11-20 referrals → add 5 padding
+                    if (max <= 50) return max + 10; // 21-50 referrals → add 10 padding
+                    return max + Math.ceil(max * 0.2); // For larger numbers, add 20% padding
+                  };
+                  
+                  const yAxisMax = calculateYAxisMax(maxValue);
+                  const yAxisMin = 0;
+                  const yAxisRange = yAxisMax - yAxisMin;
                   
                   return (
-                    <View style={[
-                      styles.customTooltip,
-                      {
-                        left: leftPosition,
-                        top: topPosition,
-                        position: 'absolute'
-                      }
-                    ]}>
-                      <Text style={styles.tooltipValue}>{selectedItem.value}</Text>
-                      <Text style={styles.tooltipLabel}>total appointments</Text>
-                    </View>
+                    <>
+                      {/* Custom Y-axis Labels - Dynamic scale with smart padding */}
+                      <View style={styles.yAxisLabelsContainer}>
+                        <Text style={styles.yAxisLabel}>{yAxisMax}</Text>
+                        <Text style={styles.yAxisLabel}>{Math.round(yAxisMin + (yAxisRange / 2))}</Text>
+                        <Text style={styles.yAxisLabel}>{yAxisMin}</Text>
+                      </View>
+                      
+                      {/* Custom Vertical Bars - Render as actual bars */}
+                      <View style={styles.barsContainer}>
+                        {chartData.map((item, index) => {
+                          // Calculate bar height using the dynamic y-axis scale
+                          const normalizedValue = yAxisMax === 0 ? 0 : (item.value - yAxisMin) / (yAxisMax - yAxisMin);
+                          const barHeight = normalizedValue * 180; // 180 is the chart height
+                          const isSelected = selectedBand === item.label;
+                          const chartPadding = 30; // Chart padding from left edge
+                          const barWidth = (SCREEN_WIDTH - (chartPadding * 2)) / chartData.length; // Use screen width minus padding
+                          const barLeft = chartPadding + (index * barWidth); // Calculate left position
+                          
+                          return (
+                            <TouchableOpacity
+                              key={item.label}
+                              style={[
+                                styles.bar,
+                                isSelected && styles.barSelected,
+                                { 
+                                  width: Math.max(barWidth - 4, 20), // Restore original width for clean look
+                                  position: 'absolute',
+                                  left: barLeft, // Use calculated position
+                                  height: 180, // Full chart height for clickable area
+                                  zIndex: 10, // Lower z-index so bars appear below the line chart
+                                  paddingHorizontal: 2, // Restore original padding for clean look
+                                  // Make bars touchable while maintaining clean look
+                                  backgroundColor: 'transparent',
+                                  borderWidth: 1,
+                                  borderColor: 'rgba(0,0,0,0.01)', // Subtle border for touchability
+                                }
+                              ]}
+                              onPress={() => handleBandSelection(item.label)}
+                              activeOpacity={0.6} // Restore original opacity for clean look
+                              hitSlop={{ top: 15, bottom: 15, left: 8, right: 8 }} // Expand touch area significantly
+                            >
+                              {/* Bar background - positioned at bottom */}
+                              <View style={[
+                                styles.barBackground,
+                                isSelected && styles.barBackgroundSelected,
+                                { 
+                                  height: barHeight,
+                                  position: 'absolute',
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0
+                                }
+                              ]}>
+                                {/* Bar gradient effect */}
+                                <View style={[
+                                  styles.barGradientTop,
+                                  isSelected && { backgroundColor: '#E8F0FF' }
+                                ]} />
+                                <View style={[
+                                  styles.barGradientMiddle,
+                                  isSelected && { backgroundColor: '#D8E8FF' }
+                                ]} />
+                                <View style={[
+                                  styles.barGradientBottom,
+                                  isSelected && { backgroundColor: '#C8E0FF' }
+                                ]} />
+                              </View>
+                              
+                              {/* Simple click effect overlay */}
+                              {isSelected && (
+                                <Animated.View 
+                                  style={[
+                                    styles.barClickEffect,
+                                    {
+                                      opacity: bandAnimations.get(item.label)?.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [0, 0.3], // Restore original opacity for clean look
+                                      }) || 0,
+                                    }
+                                  ]}
+                                />
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                      
+                      {/* Custom Line Chart - Render below bars */}
+                      <View style={styles.lineChartContainer}>
+                        {/* Draw smooth curved lines connecting the bar centers */}
+                        <View style={[styles.customLineChart, { pointerEvents: 'none' }]}>
+                          {/* SVG components for smooth curves */}
+                          {(() => {
+                            const chartHeight = 180;
+                            const chartPadding = 30;
+                            const barWidth = (SCREEN_WIDTH - (chartPadding * 2)) / chartData.length;
+                            
+                            // Generate smooth curve path that starts and ends at bar boundaries
+                            const generateSmoothPath = () => {
+                              if (chartData.length < 2) return '';
+                              
+                              // Create points at bar boundaries instead of centers
+                              const points = chartData.map((item, index) => {
+                                // For first bar, use left edge; for last bar, use right edge; for others, use center
+                                let x;
+                                if (index === 0) {
+                                  // First bar: start at left edge
+                                  x = chartPadding;
+                                } else if (index === chartData.length - 1) {
+                                  // Last bar: end at right edge
+                                  x = chartPadding + (index * barWidth) + barWidth;
+                                } else {
+                                  // Middle bars: use center
+                                  x = chartPadding + (index * barWidth) + (barWidth / 2);
+                                }
+                                
+                                // Use the same normalization logic as bars
+                                const normalizedValue = yAxisMax === 0 ? 0 : (item.value - yAxisMin) / (yAxisMax - yAxisMin);
+                                const y = 10 + (chartHeight - normalizedValue * chartHeight);
+                                return { x, y };
+                              });
+                              
+                              let path = `M ${points[0].x} ${points[0].y}`;
+                              
+                              for (let i = 1; i < points.length; i++) {
+                                const prev = points[i - 1];
+                                const current = points[i];
+                                
+                                // Calculate control points for smooth curve
+                                const controlPoint1X = prev.x + (current.x - prev.x) * 0.5;
+                                const controlPoint1Y = prev.y;
+                                const controlPoint2X = current.x - (current.x - prev.x) * 0.5;
+                                const controlPoint2Y = current.y;
+                                
+                                path += ` C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${current.x} ${current.y}`;
+                              }
+                              
+                              return path;
+                            };
+
+                            // Function to calculate y-position on the smooth curve at any x-coordinate
+                            const getYOnCurve = (targetX) => {
+                              if (chartData.length < 2) return 0;
+                              
+                              const points = chartData.map((item, index) => {
+                                let x;
+                                if (index === 0) {
+                                  x = chartPadding;
+                                } else if (index === chartData.length - 1) {
+                                  x = chartPadding + (index * barWidth) + barWidth;
+                                } else {
+                                  x = chartPadding + (index * barWidth) + (barWidth / 2);
+                                }
+                                
+                                const normalizedValue = yAxisMax === 0 ? 0 : (item.value - yAxisMin) / (yAxisMax - yAxisMin);
+                                const y = 10 + (chartHeight - normalizedValue * chartHeight);
+                                return { x, y };
+                              });
+                              
+                              // Find the segment where targetX falls
+                              for (let i = 0; i < points.length - 1; i++) {
+                                const start = points[i];
+                                const end = points[i + 1];
+                                
+                                if (targetX >= start.x && targetX <= end.x) {
+                                  // Calculate control points for this segment
+                                  const controlPoint1X = start.x + (end.x - start.x) * 0.5;
+                                  const controlPoint1Y = start.y;
+                                  const controlPoint2X = end.x - (end.x - start.x) * 0.5;
+                                  const controlPoint2Y = end.y;
+                                  
+                                  // Use cubic Bezier formula to find y at targetX
+                                  const t = (targetX - start.x) / (end.x - start.x);
+                                  const y = Math.pow(1 - t, 3) * start.y + 
+                                           3 * Math.pow(1 - t, 2) * t * controlPoint1Y + 
+                                           3 * (1 - t) * Math.pow(t, 2) * controlPoint2Y + 
+                                           Math.pow(t, 3) * end.y;
+                                  
+                                  return y;
+                                }
+                              }
+                              
+                              // Fallback to nearest point
+                              return points[0].y;
+                            };
+                            
+                            return (
+                              <Svg
+                                width={SCREEN_WIDTH}
+                                height={chartHeight + 20}
+                                style={styles.svgChart}
+                              >
+                                {/* Smooth curved line */}
+                                <Path
+                                  d={generateSmoothPath()}
+                                  stroke="#8BA4FF"
+                                  strokeWidth={4}
+                                  fill="none"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  opacity={0.8}
+                                />
+                                
+                                {/* Data points - only show when bar is selected */}
+                                {selectedBand && chartData.map((item, index) => {
+                                  if (item.label !== selectedBand) return null; // Only show the selected point
+                                  
+                                  // Position dot in the EXACT center of the actual bar (matching bar positioning exactly)
+                                  const actualBarWidth = Math.max(barWidth - 4, 20); // Same as bar width calculation
+                                  const barLeft = chartPadding + (index * barWidth); // Same as bar left calculation
+                                  const x = barLeft + (actualBarWidth / 2); // Center of actual bar
+                                  
+                                  // Use getYOnCurve to position dot EXACTLY on the smooth line
+                                  const y = getYOnCurve(x);
+                                  
+                                  return (
+                                    <Circle
+                                      key={`point-${index}`}
+                                      cx={x}
+                                      cy={y}
+                                      r={6}
+                                      fill="#8BA4FF"
+                                      stroke="#FFFFFF"
+                                      strokeWidth={3}
+                                      opacity={1}
+                                    />
+                                  );
+                                })}
+                              </Svg>
+                            );
+                          })()}
+                        </View>
+                      </View>
+                      
+                      {/* Custom X-axis Labels below bars */}
+                      <View style={styles.xAxisLabelsContainer}>
+                        {chartData.map((item, index) => {
+                          const chartPadding = 30;
+                          const barWidth = (SCREEN_WIDTH - (chartPadding * 2)) / chartData.length;
+                          const leftPosition = chartPadding + (index * barWidth) + (barWidth / 2) - 15; // Center label under bar
+                          
+                          return (
+                            <View key={`${item.label}-${index}`} style={[
+                              styles.xAxisLabel,
+                              { 
+                                position: 'absolute',
+                                left: leftPosition,
+                                width: 30
+                              }
+                            ]}>
+                              <Text style={styles.xAxisLabelText}>{item.label}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                      
+                      {/* Custom Tooltip - Show when bar is selected */}
+                      {selectedBand && (() => {
+                        const selectedItem = chartData.find(item => item.label === selectedBand);
+                        if (!selectedItem) return null;
+                        
+                        const barIndex = chartData.findIndex(item => item.label === selectedBand);
+                        const chartWidth = SCREEN_WIDTH;
+                        const chartPadding = 30;
+                        const barWidth = (chartWidth - (chartPadding * 2)) / chartData.length;
+                        const leftPosition = chartPadding + (barIndex * barWidth) + (barWidth / 2) - 70;
+                        
+                        // Calculate tooltip position using the same y-axis scale
+                        const normalizedValue = yAxisMax === 0 ? 0 : (selectedItem.value - yAxisMin) / (yAxisMax - yAxisMin);
+                        const topPosition = 10 + (180 - normalizedValue * 180) - 100;
+                        
+                        return (
+                          <View style={[
+                            styles.customTooltip,
+                            {
+                              left: leftPosition,
+                              top: topPosition,
+                              position: 'absolute',
+                              zIndex: 40 // Above everything including chart header text (30) and filter (30)
+                            }
+                          ]}>
+                            <Text style={styles.tooltipValue}>{selectedItem.value}</Text>
+                            <Text style={styles.tooltipLabel}>total appointments</Text>
+                          </View>
+                        );
+                      })()}
+                    </>
                   );
                 })()}
               </View>
@@ -1896,6 +2082,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 8,
     position: 'relative',
+    zIndex: 30, // Ensure filter dropdown is above chart elements
   },
   filterDropdownText: {
     fontSize: 14,
@@ -1914,13 +2101,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
-    marginTop: 4,
+    marginTop: -20, // Reduced gap between button and dropdown
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    zIndex: 10,
+    zIndex: 35, // Higher z-index to appear above all chart elements
     minWidth: 120,
   },
   dropdownItem: {
@@ -1967,7 +2154,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 20,
-    zIndex: 1, // Keep bars at same level as line chart
+    zIndex: 10, // Lower z-index so bars appear below the line chart
     paddingHorizontal: 0, // Remove padding to avoid positioning conflicts
     marginHorizontal: 0,
   },
@@ -1976,7 +2163,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     overflow: 'visible', // Allow full height clickable area
     justifyContent: 'flex-end', // Align bar content to bottom
-    zIndex: 1, // Keep bars at same level as line chart
+    zIndex: 15, // Higher z-index for mobile touch priority
     // Remove background to allow line chart to be visible
   },
   barSelected: {
@@ -1995,7 +2182,7 @@ const styles = StyleSheet.create({
     right: 0,
   },
   barBackgroundSelected: {
-    backgroundColor: '#E7EEFF',
+    backgroundColor: '#D1DDFF', // Darker blue for selected state
     opacity: 1.0,
     // Remove static border, will use animated glow instead
   },
@@ -2014,18 +2201,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#EDF4FF',
     opacity: 0.5,
   },
+
   lineChartContainer: {
     position: 'absolute',
-    top: 10,
+    top: -15,
     left: 0,
     right: 0,
     height: 200,
     width: 360,
-    zIndex: 2, // Increase z-index to be above bars for visibility
+    zIndex: 20, // Higher z-index to appear above bars for proper visual layering
     paddingHorizontal: 0,
     marginRight: 0,
     justifyContent: 'center',
     alignItems: 'center',
+    pointerEvents: 'none', // Make line chart non-interactive so bars can receive touch events
 
   },
   selectedDot: {
@@ -2110,7 +2299,7 @@ const styles = StyleSheet.create({
   },
   customTooltip: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
@@ -2142,34 +2331,16 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
     height: '100%',
+    marginHorizontal: 10,
   },
-  lineSegment: {
+  svgChart: {
     position: 'absolute',
-    height: 4, // Even thicker line for better visibility
-    backgroundColor: '#8BA4FF',
-    borderRadius: 2,
-    zIndex: 2, // Ensure line segments are above bars
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
+    top: 0,
+    left: 0,
+    zIndex: 2,
   },
-  dataPoint: {
-    position: 'absolute',
-    width: 12, // Larger for better visibility
-    height: 12,
-    backgroundColor: '#8BA4FF',
-    borderRadius: 6,
-    borderWidth: 3, // Thicker border for better visibility
-    borderColor: '#FFFFFF',
-    zIndex: 2, // Ensure data points are above bars
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
-  },
+  // Note: lineSegment and dataPoint styles are no longer used since we switched to SVG
+  // The chart now uses smooth curved lines with SVG Path and Circle components
 
   barClickEffect: {
     position: 'absolute',
