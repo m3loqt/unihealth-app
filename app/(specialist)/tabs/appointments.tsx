@@ -48,7 +48,7 @@ import SpecialistHeader from '../../../src/components/navigation/SpecialistHeade
 import { AppointmentDetailsModal } from '../../../src/components';
 
 export default function SpecialistAppointmentsScreen() {
-  const { filter } = useLocalSearchParams();
+  const { filter, search } = useLocalSearchParams();
   const { user } = useAuth();
   const { 
     notifications, 
@@ -137,6 +137,13 @@ export default function SpecialistAppointmentsScreen() {
       loadAppointments();
     }
   }, [user]);
+
+  // Handle search parameter from URL
+  useEffect(() => {
+    if (search) {
+      setSearchQuery(String(search));
+    }
+  }, [search]);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
