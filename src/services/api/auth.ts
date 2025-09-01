@@ -473,6 +473,17 @@ export const authService = {
         allergies: signUpData.allergies ? signUpData.allergies.split(',').map(allergy => allergy.trim()).filter(allergy => allergy.length > 0) : undefined
       };
       
+      // Send welcome email (non-blocking - don't fail signup if email fails)
+      try {
+        const userName = `${signUpData.firstName} ${signUpData.lastName}`.trim();
+        console.log('📧 Attempting to send welcome email to:', signUpData.email, 'for user:', userName);
+        await emailService.sendWelcomeEmail(signUpData.email, userName);
+        console.log('✅ Welcome email sent successfully');
+      } catch (emailError) {
+        console.warn('⚠️ Failed to send welcome email:', emailError);
+        // Don't throw error - signup should still succeed even if email fails
+      }
+      
       return { user, userProfile };
     } catch (error: any) {
       console.error('Sign up error:', error);

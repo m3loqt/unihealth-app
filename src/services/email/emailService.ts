@@ -14,6 +14,11 @@ export interface PasswordResetEmailData {
   userName?: string;
 }
 
+export interface WelcomeEmailData {
+  email: string;
+  userName: string;
+}
+
 class EmailService {
   private isConfigured: boolean;
   private apiKey: string; // generic API key (unused unless you wire a REST API)
@@ -95,6 +100,61 @@ class EmailService {
       console.error('EmailJS error:', res.status, body);
       throw new Error('Failed to send verification code');
     }
+    return;
+  }
+
+  async sendWelcomeEmail(email: string, userName: string): Promise<void> {
+    if (!this.isConfigured) {
+      throw new Error('Email service not configured');
+    }
+
+    // Prefer proxy (required for React Native/Expo)
+    if (this.proxyUrl) {
+      const res = await fetch(this.proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, userName, type: 'welcome' })
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        console.error('Email proxy error:', res.status, t);
+        throw new Error('Failed to send welcome email');
+      }
+      return;
+    }
+
+    // Direct EmailJS REST call for welcome email
+    const endpoint = 'https://api.emailjs.com/api/v1.0/email/send';
+    const payload = {
+      service_id: this.emailJsServiceId,
+      template_id: 'template_eund8ap', // Welcome email template ID
+      user_id: this.emailJsPublicKey,
+      template_params: {
+        to_email: email,
+        user_name: userName,
+        email: email, // Include both to_email and email as the template might expect both
+        subject: 'Welcome to UniHEALTH!',
+        app_name: 'UniHEALTH',
+        from_email: this.fromEmail,
+      },
+    } as const;
+
+    console.log('📧 Welcome email payload:', JSON.stringify(payload, null, 2));
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('EmailJS error:', res.status, body);
+      console.error('EmailJS response body:', body);
+      throw new Error(`Failed to send welcome email: ${res.status} - ${body}`);
+    }
+    
+    console.log('✅ Welcome email sent successfully via EmailJS');
     return;
   }
 
