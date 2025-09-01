@@ -184,7 +184,6 @@ export default function PatientReferralDetailsScreen() {
     findings: true,
     soapNotes: true,
     treatment: true,
-    supplementary: true,
   });
 
   useEffect(() => {

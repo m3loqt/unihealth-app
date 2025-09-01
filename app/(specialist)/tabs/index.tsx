@@ -835,7 +835,7 @@ export default function SpecialistHomeScreen() {
                         {chartData.map((item, index) => {
                           // Calculate bar height using the dynamic y-axis scale
                           const normalizedValue = yAxisMax === 0 ? 0 : (item.value - yAxisMin) / (yAxisMax - yAxisMin);
-                          const barHeight = normalizedValue * 180; // 180 is the chart height
+                          const barHeight = 180; // Always use full chart height for bars to span bottom to top
                           const isSelected = selectedBand === item.label;
                           const chartPadding = 30; // Chart padding from left edge
                           const barWidth = (SCREEN_WIDTH - (chartPadding * 2)) / chartData.length; // Use screen width minus padding

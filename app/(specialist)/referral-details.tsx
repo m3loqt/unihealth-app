@@ -270,7 +270,6 @@ export default function ReferralDetailsScreen() {
     findings: true,
     soapNotes: true,
     treatment: true,
-    supplementary: true,
   });
 
   // Load referral data from Firebase

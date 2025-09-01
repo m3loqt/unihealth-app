@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   StatusBar,
   Modal,
   Pressable,
@@ -28,6 +27,7 @@ import {
 } from 'lucide-react-native';
 import { authService, SignUpData } from '../../../src/services/api/auth';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
+import { ErrorModal } from '../../../src/components/shared';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -51,6 +51,10 @@ export default function SignUpStep3Screen() {
   // Success modal
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Error handling state
+  const [currentError, setCurrentError] = useState<{ message: string; suggestion: string; field?: string } | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   // Enable button only when all required
   const isFormReady =
@@ -226,19 +230,39 @@ export default function SignUpStep3Screen() {
     const hints = getPasswordHints();
     const invalidHints = hints.filter(hint => !hint.isValid);
     if (invalidHints.length > 0) {
-      Alert.alert('Error', 'Please ensure your password meets all requirements.');
+      setCurrentError({
+        message: 'Password requirements not met',
+        suggestion: 'Please ensure your password meets all the requirements listed above',
+        field: 'Password'
+      });
+      setShowErrorModal(true);
       return false;
     }
     if (!formData.confirmPassword.trim()) {
-      Alert.alert('Error', 'Please confirm your password');
+      setCurrentError({
+        message: 'Password confirmation required',
+        suggestion: 'Please enter your password again to confirm',
+        field: 'Confirm Password'
+      });
+      setShowErrorModal(true);
       return false;
     }
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      setCurrentError({
+        message: 'Passwords do not match',
+        suggestion: 'Please make sure both password fields contain the same password',
+        field: 'Password Confirmation'
+      });
+      setShowErrorModal(true);
       return false;
     }
     if (!checked) {
-      Alert.alert('Notice', 'Please agree to our Terms and Privacy Policy to continue.');
+      setCurrentError({
+        message: 'Terms and Privacy Policy agreement required',
+        suggestion: 'Please check the agreement box to accept our Terms of Service and Privacy Policy',
+        field: 'Agreement'
+      });
+      setShowErrorModal(true);
       return false;
     }
     return true;
@@ -254,7 +278,12 @@ export default function SignUpStep3Screen() {
       data1 = step1Data ? JSON.parse(step1Data as string) : {};
       data2 = step2Data ? JSON.parse(step2Data as string) : {};
     } catch (e) {
-      Alert.alert('Error', 'There was a problem processing your signup. Please start again.');
+      setCurrentError({
+        message: 'Data processing error',
+        suggestion: 'There was a problem processing your signup data. Please go back and try again.',
+        field: 'Form Data'
+      });
+      setShowErrorModal(true);
       return;
     }
 
@@ -275,23 +304,49 @@ export default function SignUpStep3Screen() {
       setShowSuccessModal(true);
     } catch (error: any) {
       setIsLoading(false);
-      let errorMessage = 'Failed to create account. Please try again.';
+      
+      // Handle Firebase authentication errors with user-friendly messages
+      let errorData: { message: string; suggestion: string; field?: string };
       
       if (error.message.includes('email-already-in-use')) {
-        errorMessage = 'An account with this email already exists. Please use a different email or sign in.';
+        errorData = {
+          message: 'This email is already registered',
+          suggestion: 'Please use a different email address or sign in to your existing account',
+          field: 'Email'
+        };
       } else if (error.message.includes('weak-password')) {
-        errorMessage = 'Password is too weak. Please choose a stronger password.';
+        errorData = {
+          message: 'Password is too weak',
+          suggestion: 'Please choose a stronger password with at least 8 characters, including uppercase, lowercase, numbers, and special characters',
+          field: 'Password'
+        };
       } else if (error.message.includes('invalid-email')) {
-        errorMessage = 'Please enter a valid email address.';
+        errorData = {
+          message: 'Invalid email address',
+          suggestion: 'Please enter a valid email address in the correct format (e.g., user@example.com)',
+          field: 'Email'
+        };
+      } else {
+        errorData = {
+          message: 'Failed to create account',
+          suggestion: 'Please check your information and try again. If the problem persists, contact support.',
+          field: 'Account Creation'
+        };
       }
       
-      Alert.alert('Sign Up Error', errorMessage);
+      setCurrentError(errorData);
+      setShowErrorModal(true);
     }
   };
 
   const handleGoToLogin = () => {
     setShowSuccessModal(false);
     router.replace('/');
+  };
+
+  const handleErrorModalClose = () => {
+    setShowErrorModal(false);
+    setCurrentError(null);
   };
 
   const passwordHints = getPasswordHints();
@@ -563,6 +618,17 @@ export default function SignUpStep3Screen() {
             </SafeAreaView>
           </View>
         </Modal>
+
+        {/* Error Modal */}
+        <ErrorModal
+          visible={showErrorModal}
+          onClose={handleErrorModalClose}
+          title="Account Creation Failed"
+          message={currentError?.message || ''}
+          fieldName={currentError?.field}
+          suggestion={currentError?.suggestion}
+          showRetry={false}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
