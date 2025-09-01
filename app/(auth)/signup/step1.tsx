@@ -6,9 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Modal,
   StatusBar,
 } from 'react-native';
@@ -23,6 +21,7 @@ import {
   Mail,
 } from 'lucide-react-native';
 import { ErrorModal } from '../../../src/components/shared';
+import { KeyboardAvoidingScrollView } from '../../../src/components/ui';
 import { 
   validateSignupForm, 
   getFieldError, 
@@ -224,9 +223,9 @@ export default function SignUpStep1Screen() {
         Platform.OS === 'android' ? { paddingTop: StatusBar.currentHeight } : null,
       ]}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoid}
+      <KeyboardAvoidingScrollView
+        extraOffset={20}
+        contentContainerStyle={styles.scrollContent}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -248,282 +247,276 @@ export default function SignUpStep1Screen() {
           <Text style={styles.progressText}>1 of 3</Text>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.formContainer}>
-            {/* First Name */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.inputLabel}>First Name</Text>
-                <Text style={styles.asterisk}>*</Text>
-              </View>
-              <View style={[
-                styles.inputContainer,
-                fieldErrors['firstname'] && styles.inputError
-              ]}>
-                <User size={20} color={fieldErrors['firstname'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your first name"
-                  placeholderTextColor="#9CA3AF"
-                  value={formData.firstName}
-                  onChangeText={value => handleInputChange('firstName', value)}
-                  autoCapitalize="words"
-                />
-              </View>
-              {fieldErrors['firstname'] && (
-                <Text style={styles.errorText}>{fieldErrors['firstname'].message}</Text>
-              )}
+        <View style={styles.formContainer}>
+          {/* First Name */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <Text style={styles.inputLabel}>First Name</Text>
+              <Text style={styles.asterisk}>*</Text>
             </View>
-
-            {/* Middle Name */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.inputLabel}>Middle Name</Text>
-              </View>
-              <View style={styles.inputContainer}>
-                <User size={20} color="#9CA3AF" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your middle name (optional)"
-                  placeholderTextColor="#9CA3AF"
-                  value={formData.middleName}
-                  onChangeText={value => handleInputChange('middleName', value)}
-                  autoCapitalize="words"
-                />
-              </View>
+            <View style={[
+              styles.inputContainer,
+              fieldErrors['firstname'] && styles.inputError
+            ]}>
+              <User size={20} color={fieldErrors['firstname'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your first name"
+                placeholderTextColor="#9CA3AF"
+                value={formData.firstName}
+                onChangeText={value => handleInputChange('firstName', value)}
+                autoCapitalize="words"
+              />
             </View>
+            {fieldErrors['firstname'] && (
+              <Text style={styles.errorText}>{fieldErrors['firstname'].message}</Text>
+            )}
+          </View>
 
-            {/* Last Name */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.inputLabel}>Last Name</Text>
-                <Text style={styles.asterisk}>*</Text>
-              </View>
-              <View style={[
-                styles.inputContainer,
-                fieldErrors['lastname'] && styles.inputError
-              ]}>
-                <User size={20} color={fieldErrors['lastname'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your last name"
-                  placeholderTextColor="#9CA3AF"
-                  value={formData.lastName}
-                  onChangeText={value => handleInputChange('lastName', value)}
-                  autoCapitalize="words"
-                />
-              </View>
-              {fieldErrors['lastname'] && (
-                <Text style={styles.errorText}>{fieldErrors['lastname'].message}</Text>
-              )}
+          {/* Middle Name */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <Text style={styles.inputLabel}>Middle Name</Text>
             </View>
-
-            {/* Date of Birth */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.inputLabel}>Date of Birth</Text>
-                <Text style={styles.asterisk}>*</Text>
-              </View>
-              <View style={[
-                styles.inputContainer,
-                fieldErrors['dateofbirth'] && styles.inputError
-              ]}>
-                <Calendar size={20} color={fieldErrors['dateofbirth'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="MM/DD/YYYY"
-                  placeholderTextColor="#9CA3AF"
-                  value={formData.dateOfBirth}
-                  onChangeText={value =>
-                    handleInputChange('dateOfBirth', formatDateOfBirth(value))
-                  }
-                  keyboardType="numeric"
-                  maxLength={10}
-                />
-              </View>
-              {fieldErrors['dateofbirth'] && (
-                <Text style={styles.errorText}>{fieldErrors['dateofbirth'].message}</Text>
-              )}
-            </View>
-
-            {/* Gender */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.inputLabel}>Gender</Text>
-                <Text style={styles.asterisk}>*</Text>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.inputContainer,
-                  fieldErrors['gender'] && styles.inputError
-                ]}
-                onPress={() => setShowGenderModal(true)}
-                activeOpacity={0.7}
-              >
-                <User size={20} color={fieldErrors['gender'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
-                <Text style={[styles.input, !formData.gender && styles.placeholder]}>
-                  {formData.gender || 'Select your gender'}
-                </Text>
-                <ChevronDown size={20} color={fieldErrors['gender'] ? "#EF4444" : "#9CA3AF"} />
-              </TouchableOpacity>
-              {fieldErrors['gender'] && (
-                <Text style={styles.errorText}>{fieldErrors['gender'].message}</Text>
-              )}
-            </View>
-
-            {/* Address */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.inputLabel}>Address</Text>
-                <Text style={styles.asterisk}>*</Text>
-              </View>
-              <View style={[
-                styles.inputContainer, 
-                styles.addressInputContainer,
-                fieldErrors['address'] && styles.inputError
-              ]}>
-                <View style={styles.iconTopAlign}>
-                  <MapPin size={20} color={fieldErrors['address'] ? "#EF4444" : "#9CA3AF"} />
-                </View>
-                <TextInput
-                  style={[styles.input, styles.addressInput]}
-                  placeholder="Enter your complete address"
-                  placeholderTextColor="#9CA3AF"
-                  value={formData.address}
-                  onChangeText={value => handleInputChange('address', value)}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
-              </View>
-              {fieldErrors['address'] && (
-                <Text style={styles.errorText}>{fieldErrors['address'].message}</Text>
-              )}
-            </View>
-
-            {/* Contact Number */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.inputLabel}>Contact Number</Text>
-                <Text style={styles.asterisk}>*</Text>
-              </View>
-              <View style={[
-                styles.inputContainer,
-                fieldErrors['contactnumber'] && styles.inputError
-              ]}>
-                <Phone size={20} color={fieldErrors['contactnumber'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your contact number"
-                  placeholderTextColor="#9CA3AF"
-                  value={formData.contactNumber}
-                  onChangeText={value => handleInputChange('contactNumber', value)}
-                  keyboardType="phone-pad"
-                />
-              </View>
-              {fieldErrors['contactnumber'] && (
-                <Text style={styles.errorText}>{fieldErrors['contactnumber'].message}</Text>
-              )}
-            </View>
-
-            {/* Highest Educational Attainment */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.inputLabel}>Highest Educational Attainment</Text>
-                <Text style={styles.asterisk}>*</Text>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.inputContainer,
-                  fieldErrors['highesteducationalattainment'] && styles.inputError
-                ]}
-                onPress={() => setShowEducationalAttainmentModal(true)}
-                activeOpacity={0.7}
-              >
-                <User size={20} color={fieldErrors['highesteducationalattainment'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
-                <Text style={[styles.input, !formData.highestEducationalAttainment && styles.placeholder]}>
-                  {formData.highestEducationalAttainment || 'Select your highest educational attainment'}
-                </Text>
-                <ChevronDown size={20} color={fieldErrors['highesteducationalattainment'] ? "#EF4444" : "#9CA3AF"} />
-              </TouchableOpacity>
-              {fieldErrors['highesteducationalattainment'] && (
-                <Text style={styles.errorText}>{fieldErrors['highesteducationalattainment'].message}</Text>
-              )}
-            </View>
-
-            {/* Blood Type */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.inputLabel}>Blood Type</Text>
-                <Text style={styles.asterisk}>*</Text>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.inputContainer,
-                  fieldErrors['bloodtype'] && styles.inputError
-                ]}
-                onPress={() => setShowBloodTypeModal(true)}
-                activeOpacity={0.7}
-              >
-                <User size={20} color={fieldErrors['bloodtype'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
-                <Text style={[styles.input, !formData.bloodType && styles.placeholder]}>
-                  {formData.bloodType || 'Select your blood type'}
-                </Text>
-                <ChevronDown size={20} color={fieldErrors['bloodtype'] ? "#EF4444" : "#9CA3AF"} />
-              </TouchableOpacity>
-              {fieldErrors['bloodtype'] && (
-                <Text style={styles.errorText}>{fieldErrors['bloodtype'].message}</Text>
-              )}
-            </View>
-
-            {/* Allergies */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.inputLabel}>Allergies</Text>
-              </View>
-              <View style={styles.inputContainer}>
-                <User size={20} color="#9CA3AF" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter allergies (comma-separated)"
-                  placeholderTextColor="#9CA3AF"
-                  value={formData.allergies}
-                  onChangeText={value => handleInputChange('allergies', value)}
-                />
-              </View>
-            </View>
-
-            {/* Email */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.inputLabel}>Email</Text>
-                <Text style={styles.asterisk}>*</Text>
-              </View>
-              <View style={[
-                styles.inputContainer,
-                fieldErrors['email'] && styles.inputError
-              ]}>
-                <Mail size={20} color={fieldErrors['email'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your email"
-                  placeholderTextColor="#9CA3AF"
-                  value={formData.email}
-                  onChangeText={value => handleInputChange('email', value)}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-              {fieldErrors['email'] && (
-                <Text style={styles.errorText}>{fieldErrors['email'].message}</Text>
-              )}
+            <View style={styles.inputContainer}>
+              <User size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your middle name (optional)"
+                placeholderTextColor="#9CA3AF"
+                value={formData.middleName}
+                onChangeText={value => handleInputChange('middleName', value)}
+                autoCapitalize="words"
+              />
             </View>
           </View>
-        </ScrollView>
+
+          {/* Last Name */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <Text style={styles.inputLabel}>Last Name</Text>
+              <Text style={styles.asterisk}>*</Text>
+            </View>
+            <View style={[
+              styles.inputContainer,
+              fieldErrors['lastname'] && styles.inputError
+            ]}>
+              <User size={20} color={fieldErrors['lastname'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your last name"
+                placeholderTextColor="#9CA3AF"
+                value={formData.lastName}
+                onChangeText={value => handleInputChange('lastName', value)}
+                autoCapitalize="words"
+              />
+            </View>
+            {fieldErrors['lastname'] && (
+              <Text style={styles.errorText}>{fieldErrors['lastname'].message}</Text>
+            )}
+          </View>
+
+          {/* Date of Birth */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <Text style={styles.inputLabel}>Date of Birth</Text>
+              <Text style={styles.asterisk}>*</Text>
+            </View>
+            <View style={[
+              styles.inputContainer,
+              fieldErrors['dateofbirth'] && styles.inputError
+            ]}>
+              <Calendar size={20} color={fieldErrors['dateofbirth'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="MM/DD/YYYY"
+                placeholderTextColor="#9CA3AF"
+                value={formData.dateOfBirth}
+                onChangeText={value =>
+                  handleInputChange('dateOfBirth', formatDateOfBirth(value))
+                }
+                keyboardType="numeric"
+                maxLength={10}
+              />
+            </View>
+            {fieldErrors['dateofbirth'] && (
+              <Text style={styles.errorText}>{fieldErrors['dateofbirth'].message}</Text>
+            )}
+          </View>
+
+          {/* Gender */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <Text style={styles.inputLabel}>Gender</Text>
+              <Text style={styles.asterisk}>*</Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.inputContainer,
+                fieldErrors['gender'] && styles.inputError
+              ]}
+              onPress={() => setShowGenderModal(true)}
+              activeOpacity={0.7}
+            >
+              <User size={20} color={fieldErrors['gender'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <Text style={[styles.input, !formData.gender && styles.placeholder]}>
+                {formData.gender || 'Select your gender'}
+              </Text>
+              <ChevronDown size={20} color={fieldErrors['gender'] ? "#EF4444" : "#9CA3AF"} />
+            </TouchableOpacity>
+            {fieldErrors['gender'] && (
+              <Text style={styles.errorText}>{fieldErrors['gender'].message}</Text>
+            )}
+          </View>
+
+          {/* Address */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <Text style={styles.inputLabel}>Address</Text>
+              <Text style={styles.asterisk}>*</Text>
+            </View>
+            <View style={[
+              styles.inputContainer, 
+              styles.addressInputContainer,
+              fieldErrors['address'] && styles.inputError
+            ]}>
+              <View style={styles.iconTopAlign}>
+                <MapPin size={20} color={fieldErrors['address'] ? "#EF4444" : "#9CA3AF"} />
+              </View>
+              <TextInput
+                style={[styles.input, styles.addressInput]}
+                placeholder="Enter your complete address"
+                placeholderTextColor="#9CA3AF"
+                value={formData.address}
+                onChangeText={value => handleInputChange('address', value)}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+            </View>
+            {fieldErrors['address'] && (
+              <Text style={styles.errorText}>{fieldErrors['address'].message}</Text>
+            )}
+          </View>
+
+          {/* Contact Number */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <Text style={styles.inputLabel}>Contact Number</Text>
+              <Text style={styles.asterisk}>*</Text>
+            </View>
+            <View style={[
+              styles.inputContainer,
+              fieldErrors['contactnumber'] && styles.inputError
+            ]}>
+              <Phone size={20} color={fieldErrors['contactnumber'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your contact number"
+                placeholderTextColor="#9CA3AF"
+                value={formData.contactNumber}
+                onChangeText={value => handleInputChange('contactNumber', value)}
+                keyboardType="phone-pad"
+              />
+            </View>
+            {fieldErrors['contactnumber'] && (
+              <Text style={styles.errorText}>{fieldErrors['contactnumber'].message}</Text>
+            )}
+          </View>
+
+          {/* Highest Educational Attainment */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <Text style={styles.inputLabel}>Highest Educational Attainment</Text>
+              <Text style={styles.asterisk}>*</Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.inputContainer,
+                fieldErrors['highesteducationalattainment'] && styles.inputError
+              ]}
+              onPress={() => setShowEducationalAttainmentModal(true)}
+              activeOpacity={0.7}
+            >
+              <User size={20} color={fieldErrors['highesteducationalattainment'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <Text style={[styles.input, !formData.highestEducationalAttainment && styles.placeholder]}>
+                {formData.highestEducationalAttainment || 'Select your highest educational attainment'}
+              </Text>
+              <ChevronDown size={20} color={fieldErrors['highesteducationalattainment'] ? "#EF4444" : "#9CA3AF"} />
+            </TouchableOpacity>
+            {fieldErrors['highesteducationalattainment'] && (
+              <Text style={styles.errorText}>{fieldErrors['highesteducationalattainment'].message}</Text>
+            )}
+          </View>
+
+          {/* Blood Type */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <Text style={styles.inputLabel}>Blood Type</Text>
+              <Text style={styles.asterisk}>*</Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.inputContainer,
+                fieldErrors['bloodtype'] && styles.inputError
+              ]}
+              onPress={() => setShowBloodTypeModal(true)}
+              activeOpacity={0.7}
+            >
+              <User size={20} color={fieldErrors['bloodtype'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <Text style={[styles.input, !formData.bloodType && styles.placeholder]}>
+                {formData.bloodType || 'Select your blood type'}
+              </Text>
+              <ChevronDown size={20} color={fieldErrors['bloodtype'] ? "#EF4444" : "#9CA3AF"} />
+            </TouchableOpacity>
+            {fieldErrors['bloodtype'] && (
+              <Text style={styles.errorText}>{fieldErrors['bloodtype'].message}</Text>
+            )}
+          </View>
+
+          {/* Allergies */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <Text style={styles.inputLabel}>Allergies</Text>
+            </View>
+            <View style={styles.inputContainer}>
+              <User size={20} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter allergies (comma-separated)"
+                placeholderTextColor="#9CA3AF"
+                value={formData.allergies}
+                onChangeText={value => handleInputChange('allergies', value)}
+              />
+            </View>
+          </View>
+
+          {/* Email */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <Text style={styles.asterisk}>*</Text>
+            </View>
+            <View style={[
+              styles.inputContainer,
+              fieldErrors['email'] && styles.inputError
+            ]}>
+              <Mail size={20} color={fieldErrors['email'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email"
+                placeholderTextColor="#9CA3AF"
+                value={formData.email}
+                onChangeText={value => handleInputChange('email', value)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+            {fieldErrors['email'] && (
+              <Text style={styles.errorText}>{fieldErrors['email'].message}</Text>
+            )}
+          </View>
+        </View>
 
         {/* Continue Button */}
         <View style={styles.bottomContainer}>
@@ -667,7 +660,7 @@ export default function SignUpStep1Screen() {
           showRetry={true}
           onRetry={handleShowNextError}
         />
-      </KeyboardAvoidingView>
+      </KeyboardAvoidingScrollView>
     </SafeAreaView>
   );
 }

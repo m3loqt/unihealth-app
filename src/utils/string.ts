@@ -194,4 +194,46 @@ export function getFirstName(fullName: string): string {
     return '';
   }
   return fullName.split(' ')[0];
-} 
+}
+
+/**
+ * Clean an optional string field for database storage
+ * @param value - The string value to clean
+ * @returns The cleaned string or undefined if empty/whitespace only
+ */
+export const cleanOptionalString = (value: string | undefined): string | undefined => {
+  return value && value.trim() ? value.trim() : undefined;
+};
+
+/**
+ * Process allergies string into array for database storage
+ * @param allergies - The allergies string (comma-separated)
+ * @returns Array of allergies or undefined if empty/whitespace only
+ */
+export const processAllergies = (allergies: string | undefined): string[] | undefined => {
+  if (!allergies || !allergies.trim()) {
+    return undefined;
+  }
+  
+  const processed = allergies
+    .split(',')
+    .map(allergy => allergy.trim())
+    .filter(allergy => allergy.length > 0);
+    
+  return processed.length > 0 ? processed : undefined;
+};
+
+/**
+ * Filter out undefined values from an object for Firebase storage
+ * @param obj - The object to filter
+ * @returns Object with undefined values removed
+ */
+export const filterUndefinedValues = <T extends Record<string, any>>(obj: T): Partial<T> => {
+  const filtered: Partial<T> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      filtered[key as keyof T] = value;
+    }
+  }
+  return filtered;
+}; 
