@@ -284,9 +284,9 @@ export default function SpecialistCertificatesScreen() {
             route = '/e-certificate-fit-to-travel';
           }
           
-          // Pass the certificate ID and patient ID for proper data loading
-          // Note: consultationId/appointmentId will be loaded from the certificate data in the e-certificate screens
-          router.push(`${route}?certificateId=${certificate.id}&patientId=${certificate.patientId}` as any);
+          // Pass the consultation ID, certificate ID, and patient ID for proper data loading
+          // The consultationId is the entry key from patientMedicalHistory
+          router.push(`${route}?id=${certificate.consultationId}&certificateId=${certificate.id}&patientId=${certificate.patientId}` as any);
         }}
       >
                   <View style={styles.pdfThumbnail}>
@@ -343,9 +343,9 @@ export default function SpecialistCertificatesScreen() {
                   route = '/e-certificate-fit-to-travel';
                 }
                 
-                // Pass the certificate ID and patient ID for proper data loading
-                // Note: consultationId/appointmentId will be loaded from the certificate data in the e-certificate screens
-                router.push(`${route}?certificateId=${certificate.id}&patientId=${certificate.patientId}` as any);
+                // Pass the consultation ID, certificate ID, and patient ID for proper data loading
+                // The consultationId is the entry key from patientMedicalHistory
+                router.push(`${route}?id=${certificate.consultationId}&certificateId=${certificate.id}&patientId=${certificate.patientId}` as any);
               }}
             >
               <Eye size={20} color="#374151" />
