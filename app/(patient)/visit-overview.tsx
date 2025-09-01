@@ -64,8 +64,6 @@ interface VisitData extends Appointment {
   treatmentPlan?: string;
   clinicalSummary?: string;
   
-  // Step 5: Supplementary Docs
-
 }
 
 // Extended interface for prescriptions that includes additional properties
@@ -192,7 +190,6 @@ export default function VisitOverviewScreen() {
     findings: true,
     soapNotes: true,
     treatment: true,
-    supplementary: true,
     prescriptions: true,
     certificates: true,
   });
@@ -640,20 +637,7 @@ export default function VisitOverviewScreen() {
               </View>
             )}
 
-            {/* Step 5: Supplementary Information */}
-            <TouchableOpacity style={styles.clinicalSectionHeader} onPress={() => toggleSection('supplementary')}>
-              <Text style={styles.clinicalSectionLabel}>Supplementary Information</Text>
-              {expandedSections['supplementary'] ? (
-                <ChevronDown size={23} color="#6B7280" />
-              ) : (
-                <ChevronRight size={23} color="#9CA3AF" />
-              )}
-            </TouchableOpacity>
-            {expandedSections['supplementary'] && (
-              <View style={styles.clinicalSectionBody}>
-                
-              </View>
-            )}
+
           </View>
           )}
         </View>
