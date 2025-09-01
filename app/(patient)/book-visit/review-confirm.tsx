@@ -17,6 +17,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService } from '../../../src/services/database/firebase';
+import { emailService } from '../../../src/services/email/emailService';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 import { formatClinicAddress } from '../../../src/utils/formatting';
 
@@ -127,6 +128,33 @@ export default function ReviewConfirmScreen() {
       // Save to database
       const appointmentId = await databaseService.createAppointment(appointmentData);
       console.log('Appointment created successfully with ID:', appointmentId);
+
+      // Send appointment confirmation email (non-blocking for booking flow)
+      try {
+        if (emailService && typeof emailService.isEmailServiceReady === 'function' && emailService.isEmailServiceReady()) {
+          const userNameForEmail = `${patientFirstName} ${patientLastName}`.trim() || (user.email || 'User');
+          const clinicAddressStr = clinicData ? formatClinicAddress(clinicData) : '';
+          const doctorNameStr = Array.isArray(doctorName) ? doctorName[0] : (doctorName as string | undefined) || '';
+
+          await emailService.sendAppointmentConfirmationEmail({
+            email: user.email || '',
+            userName: userNameForEmail,
+            clinicName: (clinicName as string) || '',
+            appointmentDate: formatDate(selectedDate as string),
+            appointmentTime: (selectedTime as string) || '',
+            appointmentPurpose: (selectedPurpose as string) || '',
+            doctorName: doctorNameStr,
+            clinicAddress: clinicAddressStr,
+            additionalNotes: (notes as string) || '',
+            appointmentId: String(appointmentId || ''),
+          });
+        } else {
+          console.warn('Email service not ready; skipping appointment confirmation email');
+        }
+      } catch (emailErr) {
+        console.error('Failed to send appointment confirmation email:', emailErr);
+      }
+
       setShowSuccessModal(true);
     } catch (error) {
       console.error('Error booking appointment:', error);
