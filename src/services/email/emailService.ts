@@ -19,6 +19,19 @@ export interface WelcomeEmailData {
   userName: string;
 }
 
+export interface AppointmentConfirmationEmailData {
+  email: string;
+  userName: string;
+  clinicName: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  appointmentPurpose: string;
+  doctorName?: string;
+  clinicAddress?: string;
+  additionalNotes?: string;
+  appointmentId?: string;
+}
+
 class EmailService {
   private isConfigured: boolean;
   private apiKey: string; // generic API key (unused unless you wire a REST API)
@@ -155,6 +168,93 @@ class EmailService {
     }
     
     console.log('✅ Welcome email sent successfully via EmailJS');
+    return;
+  }
+
+  async sendAppointmentConfirmationEmail(data: AppointmentConfirmationEmailData): Promise<void> {
+    if (!this.isConfigured) {
+      throw new Error('Email service not configured');
+    }
+
+    const { 
+      email, 
+      userName, 
+      clinicName, 
+      appointmentDate, 
+      appointmentTime, 
+      appointmentPurpose,
+      doctorName,
+      clinicAddress,
+      additionalNotes,
+      appointmentId
+    } = data;
+
+    // Prefer proxy (required for React Native/Expo)
+    if (this.proxyUrl) {
+      const res = await fetch(this.proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email, 
+          userName, 
+          clinicName, 
+          appointmentDate, 
+          appointmentTime, 
+          appointmentPurpose,
+          doctorName,
+          clinicAddress,
+          additionalNotes,
+          appointmentId,
+          type: 'appointment_confirmation' 
+        })
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        console.error('Email proxy error:', res.status, t);
+        throw new Error('Failed to send appointment confirmation email');
+      }
+      return;
+    }
+
+    // Direct EmailJS REST call for appointment confirmation email
+    const endpoint = 'https://api.emailjs.com/api/v1.0/email/send';
+    const payload = {
+      service_id: this.emailJsServiceId,
+      template_id: 'template_nud0cea', // Appointment confirmation template ID
+      user_id: this.emailJsPublicKey,
+      template_params: {
+        to_email: email,
+        user_name: userName,
+        clinic_name: clinicName,
+        appointment_date: appointmentDate,
+        appointment_time: appointmentTime,
+        appointment_purpose: appointmentPurpose,
+        doctor_name: doctorName || '',
+        clinic_address: clinicAddress || '',
+        additional_notes: additionalNotes || '',
+        appointment_id: appointmentId || '',
+        subject: 'UniHEALTH - Appointment Booking Confirmation',
+        app_name: 'UniHEALTH',
+        from_email: this.fromEmail,
+      },
+    } as const;
+
+    console.log('📧 Appointment confirmation email payload:', JSON.stringify(payload, null, 2));
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('EmailJS error:', res.status, body);
+      console.error('EmailJS response body:', body);
+      throw new Error(`Failed to send appointment confirmation email: ${res.status} - ${body}`);
+    }
+    
+    console.log('✅ Appointment confirmation email sent successfully via EmailJS');
     return;
   }
 
