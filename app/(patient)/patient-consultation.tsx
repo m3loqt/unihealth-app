@@ -40,7 +40,7 @@ import { ref, update } from 'firebase/database';
 import { database } from '@/config/firebase';
 import { safeDataAccess } from '../../src/utils/safeDataAccess';
 import { FrequencySelectionModal, RouteSelectionModal, DurationUnitSelectionModal, FormulaSelectionModal } from '../../src/components';
-import { DynamicUnitInput, PrescriptionUnitInputs } from '../../src/components/ui';
+import { DynamicUnitInput, PrescriptionUnitInputs, KeyboardAvoidingScrollView } from '../../src/components/ui';
 import { formatFrequency, formatRoute, formatFormula, determineUnit } from '../../src/utils/formatting';
 
 export default function PatientConsultationScreen() {
@@ -89,7 +89,6 @@ export default function PatientConsultationScreen() {
     treatmentPlan: string;
     clinicalSummary: string;
     
-    // Step 6: Supplementary Docs
     prescriptions: any[];
     certificates: any[];
   }>({
@@ -245,7 +244,6 @@ export default function PatientConsultationScreen() {
         treatmentPlan: medicalHistory?.treatmentPlan || '',
         clinicalSummary: medicalHistory?.clinicalSummary || '',
         
-        // Step 6: Supplementary Docs
         prescriptions: medicalHistory?.prescriptions || [],
         certificates: medicalHistory?.certificates || [],
 
@@ -902,7 +900,6 @@ export default function PatientConsultationScreen() {
           treatmentPlan: formData.treatmentPlan,
           clinicalSummary: formData.clinicalSummary,
           
-          // Step 6: Supplementary Docs
           prescriptions: formData.prescriptions,
           certificates: formData.certificates,
           
@@ -2044,14 +2041,14 @@ export default function PatientConsultationScreen() {
       {/* Step Indicator */}
       {renderStepIndicator()}
 
-      <ScrollView
+      <KeyboardAvoidingScrollView
         style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
+        extraOffset={20}
         contentContainerStyle={{ paddingBottom: 120 }}
       >
                 {/* Step Content */}
         {renderStepContent()}
-      </ScrollView>
+      </KeyboardAvoidingScrollView>
 
       {/* Bottom Action Buttons */}
       <View style={styles.bottomContainer}>
