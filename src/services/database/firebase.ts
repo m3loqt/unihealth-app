@@ -147,6 +147,7 @@ export interface Certificate {
   clinicName?: string;
   medicalFindings?: string;
   restrictions?: string;
+  consultationId?: string; // Add consultation ID for routing
 }
 
 export interface Patient {
@@ -1649,6 +1650,7 @@ export const databaseService = {
                       medicalFindings: cert.medicalFindings,
                       restrictions: cert.restrictions,
                       documentUrl: cert.documentUrl,
+                      consultationId: entryKey, // Add consultation ID for routing
                     };
                     
                     console.log('✅ Adding certificate:', certificateData);
