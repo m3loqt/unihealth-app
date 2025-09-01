@@ -6,14 +6,18 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Modal,
   StatusBar,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { User, Phone, ChevronDown, ChevronLeft } from 'lucide-react-native';
+import {
+  User,
+  Phone,
+  ChevronDown,
+  ChevronLeft,
+} from 'lucide-react-native';
+import { KeyboardAvoidingScrollView } from '../../../src/components/ui';
 import { capitalizeRelationship } from '../../../src/utils/formatting';
 
 const RELATIONSHIP_OPTIONS = [
@@ -76,9 +80,9 @@ export default function SignUpStep2Screen() {
         Platform.OS === 'android' ? { paddingTop: StatusBar.currentHeight } : null,
       ]}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+      <KeyboardAvoidingScrollView
+        extraOffset={20}
+        contentContainerStyle={styles.scrollContent}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -101,11 +105,7 @@ export default function SignUpStep2Screen() {
         </View>
 
         {/* Fields */}
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={styles.scrollContent}>
           <View style={styles.formContainer}>
             {/* Emergency Contact Full Name */}
             <View style={styles.inputGroup}>
@@ -183,7 +183,7 @@ export default function SignUpStep2Screen() {
               </View>
             </View>
           </View>
-        </ScrollView>
+        </View>
 
         {/* Continue Button at bottom */}
         <View style={styles.bottomContainer}>
@@ -237,7 +237,7 @@ export default function SignUpStep2Screen() {
             </View>
           </View>
         </Modal>
-      </KeyboardAvoidingView>
+      </KeyboardAvoidingScrollView>
     </SafeAreaView>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  StatusBar,
   Modal,
+  StatusBar,
+  ScrollView,
   Pressable,
   Dimensions,
 } from 'react-native';
@@ -19,12 +18,13 @@ import {
   Lock,
   Eye,
   EyeOff,
-  ChevronLeft,
   Check,
+  ChevronLeft,
   FileText,
   Shield,
-  X
+  X,
 } from 'lucide-react-native';
+import { KeyboardAvoidingScrollView } from '../../../src/components/ui';
 import { authService, SignUpData } from '../../../src/services/api/auth';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { ErrorModal } from '../../../src/components/shared';
@@ -358,9 +358,9 @@ export default function SignUpStep3Screen() {
         Platform.OS === 'android' ? { paddingTop: StatusBar.currentHeight } : null,
       ]}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoid}
+      <KeyboardAvoidingScrollView
+        extraOffset={20}
+        contentContainerStyle={styles.scrollContent}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -382,12 +382,7 @@ export default function SignUpStep3Screen() {
           <Text style={styles.progressText}>3 of 3</Text>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.formContainer}>
+        <View style={styles.formContainer}>
 
             {/* Password Requirements (on top, no card) */}
             <View style={styles.hintsPlainContainer}>
@@ -506,7 +501,7 @@ export default function SignUpStep3Screen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
+        </KeyboardAvoidingScrollView>
 
         {/* Sign Up Button */}
         <View style={styles.bottomContainer}>
@@ -629,7 +624,6 @@ export default function SignUpStep3Screen() {
           suggestion={currentError?.suggestion}
           showRetry={false}
         />
-      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
