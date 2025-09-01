@@ -62,6 +62,7 @@ export default function ReviewConfirmScreen() {
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
+  const [createdAppointmentId, setCreatedAppointmentId] = useState<string | null>(null);
 
   // Load clinic data to get address
   React.useEffect(() => {
@@ -127,6 +128,7 @@ export default function ReviewConfirmScreen() {
       // Save to database
       const appointmentId = await databaseService.createAppointment(appointmentData);
       console.log('Appointment created successfully with ID:', appointmentId);
+      setCreatedAppointmentId(appointmentId);
       setShowSuccessModal(true);
     } catch (error) {
       console.error('Error booking appointment:', error);
@@ -154,6 +156,21 @@ export default function ReviewConfirmScreen() {
   const handleCloseModal = () => {
     setShowSuccessModal(false);
     router.push('/(patient)/tabs');
+  };
+
+  const handleViewAppointment = async () => {
+    setShowSuccessModal(false);
+    if (createdAppointmentId) {
+      // Navigate to appointments tab first, then to visit overview
+      // This ensures the back button goes to appointments tab
+      router.push('/(patient)/tabs/appointments');
+      // Wait for navigation to complete, then navigate to visit overview
+      await new Promise(resolve => setTimeout(resolve, 200));
+      router.push(`/(patient)/visit-overview?id=${createdAppointmentId}`);
+    } else {
+      // Fallback to general appointments tab
+      router.push('/(patient)/tabs/appointments');
+    }
   };
 
   return (
@@ -342,7 +359,7 @@ export default function ReviewConfirmScreen() {
             </View>
             <TouchableOpacity
               style={styles.modalCloseButton}
-              onPress={handleCloseModal}
+              onPress={handleViewAppointment}
             >
               <Text style={styles.modalCloseButtonText}>View Appointment</Text>
             </TouchableOpacity>
