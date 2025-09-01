@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  ScrollView,
   TouchableOpacity,
   Alert,
   StyleSheet,
@@ -21,6 +20,7 @@ import {
   Save,
   Check,
 } from 'lucide-react-native';
+import { KeyboardAvoidingScrollView } from './ui';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -52,7 +52,6 @@ interface ConsultationFormData {
   treatmentPlan: string;
   clinicalSummary: string;
   
-  // Step 6: Supplementary Docs
   prescriptions: any[];
   certificates: any[];
 
@@ -315,9 +314,13 @@ export default function ConsultationForm({
     <View style={styles.container}>
       {renderStepIndicator()}
       
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingScrollView 
+        style={styles.content} 
+        extraOffset={20}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
         {renderStepContent()}
-      </ScrollView>
+      </KeyboardAvoidingScrollView>
 
       {!isReadOnly && (
         <View style={styles.footer}>
