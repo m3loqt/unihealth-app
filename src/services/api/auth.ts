@@ -13,6 +13,7 @@ import { auth, database } from '../../config/firebase';
 import { emailService } from '../email/emailService';
 import { passwordResetService } from '../database/passwordResetService';
 import { capitalizeRelationship } from '../../utils/formatting';
+import { cleanOptionalString, processAllergies, filterUndefinedValues } from '../../utils/string';
 
 // Static users for testing (keep these)
 export const STATIC_USERS = {
@@ -87,7 +88,7 @@ export interface SignUpData {
   contactNumber: string;
   highestEducationalAttainment?: string;
   bloodType?: string;
-  allergies?: string;
+  allergies?: string; // Comma-separated string from form input (e.g., "peanuts, shellfish, dairy")
   
   // Step 2 data
   emergencyContactName: string;
@@ -273,7 +274,7 @@ export const authService = {
                    email: userData.userData.email,
                    role: userData.userData.role,
                    firstName: userData.userData.firstName,
-                   middleName: userData.userData.middleName || undefined,
+                   middleName: cleanOptionalString(userData.userData.middleName),
                    lastName: userData.userData.lastName,
                    // Note: phone, address, dateOfBirth, gender, emergencyContact are in patients node
                    // Will be populated if needed when accessing patient data
@@ -375,7 +376,7 @@ export const authService = {
            email: userData.email,
            role: userData.role,
            firstName: userData.firstName,
-           middleName: userData.middleName || undefined,
+           middleName: cleanOptionalString(userData.middleName),
            lastName: userData.lastName,
            phone: patientData?.contactNumber || undefined,
            address: patientData?.address || undefined,
@@ -412,12 +413,14 @@ export const authService = {
       const patientId = user.uid;
       const currentTime = new Date().toISOString();
       
+
+      
       // Prepare user node data with null safety (only immutable fields)
       const userNodeData: UserNode = {
         createdAt: currentTime,
         email: signUpData.email,
         firstName: signUpData.firstName,
-        middleName: signUpData.middleName || undefined,
+        middleName: cleanOptionalString(signUpData.middleName),
         lastName: signUpData.lastName,
         patientId: patientId,
         role: 'patient'
@@ -435,20 +438,24 @@ export const authService = {
           relationship: capitalizeRelationship(signUpData.relationship || '')
         } : undefined,
         firstName: signUpData.firstName,
-        middleName: signUpData.middleName || undefined,
+        middleName: cleanOptionalString(signUpData.middleName),
         gender: signUpData.gender || '',
         lastName: signUpData.lastName,
         lastUpdated: currentTime,
         userId: user.uid,
-        highestEducationalAttainment: signUpData.highestEducationalAttainment || undefined,
-        bloodType: signUpData.bloodType || undefined,
-        allergies: signUpData.allergies ? signUpData.allergies.split(',').map(allergy => allergy.trim()).filter(allergy => allergy.length > 0) : undefined
+        highestEducationalAttainment: cleanOptionalString(signUpData.highestEducationalAttainment),
+        bloodType: cleanOptionalString(signUpData.bloodType),
+        allergies: processAllergies(signUpData.allergies)
       };
+      
+      // Filter out undefined values before storing to Firebase
+      const filteredUserNodeData = filterUndefinedValues(userNodeData);
+      const filteredPatientNodeData = filterUndefinedValues(patientNodeData);
       
       // Store data in both nodes
       await Promise.all([
-        set(ref(database, `users/${user.uid}`), userNodeData),
-        set(ref(database, `patients/${user.uid}`), patientNodeData)
+        set(ref(database, `users/${user.uid}`), filteredUserNodeData),
+        set(ref(database, `patients/${user.uid}`), filteredPatientNodeData)
       ]);
       
       // Create user profile for return with null safety
@@ -457,23 +464,27 @@ export const authService = {
         email: user.email!,
         role: 'patient',
         firstName: signUpData.firstName,
-        middleName: signUpData.middleName || undefined,
+        middleName: cleanOptionalString(signUpData.middleName),
         lastName: signUpData.lastName,
         phone: signUpData.contactNumber || undefined,
         dateOfBirth: signUpData.dateOfBirth || undefined,
         gender: signUpData.gender || undefined,
         address: signUpData.address || undefined,
-        highestEducationalAttainment: signUpData.highestEducationalAttainment || undefined,
+        highestEducationalAttainment: cleanOptionalString(signUpData.highestEducationalAttainment),
         emergencyContact: signUpData.emergencyContactName ? {
           name: signUpData.emergencyContactName,
           phone: signUpData.emergencyContactNumber || '',
           relationship: capitalizeRelationship(signUpData.relationship || '')
         } : undefined,
-        bloodType: signUpData.bloodType || undefined,
-        allergies: signUpData.allergies ? signUpData.allergies.split(',').map(allergy => allergy.trim()).filter(allergy => allergy.length > 0) : undefined
+        bloodType: cleanOptionalString(signUpData.bloodType),
+        allergies: processAllergies(signUpData.allergies)
       };
       
+      // Filter out undefined values from user profile
+      const filteredUserProfile = filterUndefinedValues(userProfile);
+      
       // Send welcome email (non-blocking - don't fail signup if email fails)
+
       try {
         const userName = `${signUpData.firstName} ${signUpData.lastName}`.trim();
         console.log('📧 Attempting to send welcome email to:', signUpData.email, 'for user:', userName);
@@ -484,7 +495,7 @@ export const authService = {
         // Don't throw error - signup should still succeed even if email fails
       }
       
-      return { user, userProfile };
+      return { user, userProfile: filteredUserProfile as UserProfile };
     } catch (error: any) {
       console.error('Sign up error:', error);
       throw new Error(error.message);
@@ -546,7 +557,7 @@ export const authService = {
            email: userData.email,
            role: userData.role,
            firstName: userData.firstName,
-           middleName: userData.middleName || undefined,
+           middleName: cleanOptionalString(userData.middleName),
            lastName: userData.lastName,
            // Note: phone, address, dateOfBirth and emergencyContact are in patients node
            // We'll get those separately if needed
@@ -626,7 +637,7 @@ export const authService = {
            email: userData.email,
            role: userData.role,
            firstName: userData.firstName,
-           middleName: userData.middleName || undefined,
+           middleName: cleanOptionalString(userData.middleName),
            lastName: userData.lastName,
            phone: patientData?.contactNumber || undefined,
            address: patientData?.address || undefined,
