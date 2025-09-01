@@ -601,7 +601,7 @@ export default function SignUpStep3Screen() {
                   </Text>
                   
                   <Text style={styles.successModalSuccessSubtitle}>
-                    Welcome to UniHEALTH, {userProfile?.name}! Your account has been created and you can now sign in.
+                    Welcome to UniHEALTH, {userProfile?.firstName}! Your account has been created and you can now sign in.
                   </Text>
                 </View>
                 
