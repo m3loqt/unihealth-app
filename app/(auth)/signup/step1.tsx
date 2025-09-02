@@ -21,7 +21,7 @@ import {
   Mail,
 } from 'lucide-react-native';
 import { ErrorModal } from '../../../src/components/shared';
-import { KeyboardAvoidingScrollView, HintButton } from '../../../src/components/ui';
+import { KeyboardAvoidingScrollView } from '../../../src/components/ui';
 import { 
   validateSignupForm, 
   getFieldError, 
@@ -295,12 +295,6 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>First Name</Text>
               <Text style={styles.asterisk}>*</Text>
-              <HintButton
-                fieldName="firstName"
-                hasError={!!fieldErrors['firstName']}
-                value={formData.firstName}
-                minLength={2}
-              />
             </View>
             <View style={[
               styles.inputContainer,
@@ -344,12 +338,6 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Last Name</Text>
               <Text style={styles.asterisk}>*</Text>
-              <HintButton
-                fieldName="lastName"
-                hasError={!!fieldErrors['lastName']}
-                value={formData.lastName}
-                minLength={2}
-              />
             </View>
             <View style={[
               styles.inputContainer,
@@ -375,12 +363,6 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Date of Birth</Text>
               <Text style={styles.asterisk}>*</Text>
-              <HintButton
-                fieldName="dateOfBirth"
-                hasError={!!fieldErrors['dateOfBirth']}
-                value={formData.dateOfBirth}
-                minLength={10}
-              />
             </View>
             <View style={[
               styles.inputContainer,
@@ -409,12 +391,6 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Gender</Text>
               <Text style={styles.asterisk}>*</Text>
-              <HintButton
-                fieldName="gender"
-                hasError={!!fieldErrors['gender']}
-                value={formData.gender}
-                minLength={1}
-              />
             </View>
             <TouchableOpacity
               style={[
@@ -440,12 +416,6 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Address</Text>
               <Text style={styles.asterisk}>*</Text>
-              <HintButton
-                fieldName="address"
-                hasError={!!fieldErrors['address']}
-                value={formData.address}
-                minLength={10}
-              />
             </View>
             <View style={[
               styles.inputContainer, 
@@ -476,12 +446,6 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Contact Number</Text>
               <Text style={styles.asterisk}>*</Text>
-              <HintButton
-                fieldName="contactNumber"
-                hasError={!!fieldErrors['contactNumber']}
-                value={formData.contactNumber}
-                minLength={10}
-              />
             </View>
             <View style={[
               styles.inputContainer,
@@ -507,13 +471,6 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Highest Educational Attainment</Text>
               <Text style={styles.asterisk}>*</Text>
-              <HintButton
-                fieldName="highestEducationalAttainment"
-                hasError={!!fieldErrors['highestEducationalAttainment']}
-                value={formData.highestEducationalAttainment}
-                minLength={1}
-                position="left"
-              />
             </View>
             <TouchableOpacity
               style={[
@@ -539,12 +496,6 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Blood Type</Text>
               <Text style={styles.asterisk}>*</Text>
-              <HintButton
-                fieldName="bloodType"
-                hasError={!!fieldErrors['bloodType']}
-                value={formData.bloodType}
-                minLength={1}
-              />
             </View>
             <TouchableOpacity
               style={[
@@ -569,12 +520,6 @@ export default function SignUpStep1Screen() {
           <View style={styles.inputGroup}>
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Allergies</Text>
-              <HintButton
-                fieldName="allergies"
-                hasError={false}
-                value={formData.allergies}
-                minLength={0}
-              />
             </View>
             <View style={styles.inputContainer}>
               <User size={20} color="#9CA3AF" style={styles.inputIcon} />
@@ -593,12 +538,6 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Email</Text>
               <Text style={styles.asterisk}>*</Text>
-              <HintButton
-                fieldName="email"
-                hasError={!!fieldErrors['email']}
-                value={formData.email}
-                minLength={5}
-              />
             </View>
             <View style={[
               styles.inputContainer,
@@ -775,7 +714,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
@@ -804,7 +742,7 @@ const styles = StyleSheet.create({
   },
   headerSpacer: { width: 40 },
   progressContainer: {
-    paddingHorizontal: 24,
+
     paddingBottom: 24,
     alignItems: 'center',
   },
@@ -875,7 +813,6 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   bottomContainer: {
-    paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     backgroundColor: '#FFFFFF',
