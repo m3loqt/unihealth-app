@@ -647,18 +647,26 @@ export default function SelectDateTimeScreen() {
           
           {showPurposeDropdown && (
             <View style={styles.purposeDropdownMenu}>
-              {APPOINTMENT_PURPOSES.map((purpose, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.purposeDropdownItem}
-                  onPress={() => {
-                    setSelectedPurpose(purpose);
-                    setShowPurposeDropdown(false);
-                  }}
-                >
-                  <Text style={styles.purposeDropdownItemText}>{purpose}</Text>
-                </TouchableOpacity>
-              ))}
+              <ScrollView
+                style={styles.purposeDropdownScrollView}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                bounces={false}
+                scrollEnabled={true}
+              >
+                {APPOINTMENT_PURPOSES.map((purpose, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.purposeDropdownItem}
+                    onPress={() => {
+                      setSelectedPurpose(purpose);
+                      setShowPurposeDropdown(false);
+                    }}
+                  >
+                    <Text style={styles.purposeDropdownItemText}>{purpose}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
           )}
         </View>
@@ -1153,8 +1161,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    zIndex: 20,
-    maxHeight: 200,
+    zIndex: 1000,
+    maxHeight: 250,
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  purposeDropdownScrollView: {
+    maxHeight: 230,
   },
   purposeDropdownItem: {
     paddingHorizontal: 16,

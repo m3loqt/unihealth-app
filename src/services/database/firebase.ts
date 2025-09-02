@@ -3564,9 +3564,26 @@ export const databaseService = {
     }
   },
 
+  // Check if feedback already exists for a referral
+  async checkReferralFeedbackExists(referralId: string): Promise<boolean> {
+    try {
+      const feedbackSnapshot = await get(ref(database, 'feedback'));
+      const feedbackData = feedbackSnapshot.val();
+      
+      if (feedbackData) {
+        const feedbackEntries = Object.values(feedbackData);
+        return feedbackEntries.some((feedback: any) => feedback.referralId === referralId);
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking referral feedback existence:', error);
+      return false;
+    }
+  },
+
   // Submit feedback
   async submitFeedback(feedbackData: {
-    appointmentId: string;
+    appointmentId?: string;
     referralId?: string;
     patientId: string;
     patientName: string;
@@ -3586,10 +3603,18 @@ export const databaseService = {
     try {
       console.log('🔔 Submitting feedback...');
       
-      // Check if feedback already exists for this appointment
-      const feedbackExists = await this.checkFeedbackExists(feedbackData.appointmentId);
-      if (feedbackExists) {
-        throw new Error('Feedback already submitted for this appointment');
+      // Check if feedback already exists
+      let feedbackExists = false;
+      if (feedbackData.appointmentId) {
+        feedbackExists = await this.checkFeedbackExists(feedbackData.appointmentId);
+        if (feedbackExists) {
+          throw new Error('Feedback already submitted for this appointment');
+        }
+      } else if (feedbackData.referralId) {
+        feedbackExists = await this.checkReferralFeedbackExists(feedbackData.referralId);
+        if (feedbackExists) {
+          throw new Error('Feedback already submitted for this referral');
+        }
       }
 
       // Prepare feedback data with required fields
