@@ -9,7 +9,6 @@ import {
   StatusBar,
   Platform,
   RefreshControl,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import {
@@ -18,7 +17,6 @@ import {
   Calendar as CalendarIcon,
   Clock,
   MapPin,
-  User,
   Plus,
 } from 'lucide-react-native';
 import { router, useNavigation } from 'expo-router';
@@ -30,7 +28,7 @@ import ErrorBoundary from '../../src/components/ui/ErrorBoundary';
 import ScheduleForm from '../../src/components/ScheduleForm';
 import ScheduleList from '../../src/components/ScheduleList';
 
-import { ScheduleSlot, ScheduleDay, SpecialistSchedule, ScheduleFormData, Clinic } from '../../src/types/schedules';
+import { ScheduleSlot, ScheduleDay, SpecialistSchedule, ScheduleFormData } from '../../src/types/schedules';
 
 export default function SpecialistScheduleScreen() {
   const { user } = useAuth();
@@ -59,13 +57,12 @@ export default function SpecialistScheduleScreen() {
   const calendarData = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    
-    // Remove console.log to reduce noise
+
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
-    
+
     const days: ScheduleDay[] = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -73,19 +70,17 @@ export default function SpecialistScheduleScreen() {
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
-      
+
       const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
       const dayNumber = date.getDate();
       const dateString = date.toISOString().split('T')[0];
       const isToday = date.toDateString() === today.toDateString();
       const isPast = date < today;
-      
+
       // Check if this date has a schedule
       const hasSchedule = schedules.some(schedule => {
         if (!schedule.isActive || new Date(schedule.validFrom) > date) return false;
-        
         const dayOfWeek = date.getDay(); // 0-6 (Sunday-Saturday)
-        // Check if the day of week matches any of the values in dayOfWeek array
         return schedule.recurrence.dayOfWeek.includes(dayOfWeek);
       });
 
@@ -94,15 +89,14 @@ export default function SpecialistScheduleScreen() {
       if (hasSchedule) {
         const activeSchedule = schedules.find(schedule => {
           if (!schedule.isActive || new Date(schedule.validFrom) > date) return false;
-          const dayOfWeek = date.getDay(); // 0-6 (Sunday-Saturday)
-          // Check if the day of week matches any of the values in dayOfWeek array
+          const dayOfWeek = date.getDay();
           return schedule.recurrence.dayOfWeek.includes(dayOfWeek);
         });
 
         if (activeSchedule) {
           slots = Object.entries(activeSchedule.slotTemplate).map(([time, slot]) => {
             // Simple check: is this specific date and time slot booked?
-            const isBooked = referrals.some(referral => 
+            const isBooked = referrals.some(referral =>
               referral.assignedSpecialistId === user?.uid &&
               referral.appointmentDate === dateString &&
               referral.appointmentTime === time &&
@@ -113,7 +107,7 @@ export default function SpecialistScheduleScreen() {
               time,
               defaultStatus: slot.defaultStatus as 'available' | 'booked' | 'unavailable',
               durationMinutes: slot.durationMinutes,
-              isBooked: isBooked,
+              isBooked,
             };
           });
         }
@@ -131,7 +125,7 @@ export default function SpecialistScheduleScreen() {
     }
 
     return days;
-  }, [currentDate, schedules, referrals]);
+  }, [currentDate, schedules, referrals, user?.uid]);
 
   // Load clinic data for schedules
   useEffect(() => {
@@ -209,26 +203,18 @@ export default function SpecialistScheduleScreen() {
   };
 
   const handleSubmitSchedule = async (formData: ScheduleFormData) => {
-    console.log('🔍 handleSubmitSchedule called in schedule screen');
-    console.log('🔍 formMode:', formMode);
-    console.log('🔍 formData:', formData);
-    
     try {
       if (formMode === 'add') {
-        console.log('🔍 Adding new schedule...');
         await addSchedule(formData);
-        console.log('✅ Schedule added successfully');
         Alert.alert(
-          'Success', 
+          'Success',
           'Schedule has been successfully added!',
           [{ text: 'OK' }]
         );
       } else if (formMode === 'edit' && editingSchedule) {
-        console.log('🔍 Updating existing schedule...');
         await updateSchedule(editingSchedule.id, formData);
-        console.log('✅ Schedule updated successfully');
         Alert.alert(
-          'Success', 
+          'Success',
           'Schedule has been successfully updated!',
           [{ text: 'OK' }]
         );
@@ -322,10 +308,35 @@ export default function SpecialistScheduleScreen() {
     </View>
   );
 
+  const renderCalendarLegend = () => (
+    <View style={styles.legendContainer}>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+        <Text style={styles.legendLabel}>Available</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+        <Text style={styles.legendLabel}>Has bookings</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendSwatch, styles.legendToday]} />
+        <Text style={styles.legendLabel}>Today</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendSwatch, styles.legendSelected]} />
+        <Text style={styles.legendLabel}>Selected</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendDot, { backgroundColor: '#9CA3AF' }]} />
+        <Text style={styles.legendLabel}>Past / No schedule</Text>
+      </View>
+    </View>
+  );
+
   const renderSelectedDateDetails = () => {
     if (!selectedDate) return null;
 
-    const selectedDay = calendarData.find(day => 
+    const selectedDay = calendarData.find(day =>
       new Date(day.date).toDateString() === selectedDate.toDateString()
     );
 
@@ -355,11 +366,11 @@ export default function SpecialistScheduleScreen() {
       <View style={styles.scheduleDetails}>
         <View style={styles.scheduleHeader}>
           <Text style={styles.scheduleDate}>
-            {selectedDate.toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
+            {selectedDate.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
             })}
           </Text>
           <View style={styles.locationInfo}>
@@ -370,23 +381,23 @@ export default function SpecialistScheduleScreen() {
           </View>
         </View>
 
-                 <View style={styles.timeSlotsContainer}>
-           <Text style={styles.timeSlotsTitle}>Time Slots</Text>
+        <View style={styles.timeSlotsContainer}>
+          <Text style={styles.timeSlotsTitle}>Time Slots</Text>
           {selectedDay.slots.map((slot, index) => (
-                         <View key={index} style={styles.timeSlot}>
-               <Clock size={16} color="#6B7280" />
-               <Text style={styles.timeSlotText}>
-                 {slot.time} ({slot.durationMinutes} min)
-                 {slot.isBooked && ' - Booked'}
-               </Text>
-                             <View style={[
-                 styles.statusIndicator,
-                 slot.isBooked ? styles.bookedStatus : (
-                   slot.defaultStatus === 'available' ? styles.availableStatus :
-                   slot.defaultStatus === 'booked' ? styles.bookedStatus :
-                   slot.defaultStatus === 'unavailable' ? styles.unavailableStatus : null
-                 )
-               ]} />
+            <View key={index} style={styles.timeSlot}>
+              <Clock size={16} color="#6B7280" />
+              <Text style={styles.timeSlotText}>
+                {slot.time} ({slot.durationMinutes} min)
+                {slot.isBooked && ' - Booked'}
+              </Text>
+              <View style={[
+                styles.statusIndicator,
+                slot.isBooked ? styles.bookedStatus : (
+                  slot.defaultStatus === 'available' ? styles.availableStatus :
+                  slot.defaultStatus === 'booked' ? styles.bookedStatus :
+                  slot.defaultStatus === 'unavailable' ? styles.unavailableStatus : null
+                )
+              ]} />
             </View>
           ))}
         </View>
@@ -428,15 +439,14 @@ export default function SpecialistScheduleScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => {
-                // Check if we can go back, otherwise navigate to specialist tabs
                 if (navigation.canGoBack()) {
                   router.back();
                 } else {
                   router.push('/(specialist)/tabs');
                 }
-              }} 
+              }}
               style={styles.backButton}
             >
               <ChevronLeft size={24} color="#1E40AF" />
@@ -445,6 +455,9 @@ export default function SpecialistScheduleScreen() {
               <Text style={styles.headerTitle}>My Schedule</Text>
             </View>
             <View style={styles.headerActions}>
+              <TouchableOpacity onPress={goToToday} style={styles.todayButton}>
+                <Text style={styles.todayButtonText}>Today</Text>
+              </TouchableOpacity>
               <TouchableOpacity onPress={handleAddSchedule} style={styles.addButton}>
                 <Plus size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -456,6 +469,7 @@ export default function SpecialistScheduleScreen() {
             {renderCalendarHeader()}
             {renderDayNames()}
             {renderCalendarDays()}
+            {renderCalendarLegend()}
           </View>
 
           {/* Selected Date Details */}
@@ -495,9 +509,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  scrollContent: { 
-    flexGrow: 1, 
-    paddingHorizontal: 24 
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24
   },
   header: {
     flexDirection: 'row',
@@ -529,6 +543,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
+    marginRight: 8,
   },
   todayButtonText: {
     color: '#FFFFFF',
@@ -538,7 +553,6 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
   },
   addButton: {
     backgroundColor: '#1E40AF',
@@ -644,6 +658,51 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontFamily: 'Inter-SemiBold',
   },
+
+  // Legend styles
+  legendContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+    marginBottom: 8,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  legendSwatch: {
+    width: 20,
+    height: 12,
+    borderRadius: 4,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  legendToday: {
+    backgroundColor: '#1E40AF',
+    borderColor: '#1E40AF',
+  },
+  legendSelected: {
+    backgroundColor: '#DBEAFE',
+    borderColor: '#1E40AF',
+  },
+  legendLabel: {
+    fontSize: 13,
+    fontFamily: 'Inter-Medium',
+    color: '#4B5563',
+  },
+
   noScheduleContainer: {
     alignItems: 'center',
     paddingVertical: 48,
