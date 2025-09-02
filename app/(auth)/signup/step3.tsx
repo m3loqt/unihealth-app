@@ -25,6 +25,7 @@ import {
   X,
 } from 'lucide-react-native';
 import { KeyboardAvoidingScrollView } from '../../../src/components/ui';
+import { LoadingState } from '../../../src/components/ui/LoadingState';
 import { authService, SignUpData } from '../../../src/services/api/auth';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { ErrorModal } from '../../../src/components/shared';
@@ -358,6 +359,15 @@ export default function SignUpStep3Screen() {
         Platform.OS === 'android' ? { paddingTop: StatusBar.currentHeight } : null,
       ]}
     >
+      {/* Loading Overlay */}
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <LoadingState 
+            variant="inline" 
+            size="large" 
+          />
+        </View>
+      )}
       <KeyboardAvoidingScrollView
         extraOffset={20}
         contentContainerStyle={styles.scrollContent}
@@ -511,7 +521,7 @@ export default function SignUpStep3Screen() {
             disabled={!isFormReady || isLoading}
           >
             <Text style={styles.signUpButtonText}>
-              {isLoading ? 'Creating Account...' : 'Create Account'}
+              {isLoading ? 'Creating Account...' : 'Create account'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -636,7 +646,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
@@ -665,7 +674,6 @@ const styles = StyleSheet.create({
   },
   headerSpacer: { width: 40 },
   progressContainer: {
-    paddingHorizontal: 24,
     paddingBottom: 24,
     alignItems: 'center',
   },
@@ -820,6 +828,17 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
   },
 
   // Terms/Policy Modal
