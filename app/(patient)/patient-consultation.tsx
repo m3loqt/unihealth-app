@@ -265,6 +265,9 @@ export default function PatientConsultationScreen() {
   const [showAddCertificate, setShowAddCertificate] = useState(false);
   const [showFrequencyModal, setShowFrequencyModal] = useState(false);
   const [showRouteModal, setShowRouteModal] = useState(false);
+  const [showDiagnosisTooltip, setShowDiagnosisTooltip] = useState(false);
+  const [showPrescriptionTooltip, setShowPrescriptionTooltip] = useState(false);
+  const [showCertificateTooltip, setShowCertificateTooltip] = useState(false);
   const [showDurationUnitModal, setShowDurationUnitModal] = useState(false);
   const [showFormulaModal, setShowFormulaModal] = useState(false);
   
@@ -397,6 +400,42 @@ export default function PatientConsultationScreen() {
       }, 500);
     }
   }, [transcript, activeField]);
+
+  // Auto-show diagnosis tooltip for 5 seconds when on diagnosis step
+  useEffect(() => {
+    if (currentStep === 2) { // Diagnosis step
+      setShowDiagnosisTooltip(true);
+      const timer = setTimeout(() => {
+        setShowDiagnosisTooltip(false);
+      }, 5000); // 5 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep]);
+
+  // Auto-show prescription tooltip when prescription form is opened
+  useEffect(() => {
+    if (showAddPrescription) {
+      setShowPrescriptionTooltip(true);
+      const timer = setTimeout(() => {
+        setShowPrescriptionTooltip(false);
+      }, 5000); // 5 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [showAddPrescription]);
+
+  // Auto-show certificate tooltip when certificate form is opened
+  useEffect(() => {
+    if (showAddCertificate) {
+      setShowCertificateTooltip(true);
+      const timer = setTimeout(() => {
+        setShowCertificateTooltip(false);
+      }, 5000); // 5 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [showAddCertificate]);
 
   // -- Diagnosis Management --
   const addDiagnosis = () => {
@@ -1474,16 +1513,30 @@ export default function PatientConsultationScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.addDiagnosisButton,
-                      { backgroundColor: (!newDiagnosisCode.trim() || !newDiagnosisDescription.trim()) ? '#9CA3AF' : '#1E40AF' }
-                    ]}
-                    onPress={addDiagnosis}
-                    disabled={!newDiagnosisCode.trim() || !newDiagnosisDescription.trim()}
-                  >
-                    <Plus size={20} color="#FFFFFF" />
-                  </TouchableOpacity>
+                  <View style={styles.addDiagnosisButtonContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.addDiagnosisButton,
+                        { backgroundColor: (!newDiagnosisCode.trim() || !newDiagnosisDescription.trim()) ? '#9CA3AF' : '#1E40AF' }
+                      ]}
+                      onPress={addDiagnosis}
+                      disabled={!newDiagnosisCode.trim() || !newDiagnosisDescription.trim()}
+                    >
+                      <Plus size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    
+                    {/* Tooltip */}
+                    {showDiagnosisTooltip && (
+                      <View style={styles.diagnosisTooltip}>
+                        <View style={styles.tooltipBubble}>
+                          <Text style={styles.tooltipText}>
+                            Click + to add{'\n'}diagnosis
+                          </Text>
+                        </View>
+                        <View style={styles.tooltipArrow} />
+                      </View>
+                    )}
+                  </View>
                 </View>
               </View>
             </View>
@@ -1743,12 +1796,26 @@ export default function PatientConsultationScreen() {
                     >
                       <Text style={styles.cancelButtonText}>Cancel</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.addFormSubmitButton}
-                      onPress={handleAddPrescription}
-                    >
-                      <Text style={styles.addFormSubmitButtonText}>Add Prescription</Text>
-                    </TouchableOpacity>
+                    <View style={styles.addFormSubmitButtonContainer}>
+                      <TouchableOpacity
+                        style={styles.addFormSubmitButton}
+                        onPress={handleAddPrescription}
+                      >
+                        <Text style={styles.addFormSubmitButtonText}>Add Prescription</Text>
+                      </TouchableOpacity>
+                      
+                      {/* Prescription Tooltip */}
+                      {showPrescriptionTooltip && (
+                        <View style={styles.prescriptionTooltip}>
+                          <View style={styles.tooltipBubble}>
+                            <Text style={styles.tooltipText}>
+                              Click to add this{'\n'}prescription
+                            </Text>
+                          </View>
+                          <View style={styles.tooltipArrow} />
+                        </View>
+                      )}
+                    </View>
                   </View>
                 </View>
               )}
@@ -1996,12 +2063,26 @@ export default function PatientConsultationScreen() {
                     >
                       <Text style={styles.cancelButtonText}>Cancel</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.addFormSubmitButton}
-                      onPress={handleAddCertificate}
-                    >
-                      <Text style={styles.addFormSubmitButtonText}>Issue Certificate</Text>
-                    </TouchableOpacity>
+                    <View style={styles.addFormSubmitButtonContainer}>
+                      <TouchableOpacity
+                        style={styles.addFormSubmitButton}
+                        onPress={handleAddCertificate}
+                      >
+                        <Text style={styles.addFormSubmitButtonText}>Issue Certificate</Text>
+                      </TouchableOpacity>
+                      
+                      {/* Certificate Tooltip */}
+                      {showCertificateTooltip && (
+                        <View style={styles.certificateTooltip}>
+                          <View style={styles.tooltipBubble}>
+                            <Text style={styles.tooltipText}>
+                              Click to issue this{'\n'}certificate
+                            </Text>
+                          </View>
+                          <View style={styles.tooltipArrow} />
+                        </View>
+                      )}
+                    </View>
                   </View>
                 </View>
               )}
@@ -2826,6 +2907,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1E40AF',
     paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -3244,6 +3326,66 @@ const styles = StyleSheet.create({
   },
   addDiagnosisButtonDisabled: {
     backgroundColor: '#9CA3AF',
+  },
+  addDiagnosisButtonContainer: {
+    position: 'relative',
+  },
+  diagnosisTooltip: {
+    position: 'absolute',
+    bottom: 60,
+    right: -10,
+    zIndex: 1000,
+  },
+  tooltipBubble: {
+    backgroundColor: '#1F2937',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 140,
+    maxWidth: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  tooltipText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  tooltipArrow: {
+    position: 'absolute',
+    bottom: -6,
+    right: 20,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#1F2937',
+  },
+  addButtonContainer: {
+    position: 'relative',
+  },
+  addFormSubmitButtonContainer: {
+    position: 'relative',
+  },
+  prescriptionTooltip: {
+    position: 'absolute',
+    bottom: 50,
+    right: -10,
+    zIndex: 1000,
+  },
+  certificateTooltip: {
+    position: 'absolute',
+    bottom: 50,
+    right: -10,
+    zIndex: 1000,
   },
   
   // Medical History Diagnosis Styles
