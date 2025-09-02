@@ -790,7 +790,7 @@ export default function HomeScreen() {
                   <Text style={qrModalStyles.patientName}>
                     {safeDataAccess.getUserFullName(user, 'Unknown User')}
                   </Text>
-                  <Text style={qrModalStyles.patientId}>ID: {user?.uid || 'ID not available'}</Text>
+                  {/* <Text style={qrModalStyles.patientId}>ID: {user?.uid || 'ID not available'}</Text> */}
                   <Text style={qrModalStyles.patientEmail}>{user?.email || 'Email not provided'}</Text>
                 </View>
               </View>
