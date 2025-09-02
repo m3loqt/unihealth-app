@@ -42,7 +42,7 @@ import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing'; // Added for more robust sharing
 
 import { useAuth } from '@/hooks/auth/useAuth';
-import { useNotifications } from '@/hooks/data/useNotifications';
+import { useNotificationContext } from '@/contexts/NotificationContext';
 import { databaseService } from '@/services/database/firebase';
 import { Appointment, Prescription } from '@/services/database/firebase';
 import { getGreeting } from '@/utils/greeting';
@@ -86,14 +86,17 @@ const healthTips = [
 export default function HomeScreen() {
   const { user } = useAuth();
   const { 
-    notifications, 
-    loading: notificationsLoading, 
-    error: notificationsError,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    refresh: refreshNotifications
-  } = useNotifications();
+    notifications: {
+      notifications, 
+      loading: notificationsLoading, 
+      error: notificationsError,
+      markAsRead,
+      markAllAsRead,
+      deleteNotification,
+      refresh: refreshNotifications,
+      handleNotificationPress
+    }
+  } = useNotificationContext();
   const [activeTip, setActiveTip] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const qrCodeRef = useRef<any>(null);
@@ -901,7 +904,12 @@ export default function HomeScreen() {
                   showsVerticalScrollIndicator
                 >
                   {notifications.map((notification) => (
-                    <View key={notification.id} style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}>
+                    <TouchableOpacity 
+                      key={notification.id} 
+                      style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}
+                      onPress={() => handleNotificationPress(notification)}
+                      activeOpacity={0.7}
+                    >
                       <View style={notificationModalStyles.notificationContent}>
                         <Text style={[notificationModalStyles.notificationText, !notification.read && notificationModalStyles.unreadText]}>
                           {notification.message}
@@ -914,19 +922,25 @@ export default function HomeScreen() {
                         {!notification.read && (
                           <TouchableOpacity
                             style={notificationModalStyles.notificationActionButton}
-                            onPress={() => handleMarkAsRead(notification.id)}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsRead(notification.id);
+                            }}
                           >
                             <Check size={16} color="#1E40AF" />
                           </TouchableOpacity>
                         )}
                         <TouchableOpacity
                           style={notificationModalStyles.notificationActionButton}
-                          onPress={() => handleDeleteNotification(notification.id)}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteNotification(notification.id);
+                          }}
                         >
                           <Trash2 size={16} color="#DC2626" />
                         </TouchableOpacity>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </ScrollView>
                 )}

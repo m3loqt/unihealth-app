@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'expo-router';
 import { databaseService } from '../../services/database/firebase';
 import { useAuth } from '../auth/useAuth';
 
@@ -13,6 +14,8 @@ export interface Notification {
   relatedId: string;
   priority: 'low' | 'medium' | 'high';
   expiresAt?: number;
+  route?: string;
+  routeParams?: Record<string, string>;
 }
 
 export interface UseNotificationsReturn {
@@ -28,6 +31,7 @@ export interface UseNotificationsReturn {
   loadMore: () => Promise<void>;
   refresh: () => Promise<void>;
   retry: () => Promise<void>;
+  handleNotificationPress: (notification: Notification) => void;
 }
 
 // Utility function to process notification messages and replace clinicId with clinic names
@@ -82,6 +86,7 @@ const processNotificationMessage = async (message: string): Promise<string> => {
 
 export const useNotifications = (): UseNotificationsReturn => {
   const { user } = useAuth();
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -341,6 +346,29 @@ export const useNotifications = (): UseNotificationsReturn => {
     return () => clearInterval(interval);
   }, [user?.uid]);
 
+  // Handle notification press - navigate to appropriate route
+  const handleNotificationPress = useCallback((notification: Notification) => {
+    if (notification.route) {
+      try {
+        if (notification.routeParams && Object.keys(notification.routeParams).length > 0) {
+          // Navigate with parameters
+          const queryString = new URLSearchParams(notification.routeParams).toString();
+          router.push(`${notification.route}?${queryString}` as any);
+        } else {
+          // Navigate without parameters
+          router.push(notification.route as any);
+        }
+        
+        // Mark notification as read when navigated
+        if (!notification.read) {
+          markAsRead(notification.id);
+        }
+      } catch (error) {
+        console.error('Error navigating from notification:', error);
+      }
+    }
+  }, [router, markAsRead]);
+
   return {
     notifications,
     unreadCount,
@@ -354,5 +382,6 @@ export const useNotifications = (): UseNotificationsReturn => {
     loadMore,
     refresh,
     retry,
+    handleNotificationPress,
   };
 };
