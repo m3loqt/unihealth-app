@@ -4,7 +4,7 @@ import { UserProfile, authService } from '@/services/api/auth';
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<UserProfile | null>;
+  signIn: (email: string, password: string) => Promise<{ success: boolean; userProfile?: UserProfile; error?: { type: string; message: string; suggestion?: string } }>;
   signOut: () => Promise<void>;
   signUp: (signUpData: any) => Promise<{ user: any; userProfile: UserProfile }>;
 }
@@ -30,18 +30,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const userProfile = await authService.signIn(email, password);
+    const result = await authService.signIn(email, password);
     
-    if (userProfile && !userProfile.uid.startsWith('static-')) {
-      const completeProfile = await authService.getCompleteUserProfile(userProfile.uid);
-      if (completeProfile) {
-        setUser(completeProfile);
-        return completeProfile;
+    if (result.success && result.userProfile) {
+      if (!result.userProfile.uid.startsWith('static-')) {
+        const completeProfile = await authService.getCompleteUserProfile(result.userProfile.uid);
+        if (completeProfile) {
+          setUser(completeProfile);
+          return { success: true, userProfile: completeProfile };
+        }
       }
+      
+      setUser(result.userProfile);
+      return { success: true, userProfile: result.userProfile };
     }
     
-    setUser(userProfile);
-    return userProfile;
+    // Return the error result
+    return result;
   };
 
   const signOut = async () => {

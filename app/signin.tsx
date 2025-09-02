@@ -22,6 +22,7 @@ import { performBiometricLogin, isBiometricLoginAvailable, saveBiometricCredenti
 import { safeDataAccess } from '../src/utils/safeDataAccess';
 import { GlobalLoader } from '../src/components/ui';
 import { useGlobalLoader } from '../src/hooks/ui';
+import { ErrorModal } from '../src/components/shared/ErrorModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -42,6 +43,14 @@ export default function SignInScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [lastSuccessfulLogin, setLastSuccessfulLogin] = useState<{email: string, password: string, userProfile: any} | null>(null);
+  
+  // Error modal state
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorModalData, setErrorModalData] = useState<{
+    title: string;
+    message: string;
+    suggestion?: string;
+  } | null>(null);
 
   // --- New: Biometric Button Enable State ---
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
@@ -61,6 +70,16 @@ export default function SignInScreen() {
       [field]: value,
     }));
     setErrorMessage(''); // Clear error when typing
+  };
+
+  const showErrorModalWithData = (title: string, message: string, suggestion?: string) => {
+    setErrorModalData({ title, message, suggestion });
+    setShowErrorModal(true);
+  };
+
+  const handleErrorModalClose = () => {
+    setShowErrorModal(false);
+    setErrorModalData(null);
   };
 
   const validateForm = () => {
@@ -89,20 +108,32 @@ export default function SignInScreen() {
     const { email, password } = formData;
 
     try {
-      const userProfile = await signIn(email, password);
+      const result = await signIn(email, password);
 
-      if (userProfile) {
+      if (result.success && result.userProfile) {
         const targetRoute =
-          userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
+          result.userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
 
         // Always offer biometric setup after successful login (unless already set up)
         const isBiometricAvailable = await isBiometricLoginAvailable();
         if (!isBiometricAvailable) {
-          setLastSuccessfulLogin({ email, password, userProfile });
+          setLastSuccessfulLogin({ email, password, userProfile: result.userProfile });
           setShowBiometricSetup(true);
         } else {
           setNextRoute(targetRoute);
           setShowWelcomeModal(true);
+        }
+      } else if (result.error) {
+        // Handle different error types
+        if (result.error.type === 'specialist_pending') {
+          showErrorModalWithData(
+            'Account Pending Approval',
+            result.error.message,
+            result.error.suggestion
+          );
+        } else {
+          // For other errors, show in the existing error message area
+          setErrorMessage(result.error.message);
         }
       } else {
         setErrorMessage('Invalid email or password.');
@@ -126,11 +157,22 @@ export default function SignInScreen() {
       if (credentials) {
         // Sign in with the retrieved credentials
         loader.show('Signing in with biometric...');
-        const userProfile = await signIn(credentials.email, credentials.password);
-        if (userProfile) {
-          const targetRoute = userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
+        const result = await signIn(credentials.email, credentials.password);
+        if (result.success && result.userProfile) {
+          const targetRoute = result.userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
           setNextRoute(targetRoute);
           setShowWelcomeModal(true);
+        } else if (result.error) {
+          // Handle different error types
+          if (result.error.type === 'specialist_pending') {
+            showErrorModalWithData(
+              'Account Pending Approval',
+              result.error.message,
+              result.error.suggestion
+            );
+          } else {
+            setErrorMessage('Biometric login failed. Please sign in with password.');
+          }
         } else {
           setErrorMessage('Biometric login failed. Please sign in with password.');
         }
@@ -546,6 +588,17 @@ export default function SignInScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Error Modal */}
+      {errorModalData && (
+        <ErrorModal
+          visible={showErrorModal}
+          onClose={handleErrorModalClose}
+          title={errorModalData.title}
+          message={errorModalData.message}
+          suggestion={errorModalData.suggestion}
+        />
+      )}
     </SafeAreaView>
   );
 }
