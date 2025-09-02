@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { COLORS } from '@/constants/colors';
 
 interface LoadingStateProps {
@@ -8,23 +8,84 @@ interface LoadingStateProps {
   size?: 'small' | 'large';
 }
 
+// Animated Equalizer Loading Component
+const AnimatedEqualizer: React.FC<{ size?: 'small' | 'large' }> = ({ size = 'large' }) => {
+  const bar1 = useRef(new Animated.Value(0.3)).current;
+  const bar2 = useRef(new Animated.Value(0.6)).current;
+  const bar3 = useRef(new Animated.Value(1)).current;
+  const bar4 = useRef(new Animated.Value(0.7)).current;
+  const bar5 = useRef(new Animated.Value(0.4)).current;
+
+  const animateBar = (animatedValue: Animated.Value, delay: number) => {
+    return Animated.loop(
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 1,
+          duration: 600,
+          delay,
+          useNativeDriver: false,
+        }),
+        Animated.timing(animatedValue, {
+          toValue: 0.3,
+          duration: 600,
+          delay,
+          useNativeDriver: false,
+        }),
+      ])
+    );
+  };
+
+  useEffect(() => {
+    const animations = [
+      animateBar(bar1, 0),
+      animateBar(bar2, 100),
+      animateBar(bar3, 200),
+      animateBar(bar4, 300),
+      animateBar(bar5, 400),
+    ];
+
+    animations.forEach(animation => animation.start());
+
+    return () => {
+      animations.forEach(animation => animation.stop());
+    };
+  }, []);
+
+  const barWidth = size === 'small' ? 4 : 6;
+  const barSpacing = size === 'small' ? 3 : 4;
+  const maxHeight = size === 'small' ? 20 : 30;
+
+  return (
+    <View style={[styles.equalizerContainer, { gap: barSpacing }]}>
+      {[bar1, bar2, bar3, bar4, bar5].map((animatedValue, index) => (
+        <Animated.View
+          key={index}
+          style={[
+            styles.equalizerBar,
+            {
+              width: barWidth,
+              height: maxHeight,
+              backgroundColor: COLORS.primary,
+              transform: [
+                {
+                  scaleY: animatedValue,
+                },
+              ],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+};
+
 export const LoadingState: React.FC<LoadingStateProps> = ({
   message = 'Loading...',
   variant = 'inline',
   size = 'large'
 }) => {
   const renderContent = () => (
-    <>
-      <ActivityIndicator size={size} color={COLORS.primary} />
-      {message && (
-        <Text style={[
-          styles.message,
-          variant === 'compact' && styles.compactMessage
-        ]}>
-          {message}
-        </Text>
-      )}
-    </>
+    <AnimatedEqualizer size={size} />
   );
 
   if (variant === 'fullscreen') {
@@ -51,21 +112,24 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
 };
 
 const styles = StyleSheet.create({
+  equalizerContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  equalizerBar: {
+    borderRadius: 2,
+  },
   fullscreenContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
-    padding: 20,
   },
   inlineContainer: {
-    padding: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
   },
   compactContainer: {
-    padding: 10,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',

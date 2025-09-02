@@ -38,33 +38,26 @@ export default function ForgotPasswordScreen() {
     setIsLoading(true);
 
     try {
-      const result = await authService.requestPasswordResetCode(email);
-
-      if (result.success) {
-        // Navigate to verify code screen (pass devCode for local testing if present)
-        router.push({
-          pathname: '/verify-code',
-          params: { email, devCode: result.devCode || '' }
-        });
-      } else {
-        // Handle specific error cases
-        let errorMessage = result.message;
-        
-        if (result.message.includes('User not found')) {
-          errorMessage = 'No account found with this email address. Please check your email or sign up for a new account.';
-        } else if (result.message.includes('Failed to send reset code')) {
-          errorMessage = 'Failed to send verification code. Please try again.';
-        }
-        
-        Alert.alert('Error', errorMessage);
-      }
+      await authService.requestPasswordReset(email);
+      
+      // Show success message and navigate back to sign in
+      Alert.alert(
+        'Password Reset Email Sent',
+        'We\'ve sent a password reset link to your email address. Please check your inbox and follow the instructions to reset your password.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.push('/')
+          }
+        ]
+      );
     } catch (error: any) {
-      let errorMessage = 'Failed to send verification code. Please try again.';
+      let errorMessage = 'Failed to send password reset email. Please try again.';
       
       if (error.message.includes('user-not-found')) {
         errorMessage = 'No account found with this email address. Please check your email or sign up for a new account.';
       } else if (error.message.includes('too-many-requests')) {
-        errorMessage = 'Too many verification code requests. Please wait a few minutes before trying again.';
+        errorMessage = 'Too many password reset requests. Please wait a few minutes before trying again.';
       } else if (error.message.includes('invalid-email')) {
         errorMessage = 'Please enter a valid email address.';
       }
@@ -95,7 +88,6 @@ export default function ForgotPasswordScreen() {
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Reset Password</Text>
-            <Text style={styles.headerSubtitle}>Enter your email to receive a reset link</Text>
           </View>
           <View style={styles.headerSpacer} />
         </View>
@@ -125,7 +117,7 @@ export default function ForgotPasswordScreen() {
               disabled={!email.trim() || isLoading}
             >
               <Text style={styles.sendButtonText}>
-                {isLoading ? 'Sending...' : 'Send Verification Code'}
+                {isLoading ? 'Sending...' : 'Send Reset Link'}
               </Text>
             </TouchableOpacity>
 
@@ -136,8 +128,8 @@ export default function ForgotPasswordScreen() {
 
             {/* Help Text */}
             <Text style={styles.helpText}>
-              Enter the email address associated with your UniHEALTH account and we'll send you a verification code to reset your password.
-            </Text>
+              Enter the email address of your UniHEALTH account and we'll send you a secure link to reset your password. 
+          </Text>
           </View>
         </View>
       </KeyboardAvoidingView>

@@ -104,9 +104,7 @@ export default function SignUpStep2Screen() {
           <Text style={styles.progressText}>2 of 3</Text>
         </View>
 
-        {/* Fields */}
-        <View style={styles.scrollContent}>
-          <View style={styles.formContainer}>
+        <View style={styles.formContainer}>
             {/* Emergency Contact Full Name */}
             <View style={styles.inputGroup}>
               <View style={styles.labelRow}>
@@ -182,7 +180,6 @@ export default function SignUpStep2Screen() {
                 />
               </View>
             </View>
-          </View>
         </View>
 
         {/* Continue Button at bottom */}
@@ -249,7 +246,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
@@ -278,7 +274,6 @@ const styles = StyleSheet.create({
   },
   headerSpacer: { width: 40 },
   progressContainer: {
-    paddingHorizontal: 24,
     paddingBottom: 24,
     alignItems: 'center',
   },
@@ -338,9 +333,8 @@ const styles = StyleSheet.create({
   },
   placeholder: { color: '#9CA3AF' },
   bottomContainer: {
-    paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',

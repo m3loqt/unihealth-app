@@ -13,6 +13,7 @@ import {
   Alert,
   Pressable,
   Dimensions,
+  Image,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Stethoscope, Eye, EyeOff, Mail, Lock, Fingerprint, User, AlertCircle, X, CheckCircle } from 'lucide-react-native';
@@ -20,8 +21,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../src/hooks/auth/useAuth';
 import { performBiometricLogin, isBiometricLoginAvailable, saveBiometricCredentials, checkBiometricSupport } from '../src/hooks/auth/useBiometricAuth';
 import { safeDataAccess } from '../src/utils/safeDataAccess';
-import { GlobalLoader } from '../src/components/ui';
-import { useGlobalLoader } from '../src/hooks/ui';
+// Import the custom animated loader instead of GIF
+import { LoadingState } from '../src/components/ui/LoadingState';
 import { ErrorModal } from '../src/components/shared/ErrorModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -30,7 +31,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function SignInScreen() {
   const { signIn } = useAuth();
-  const loader = useGlobalLoader();
+  const [isLoading, setIsLoading] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(true);
   const [selectedRole, setSelectedRole] = useState('');
   const [formData, setFormData] = useState({
@@ -103,7 +104,7 @@ export default function SignInScreen() {
   const handleSignIn = async () => {
     setErrorMessage('');
     if (!validateForm()) return;
-    loader.show('Signing in...');
+    setIsLoading(true);
 
     const { email, password } = formData;
 
@@ -142,7 +143,7 @@ export default function SignInScreen() {
       console.error('Sign in error:', error);
       setErrorMessage('An error occurred during sign in. Please try again.');
     } finally {
-      loader.hide();
+      setIsLoading(false);
     }
   };
 
@@ -153,10 +154,12 @@ export default function SignInScreen() {
   const handleBiometricLogin = async () => {
     try {
       setErrorMessage('');
+      // Don't set loading state yet - wait for successful biometric authentication
       const credentials = await performBiometricLogin();
       if (credentials) {
+        // Only show loading after successful biometric authentication
+        setIsLoading(true);
         // Sign in with the retrieved credentials
-        loader.show('Signing in with biometric...');
         const result = await signIn(credentials.email, credentials.password);
         if (result.success && result.userProfile) {
           const targetRoute = result.userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
@@ -182,7 +185,7 @@ export default function SignInScreen() {
     } catch (error) {
       setErrorMessage('Biometric authentication failed. Please try again.');
     } finally {
-      loader.hide();
+      setIsLoading(false);
     }
   };
 
@@ -300,13 +303,15 @@ export default function SignInScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Loading Overlay during Sign In */}
-      <GlobalLoader
-        visible={loader.visible}
-        message={loader.message}
-        showProgress={loader.showProgress}
-        progress={loader.progress}
-      />
+      {/* Loading Overlay */}
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <LoadingState 
+            variant="inline" 
+            size="large" 
+          />
+        </View>
+      )}
       {/* Success Login Modal */}
       <Modal
         visible={showWelcomeModal}
@@ -527,13 +532,13 @@ export default function SignInScreen() {
 
                              {/* Sign In Button */}
                <TouchableOpacity
-                 style={[styles.signInButton, loader.visible && styles.buttonDisabled]}
+                 style={[styles.signInButton, isLoading && styles.buttonDisabled]}
                  onPress={handleSignIn}
-                 disabled={loader.visible}
+                 disabled={isLoading}
                >
-                 <Text style={styles.signInButtonText}>
-                   {loader.visible ? 'Signing In...' : 'Sign In'}
-                 </Text>
+                                   <Text style={styles.signInButtonText}>
+                    {isLoading ? 'Signing In...' : 'Sign In'}
+                  </Text>
                </TouchableOpacity>
 
               {/* Subtle Message Box */}
@@ -556,11 +561,12 @@ export default function SignInScreen() {
                   style={[
                     styles.biometricButton,
                     !isBiometricEnabled && styles.biometricButtonDisabled,
+                    isLoading && styles.biometricButtonDisabled,
                   ]}
                   onPress={handleBiometricLogin}
-                  disabled={!isBiometricEnabled}
+                  disabled={!isBiometricEnabled || isLoading}
                 >
-                  <Fingerprint size={32} color="#1E40AF" strokeWidth={2} />
+                                     <Fingerprint size={32} color="#1E40AF" strokeWidth={2} />
                 </TouchableOpacity>
               </View>
 
@@ -667,14 +673,51 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   buttonDisabled: { opacity: 0.6 },
-  signInButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    textAlign: 'center',
-  },
+     signInButtonText: {
+     color: '#FFFFFF',
+     fontSize: 18,
+     fontFamily: 'Inter-SemiBold',
+     textAlign: 'center',
+   },
+   loadingOverlay: {
+     position: 'absolute',
+     top: 0,
+     left: 0,
+     right: 0,
+     bottom: 0,
+     backgroundColor: 'rgba(0, 0, 0, 0.15)',
+     justifyContent: 'center',
+     alignItems: 'center',
+     zIndex: 1000,
+   },
+   loadingContent: {
+     alignItems: 'center',
+     justifyContent: 'center',
+     backgroundColor: 'rgba(255, 255, 255, 0.95)',
+     borderRadius: 16,
+     padding: 24,
+     shadowColor: '#000',
+     shadowOffset: {
+       width: 0,
+       height: 4,
+     },
+     shadowOpacity: 0.1,
+     shadowRadius: 8,
+     elevation: 8,
+   },
+   loadingGifOverlay: {
+     width: 40,
+     height: 40,
+     marginBottom: 12,
+   },
+   loadingTextOverlay: {
+     fontSize: 16,
+     fontFamily: 'Inter-SemiBold',
+     color: '#1E40AF',
+     textAlign: 'center',
+   },
 
-  subtleMessageBox: {
+   subtleMessageBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: '#F3F4F6',  // Soft gray
