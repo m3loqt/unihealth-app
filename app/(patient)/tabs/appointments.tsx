@@ -96,11 +96,13 @@ export default function AppointmentsScreen() {
   // --- Feedback modal state ---
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackAppointment, setFeedbackAppointment] = useState<Appointment | null>(null);
+  const [feedbackReferral, setFeedbackReferral] = useState<any>(null);
   const [feedbackStars, setFeedbackStars] = useState(0);
   const [feedbackReason, setFeedbackReason] = useState('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [existingFeedback, setExistingFeedback] = useState<{[appointmentId: string]: boolean}>({});
+  const [existingReferralFeedback, setExistingReferralFeedback] = useState<{[referralId: string]: boolean}>({});
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   
   // Available tags for feedback
@@ -163,17 +165,44 @@ export default function AppointmentsScreen() {
           try {
             const feedbackExists = await databaseService.checkFeedbackExists(appointment.id!);
             feedbackChecks[appointment.id!] = feedbackExists;
+
           } catch (error) {
             console.error('Error checking feedback for appointment:', appointment.id, error);
             feedbackChecks[appointment.id!] = false;
           }
         }
       }
+
       setExistingFeedback(feedbackChecks);
     };
 
     checkFeedbackForAppointments();
   }, [appointments]);
+
+  // Check for existing feedback for completed referrals when referrals change
+  useEffect(() => {
+    const checkFeedbackForReferrals = async () => {
+      if (hookReferrals.length === 0) return;
+
+      const feedbackChecks: {[referralId: string]: boolean} = {};
+      for (const referral of hookReferrals) {
+        if (referral.status === 'completed') {
+          try {
+            const feedbackExists = await databaseService.checkReferralFeedbackExists(referral.id!);
+            feedbackChecks[referral.id!] = feedbackExists;
+
+          } catch (error) {
+            console.error('Error checking feedback for referral:', referral.id, error);
+            feedbackChecks[referral.id!] = false;
+          }
+        }
+      }
+
+      setExistingReferralFeedback(feedbackChecks);
+    };
+
+    checkFeedbackForReferrals();
+  }, [hookReferrals]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -203,7 +232,7 @@ export default function AppointmentsScreen() {
 
   // Submit feedback function
   const handleSubmitFeedback = async () => {
-    if (!feedbackAppointment || !feedbackStars) return;
+    if ((!feedbackAppointment && !feedbackReferral) || !feedbackStars) return;
     
     // Ensure at least one tag is selected
     if (selectedTags.length === 0) {
@@ -219,32 +248,46 @@ export default function AppointmentsScreen() {
       const patientName = patientData ? `${patientData.firstName || patientData.first_name || ''} ${patientData.lastName || patientData.last_name || ''}`.trim() : 'Unknown Patient';
       const patientEmail = user?.email || '';
 
-      // Get doctor data
-      const doctorData = await databaseService.getDoctorById(feedbackAppointment.doctorId);
-      const doctorName = doctorData ? `${doctorData.firstName || ''} ${doctorData.lastName || ''}`.trim() : 'Unknown Doctor';
+      let doctorData, doctorName, clinicData, clinicName, serviceType, treatmentType, appointmentId, referralId, appointmentDate;
 
-      // Get clinic data
-      const clinicData = await databaseService.getClinicById(feedbackAppointment.clinicId);
-      const clinicName = clinicData?.name || 'Unknown Clinic';
-
-      // Determine service type and treatment type
-      const serviceType: 'appointment' | 'referral' = feedbackAppointment.relatedReferralId ? 'referral' : 'appointment';
-      const treatmentType = feedbackAppointment.appointmentPurpose || 'General Consultation';
+      if (feedbackAppointment) {
+        // Handle appointment feedback
+        doctorData = await databaseService.getDoctorById(feedbackAppointment.doctorId);
+        doctorName = doctorData ? `${doctorData.firstName || ''} ${doctorData.lastName || ''}`.trim() : 'Unknown Doctor';
+        clinicData = await databaseService.getClinicById(feedbackAppointment.clinicId);
+        clinicName = clinicData?.name || 'Unknown Clinic';
+        serviceType = feedbackAppointment.relatedReferralId ? 'referral' : 'appointment';
+        treatmentType = feedbackAppointment.appointmentPurpose || 'General Consultation';
+        appointmentId = feedbackAppointment.id!;
+        referralId = feedbackAppointment.relatedReferralId;
+        appointmentDate = feedbackAppointment.appointmentDate;
+      } else if (feedbackReferral) {
+        // Handle referral feedback
+        doctorData = await databaseService.getDoctorById(feedbackReferral.assignedSpecialistId);
+        doctorName = doctorData ? `${doctorData.firstName || ''} ${doctorData.lastName || ''}`.trim() : 'Unknown Doctor';
+        clinicData = await databaseService.getClinicById(feedbackReferral.referringClinicId);
+        clinicName = clinicData?.name || feedbackReferral.referringClinicName || 'Unknown Clinic';
+        serviceType = 'referral';
+        treatmentType = feedbackReferral.initialReasonForReferral || 'General Consultation';
+        appointmentId = undefined;
+        referralId = feedbackReferral.id!;
+        appointmentDate = feedbackReferral.appointmentDate;
+      }
 
       // Use selected tags from user
       const tags = selectedTags;
 
       const feedbackData = {
-        appointmentId: feedbackAppointment.id!,
-        referralId: feedbackAppointment.relatedReferralId,
-        patientId: feedbackAppointment.patientId,
+        ...(appointmentId && { appointmentId }),
+        ...(referralId && { referralId }),
+        patientId: feedbackAppointment?.patientId || feedbackReferral?.patientId,
         patientName,
         patientEmail,
-        doctorId: feedbackAppointment.doctorId,
+        doctorId: feedbackAppointment?.doctorId || feedbackReferral?.assignedSpecialistId,
         doctorName,
-        clinicId: feedbackAppointment.clinicId,
+        clinicId: feedbackAppointment?.clinicId || feedbackReferral?.referringClinicId,
         clinicName,
-        appointmentDate: feedbackAppointment.appointmentDate,
+        appointmentDate,
         serviceType,
         treatmentType,
         rating: feedbackStars,
@@ -256,10 +299,17 @@ export default function AppointmentsScreen() {
       await databaseService.submitFeedback(feedbackData);
       
       // Update existing feedback state
-      setExistingFeedback(prev => ({
-        ...prev,
-        [feedbackAppointment.id!]: true
-      }));
+      if (feedbackAppointment) {
+        setExistingFeedback(prev => ({
+          ...prev,
+          [feedbackAppointment.id!]: true
+        }));
+      } else if (feedbackReferral) {
+        setExistingReferralFeedback(prev => ({
+          ...prev,
+          [feedbackReferral.id!]: true
+        }));
+      }
       
       setFeedbackSubmitted(true);
       setTimeout(() => {
@@ -269,6 +319,7 @@ export default function AppointmentsScreen() {
         setFeedbackReason('');
         setSelectedTags([]);
         setFeedbackAppointment(null);
+        setFeedbackReferral(null);
         setSubmittingFeedback(false);
       }, 1200);
     } catch (error) {
@@ -277,6 +328,8 @@ export default function AppointmentsScreen() {
         'Error',
         error.message === 'Feedback already submitted for this appointment' 
           ? 'You have already submitted feedback for this appointment.'
+          : error.message === 'Feedback already submitted for this referral'
+          ? 'You have already submitted feedback for this referral.'
           : 'Failed to submit feedback. Please try again.'
       );
       setSubmittingFeedback(false);
@@ -725,6 +778,35 @@ export default function AppointmentsScreen() {
           </View>
         )}
 
+        {/* Feedback buttons for completed referrals */}
+        {referral?.status === 'completed' && (
+          <View style={styles.appointmentActions}>
+            {(() => {
+              const hasFeedback = existingReferralFeedback[referral.id!];
+
+              return !hasFeedback ? (
+                <TouchableOpacity
+                  style={styles.outlinedButton}
+                  onPress={() => {
+                    setFeedbackReferral(referral);
+                    setFeedbackAppointment(null);
+                    setFeedbackStars(0);
+                    setFeedbackReason('');
+                    setFeedbackSubmitted(false);
+                    setShowFeedbackModal(true);
+                  }}
+                >
+                  <Text style={styles.outlinedButtonText}>Give Feedback</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.feedbackSubmittedContainer}>
+                  <Text style={styles.feedbackSubmittedText}>✓ Feedback Submitted</Text>
+                </View>
+              );
+            })()}
+          </View>
+        )}
+
       </TouchableOpacity>
     );
   };
@@ -848,24 +930,29 @@ export default function AppointmentsScreen() {
         )}
 
         <View style={styles.appointmentActions}>
-          {isCompleted && !existingFeedback[appointment.id!] ? (
-            <TouchableOpacity
-              style={styles.outlinedButton}
-              onPress={() => {
-                setFeedbackAppointment(appointment);
-                setFeedbackStars(0);
-                setFeedbackReason('');
-                setFeedbackSubmitted(false);
-                setShowFeedbackModal(true);
-              }}
-            >
-              <Text style={styles.outlinedButtonText}>Give Feedback</Text>
-            </TouchableOpacity>
-          ) : isCompleted && existingFeedback[appointment.id!] ? (
-            <View style={styles.feedbackSubmittedContainer}>
-              <Text style={styles.feedbackSubmittedText}>✓ Feedback Submitted</Text>
-            </View>
-          ) : null}
+          {(() => {
+            if (!isCompleted) return null;
+            const hasFeedback = existingFeedback[appointment.id!];
+
+            return !hasFeedback ? (
+              <TouchableOpacity
+                style={styles.outlinedButton}
+                onPress={() => {
+                  setFeedbackAppointment(appointment);
+                  setFeedbackStars(0);
+                  setFeedbackReason('');
+                  setFeedbackSubmitted(false);
+                  setShowFeedbackModal(true);
+                }}
+              >
+                <Text style={styles.outlinedButtonText}>Give Feedback</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.feedbackSubmittedContainer}>
+                <Text style={styles.feedbackSubmittedText}>✓ Feedback Submitted</Text>
+              </View>
+            );
+          })()}
         </View>
       </TouchableOpacity>
     );
@@ -897,7 +984,7 @@ export default function AppointmentsScreen() {
 
   // === Feedback Modal ===
   const renderFeedbackModal = () => {
-    if (!feedbackAppointment) return null;
+    if (!feedbackAppointment && !feedbackReferral) return null;
 
     return (
       <Modal
