@@ -164,7 +164,8 @@ export default function SpecialistPrescriptionsScreen() {
       markAsRead,
       markAllAsRead,
       deleteNotification,
-      refresh: refreshNotifications
+      refresh: refreshNotifications,
+      handleNotificationPress
     }
   } = useNotificationContext();
   const [activeTab, setActiveTab] = useState('All');
@@ -607,6 +608,7 @@ export default function SpecialistPrescriptionsScreen() {
                     <TouchableOpacity 
                       key={notification.id} 
                       style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}
+                      onPress={() => handleNotificationPress(notification, handleCloseNotificationModal)}
                       activeOpacity={0.7}
                     >
                       <View style={notificationModalStyles.notificationContent}>

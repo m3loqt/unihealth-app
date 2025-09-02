@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { databaseService } from '../../services/database/firebase';
 import { useAuth } from '../auth/useAuth';
 
@@ -31,7 +31,7 @@ export interface UseNotificationsReturn {
   loadMore: () => Promise<void>;
   refresh: () => Promise<void>;
   retry: () => Promise<void>;
-  handleNotificationPress: (notification: Notification) => void;
+  handleNotificationPress: (notification: Notification, onModalClose?: () => void) => void;
 }
 
 // Utility function to process notification messages and replace clinicId with clinic names
@@ -87,6 +87,7 @@ const processNotificationMessage = async (message: string): Promise<string> => {
 export const useNotifications = (): UseNotificationsReturn => {
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -347,25 +348,105 @@ export const useNotifications = (): UseNotificationsReturn => {
   }, [user?.uid]);
 
   // Handle notification press - navigate to appropriate route
-  const handleNotificationPress = useCallback((notification: Notification) => {
-    if (notification.route) {
-      try {
-        if (notification.routeParams && Object.keys(notification.routeParams).length > 0) {
+  const handleNotificationPress = useCallback((notification: Notification, onModalClose?: () => void) => {
+    console.log('🔔 handleNotificationPress called:', {
+      notificationId: notification.id,
+      notificationType: notification.type,
+      hasRoute: !!notification.route,
+      hasRelatedId: !!notification.relatedId,
+      hasOnModalClose: !!onModalClose
+    });
+    
+    try {
+      let routeToNavigate = notification.route;
+      let routeParams = notification.routeParams;
+
+      // Determine if user is patient or specialist based on current route
+      const currentPath = pathname || '';
+
+      // For appointment notifications, always route to visit-overview regardless of existing route
+      if (notification.type === 'appointment' && notification.relatedId) {
+        if (currentPath.includes('(patient)')) {
+          routeToNavigate = '/(patient)/visit-overview';
+        } else if (currentPath.includes('(specialist)')) {
+          routeToNavigate = '/visit-overview';
+        } else {
+          // Default to specialist route if we can't determine
+          routeToNavigate = '/visit-overview';
+        }
+        routeParams = { id: notification.relatedId };
+      }
+      // For other notification types, use fallback logic if no route is set
+      else if (!routeToNavigate && notification.relatedId) {
+        switch (notification.type) {
+          case 'referral':
+            if (currentPath.includes('(patient)')) {
+              routeToNavigate = '/(patient)/referral-details';
+            } else if (currentPath.includes('(specialist)')) {
+              routeToNavigate = '/(specialist)/referral-details';
+            } else {
+              // Default to specialist route if we can't determine
+              routeToNavigate = '/(specialist)/referral-details';
+            }
+            routeParams = { id: notification.relatedId };
+            break;
+          case 'prescription':
+            // For prescriptions, route to prescription details
+            if (currentPath.includes('(patient)')) {
+              routeToNavigate = '/(patient)/prescription-details';
+            } else {
+              routeToNavigate = '/(specialist)/prescription-details';
+            }
+            routeParams = { id: notification.relatedId };
+            break;
+          case 'certificate':
+            // For certificates, route to certificate details
+            if (currentPath.includes('(patient)')) {
+              routeToNavigate = '/(patient)/certificate-details';
+            } else {
+              routeToNavigate = '/(specialist)/certificate-details';
+            }
+            routeParams = { id: notification.relatedId };
+            break;
+        }
+      }
+
+      if (routeToNavigate) {
+        console.log('🔔 Navigating to route:', routeToNavigate, 'with params:', routeParams);
+        
+        // Navigate to the route first
+        if (routeParams && Object.keys(routeParams).length > 0) {
           // Navigate with parameters
-          const queryString = new URLSearchParams(notification.routeParams).toString();
-          router.push(`${notification.route}?${queryString}` as any);
+          const queryString = new URLSearchParams(routeParams).toString();
+          console.log('🔔 Navigating with query string:', `${routeToNavigate}?${queryString}`);
+          router.push(`${routeToNavigate}?${queryString}` as any);
         } else {
           // Navigate without parameters
-          router.push(notification.route as any);
+          console.log('🔔 Navigating without params:', routeToNavigate);
+          router.push(routeToNavigate as any);
+        }
+        
+        // Close modal after navigation starts
+        if (onModalClose) {
+          console.log('🔔 Closing modal via callback');
+          // Use setTimeout to ensure the navigation starts before closing the modal
+          setTimeout(() => {
+            onModalClose();
+          }, 100);
+        } else {
+          console.log('🔔 No modal close callback provided');
         }
         
         // Mark notification as read when navigated
         if (!notification.read) {
+          console.log('🔔 Marking notification as read:', notification.id);
           markAsRead(notification.id);
         }
-      } catch (error) {
-        console.error('Error navigating from notification:', error);
+      } else {
+        console.warn('🔔 No route available for notification:', notification);
       }
+    } catch (error) {
+      console.error('Error navigating from notification:', error);
     }
   }, [router, markAsRead]);
 
