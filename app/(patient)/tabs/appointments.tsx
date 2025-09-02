@@ -26,24 +26,42 @@ import {
   Check,
   X,
   Star,
+  Search,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
+import { useAppointments, usePatientReferrals } from '../../../src/hooks/data';
 import { databaseService, Appointment, MedicalHistory } from '../../../src/services/database/firebase';
 import { AppointmentDetailsModal } from '../../../src/components';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
-import { performanceUtils } from '../../../src/utils/performance';
+import { performanceUtils, useDeepMemo } from '../../../src/utils/performance';
 
 export default function AppointmentsScreen() {
   const { filter } = useLocalSearchParams();
   const { user } = useAuth();
+  const { 
+    appointments: hookAppointments, 
+    loading: hookLoading, 
+    error: hookError, 
+    refresh: hookRefresh 
+  } = useAppointments();
+  const { 
+    referrals: hookReferrals, 
+    loading: referralsLoading, 
+    error: referralsError, 
+    refresh: referralsRefresh 
+  } = usePatientReferrals();
   const filters = ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
   const [activeFilter, setActiveFilter] = useState('All');
   const [showModal, setShowModal] = useState(false);
   const [modalAppointment, setModalAppointment] = useState<Appointment | null>(null);
+  
+  // Search functionality
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   
   // Function to open modal and load medical history if needed
   const openAppointmentModal = async (appointment: Appointment) => {
@@ -69,9 +87,10 @@ export default function AppointmentsScreen() {
       }
     }
   };
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use hook data instead of manual state
+  const appointments = hookAppointments;
+  const loading = hookLoading;
+  const error = hookError;
   const [refreshing, setRefreshing] = useState(false);
 
   // --- Feedback modal state ---
@@ -96,7 +115,17 @@ export default function AppointmentsScreen() {
   const [loadingMedicalHistory, setLoadingMedicalHistory] = useState(false);
 
   // --- Referral state ---
-  const [referrals, setReferrals] = useState<{[key: string]: any}>({});
+  // Convert hook referrals to the format expected by the UI
+  const referrals = useDeepMemo(() => {
+    const referralsMap: {[key: string]: any} = {};
+    hookReferrals.forEach(referral => {
+      if (referral.id) {
+        referralsMap[referral.id] = referral;
+      }
+    });
+    return referralsMap;
+  }, [hookReferrals]);
+  
   const [loadingReferrals, setLoadingReferrals] = useState<{[key: string]: boolean}>({});
   const [clinicData, setClinicData] = useState<{[key: string]: any}>({});
   const [specialistData, setSpecialistData] = useState<{[key: string]: any}>({});
@@ -118,48 +147,18 @@ export default function AppointmentsScreen() {
     }
   }, [filter]);
 
-  // Load appointments from database
+  // Real-time updates are handled by the useAppointments hook
+  // No need for manual loading or useFocusEffect refresh
+
+  // Real-time referrals are handled by the usePatientReferrals hook
+
+  // Check for existing feedback for completed appointments when appointments change
   useEffect(() => {
-    if (user && user.uid) {
-      loadAppointments();
-    }
-  }, [user]);
+    const checkFeedbackForAppointments = async () => {
+      if (appointments.length === 0) return;
 
-  // Refresh appointments when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      if (user && user.uid) {
-        loadAppointments();
-      }
-    }, [user])
-  );
-
-  // Load referrals for appointments that have relatedReferralId
-  useEffect(() => {
-    appointments.forEach(appointment => {
-      if (appointment.relatedReferralId && !referrals[appointment.relatedReferralId]) {
-        loadReferral(appointment.relatedReferralId);
-      }
-    });
-  }, [appointments]);
-
-  const loadAppointments = async () => {
-    if (!user) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-      const userAppointments = await databaseService.getAppointments(user.uid, user.role);
-      
-      // Validate appointments data
-      const validAppointments = dataValidation.validateArray(userAppointments, dataValidation.isValidAppointment);
-      console.log('Loaded appointments:', validAppointments.length);
-      console.log('Appointments:', validAppointments);
-      setAppointments(validAppointments);
-
-      // Check for existing feedback for completed appointments
       const feedbackChecks: {[appointmentId: string]: boolean} = {};
-      for (const appointment of validAppointments) {
+      for (const appointment of appointments) {
         if (appointment.status === 'completed') {
           try {
             const feedbackExists = await databaseService.checkFeedbackExists(appointment.id!);
@@ -171,23 +170,24 @@ export default function AppointmentsScreen() {
         }
       }
       setExistingFeedback(feedbackChecks);
-    } catch (error) {
-      console.error('Error loading appointments:', error);
-      setError('Failed to load appointments. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    checkFeedbackForAppointments();
+  }, [appointments]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadAppointments();
+    // Refresh both appointments and referrals via their respective hooks
+    await Promise.all([
+      hookRefresh(),
+      referralsRefresh()
+    ]);
     setRefreshing(false);
   };
 
   const handleRetry = () => {
-    setError(null);
-    loadAppointments();
+    // The hook handles error state, just trigger a refresh
+    hookRefresh();
   };
 
   // Handle tag selection
@@ -399,54 +399,38 @@ export default function AppointmentsScreen() {
     }
   };
 
-  const loadReferral = async (referralId: string) => {
-    if (!referralId || referrals[referralId]) return;
-    
-    try {
-      setLoadingReferrals(prev => ({ ...prev, [referralId]: true }));
-      
-      const referral = await databaseService.getReferralById(referralId);
-      setReferrals(prev => ({ ...prev, [referralId]: referral }));
-      
-      // Load referring clinic data if referringClinicId exists
-      if (referral?.referringClinicId && !clinicData[referral.referringClinicId]) {
-        try {
-          const clinic = await databaseService.getClinicById(referral.referringClinicId);
-          setClinicData(prev => ({ ...prev, [referral.referringClinicId]: clinic }));
-        } catch (error) {
-          console.error('Error loading referring clinic data:', error);
+  // Load clinic and specialist data for referrals when referrals change
+  useEffect(() => {
+    const loadReferralData = async () => {
+      if (hookReferrals.length === 0) return;
+
+      const clinicPromises = hookReferrals.map(async (referral) => {
+        if (referral.referringClinicId && !clinicData[referral.referringClinicId]) {
+          try {
+            const clinic = await databaseService.getClinicById(referral.referringClinicId);
+            setClinicData(prev => ({ ...prev, [referral.referringClinicId]: clinic }));
+          } catch (error) {
+            console.error('Error loading referring clinic data:', error);
+          }
         }
-      }
-      
-      // Load specialist data if assignedSpecialistId exists
-      if (referral?.assignedSpecialistId) {
-        try {
-          // Load specialist profile if needed
-          let specialist = specialistData[referral.assignedSpecialistId];
-          if (!specialist) {
-            specialist = await databaseService.getDoctorById(referral.assignedSpecialistId);
+      });
+
+      const specialistPromises = hookReferrals.map(async (referral) => {
+        if (referral.assignedSpecialistId && !specialistData[referral.assignedSpecialistId]) {
+          try {
+            const specialist = await databaseService.getDoctorById(referral.assignedSpecialistId);
             setSpecialistData(prev => ({ ...prev, [referral.assignedSpecialistId]: specialist }));
+          } catch (error) {
+            console.error('Error loading specialist data:', error);
           }
-          // Enrich referral with specialist specialty to ensure correct display
-          const computedSpecialty = specialist?.specialty || specialist?.specialisation || specialist?.specialization;
-          // Attach as a weakly-typed property so UI can read it without changing types
-          if (computedSpecialty && (!(referral as any)?.specialty || (referral as any).specialty !== computedSpecialty)) {
-            setReferrals(prev => ({
-              ...prev,
-              [referralId]: { ...(referral as any), specialty: computedSpecialty },
-            }));
-          }
-        } catch (error) {
-          console.error('Error loading specialist data:', error);
         }
-      }
-    } catch (error) {
-      console.error('Error loading referral:', error);
-      setReferrals(prev => ({ ...prev, [referralId]: null }));
-    } finally {
-      setLoadingReferrals(prev => ({ ...prev, [referralId]: false }));
-    }
-  };
+      });
+
+      await Promise.all([...clinicPromises, ...specialistPromises]);
+    };
+
+    loadReferralData();
+  }, [hookReferrals]);
 
   function capitalize(str: string) {
     if (!str) return '';
@@ -455,28 +439,87 @@ export default function AppointmentsScreen() {
 
   // Performance optimization: memoize filtered appointments
   const filteredAppointments = performanceUtils.useDeepMemo(() => {
-    if (activeFilter === 'All') {
-      // Sort appointments so Pending comes first, then Confirmed, then Completed, then Cancelled
-      return [...appointments].sort((a, b) => {
-        const statusOrder = {
-          'pending': 1,
-          'confirmed': 2,
-          'completed': 3,
-          'cancelled': 4,
-        };
+    let filtered = appointments;
+    
+    // Apply status filter
+    if (activeFilter !== 'All') {
+      const filterStatus = activeFilter.toLowerCase();
+      filtered = filtered.filter(appointment => 
+        appointment.status.toLowerCase() === filterStatus
+      );
+    }
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      const searchWords = query.split(' ').filter(word => word.length > 0);
+      
+      filtered = filtered.filter(appointment => {
+        // Get all searchable text fields
+        const doctorName = safeDataAccess.getAppointmentDoctorName(appointment, '').toLowerCase();
+        const doctorFirstName = (appointment.doctorFirstName || '').toLowerCase();
+        const doctorLastName = (appointment.doctorLastName || '').toLowerCase();
+        const combinedName = `${doctorFirstName} ${doctorLastName}`.trim().toLowerCase();
+        const clinicName = (appointment.clinicName || '').toLowerCase();
+        const specialty = (appointment.specialty || appointment.doctorSpecialty || '').toLowerCase();
+        const purpose = (appointment.appointmentPurpose || '').toLowerCase();
+        const notes = (appointment.additionalNotes || '').toLowerCase();
         
-        const aOrder = statusOrder[a.status.toLowerCase()] || 5;
-        const bOrder = statusOrder[b.status.toLowerCase()] || 5;
+        // Check if ALL search words are found in the same field
+        const searchableFields = [
+          doctorName,
+          doctorFirstName,
+          doctorLastName,
+          combinedName,
+          clinicName,
+          specialty,
+          purpose,
+          notes
+        ];
         
-        return aOrder - bOrder;
+        // For each field, check if ALL search words are present
+        for (const field of searchableFields) {
+          if (field && searchWords.every(word => field.includes(word))) {
+            return true;
+          }
+        }
+        
+        // Debug logging for "Rene Catan" search
+        if (query === 'rene catan' || query === 'rene' || query === 'catan') {
+          console.log('🔍 DEBUG SEARCH for "Rene Catan":', {
+            query,
+            searchWords,
+            doctorName,
+            doctorFirstName,
+            doctorLastName,
+            combinedName,
+            clinicName,
+            specialty,
+            appointmentId: appointment.id,
+            doctorId: appointment.doctorId,
+            matches: searchableFields.map(field => field && searchWords.every(word => field.includes(word)))
+          });
+        }
+        
+        return false;
       });
     }
     
-    const filterStatus = activeFilter.toLowerCase();
-    return appointments.filter(appointment => 
-      appointment.status.toLowerCase() === filterStatus
-    );
-  }, [appointments, activeFilter]);
+    // Sort appointments so Pending comes first, then Confirmed, then Completed, then Cancelled
+    return filtered.sort((a, b) => {
+      const statusOrder = {
+        'pending': 1,
+        'confirmed': 2,
+        'completed': 3,
+        'cancelled': 4,
+      };
+      
+      const aOrder = statusOrder[a.status.toLowerCase()] || 5;
+      const bOrder = statusOrder[b.status.toLowerCase()] || 5;
+      
+      return aOrder - bOrder;
+    });
+  }, [appointments, activeFilter, searchQuery]);
 
   // Filter appointments based on active filter (legacy function for compatibility)
   const getFilteredAppointments = () => filteredAppointments;
@@ -492,7 +535,7 @@ export default function AppointmentsScreen() {
       return s === filterStatus;
     };
 
-    const referralItems = appointments
+    let referralItems = appointments
       .filter(appointment => appointment.relatedReferralId)
       .map(appointment => ({
         id: appointment.id || appointment.relatedReferralId,
@@ -502,6 +545,42 @@ export default function AppointmentsScreen() {
         loading: loadingReferrals[appointment.relatedReferralId],
       }))
       .filter(item => item.referral && matchesFilter(item.referral.status));
+
+    // Apply search filter to referrals
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      const searchWords = query.split(' ').filter(word => word.length > 0);
+      
+      referralItems = referralItems.filter(item => {
+        const referral = item.referral;
+        if (!referral) return false;
+        
+        // Get all searchable text fields for referrals
+        const specialistName = `${referral.assignedSpecialistFirstName || ''} ${referral.assignedSpecialistLastName || ''}`.toLowerCase();
+        const referringDoctorName = `${referral.referringGeneralistFirstName || ''} ${referral.referringGeneralistLastName || ''}`.toLowerCase();
+        const clinicName = (referral.referringClinicName || '').toLowerCase();
+        const specialty = (referral.specialty || '').toLowerCase();
+        const reason = (referral.initialReasonForReferral || '').toLowerCase();
+        
+        // Check if ALL search words are found in the same field
+        const searchableFields = [
+          specialistName,
+          referringDoctorName,
+          clinicName,
+          specialty,
+          reason
+        ];
+        
+        // For each field, check if ALL search words are present
+        for (const field of searchableFields) {
+          if (field && searchWords.every(word => field.includes(word))) {
+            return true;
+          }
+        }
+        
+        return false;
+      });
+    }
 
     // Sort referral items by status priority (same as appointments)
     if (activeFilter === 'All') {
@@ -971,6 +1050,38 @@ export default function AppointmentsScreen() {
       </View>
 
       <View style={styles.filtersContainer}>
+        <View style={styles.searchRow}>
+          <View style={[
+            styles.searchInputContainer,
+            isSearchFocused && styles.searchInputContainerFocused
+          ]}>
+            <Search size={18} color="#9CA3AF" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search appointments"
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              returnKeyType="search"
+              blurOnSubmit={true}
+              onSubmitEditing={() => {
+                // Dismiss keyboard when search is submitted
+                setIsSearchFocused(false);
+              }}
+            />
+            {searchQuery.trim() && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                style={styles.clearSearchIcon}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <X size={16} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -1028,14 +1139,25 @@ export default function AppointmentsScreen() {
            ) : (
              <View style={styles.emptyState}>
                <Text style={styles.emptyStateText}>
-                 {`No ${activeFilter.toLowerCase()} appointments found`}
+                 {searchQuery.trim() 
+                   ? `No appointments found for "${searchQuery}"`
+                   : `No ${activeFilter.toLowerCase()} appointments found`
+                 }
                </Text>
-               {activeFilter === 'All' && (
+               {activeFilter === 'All' && !searchQuery.trim() && (
                  <TouchableOpacity
                    style={styles.addAppointmentButton}
                    onPress={() => router.push('/(patient)/book-visit')}
                  >
                    <Text style={styles.addAppointmentButtonText}>Book Your First Appointment</Text>
+                 </TouchableOpacity>
+               )}
+               {searchQuery.trim() && (
+                 <TouchableOpacity
+                   style={styles.clearSearchButton}
+                   onPress={() => setSearchQuery('')}
+                 >
+                   <Text style={styles.clearSearchButtonText}>Clear Search</Text>
                  </TouchableOpacity>
                )}
              </View>
@@ -1106,9 +1228,45 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    paddingBottom: 12,
+    paddingTop: 0,
+  },
+  searchRow: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 22,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minHeight: 36,
+  },
+  searchInputContainerFocused: {
+    borderColor: '#1E40AF',
+    backgroundColor: '#FFFFFF',
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    paddingVertical: 0,
+  },
+  clearSearchIcon: {
+    padding: 4,
+    marginLeft: 8,
   },
   filtersContent: {
     paddingHorizontal: 24,
@@ -1361,6 +1519,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  clearSearchButton: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  clearSearchButtonText: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '500',
   },
   // Error state styles
   errorContainer: {

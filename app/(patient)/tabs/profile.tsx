@@ -41,7 +41,7 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { usePatientProfile } from '@/hooks/data/usePatientProfile';
-import { useNotifications } from '@/hooks/data/useNotifications';
+import { useNotificationContext } from '@/contexts/NotificationContext';
 import { safeDataAccess } from '@/utils/safeDataAccess';
 import { capitalizeRelationship } from '@/utils/formatting';
 import { RealTimeTest } from '@/components/RealTimeTest';
@@ -70,15 +70,18 @@ const SCREEN_HEIGHT = Dimensions.get('window').height;
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { profile, loading: profileLoading, error: profileError } = usePatientProfile();
-  const { 
-    notifications, 
-    loading: notificationsLoading, 
-    error: notificationsError,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    refresh: refreshNotifications
-  } = useNotifications();
+      const { 
+    notifications: {
+      notifications, 
+      loading: notificationsLoading, 
+      error: notificationsError,
+      markAsRead,
+      markAllAsRead,
+      deleteNotification,
+      refresh: refreshNotifications,
+      handleNotificationPress
+    }
+  } = useNotificationContext();
 
   // Initials for profile avatar header
   const userInitials = (() => {
@@ -424,7 +427,12 @@ export default function ProfileScreen() {
                   showsVerticalScrollIndicator
                 >
                   {notifications.map((notification) => (
-                    <View key={notification.id} style={[styles.notificationItem, !notification.read && styles.unreadNotification]}>
+                    <TouchableOpacity 
+                      key={notification.id} 
+                      style={[styles.notificationItem, !notification.read && styles.unreadNotification]}
+                      onPress={() => handleNotificationPress(notification)}
+                      activeOpacity={0.7}
+                    >
                       <View style={styles.notificationContent}>
                         <Text style={[styles.notificationText, !notification.read && styles.unreadText]}>
                           {notification.message}
@@ -437,19 +445,25 @@ export default function ProfileScreen() {
                         {!notification.read && (
                           <TouchableOpacity
                             style={styles.notificationActionButton}
-                            onPress={() => handleMarkAsRead(notification.id)}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsRead(notification.id);
+                            }}
                           >
                             <Check size={16} color={BLUE} />
                           </TouchableOpacity>
                         )}
                         <TouchableOpacity
                           style={styles.notificationActionButton}
-                          onPress={() => handleDeleteNotification(notification.id)}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteNotification(notification.id);
+                          }}
                         >
                           <Trash2 size={16} color="#DC2626" />
                         </TouchableOpacity>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </ScrollView>
               )}

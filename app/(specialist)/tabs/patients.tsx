@@ -16,7 +16,7 @@ import {
 import { Search, User, Users, CheckCircle, Hourglass, XCircle, Check, Bell, RefreshCw, Trash2 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
-import { useNotifications } from '../../../src/hooks/data/useNotifications';
+import { useNotificationContext } from '../../../src/contexts/NotificationContext';
 import { databaseService, Patient } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 import LoadingState from '../../../src/components/ui/LoadingState';
@@ -37,14 +37,16 @@ interface SpecialistPatient extends Patient {
 export default function SpecialistPatientsScreen() {
   const { user } = useAuth();
   const { 
-    notifications, 
-    loading: notificationsLoading, 
-    error: notificationsError,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    refresh: refreshNotifications
-  } = useNotifications();
+    notifications: {
+      notifications, 
+      loading: notificationsLoading, 
+      error: notificationsError,
+      markAsRead,
+      markAllAsRead,
+      deleteNotification,
+      refresh: refreshNotifications
+    }
+  } = useNotificationContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [patients, setPatients] = useState<SpecialistPatient[]>([]);
@@ -464,7 +466,11 @@ export default function SpecialistPatientsScreen() {
                   showsVerticalScrollIndicator
                 >
                   {notifications.map((notification) => (
-                    <View key={notification.id} style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}>
+                    <TouchableOpacity 
+                      key={notification.id} 
+                      style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}
+                      activeOpacity={0.7}
+                    >
                       <View style={notificationModalStyles.notificationContent}>
                         <Text style={[notificationModalStyles.notificationText, !notification.read && notificationModalStyles.unreadText]}>
                           {notification.message}
@@ -477,19 +483,25 @@ export default function SpecialistPatientsScreen() {
                         {!notification.read && (
                           <TouchableOpacity
                             style={notificationModalStyles.notificationActionButton}
-                            onPress={() => handleMarkAsRead(notification.id)}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsRead(notification.id);
+                            }}
                           >
                             <Check size={16} color="#1E40AF" />
                           </TouchableOpacity>
                         )}
                         <TouchableOpacity
                           style={notificationModalStyles.notificationActionButton}
-                          onPress={() => handleDeleteNotification(notification.id)}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteNotification(notification.id);
+                          }}
                         >
                           <Trash2 size={16} color="#DC2626" />
                         </TouchableOpacity>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </ScrollView>
               )}

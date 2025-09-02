@@ -251,6 +251,8 @@ export interface Notification {
   relatedId: string;
   priority: 'low' | 'medium' | 'high';
   expiresAt?: number; // Auto-cleanup old notifications
+  route?: string; // Route to navigate to when notification is tapped
+  routeParams?: Record<string, string>; // Parameters for the route
 }
 
 export const databaseService = {
@@ -992,17 +994,42 @@ export const databaseService = {
       
       await set(newAppointmentRef, appointmentData);
       
-      // Create notification for the appointment
+      // Create notifications for the appointment (pending status)
       try {
-        const { notificationService } = await import('./notificationService');
-        await notificationService.createAppointmentNotification(
+        const { notificationService } = await import('../notificationService');
+        console.log('🔔 Creating appointment creation notifications...');
+        
+        // Create patient notification
+        await notificationService.createAppointmentStatusNotification(
           appointment.patientId,
           newAppointmentRef.key!,
-          'created',
-          appointmentData
+          'pending',
+          {
+            date: appointment.appointmentDate,
+            time: appointment.appointmentTime,
+            doctorId: appointment.doctorId,
+            clinicId: appointment.clinicId,
+            clinicName: appointment.clinicName
+          }
         );
+        
+        // Create doctor notification
+        await notificationService.createDoctorNotification(
+          appointment.doctorId,
+          newAppointmentRef.key!,
+          'pending',
+          {
+            date: appointment.appointmentDate,
+            time: appointment.appointmentTime,
+            patientId: appointment.patientId,
+            clinicId: appointment.clinicId,
+            clinicName: appointment.clinicName
+          }
+        );
+        
+        console.log('✅ Appointment creation notifications created successfully');
       } catch (notificationError) {
-        console.warn('Failed to create appointment notification:', notificationError);
+        console.warn('⚠️ Failed to create appointment creation notifications:', notificationError);
         // Don't fail the appointment creation if notification fails
       }
       
@@ -2121,7 +2148,7 @@ export const databaseService = {
           {
             date: appointment.appointmentDate,
             time: appointment.appointmentTime,
-            doctorName: `${appointment.doctorFirstName || 'Dr.'} ${appointment.doctorLastName || 'Unknown'}`,
+            doctorId: appointment.doctorId,
             clinicId: appointment.clinicId,
             clinicName: appointment.clinicName // Keep for backward compatibility
           }
@@ -2137,7 +2164,7 @@ export const databaseService = {
           {
             date: appointment.appointmentDate,
             time: appointment.appointmentTime,
-            patientName: `${appointment.patientFirstName || 'Unknown'} ${appointment.patientLastName || 'Patient'}`,
+            patientId: appointment.patientId,
             clinicId: appointment.clinicId,
             clinicName: appointment.clinicName // Keep for backward compatibility
           }
@@ -2419,6 +2446,32 @@ export const databaseService = {
     }
   },
 
+  async getReferralsByPatient(patientId: string): Promise<Referral[]> {
+    try {
+      const referralsRef = ref(database, 'referrals');
+      const snapshot = await get(referralsRef);
+      
+      if (snapshot.exists()) {
+        const referrals: Referral[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const referral = childSnapshot.val();
+          // Filter referrals for this patient
+          if (referral.patientId === patientId) {
+            referrals.push({
+              id: childSnapshot.key,
+              ...referral
+            });
+          }
+        });
+        return referrals.sort((a, b) => new Date(b.referralTimestamp).getTime() - new Date(a.referralTimestamp).getTime());
+      }
+      return [];
+    } catch (error) {
+      console.error('Get referrals by patient error:', error);
+      return [];
+    }
+  },
+
   async updateReferralStatus(referralId: string, status: 'confirmed' | 'cancelled', declineReason?: string, specialistNotes?: string): Promise<void> {
     try {
       console.log('🔔 Starting updateReferralStatus for referral:', referralId, 'with status:', status);
@@ -2591,7 +2644,7 @@ export const databaseService = {
     return unsubscribe;
   },
 
-  onReferralsChange(specialistId: string, callback: (referrals: Referral[]) => void) {
+  onReferralsChange(userId: string, callback: (referrals: Referral[]) => void) {
     const referralsRef = ref(database, 'referrals');
     
     const unsubscribe = onValue(referralsRef, (snapshot) => {
@@ -2600,8 +2653,8 @@ export const databaseService = {
         
         snapshot.forEach((childSnapshot) => {
           const referralData = childSnapshot.val();
-          // Filter referrals assigned to this specialist
-          if (referralData.assignedSpecialistId === specialistId) {
+          // Filter referrals for this user (either as specialist or patient)
+          if (referralData.assignedSpecialistId === userId || referralData.patientId === userId) {
             referrals.push({
               id: childSnapshot.key,
               ...referralData
@@ -2691,6 +2744,88 @@ export const databaseService = {
         callback(certificates.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()));
       } else {
         callback([]);
+      }
+    });
+    
+    return unsubscribe;
+  },
+
+
+
+  // Monitor medical history for new prescriptions and certificates
+  onMedicalHistoryPrescriptionsAndCertificatesChange(
+    patientId: string, 
+    callback: (data: { prescriptions: any[], certificates: any[] }) => void
+  ) {
+    const medicalHistoryRef = ref(database, `patientMedicalHistory/${patientId}/entries`);
+    
+    const unsubscribe = onValue(medicalHistoryRef, async (snapshot) => {
+      if (snapshot.exists()) {
+        const prescriptions: any[] = [];
+        const certificates: any[] = [];
+        
+        snapshot.forEach((childSnapshot) => {
+          const entryData = childSnapshot.val();
+          const entryId = childSnapshot.key;
+          
+          // Extract prescriptions
+          if (entryData.prescriptions && Array.isArray(entryData.prescriptions)) {
+            entryData.prescriptions.forEach((prescription: any, index: number) => {
+              prescriptions.push({
+                id: prescription.id || `${entryId}_prescription_${index}`,
+                entryId,
+                patientId,
+                medication: prescription.medication,
+                dosage: prescription.dosage,
+                frequency: prescription.frequency,
+                duration: prescription.duration,
+                route: prescription.route,
+                prescribedDate: prescription.prescribedDate,
+                description: prescription.description,
+                doctorId: entryData.provider?.id,
+                doctorName: `${entryData.provider?.firstName || ''} ${entryData.provider?.lastName || ''}`.trim(),
+                consultationDate: entryData.consultationDate
+              });
+            });
+          }
+          
+          // Extract certificates
+          if (entryData.certificates && Array.isArray(entryData.certificates)) {
+            entryData.certificates.forEach((certificate: any, index: number) => {
+              certificates.push({
+                id: certificate.id || `${entryId}_certificate_${index}`,
+                entryId,
+                patientId,
+                type: certificate.type,
+                fitnessStatement: certificate.fitnessStatement,
+                workRestrictions: certificate.workRestrictions,
+                issuedDate: certificate.issuedDate,
+                issuedTime: certificate.issuedTime,
+                status: certificate.status,
+                description: certificate.description,
+                destination: certificate.destination,
+                followUpDate: certificate.followUpDate,
+                medicalAdvice: certificate.medicalAdvice,
+                nextReviewDate: certificate.nextReviewDate,
+                reasonForUnfitness: certificate.reasonForUnfitness,
+                specialConditions: certificate.specialConditions,
+                travelDate: certificate.travelDate,
+                travelFitnessStatement: certificate.travelFitnessStatement,
+                travelMode: certificate.travelMode,
+                unfitPeriodEnd: certificate.unfitPeriodEnd,
+                unfitPeriodStart: certificate.unfitPeriodStart,
+                validityPeriod: certificate.validityPeriod,
+                doctorId: entryData.provider?.id,
+                doctorName: `${entryData.provider?.firstName || ''} ${entryData.provider?.lastName || ''}`.trim(),
+                consultationDate: entryData.consultationDate
+              });
+            });
+          }
+        });
+        
+        callback({ prescriptions, certificates });
+      } else {
+        callback({ prescriptions: [], certificates: [] });
       }
     });
     
@@ -3089,6 +3224,32 @@ export const databaseService = {
   // Create notification (for testing and manual creation)
   async createNotification(notification: Omit<Notification, 'id'>): Promise<string> {
     try {
+      // Create a unique key for this notification based on its content
+      const notificationKey = `${notification.type}-${notification.relatedId}-${notification.message}`;
+      
+      // Check if this exact notification has been processed before
+      const isProcessed = await this.isNotificationProcessed(notification.userId, notificationKey);
+      if (isProcessed) {
+        console.log('🔔 Skipping duplicate notification (already processed):', notification.title);
+        return ''; // Return empty string to indicate no notification was created
+      }
+
+      // Also check for duplicate notifications based on type, relatedId, and recent timestamp
+      const existingNotifications = await this.getNotificationsPaginated(notification.userId, 50);
+      const recentTime = Date.now() - (5 * 60 * 1000); // 5 minutes ago
+      
+      const isDuplicate = existingNotifications.some(existing => 
+        existing.type === notification.type &&
+        existing.relatedId === notification.relatedId &&
+        existing.timestamp > recentTime &&
+        existing.message === notification.message
+      );
+      
+      if (isDuplicate) {
+        console.log('🔔 Skipping duplicate notification (recent duplicate):', notification.title);
+        return ''; // Return empty string to indicate no notification was created
+      }
+
       const notificationRef = ref(database, `notifications/${notification.userId}`);
       const newNotificationRef = push(notificationRef);
       
@@ -3100,6 +3261,14 @@ export const databaseService = {
       };
 
       await set(newNotificationRef, notificationWithId);
+      
+      // Mark this notification as processed to prevent future duplicates
+      // Only mark as processed if it's not already being handled by the medical history hook
+      if (!notificationKey.includes('prescription-') && !notificationKey.includes('certificate-')) {
+        await this.markNotificationAsProcessed(notification.userId, notificationKey);
+      }
+      
+      console.log('🔔 Created notification:', notification.title);
       return newNotificationRef.key!;
     } catch (error) {
       console.error('Error creating notification:', error);
@@ -3334,6 +3503,43 @@ export const databaseService = {
       const referralId = await this.pushDocument('referrals', completeReferralData);
       console.log('✅ Referral created with Firebase push key:', referralId);
       
+      // Create notifications for the referral (pending status)
+      try {
+        const { notificationService } = await import('../notificationService');
+        console.log('🔔 Creating referral creation notifications...');
+        
+        // Create patient notification
+        await notificationService.createReferralNotification(
+          referralData.patientId!,
+          referralId,
+          'pending',
+          {
+            patientId: referralData.patientId!,
+            assignedSpecialistId: referralData.assignedSpecialistId!,
+            clinicId: referralData.practiceLocation?.clinicId,
+            clinicName: referralData.referringClinicName
+          }
+        );
+        
+        // Create specialist notification
+        await notificationService.createReferralNotification(
+          referralData.assignedSpecialistId!,
+          referralId,
+          'pending',
+          {
+            patientId: referralData.patientId!,
+            assignedSpecialistId: referralData.assignedSpecialistId!,
+            clinicId: referralData.practiceLocation?.clinicId,
+            clinicName: referralData.referringClinicName
+          }
+        );
+        
+        console.log('✅ Referral creation notifications created successfully');
+      } catch (notificationError) {
+        console.warn('⚠️ Failed to create referral creation notifications:', notificationError);
+        // Don't fail the referral creation if notification fails
+      }
+      
       return referralId;
     } catch (error) {
       console.error('❌ Create referral error:', error);
@@ -3554,6 +3760,163 @@ export const databaseService = {
     } catch (error) {
       console.error('Error getting clinics:', error);
       return [];
+    }
+  },
+
+  // Track processed notifications to prevent duplicates across sessions
+  async markNotificationAsProcessed(userId: string, notificationKey: string): Promise<void> {
+    try {
+      // Validate inputs
+      if (!userId || !notificationKey) {
+        console.warn('⚠️ Invalid parameters for markNotificationAsProcessed:', { userId, notificationKey });
+        return;
+      }
+
+      // Sanitize the notification key to ensure it's a valid Firebase key
+      const sanitizedKey = notificationKey.replace(/[.#$[\]]/g, '_');
+      
+      const processedRef = ref(database, `processedNotifications/${userId}/${sanitizedKey}`);
+      await set(processedRef, {
+        processedAt: Date.now(),
+        timestamp: Date.now()
+      });
+      
+      console.log('✅ Marked notification as processed:', sanitizedKey);
+    } catch (error) {
+      console.error('❌ Error marking notification as processed:', error, {
+        userId,
+        notificationKey,
+        sanitizedKey: notificationKey?.replace(/[.#$[\]]/g, '_')
+      });
+    }
+  },
+
+  // Check if notification has been processed
+  async isNotificationProcessed(userId: string, notificationKey: string): Promise<boolean> {
+    try {
+      // Validate inputs
+      if (!userId || !notificationKey) {
+        console.warn('⚠️ Invalid parameters for isNotificationProcessed:', { userId, notificationKey });
+        return false;
+      }
+
+      // Sanitize the notification key to ensure it's a valid Firebase key
+      const sanitizedKey = notificationKey.replace(/[.#$[\]]/g, '_');
+      
+      const processedRef = ref(database, `processedNotifications/${userId}/${sanitizedKey}`);
+      const snapshot = await get(processedRef);
+      return snapshot.exists();
+    } catch (error) {
+      console.error('❌ Error checking if notification is processed:', error, {
+        userId,
+        notificationKey,
+        sanitizedKey: notificationKey?.replace(/[.#$[\]]/g, '_')
+      });
+      return false;
+    }
+  },
+
+  // Clean up old processed notification records (older than 30 days)
+  async cleanupProcessedNotifications(userId: string): Promise<void> {
+    try {
+      if (!userId) {
+        console.warn('⚠️ No userId provided for cleanupProcessedNotifications');
+        return;
+      }
+
+      const processedRef = ref(database, `processedNotifications/${userId}`);
+      const snapshot = await get(processedRef);
+      
+      if (snapshot.exists()) {
+        const processedData = snapshot.val();
+        const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+        
+        const updates: { [key: string]: null } = {};
+        Object.entries(processedData).forEach(([key, data]: [string, any]) => {
+          if (data && data.timestamp && data.timestamp < thirtyDaysAgo) {
+            updates[key] = null;
+          }
+        });
+        
+        if (Object.keys(updates).length > 0) {
+          await update(processedRef, updates);
+          console.log(`🧹 Cleaned up ${Object.keys(updates).length} old processed notification records for user: ${userId}`);
+        } else {
+          console.log(`🧹 No old processed notification records to clean up for user: ${userId}`);
+        }
+      } else {
+        console.log(`🧹 No processed notification records found for user: ${userId}`);
+      }
+    } catch (error) {
+      console.error('❌ Error cleaning up processed notifications:', error, { userId });
+    }
+  },
+
+  // Clean up existing duplicate notifications (one-time cleanup function)
+  async cleanupDuplicateNotifications(userId: string): Promise<void> {
+    try {
+      if (!userId) {
+        console.warn('⚠️ No userId provided for cleanupDuplicateNotifications');
+        return;
+      }
+
+      console.log('🧹 Starting cleanup of duplicate notifications for user:', userId);
+      const notifications = await this.getNotificationsPaginated(userId, 1000); // Get more notifications for cleanup
+      
+      if (notifications.length === 0) {
+        console.log(`🧹 No notifications found for user: ${userId}`);
+        return;
+      }
+      
+      // Group notifications by type and relatedId
+      const notificationGroups: { [key: string]: Notification[] } = {};
+      
+      notifications.forEach(notification => {
+        if (notification.type && notification.relatedId) {
+          const key = `${notification.type}-${notification.relatedId}`;
+          if (!notificationGroups[key]) {
+            notificationGroups[key] = [];
+          }
+          notificationGroups[key].push(notification);
+        }
+      });
+      
+      // Find and remove duplicates
+      let duplicatesRemoved = 0;
+      for (const [key, group] of Object.entries(notificationGroups)) {
+        if (group.length > 1) {
+          // Sort by timestamp, keep the newest one
+          group.sort((a, b) => b.timestamp - a.timestamp);
+          const toKeep = group[0];
+          const toRemove = group.slice(1);
+          
+          // Remove duplicates
+          for (const duplicate of toRemove) {
+            try {
+              await this.deleteDocument(`notifications/${userId}/${duplicate.id}`);
+              duplicatesRemoved++;
+            } catch (deleteError) {
+              console.error('❌ Error deleting duplicate notification:', deleteError, { duplicateId: duplicate.id });
+            }
+          }
+          
+          // Mark the kept notification as processed
+          try {
+            const notificationKey = `${toKeep.type}-${toKeep.relatedId}-${toKeep.message}`;
+            await this.markNotificationAsProcessed(userId, notificationKey);
+          } catch (markError) {
+            console.error('❌ Error marking notification as processed during cleanup:', markError);
+          }
+        }
+      }
+      
+      if (duplicatesRemoved > 0) {
+        console.log(`🧹 Cleaned up ${duplicatesRemoved} duplicate notifications for user: ${userId}`);
+      } else {
+        console.log(`🧹 No duplicate notifications found for user: ${userId}`);
+      }
+    } catch (error) {
+      console.error('❌ Error cleaning up duplicate notifications:', error, { userId });
     }
   },
 };  

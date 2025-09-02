@@ -34,10 +34,11 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react-native';
-import { useFocusEffect } from '@react-navigation/native';
+
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
-import { useNotifications } from '../../../src/hooks/data/useNotifications';
+import { useNotificationContext } from '../../../src/contexts/NotificationContext';
+import { useSpecialistAppointments, useReferrals } from '../../../src/hooks/data';
 import { databaseService, Appointment, MedicalHistory } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 import LoadingState from '../../../src/components/ui/LoadingState';
@@ -51,21 +52,80 @@ export default function SpecialistAppointmentsScreen() {
   const { filter, search } = useLocalSearchParams();
   const { user } = useAuth();
   const { 
-    notifications, 
-    loading: notificationsLoading, 
-    error: notificationsError,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    refresh: refreshNotifications
-  } = useNotifications();
+    notifications: {
+      notifications, 
+      loading: notificationsLoading, 
+      error: notificationsError,
+      markAsRead,
+      markAllAsRead,
+      deleteNotification,
+      refresh: refreshNotifications
+    }
+  } = useNotificationContext();
+  const { 
+    appointments: hookAppointments, 
+    loading: hookLoading, 
+    error: hookError, 
+    refresh: hookRefresh 
+  } = useSpecialistAppointments();
+  const { 
+    referrals: hookReferrals, 
+    loading: referralsLoading, 
+    error: referralsError, 
+    refresh: referralsRefresh 
+  } = useReferrals();
   const filters = ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
 
-  // ---- DATA STATE ----
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use hook data instead of manual state
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Convert referrals to appointments format for display
+  const referralAppointments = useDeepMemo(() => {
+    return hookReferrals.map(referral => ({
+      id: referral.id,
+      appointmentDate: referral.appointmentDate,
+      appointmentTime: referral.appointmentTime,
+      bookedByUserFirstName: referral.referringGeneralistFirstName,
+      bookedByUserId: referral.referringGeneralistId,
+      bookedByUserLastName: referral.referringGeneralistLastName,
+      clinicId: referral.practiceLocation.clinicId,
+      clinicName: referral.referringClinicName,
+      createdAt: referral.referralTimestamp,
+      doctorFirstName: referral.assignedSpecialistFirstName,
+      doctorId: referral.assignedSpecialistId,
+      doctorLastName: referral.assignedSpecialistLastName,
+      lastUpdated: referral.lastUpdated,
+      notes: referral.generalistNotes,
+      appointmentPurpose: referral.initialReasonForReferral,
+      patientFirstName: referral.patientFirstName,
+      patientId: referral.patientId,
+      patientLastName: referral.patientLastName,
+      relatedReferralId: referral.id,
+      sourceSystem: referral.sourceSystem,
+      specialty: 'Referral',
+      status: (() => {
+        const status = referral.status as string;
+        if (status === 'pending_acceptance' || status === 'pending') {
+          return 'pending';
+        } else if (status === 'confirmed') {
+          return 'confirmed';
+        } else if (status === 'completed') {
+          return 'completed';
+        } else if (status === 'cancelled') {
+          return 'cancelled';
+        } else {
+          console.log('Unknown referral status, defaulting to cancelled:', status);
+          return 'cancelled';
+        }
+      })(),
+      type: 'Referral'
+    } as Appointment));
+  }, [hookReferrals]);
+  
+  // Combine appointments from hook with referral appointments
+  const appointments = [...hookAppointments, ...referralAppointments];
+  const loading = hookLoading || referralsLoading;
+  const error = hookError || referralsError;
   
   // Performance optimization: memoize filtered data
   const validAppointments = useDeepMemo(() => {
@@ -127,16 +187,9 @@ export default function SpecialistAppointmentsScreen() {
   const [loadingMedicalHistory, setLoadingMedicalHistory] = useState(false);
 
   const handleRetry = () => {
-    setError(null);
-    loadAppointments();
+    // The hook handles error state, just trigger a refresh
+    hookRefresh();
   };
-
-  // Load appointments and referrals from Firebase
-  useEffect(() => {
-    if (user && user.uid) {
-      loadAppointments();
-    }
-  }, [user]);
 
   // Handle search parameter from URL
   useEffect(() => {
@@ -145,14 +198,7 @@ export default function SpecialistAppointmentsScreen() {
     }
   }, [search]);
 
-  // Refresh data when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      if (user && user.uid) {
-        loadAppointments();
-      }
-    }, [user])
-  );
+  // Real-time updates are handled by both useSpecialistAppointments and useReferrals hooks
 
   // Load referrals for appointments that have relatedReferralId
   useEffect(() => {
@@ -165,79 +211,13 @@ export default function SpecialistAppointmentsScreen() {
     });
   }, [appointments]);
 
-  const loadAppointments = async () => {
-    if (!user) return;
-    
-    try {
-      setLoading(true);
-      
-      // Load both appointments and referrals
-      const [specialistAppointments, specialistReferrals] = await Promise.all([
-        databaseService.getAppointmentsBySpecialist(user.uid),
-        databaseService.getReferralsBySpecialist(user.uid)
-      ]);
-      
-      console.log('Loaded appointments:', specialistAppointments.length);
-      console.log('Loaded referrals:', specialistReferrals.length);
-      console.log('Total items:', specialistAppointments.length + specialistReferrals.length);
-      
-      setAppointments(specialistAppointments);
-      
-      // Convert referrals to appointments format for display
-      const referralAppointments = specialistReferrals.map(referral => ({
-        id: referral.id, // Use the Firebase push key directly instead of custom format
-        appointmentDate: referral.appointmentDate,
-        appointmentTime: referral.appointmentTime,
-        bookedByUserFirstName: referral.referringGeneralistFirstName,
-        bookedByUserId: referral.referringGeneralistId,
-        bookedByUserLastName: referral.referringGeneralistLastName,
-        clinicId: referral.practiceLocation.clinicId,
-        clinicName: referral.referringClinicName,
-        createdAt: referral.referralTimestamp,
-        doctorFirstName: referral.assignedSpecialistFirstName,
-        doctorId: referral.assignedSpecialistId,
-        doctorLastName: referral.assignedSpecialistLastName,
-        lastUpdated: referral.lastUpdated,
-        notes: referral.generalistNotes,
-        appointmentPurpose: referral.initialReasonForReferral,
-        patientFirstName: referral.patientFirstName,
-        patientId: referral.patientId,
-        patientLastName: referral.patientLastName,
-        relatedReferralId: referral.id,
-        sourceSystem: referral.sourceSystem,
-        specialty: 'Referral',
-        status: (() => {
-          const status = referral.status as string;
-          if (status === 'pending_acceptance' || status === 'pending') {
-            return 'pending';
-          } else if (status === 'confirmed') {
-            return 'confirmed';
-          } else if (status === 'completed') {
-            return 'completed';
-          } else if (status === 'cancelled') {
-            return 'cancelled';
-          } else {
-            console.log('Unknown referral status, defaulting to cancelled:', status);
-            return 'cancelled';
-          }
-        })(),
-        type: 'Referral'
-      } as Appointment));
-      
-      // Combine regular appointments with referral appointments
-      setAppointments([...specialistAppointments, ...referralAppointments]);
-      
-    } catch (error) {
-      console.error('Error loading appointments and referrals:', error);
-      setError('Failed to load appointments and referrals. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadAppointments();
+    // Refresh both appointments and referrals via their respective hooks
+    await Promise.all([
+      hookRefresh(),
+      referralsRefresh()
+    ]);
     setRefreshing(false);
   };
 
@@ -308,7 +288,7 @@ export default function SpecialistAppointmentsScreen() {
       Alert.alert('Success', 'Referral confirmed successfully!');
       setShowAcceptModal(false);
       setSelectedAppointment(null);
-      loadAppointments(); // Refresh the list
+      // Real-time updates will handle the refresh automatically
     } catch (error) {
       console.error('Error accepting referral:', error);
       Alert.alert('Error', 'Failed to accept referral. Please try again.');
@@ -343,7 +323,7 @@ export default function SpecialistAppointmentsScreen() {
       setSelectedAppointment(null);
       setDeclineReason('');
       setCustomReason('');
-      loadAppointments(); // Refresh the list
+      // Real-time updates will handle the refresh automatically
     } catch (error) {
       console.error('Error declining referral:', error);
       Alert.alert('Error', 'Failed to decline referral. Please try again.');
@@ -842,7 +822,7 @@ export default function SpecialistAppointmentsScreen() {
       Alert.alert('Success', 'Appointment confirmed successfully!');
       setShowAcceptModal(false);
       setSelectedAppointment(null);
-      loadAppointments(); // Refresh the list
+      // Real-time updates will handle the refresh automatically
     } catch (error) {
       console.error('Error accepting appointment:', error);
       Alert.alert('Error', 'Failed to accept appointment. Please try again.');
@@ -870,7 +850,7 @@ export default function SpecialistAppointmentsScreen() {
       setSelectedAppointment(null);
       setDeclineReason('');
       setCustomReason('');
-      loadAppointments(); // Refresh the list
+      // Real-time updates will handle the refresh automatically
     } catch (error) {
       console.error('Error declining appointment:', error);
       Alert.alert('Error', 'Failed to decline appointment. Please try again.');
@@ -1202,7 +1182,11 @@ export default function SpecialistAppointmentsScreen() {
                   showsVerticalScrollIndicator
                 >
                   {notifications.map((notification) => (
-                    <View key={notification.id} style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}>
+                    <TouchableOpacity 
+                      key={notification.id} 
+                      style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}
+                      activeOpacity={0.7}
+                    >
                       <View style={notificationModalStyles.notificationContent}>
                         <Text style={[notificationModalStyles.notificationText, !notification.read && notificationModalStyles.unreadText]}>
                           {notification.message}
@@ -1215,19 +1199,25 @@ export default function SpecialistAppointmentsScreen() {
                         {!notification.read && (
                           <TouchableOpacity
                             style={notificationModalStyles.notificationActionButton}
-                            onPress={() => handleMarkAsRead(notification.id)}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsRead(notification.id);
+                            }}
                           >
                             <Check size={16} color="#1E40AF" />
                           </TouchableOpacity>
                         )}
                         <TouchableOpacity
                           style={notificationModalStyles.notificationActionButton}
-                          onPress={() => handleDeleteNotification(notification.id)}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteNotification(notification.id);
+                          }}
                         >
                           <Trash2 size={16} color="#DC2626" />
                         </TouchableOpacity>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </ScrollView>
               )}

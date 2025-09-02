@@ -51,53 +51,6 @@ export const usePrescriptions = (): UsePrescriptionsReturn => {
     let medicalHistoryPrescriptions: Prescription[] = [];
     let currentMedicalHistory: any[] = [];
     
-    // Subscribe to real-time updates from dedicated prescriptions node
-    const unsubscribePrescriptions = databaseService.onPrescriptionsChange(
-      user.uid,
-      (prescriptions) => {
-        dedicatedPrescriptions = prescriptions;
-        combineAndUpdatePrescriptions();
-      }
-    );
-    
-    // Subscribe to real-time updates from medical history
-    const unsubscribeMedicalHistory = databaseService.onMedicalHistoryChange(
-      user.uid,
-      (medicalHistory) => {
-        currentMedicalHistory = medicalHistory;
-        // Extract prescriptions from medical history entries
-        const prescriptionsFromEntries: Prescription[] = [];
-        medicalHistory.forEach((entry) => {
-          if (entry.prescriptions) {
-            entry.prescriptions.forEach((prescription: any, index: number) => {
-              // Check if there's a corresponding prescription in the dedicated node
-              const dedicatedPrescription = dedicatedPrescriptions.find(
-                dp => dp.appointmentId === entry.relatedAppointment?.id
-              );
-              
-              prescriptionsFromEntries.push({
-                id: `${entry.id}_prescription_${index}`,
-                patientId: user.uid,
-                specialistId: entry.provider?.id || 'Unknown',
-                medication: prescription.medication,
-                dosage: prescription.dosage,
-                frequency: prescription.frequency || 'As needed',
-                duration: prescription.duration || 'Ongoing',
-                instructions: prescription.instructions || 'As prescribed',
-                // Use dedicated prescription date if available, otherwise fall back to consultation date
-                prescribedDate: dedicatedPrescription?.prescribedDate || entry.consultationDate,
-                status: 'active',
-                route: prescription.route,
-              });
-            });
-          }
-        });
-        
-        medicalHistoryPrescriptions = prescriptionsFromEntries;
-        combineAndUpdatePrescriptions();
-      }
-    );
-    
     // Function to combine both sources and update state
     const combineAndUpdatePrescriptions = () => {
       try {
@@ -151,6 +104,53 @@ export const usePrescriptions = (): UsePrescriptionsReturn => {
         setLoading(false);
       }
     };
+    
+    // Subscribe to real-time updates from dedicated prescriptions node
+    const unsubscribePrescriptions = databaseService.onPrescriptionsChange(
+      user.uid,
+      (prescriptions) => {
+        dedicatedPrescriptions = prescriptions;
+        combineAndUpdatePrescriptions();
+      }
+    );
+    
+    // Subscribe to real-time updates from medical history
+    const unsubscribeMedicalHistory = databaseService.onMedicalHistoryChange(
+      user.uid,
+      (medicalHistory) => {
+        currentMedicalHistory = medicalHistory;
+        // Extract prescriptions from medical history entries
+        const prescriptionsFromEntries: Prescription[] = [];
+        medicalHistory.forEach((entry) => {
+          if (entry.prescriptions) {
+            entry.prescriptions.forEach((prescription: any, index: number) => {
+              // Check if there's a corresponding prescription in the dedicated node
+              const dedicatedPrescription = dedicatedPrescriptions.find(
+                dp => dp.appointmentId === entry.relatedAppointment?.id
+              );
+              
+              prescriptionsFromEntries.push({
+                id: `${entry.id}_prescription_${index}`,
+                patientId: user.uid,
+                specialistId: entry.provider?.id || 'Unknown',
+                medication: prescription.medication,
+                dosage: prescription.dosage,
+                frequency: prescription.frequency || 'As needed',
+                duration: prescription.duration || 'Ongoing',
+                instructions: prescription.instructions || 'As prescribed',
+                // Use dedicated prescription date if available, otherwise fall back to consultation date
+                prescribedDate: dedicatedPrescription?.prescribedDate || entry.consultationDate,
+                status: 'active',
+                route: prescription.route,
+              });
+            });
+          }
+        });
+        
+        medicalHistoryPrescriptions = prescriptionsFromEntries;
+        combineAndUpdatePrescriptions();
+      }
+    );
 
     // Cleanup subscription on unmount or user change
     return () => {

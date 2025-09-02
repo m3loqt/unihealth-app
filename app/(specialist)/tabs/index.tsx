@@ -50,7 +50,7 @@ import { router } from 'expo-router';
 import { getGreeting } from '../../../src/utils/greeting';
 import { getFirstName } from '../../../src/utils/string';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
-import { useNotifications } from '../../../src/hooks/data/useNotifications';
+import { useNotificationContext } from '../../../src/contexts/NotificationContext';
 import { useReferrals } from '../../../src/hooks/data/useReferrals';
 import { databaseService } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
@@ -66,14 +66,17 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 export default function SpecialistHomeScreen() {
   const { user } = useAuth();
   const { 
-    notifications, 
-    loading: notificationsLoading, 
-    error: notificationsError,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    refresh: refreshNotifications
-  } = useNotifications();
+    notifications: {
+      notifications, 
+      loading: notificationsLoading, 
+      error: notificationsError,
+      markAsRead,
+      markAllAsRead,
+      deleteNotification,
+      refresh: refreshNotifications,
+      handleNotificationPress
+    }
+  } = useNotificationContext();
   
   const { 
     referrals, 
@@ -1628,7 +1631,12 @@ export default function SpecialistHomeScreen() {
                   showsVerticalScrollIndicator
                 >
                   {notifications.map((notification) => (
-                    <View key={notification.id} style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}>
+                    <TouchableOpacity 
+                      key={notification.id} 
+                      style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}
+                      onPress={() => handleNotificationPress(notification)}
+                      activeOpacity={0.7}
+                    >
                       <View style={notificationModalStyles.notificationContent}>
                         <Text style={[notificationModalStyles.notificationText, !notification.read && notificationModalStyles.unreadText]}>
                           {notification.message}
@@ -1641,19 +1649,25 @@ export default function SpecialistHomeScreen() {
                         {!notification.read && (
                           <TouchableOpacity
                             style={notificationModalStyles.notificationActionButton}
-                            onPress={() => handleMarkAsRead(notification.id)}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsRead(notification.id);
+                            }}
                           >
                             <Check size={16} color="#1E40AF" />
                           </TouchableOpacity>
                         )}
                         <TouchableOpacity
                           style={notificationModalStyles.notificationActionButton}
-                          onPress={() => handleDeleteNotification(notification.id)}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteNotification(notification.id);
+                          }}
                         >
                           <Trash2 size={16} color="#DC2626" />
                         </TouchableOpacity>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </ScrollView>
               )}

@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
   },
   scheduleIndicator: {
     position: 'absolute',
-    bottom: 6,
+    bottom: 2,
     width: 6,
     height: 6,
     borderRadius: 3,
