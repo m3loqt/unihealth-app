@@ -26,6 +26,41 @@ export const ErrorModal: React.FC<ErrorModalProps> = ({
   showRetry = false,
   onRetry,
 }) => {
+  // Check if this is an email error for a cleaner display
+  const isEmailError = fieldName === 'Email' && message.includes('already registered');
+  
+  if (isEmailError) {
+    return (
+      <Modal
+        visible={visible}
+        onClose={onClose}
+        animationType="fade"
+        style={styles.modalContainer}
+      >
+        <View style={styles.header}>
+          <View style={styles.iconContainer}>
+            <AlertTriangle size={24} color={COLORS.error} />
+          </View>
+          <Text style={styles.title}>Email Already Exists</Text>
+        </View>
+
+        <View style={styles.content}>
+          <Text style={styles.emailSuggestionText}>Please use a different email address or try logging in to your existing account.</Text>
+        </View>
+
+        <View style={styles.actions}>
+          <Button
+            title="Got it"
+            onPress={onClose}
+            variant="primary"
+            style={styles.closeButton}
+            fullWidth={true}
+          />
+        </View>
+      </Modal>
+    );
+  }
+
   return (
     <Modal
       visible={visible}
@@ -141,6 +176,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: COLORS.infoDark,
     lineHeight: 20,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  emailSuggestionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: COLORS.textSecondary,
+    lineHeight: 24,
+    textAlign: 'center',
   },
   actions: {
     flexDirection: 'row',
