@@ -55,24 +55,45 @@ export const validateEmail = (email: string): ValidationError | null => {
 };
 
 /**
- * Check if email is already in use (Firebase validation)
+ * Check if email is already in use (comprehensive validation)
+ * Checks both Firebase Auth and Realtime Database users node
  * This should be called after basic email validation passes
  */
 export const checkEmailAvailability = async (email: string): Promise<ValidationError | null> => {
   try {
-    // Import Firebase auth dynamically to avoid circular dependencies
-    const { getAuth, fetchSignInMethodsForEmail } = await import('firebase/auth');
-    const { auth } = await import('../config/firebase');
+    // Import Firebase modules dynamically to avoid circular dependencies
+    const { fetchSignInMethodsForEmail } = await import('firebase/auth');
+    const { ref, get, query, orderByChild, equalTo } = await import('firebase/database');
+    const { auth, database } = await import('../config/firebase');
     
-    // Check if email is already registered
-    const methods = await fetchSignInMethodsForEmail(auth, email);
+    // Check Firebase Auth first
+    const authMethods = await fetchSignInMethodsForEmail(auth, email);
     
-    if (methods.length > 0) {
+    if (authMethods.length > 0) {
       return {
         field: 'Email',
         message: 'This email is already registered',
         suggestion: 'Please use a different email address or sign in to your existing account'
       };
+    }
+    
+    // Check Realtime Database users node for existing email
+    // Safe approach: iterate through users and check each email field
+    const usersRef = ref(database, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (snapshot.exists()) {
+      const users = snapshot.val();
+      // Check if any user has the same email
+      for (const uid in users) {
+        if (users[uid]?.email === email) {
+          return {
+            field: 'Email',
+            message: 'This email is already registered',
+            suggestion: 'Please use a different email address or sign in to your existing account'
+          };
+        }
+      }
     }
     
     return null;
