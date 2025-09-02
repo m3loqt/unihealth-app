@@ -17,7 +17,7 @@ import {
 import { Pill, CircleCheck as CheckCircle, Bell, RefreshCw, Trash2, Check, Search } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
-import { useNotifications } from '../../../src/hooks/data/useNotifications';
+import { useNotificationContext } from '../../../src/contexts/NotificationContext';
 import { databaseService, Prescription } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 import { formatFrequency, formatRoute, formatPrescriptionDuration, formatFormula } from '../../../src/utils/formatting';
@@ -157,14 +157,16 @@ export default function SpecialistPrescriptionsScreen() {
   const { search } = useLocalSearchParams();
   const { user } = useAuth();
   const { 
-    notifications, 
-    loading: notificationsLoading, 
-    error: notificationsError,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    refresh: refreshNotifications
-  } = useNotifications();
+    notifications: {
+      notifications, 
+      loading: notificationsLoading, 
+      error: notificationsError,
+      markAsRead,
+      markAllAsRead,
+      deleteNotification,
+      refresh: refreshNotifications
+    }
+  } = useNotificationContext();
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -602,7 +604,11 @@ export default function SpecialistPrescriptionsScreen() {
                   showsVerticalScrollIndicator
                 >
                   {notifications.map((notification) => (
-                    <View key={notification.id} style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}>
+                    <TouchableOpacity 
+                      key={notification.id} 
+                      style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}
+                      activeOpacity={0.7}
+                    >
                       <View style={notificationModalStyles.notificationContent}>
                         <Text style={[notificationModalStyles.notificationText, !notification.read && notificationModalStyles.unreadText]}>
                           {notification.message}
@@ -615,19 +621,25 @@ export default function SpecialistPrescriptionsScreen() {
                         {!notification.read && (
                           <TouchableOpacity
                             style={notificationModalStyles.notificationActionButton}
-                            onPress={() => handleMarkAsRead(notification.id)}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsRead(notification.id);
+                            }}
                           >
                             <Check size={16} color="#1E40AF" />
                           </TouchableOpacity>
                         )}
                         <TouchableOpacity
                           style={notificationModalStyles.notificationActionButton}
-                          onPress={() => handleDeleteNotification(notification.id)}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteNotification(notification.id);
+                          }}
                         >
                           <Trash2 size={16} color="#DC2626" />
                         </TouchableOpacity>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </ScrollView>
               )}
