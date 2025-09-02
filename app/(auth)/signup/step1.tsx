@@ -21,7 +21,7 @@ import {
   Mail,
 } from 'lucide-react-native';
 import { ErrorModal } from '../../../src/components/shared';
-import { KeyboardAvoidingScrollView } from '../../../src/components/ui';
+import { KeyboardAvoidingScrollView, HintButton } from '../../../src/components/ui';
 import { 
   validateSignupForm, 
   getFieldError, 
@@ -108,17 +108,34 @@ export default function SignUpStep1Screen() {
         if (formData.email === value) { // Only check if email hasn't changed
           try {
             const emailError = await checkEmailAvailability(value);
-            if (emailError) {
-              setFieldErrors(prev => ({
-                ...prev,
-                email: emailError
-              }));
-            }
+            setFieldErrors(prev => {
+              const newErrors = { ...prev };
+              if (emailError) {
+                newErrors.email = emailError;
+              } else {
+                // Clear email error if availability check passes
+                delete newErrors.email;
+              }
+              return newErrors;
+            });
           } catch (error) {
             console.warn('Email availability check failed:', error);
+            // Clear email error on failure to avoid blocking the form
+            setFieldErrors(prev => {
+              const newErrors = { ...prev };
+              delete newErrors.email;
+              return newErrors;
+            });
           }
         }
-      }, 1000); // 1 second delay
+      }, 500); // Reduced delay for faster feedback
+    } else if (field === 'email' && !value.trim()) {
+      // Clear email error when field is empty
+      setFieldErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.email;
+        return newErrors;
+      });
     }
   };
 
@@ -131,10 +148,35 @@ export default function SignUpStep1Screen() {
     return errors.length === 0;
   };
   
-  const allFieldsFilled = isFormValid();
+  // Check if there are any field errors (including async email availability errors)
+  const hasFieldErrors = () => {
+    return Object.keys(fieldErrors).length > 0;
+  };
+  
+  const allFieldsFilled = isFormValid() && !hasFieldErrors();
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setIsValidating(true);
+    
+    // First, do comprehensive email validation if email is provided
+    if (formData.email.trim()) {
+      try {
+        const emailError = await checkEmailAvailability(formData.email);
+        if (emailError) {
+          setFieldErrors(prev => ({
+            ...prev,
+            email: emailError
+          }));
+          setCurrentError(emailError);
+          setShowErrorModal(true);
+          setIsValidating(false);
+          return;
+        }
+      } catch (error) {
+        console.warn('Email availability check failed:', error);
+        // Continue with basic validation if Firebase check fails
+      }
+    }
     
     // Validate the form
     const errors = validateSignupForm(formData);
@@ -253,12 +295,18 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>First Name</Text>
               <Text style={styles.asterisk}>*</Text>
+              <HintButton
+                fieldName="firstName"
+                hasError={!!fieldErrors['firstName']}
+                value={formData.firstName}
+                minLength={2}
+              />
             </View>
             <View style={[
               styles.inputContainer,
-              fieldErrors['firstname'] && styles.inputError
+              fieldErrors['firstName'] && styles.inputError
             ]}>
-              <User size={20} color={fieldErrors['firstname'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <User size={20} color={fieldErrors['firstName'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Enter your first name"
@@ -268,8 +316,8 @@ export default function SignUpStep1Screen() {
                 autoCapitalize="words"
               />
             </View>
-            {fieldErrors['firstname'] && (
-              <Text style={styles.errorText}>{fieldErrors['firstname'].message}</Text>
+            {fieldErrors['firstName'] && (
+              <Text style={styles.errorText}>{fieldErrors['firstName'].message}</Text>
             )}
           </View>
 
@@ -296,12 +344,18 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Last Name</Text>
               <Text style={styles.asterisk}>*</Text>
+              <HintButton
+                fieldName="lastName"
+                hasError={!!fieldErrors['lastName']}
+                value={formData.lastName}
+                minLength={2}
+              />
             </View>
             <View style={[
               styles.inputContainer,
-              fieldErrors['lastname'] && styles.inputError
+              fieldErrors['lastName'] && styles.inputError
             ]}>
-              <User size={20} color={fieldErrors['lastname'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <User size={20} color={fieldErrors['lastName'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Enter your last name"
@@ -311,8 +365,8 @@ export default function SignUpStep1Screen() {
                 autoCapitalize="words"
               />
             </View>
-            {fieldErrors['lastname'] && (
-              <Text style={styles.errorText}>{fieldErrors['lastname'].message}</Text>
+            {fieldErrors['lastName'] && (
+              <Text style={styles.errorText}>{fieldErrors['lastName'].message}</Text>
             )}
           </View>
 
@@ -321,12 +375,18 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Date of Birth</Text>
               <Text style={styles.asterisk}>*</Text>
+              <HintButton
+                fieldName="dateOfBirth"
+                hasError={!!fieldErrors['dateOfBirth']}
+                value={formData.dateOfBirth}
+                minLength={10}
+              />
             </View>
             <View style={[
               styles.inputContainer,
-              fieldErrors['dateofbirth'] && styles.inputError
+              fieldErrors['dateOfBirth'] && styles.inputError
             ]}>
-              <Calendar size={20} color={fieldErrors['dateofbirth'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <Calendar size={20} color={fieldErrors['dateOfBirth'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="MM/DD/YYYY"
@@ -339,8 +399,8 @@ export default function SignUpStep1Screen() {
                 maxLength={10}
               />
             </View>
-            {fieldErrors['dateofbirth'] && (
-              <Text style={styles.errorText}>{fieldErrors['dateofbirth'].message}</Text>
+            {fieldErrors['dateOfBirth'] && (
+              <Text style={styles.errorText}>{fieldErrors['dateOfBirth'].message}</Text>
             )}
           </View>
 
@@ -349,6 +409,12 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Gender</Text>
               <Text style={styles.asterisk}>*</Text>
+              <HintButton
+                fieldName="gender"
+                hasError={!!fieldErrors['gender']}
+                value={formData.gender}
+                minLength={1}
+              />
             </View>
             <TouchableOpacity
               style={[
@@ -374,6 +440,12 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Address</Text>
               <Text style={styles.asterisk}>*</Text>
+              <HintButton
+                fieldName="address"
+                hasError={!!fieldErrors['address']}
+                value={formData.address}
+                minLength={10}
+              />
             </View>
             <View style={[
               styles.inputContainer, 
@@ -404,12 +476,18 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Contact Number</Text>
               <Text style={styles.asterisk}>*</Text>
+              <HintButton
+                fieldName="contactNumber"
+                hasError={!!fieldErrors['contactNumber']}
+                value={formData.contactNumber}
+                minLength={10}
+              />
             </View>
             <View style={[
               styles.inputContainer,
-              fieldErrors['contactnumber'] && styles.inputError
+              fieldErrors['contactNumber'] && styles.inputError
             ]}>
-              <Phone size={20} color={fieldErrors['contactnumber'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <Phone size={20} color={fieldErrors['contactNumber'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Enter your contact number"
@@ -419,8 +497,8 @@ export default function SignUpStep1Screen() {
                 keyboardType="phone-pad"
               />
             </View>
-            {fieldErrors['contactnumber'] && (
-              <Text style={styles.errorText}>{fieldErrors['contactnumber'].message}</Text>
+            {fieldErrors['contactNumber'] && (
+              <Text style={styles.errorText}>{fieldErrors['contactNumber'].message}</Text>
             )}
           </View>
 
@@ -429,23 +507,30 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Highest Educational Attainment</Text>
               <Text style={styles.asterisk}>*</Text>
+              <HintButton
+                fieldName="highestEducationalAttainment"
+                hasError={!!fieldErrors['highestEducationalAttainment']}
+                value={formData.highestEducationalAttainment}
+                minLength={1}
+                position="left"
+              />
             </View>
             <TouchableOpacity
               style={[
                 styles.inputContainer,
-                fieldErrors['highesteducationalattainment'] && styles.inputError
+                fieldErrors['highestEducationalAttainment'] && styles.inputError
               ]}
               onPress={() => setShowEducationalAttainmentModal(true)}
               activeOpacity={0.7}
             >
-              <User size={20} color={fieldErrors['highesteducationalattainment'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <User size={20} color={fieldErrors['highestEducationalAttainment'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
               <Text style={[styles.input, !formData.highestEducationalAttainment && styles.placeholder]}>
                 {formData.highestEducationalAttainment || 'Select your highest educational attainment'}
               </Text>
-              <ChevronDown size={20} color={fieldErrors['highesteducationalattainment'] ? "#EF4444" : "#9CA3AF"} />
+              <ChevronDown size={20} color={fieldErrors['highestEducationalAttainment'] ? "#EF4444" : "#9CA3AF"} />
             </TouchableOpacity>
-            {fieldErrors['highesteducationalattainment'] && (
-              <Text style={styles.errorText}>{fieldErrors['highesteducationalattainment'].message}</Text>
+            {fieldErrors['highestEducationalAttainment'] && (
+              <Text style={styles.errorText}>{fieldErrors['highestEducationalAttainment'].message}</Text>
             )}
           </View>
 
@@ -454,23 +539,29 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Blood Type</Text>
               <Text style={styles.asterisk}>*</Text>
+              <HintButton
+                fieldName="bloodType"
+                hasError={!!fieldErrors['bloodType']}
+                value={formData.bloodType}
+                minLength={1}
+              />
             </View>
             <TouchableOpacity
               style={[
                 styles.inputContainer,
-                fieldErrors['bloodtype'] && styles.inputError
+                fieldErrors['bloodType'] && styles.inputError
               ]}
               onPress={() => setShowBloodTypeModal(true)}
               activeOpacity={0.7}
             >
-              <User size={20} color={fieldErrors['bloodtype'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
+              <User size={20} color={fieldErrors['bloodType'] ? "#EF4444" : "#9CA3AF"} style={styles.inputIcon} />
               <Text style={[styles.input, !formData.bloodType && styles.placeholder]}>
                 {formData.bloodType || 'Select your blood type'}
               </Text>
-              <ChevronDown size={20} color={fieldErrors['bloodtype'] ? "#EF4444" : "#9CA3AF"} />
+              <ChevronDown size={20} color={fieldErrors['bloodType'] ? "#EF4444" : "#9CA3AF"} />
             </TouchableOpacity>
-            {fieldErrors['bloodtype'] && (
-              <Text style={styles.errorText}>{fieldErrors['bloodtype'].message}</Text>
+            {fieldErrors['bloodType'] && (
+              <Text style={styles.errorText}>{fieldErrors['bloodType'].message}</Text>
             )}
           </View>
 
@@ -478,6 +569,12 @@ export default function SignUpStep1Screen() {
           <View style={styles.inputGroup}>
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Allergies</Text>
+              <HintButton
+                fieldName="allergies"
+                hasError={false}
+                value={formData.allergies}
+                minLength={0}
+              />
             </View>
             <View style={styles.inputContainer}>
               <User size={20} color="#9CA3AF" style={styles.inputIcon} />
@@ -496,6 +593,12 @@ export default function SignUpStep1Screen() {
             <View style={styles.labelRow}>
               <Text style={styles.inputLabel}>Email</Text>
               <Text style={styles.asterisk}>*</Text>
+              <HintButton
+                fieldName="email"
+                hasError={!!fieldErrors['email']}
+                value={formData.email}
+                minLength={5}
+              />
             </View>
             <View style={[
               styles.inputContainer,

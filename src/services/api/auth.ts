@@ -8,7 +8,7 @@ import {
   User,
   updatePassword
 } from 'firebase/auth';
-import { ref, set, get, child, remove } from 'firebase/database';
+import { ref, set, get, child, remove, query, orderByChild, equalTo } from 'firebase/database';
 import { auth, database } from '../../config/firebase';
 import { emailService } from '../email/emailService';
 import { passwordResetService } from '../database/passwordResetService';
@@ -401,6 +401,21 @@ export const authService = {
   // Comprehensive signup that stores data in both users and patients nodes
   async signUp(signUpData: SignUpData): Promise<{ user: User; userProfile: UserProfile }> {
     try {
+      // Pre-validate email uniqueness in Realtime Database before creating Firebase Auth user
+      // Safe approach: iterate through users and check each email field
+      const usersRef = ref(database, 'users');
+      const snapshot = await get(usersRef);
+      
+      if (snapshot.exists()) {
+        const users = snapshot.val();
+        // Check if any user has the same email
+        for (const uid in users) {
+          if (users[uid]?.email === signUpData.email) {
+            throw new Error('email-already-in-use');
+          }
+        }
+      }
+      
       // Create Firebase Auth user
       const userCredential = await createUserWithEmailAndPassword(
         auth, 

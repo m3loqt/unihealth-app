@@ -9,4 +9,6 @@ export { default as TimePicker } from './TimePicker';
 export { default as DatePicker } from './DatePicker';
 export { default as GlobalLoader } from './GlobalLoader';
 export { default as KeyboardAvoidingScrollView } from './KeyboardAvoidingScrollView';
-export { default as KeyboardAwareInput } from './KeyboardAwareInput'; 
+export { default as KeyboardAwareInput } from './KeyboardAwareInput';
+export { HintBubble } from './HintBubble';
+export { HintButton } from './HintButton'; 
