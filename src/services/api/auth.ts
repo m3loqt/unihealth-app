@@ -188,15 +188,45 @@ export const authService = {
     return null;
   },
 
+  // Check if specialist status allows login
+  async checkSpecialistStatus(userId: string): Promise<boolean> {
+    try {
+      const doctorRef = ref(database, `doctors/${userId}`);
+      const doctorSnapshot = await get(doctorRef);
+      
+      if (doctorSnapshot.exists()) {
+        const doctorData = doctorSnapshot.val();
+        const status = doctorData.status;
+        
+        // If status is 'pending', deny login
+        if (status === 'pending') {
+          console.log('Specialist login denied: status is pending');
+          return false;
+        }
+        
+        console.log('Specialist status check passed:', status);
+        return true;
+      }
+      
+      // If no doctor data found, allow login (might be a patient or new specialist)
+      console.log('No doctor data found, allowing login');
+      return true;
+    } catch (error) {
+      console.error('Error checking specialist status:', error);
+      // On error, allow login to avoid blocking legitimate users
+      return true;
+    }
+  },
+
   // Hybrid sign in - checks both static and database users
-  async signIn(email: string, password: string): Promise<UserProfile | null> {
+  async signIn(email: string, password: string): Promise<{ success: boolean; userProfile?: UserProfile; error?: { type: string; message: string; suggestion?: string } }> {
     console.log('SignIn attempt for email:', email);
     
     // First check static users
     const staticUser = this.isStaticUser(email, password);
     if (staticUser) {
       console.log('Static user found:', staticUser.name);
-      return staticUser;
+      return { success: true, userProfile: staticUser };
     }
 
     // Check for pending password reset
@@ -280,7 +310,7 @@ export const authService = {
                    // Will be populated if needed when accessing patient data
                  };
                 
-                return userProfile;
+                return { success: true, userProfile };
                 
               } catch (createUserError: any) {
                 console.log('Could not create new Firebase Auth user:', createUserError.message);
@@ -304,10 +334,24 @@ export const authService = {
                     lastPasswordUpdate: new Date().toISOString()
                   });
                   
-                  throw new Error('Password reset requires manual intervention. Your email already exists in our authentication system. Please contact support to complete your password reset.');
+                  return {
+                    success: false,
+                    error: {
+                      type: 'password_reset_error',
+                      message: 'Password reset requires manual intervention.',
+                      suggestion: 'Your email already exists in our authentication system. Please contact support to complete your password reset.'
+                    }
+                  };
                 } else {
                   // Some other error occurred
-                  throw new Error(`Failed to create new user account: ${createUserError.message}`);
+                  return {
+                    success: false,
+                    error: {
+                      type: 'account_creation_error',
+                      message: 'Failed to create new user account.',
+                      suggestion: 'Please try again or contact support if the problem persists.'
+                    }
+                  };
                 }
               }
             }
@@ -326,14 +370,28 @@ export const authService = {
               lastPasswordUpdate: new Date().toISOString()
             });
             
-            throw new Error(`Password reset failed: ${firebaseAuthError.message}. Please try the reset process again or contact support.`);
+            return {
+              success: false,
+              error: {
+                type: 'password_reset_failed',
+                message: 'Password reset failed.',
+                suggestion: 'Please try the reset process again or contact support.'
+              }
+            };
           }
           
         } catch (firebaseError) {
           console.error('Error updating Firebase Auth password:', firebaseError);
           // If we can't update Firebase Auth, we should still clear the pending reset
           // but inform the user that they need to contact support
-          throw new Error('Password reset completed but there was an issue updating authentication. Please contact support.');
+          return {
+            success: false,
+            error: {
+              type: 'authentication_update_error',
+              message: 'Password reset completed but there was an issue updating authentication.',
+              suggestion: 'Please contact support for assistance.'
+            }
+          };
         }
       }
     } catch (error) {
@@ -353,7 +411,23 @@ export const authService = {
       
       if (completeProfile) {
         console.log('Complete profile found:', completeProfile.name);
-        return completeProfile;
+        
+        // Check specialist status if this is a specialist
+        if (completeProfile.role === 'specialist') {
+          const statusAllowed = await this.checkSpecialistStatus(user.uid);
+          if (!statusAllowed) {
+            return {
+              success: false,
+              error: {
+                type: 'specialist_pending',
+                message: 'Your account is currently pending approval.',
+                suggestion: 'Please contact support for assistance or wait for your account to be approved.'
+              }
+            };
+          }
+        }
+        
+        return { success: true, userProfile: completeProfile };
       }
       
       // If UID-based lookup fails, try email-based lookup
@@ -371,6 +445,21 @@ export const authService = {
           console.log('Patient data:', patientData);
         }
         
+        // Check specialist status if this is a specialist
+        if (userData.role === 'specialist') {
+          const statusAllowed = await this.checkSpecialistStatus(databaseUid);
+          if (!statusAllowed) {
+            return {
+              success: false,
+              error: {
+                type: 'specialist_pending',
+                message: 'Your account is currently pending approval.',
+                suggestion: 'Please contact support for assistance or wait for your account to be approved.'
+              }
+            };
+          }
+        }
+        
                  const userProfile: UserProfile = {
            uid: user.uid, // Use Firebase Auth UID
            email: userData.email,
@@ -386,15 +475,29 @@ export const authService = {
          };
         
         console.log('Created user profile from email lookup:', `${userProfile.firstName} ${userProfile.lastName}`);
-        return userProfile;
+        return { success: true, userProfile };
       }
       
       console.log('No user data found in database for email:', user.email);
       console.log('User exists in Firebase Auth but not in database nodes');
-      return null;
+      return {
+        success: false,
+        error: {
+          type: 'user_not_found',
+          message: 'Invalid email or password.',
+          suggestion: 'Please check your credentials and try again.'
+        }
+      };
     } catch (error: any) {
       console.error('Sign in error:', error);
-      throw new Error(error.message);
+      return {
+        success: false,
+        error: {
+          type: 'authentication_error',
+          message: 'An error occurred during sign in. Please try again.',
+          suggestion: 'Please check your internet connection and try again.'
+        }
+      };
     }
   },
 
