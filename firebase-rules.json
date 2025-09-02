@@ -10,8 +10,8 @@
     },
     "appointments": {
       "$appointmentId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && (!root.child('doctors').child(auth.uid).exists() || root.child('doctors').child(auth.uid).child('status').val() != 'pending')",
+        ".write": "auth != null && (!root.child('doctors').child(auth.uid).exists() || root.child('doctors').child(auth.uid).child('status').val() != 'pending')"
       }
     },
     "notifications": {
@@ -27,30 +27,34 @@
     },
     "doctors": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      ".write": "auth != null",
+      "$doctorId": {
+        ".read": "auth != null && (!data.exists() || data.child('status').val() != 'pending' || auth.uid == $doctorId)",
+        ".write": "auth != null"
+      }
     },
     "prescriptions": {
       "$prescriptionId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && (!root.child('doctors').child(auth.uid).exists() || root.child('doctors').child(auth.uid).child('status').val() != 'pending')",
+        ".write": "auth != null && (!root.child('doctors').child(auth.uid).exists() || root.child('doctors').child(auth.uid).child('status').val() != 'pending')"
       }
     },
     "certificates": {
       "$certificateId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && (!root.child('doctors').child(auth.uid).exists() || root.child('doctors').child(auth.uid).child('status').val() != 'pending')",
+        ".write": "auth != null && (!root.child('doctors').child(auth.uid).exists() || root.child('doctors').child(auth.uid).child('status').val() != 'pending')"
       }
     },
     "referrals": {
       "$referralId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && (!root.child('doctors').child(auth.uid).exists() || root.child('doctors').child(auth.uid).child('status').val() != 'pending')",
+        ".write": "auth != null && (!root.child('doctors').child(auth.uid).exists() || root.child('doctors').child(auth.uid).child('status').val() != 'pending')"
       }
     },
     "medical_history": {
       "$recordId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && (!root.child('doctors').child(auth.uid).exists() || root.child('doctors').child(auth.uid).child('status').val() != 'pending')",
+        ".write": "auth != null && (!root.child('doctors').child(auth.uid).exists() || root.child('doctors').child(auth.uid).child('status').val() != 'pending')"
       }
     }
   }
