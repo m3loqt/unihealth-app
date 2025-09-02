@@ -55,7 +55,8 @@ export default function SpecialistCertificatesScreen() {
       markAsRead,
       markAllAsRead,
       deleteNotification,
-      refresh: refreshNotifications
+      refresh: refreshNotifications,
+      handleNotificationPress
     }
   } = useNotificationContext();
   const [searchQuery, setSearchQuery] = useState('');
@@ -535,6 +536,7 @@ export default function SpecialistCertificatesScreen() {
                     <TouchableOpacity 
                       key={notification.id} 
                       style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}
+                      onPress={() => handleNotificationPress(notification, handleCloseNotificationModal)}
                       activeOpacity={0.7}
                     >
                       <View style={notificationModalStyles.notificationContent}>
