@@ -971,45 +971,7 @@ export default function PatientOverviewScreen() {
               )}
             </View>
 
-            {/* Recent Appointments */}
-            {completedAppointments.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Recent Appointments</Text>
-                <View style={styles.appointmentsContainer}>
-                  {completedAppointments.slice(0, 3).map((appointment) => (
-                    <View key={appointment.id} style={styles.appointmentCard}>
-                      <View style={styles.appointmentHeader}>
-                        <View style={styles.appointmentIcon}>
-                          <Clock size={16} color="#6B7280" />
-                        </View>
-                        <View style={styles.appointmentInfo}>
-                          <Text style={styles.appointmentType}>{formatTypeLabel(appointment?.type) || 'Appointment'}</Text>
-                          <Text style={styles.appointmentDate}>
-                            {appointment?.appointmentDate || 'Date not specified'} at {(() => {
-                              const timeString = appointment?.appointmentTime;
-                              if (!timeString) return 'Time not specified';
-                              // Handle time strings that already have AM/PM
-                              if (timeString.includes('AM') || timeString.includes('PM')) {
-                                // Remove any duplicate AM/PM and return clean format
-                                const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
-                                return cleanTime.trim();
-                              }
-                              return timeString;
-                            })()}
-                          </Text>
-                          <Text style={styles.appointmentDoctor}>
-                            {safeDataAccess.getAppointmentDoctorName(appointment, 'Dr. Unknown Doctor')}
-                          </Text>
-                        </View>
-                        <View style={styles.appointmentStatus}>
-                          <CheckCircle size={16} color="#10B981" />
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
+        
           </> 
         )}
         </ScrollView>
