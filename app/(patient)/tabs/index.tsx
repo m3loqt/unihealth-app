@@ -858,7 +858,7 @@ export default function HomeScreen() {
           </SafeAreaView>
         </View>
       </Modal>
-
+                  
       {/* === NOTIFICATION MODAL === */}
       <Modal
         visible={showNotificationModal}
