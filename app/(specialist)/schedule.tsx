@@ -312,15 +312,11 @@ export default function SpecialistScheduleScreen() {
             day.isToday && styles.todayText,
             selectedDate && selectedDate.toDateString() === new Date(day.date).toDateString() && styles.selectedText,
             day.isPast && styles.pastDayText,
+            !day.isToday && day.hasSchedule && day.slots.some(slot => slot.isBooked) && styles.bookedDateText,
+            !day.isToday && day.hasSchedule && !day.slots.some(slot => slot.isBooked) && styles.availableDateText,
           ]}>
             {day.dayNumber}
           </Text>
-                     {day.hasSchedule && (
-             <View style={[
-               styles.scheduleIndicator,
-               day.slots.some(slot => slot.isBooked) && styles.bookedIndicator
-             ]} />
-           )}
         </TouchableOpacity>
       ))}
     </View>
@@ -421,9 +417,10 @@ export default function SpecialistScheduleScreen() {
 
   return (
     <ErrorBoundary>
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, Platform.OS === 'android' ? { paddingTop: StatusBar.currentHeight } : null]}>
         <ScrollView
           style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -444,11 +441,10 @@ export default function SpecialistScheduleScreen() {
             >
               <ChevronLeft size={24} color="#1E40AF" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>My Schedule</Text>
+            <View style={styles.headerContent}>
+              <Text style={styles.headerTitle}>My Schedule</Text>
+            </View>
             <View style={styles.headerActions}>
-              <TouchableOpacity onPress={goToToday} style={styles.todayButton}>
-                <Text style={styles.todayButtonText}>Today</Text>
-              </TouchableOpacity>
               <TouchableOpacity onPress={handleAddSchedule} style={styles.addButton}>
                 <Plus size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -499,48 +495,40 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollContent: { 
+    flexGrow: 1, 
+    paddingHorizontal: 24 
+  },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 16 : 16,
-    paddingBottom: 24,
+    justifyContent: 'space-between',
+    paddingTop: 16,
+    paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   backButton: {
-    padding: 12,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
+  headerContent: { flex: 1, alignItems: 'center' },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: 'Inter-Bold',
     color: '#1F2937',
+    marginBottom: 2,
   },
   todayButton: {
     backgroundColor: '#1E40AF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 12,
-    shadowColor: '#1E40AF',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   todayButtonText: {
     color: '#FFFFFF',
@@ -556,30 +544,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E40AF',
     padding: 12,
     borderRadius: 12,
-    shadowColor: '#1E40AF',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   calendarContainer: {
     backgroundColor: '#FFFFFF',
     marginTop: 16,
-    marginHorizontal: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 24,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -588,9 +561,14 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   navButton: {
-    padding: 12,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   monthYearText: {
     fontSize: 20,
@@ -615,11 +593,11 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: '14.28%',
-    aspectRatio: 1,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    margin: 1,
+    marginVertical: 4,
   },
   dayNumber: {
     fontSize: 16,
@@ -628,7 +606,7 @@ const styles = StyleSheet.create({
   },
   todayCell: {
     backgroundColor: '#1E40AF',
-    borderRadius: 12,
+    borderRadius: 16,
     shadowColor: '#1E40AF',
     shadowOffset: {
       width: 0,
@@ -644,7 +622,7 @@ const styles = StyleSheet.create({
   },
   selectedCell: {
     backgroundColor: '#DBEAFE',
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: '#1E40AF',
   },
@@ -658,41 +636,22 @@ const styles = StyleSheet.create({
   pastDayText: {
     color: '#9CA3AF',
   },
-  scheduleIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10B981',
-    shadowColor: '#10B981',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-    elevation: 1,
+  availableDateText: {
+    color: '#10B981',
+    fontFamily: 'Inter-SemiBold',
   },
-  bookedIndicator: {
-    backgroundColor: '#EF4444',
-    shadowColor: '#EF4444',
+  bookedDateText: {
+    color: '#EF4444',
+    fontFamily: 'Inter-SemiBold',
   },
   noScheduleContainer: {
     alignItems: 'center',
     paddingVertical: 48,
     backgroundColor: '#FFFFFF',
     marginTop: 16,
-    marginHorizontal: 16,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   noScheduleTitle: {
     fontSize: 20,
@@ -712,17 +671,10 @@ const styles = StyleSheet.create({
   scheduleDetails: {
     backgroundColor: '#FFFFFF',
     marginTop: 16,
-    marginHorizontal: 16,
     padding: 24,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   scheduleHeader: {
     marginBottom: 24,
@@ -813,17 +765,9 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     backgroundColor: '#1E40AF',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 12,
-    shadowColor: '#1E40AF',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   retryButtonText: {
     color: '#FFFFFF',
