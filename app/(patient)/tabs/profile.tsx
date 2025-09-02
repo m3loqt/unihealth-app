@@ -430,7 +430,7 @@ export default function ProfileScreen() {
                     <TouchableOpacity 
                       key={notification.id} 
                       style={[styles.notificationItem, !notification.read && styles.unreadNotification]}
-                      onPress={() => handleNotificationPress(notification)}
+                      onPress={() => handleNotificationPress(notification, () => setShowNotificationModal(false))}
                       activeOpacity={0.7}
                     >
                       <View style={styles.notificationContent}>

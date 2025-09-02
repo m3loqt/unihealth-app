@@ -1368,6 +1368,7 @@ export default function SpecialistProfileScreen() {
                     <TouchableOpacity 
                       key={notification.id} 
                       style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}
+                      onPress={() => handleNotificationPress(notification, () => setShowNotificationModal(false))}
                       activeOpacity={0.7}
                     >
                       <View style={notificationModalStyles.notificationContent}>
