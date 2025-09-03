@@ -589,10 +589,7 @@ export default function ProfileScreen() {
                 <Text style={styles.editProfileButtonText}>Edit Profile</Text>
               </TouchableOpacity>
               
-              {/* Info Text */}
-              <Text style={styles.infoText}>
-                Tap "Edit Profile" to update your contact information and emergency contact details.
-              </Text>
+              
             </>
           )}
         </View>
