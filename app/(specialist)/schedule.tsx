@@ -311,24 +311,16 @@ export default function SpecialistScheduleScreen() {
   const renderCalendarLegend = () => (
     <View style={styles.legendContainer}>
       <View style={styles.legendItem}>
-        <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+        <View style={[styles.legendDot, { backgroundColor: '#1E40AF' }]} />
         <Text style={styles.legendLabel}>Available</Text>
       </View>
       <View style={styles.legendItem}>
-        <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+        <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
         <Text style={styles.legendLabel}>Has bookings</Text>
       </View>
       <View style={styles.legendItem}>
-        <View style={[styles.legendSwatch, styles.legendToday]} />
-        <Text style={styles.legendLabel}>Today</Text>
-      </View>
-      <View style={styles.legendItem}>
-        <View style={[styles.legendSwatch, styles.legendSelected]} />
-        <Text style={styles.legendLabel}>Selected</Text>
-      </View>
-      <View style={styles.legendItem}>
         <View style={[styles.legendDot, { backgroundColor: '#9CA3AF' }]} />
-        <Text style={styles.legendLabel}>Past / No schedule</Text>
+        <Text style={styles.legendLabel}>No schedule</Text>
       </View>
     </View>
   );
@@ -455,9 +447,7 @@ export default function SpecialistScheduleScreen() {
               <Text style={styles.headerTitle}>My Schedule</Text>
             </View>
             <View style={styles.headerActions}>
-              <TouchableOpacity onPress={goToToday} style={styles.todayButton}>
-                <Text style={styles.todayButtonText}>Today</Text>
-              </TouchableOpacity>
+          
               <TouchableOpacity onPress={handleAddSchedule} style={styles.addButton}>
                 <Plus size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -651,11 +641,11 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   availableDateText: {
-    color: '#10B981',
+    color: '#1E40AF',
     fontFamily: 'Inter-SemiBold',
   },
   bookedDateText: {
-    color: '#EF4444',
+    color: '#10B981',
     fontFamily: 'Inter-SemiBold',
   },
 
