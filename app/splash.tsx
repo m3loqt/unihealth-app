@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Dimensions, Image } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Audio } from 'expo-av';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -10,12 +11,28 @@ export default function SplashScreen() {
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const logoScaleAnim = useRef(new Animated.Value(0)).current;
 
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    const checkOnboardingStatus = async () => {
+    const run = async () => {
       try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          allowsRecordingIOS: false,
+          staysActiveInBackground: false,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+
+        const { sound } = await Audio.Sound.createAsync(
+          require('../assets/sounds/intro1.mp3')
+        );
+        soundRef.current = sound;
+        sound.playAsync().catch(() => {});
+
         const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
-        
-        // Start animations
+
         Animated.parallel([
           Animated.timing(fadeAnim, {
             toValue: 1,
@@ -29,7 +46,6 @@ export default function SplashScreen() {
           }),
         ]).start();
 
-        // Logo animation with delay
         Animated.sequence([
           Animated.delay(400),
           Animated.timing(logoScaleAnim, {
@@ -39,24 +55,39 @@ export default function SplashScreen() {
           }),
         ]).start();
 
-        // Wait 3 seconds then navigate
-        setTimeout(() => {
-          if (hasSeenOnboarding === 'true') {
-            router.replace('/');
-          } else {
-            router.replace('/onboarding');
+        navTimeoutRef.current = setTimeout(async () => {
+          try {
+            if (soundRef.current) {
+              await soundRef.current.stopAsync().catch(() => {});
+            }
+          } finally {
+            if (hasSeenOnboarding === 'true') {
+              router.replace('/');
+            } else {
+              router.replace('/onboarding');
+            }
           }
         }, 3000);
       } catch (error) {
-        console.error('Error checking onboarding status:', error);
-        // Default to onboarding if there's an error
-        setTimeout(() => {
+        console.error('Splash init error:', error);
+        navTimeoutRef.current = setTimeout(() => {
           router.replace('/onboarding');
         }, 3000);
       }
     };
 
-    checkOnboardingStatus();
+    run();
+
+    return () => {
+      if (navTimeoutRef.current) {
+        clearTimeout(navTimeoutRef.current);
+        navTimeoutRef.current = null;
+      }
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
+    };
   }, []);
 
   return (
@@ -78,8 +109,8 @@ export default function SplashScreen() {
             },
           ]}
         >
-          <Image 
-            source={require('../assets/images/HEALTH Logo.png')} 
+          <Image
+            source={require('../assets/images/HEALTH Logo.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />
