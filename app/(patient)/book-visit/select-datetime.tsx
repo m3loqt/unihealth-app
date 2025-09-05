@@ -67,9 +67,16 @@ function getNextNDays(n: number) {
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const out = [];
   let date = new Date();
+  
   for (let i = 0; i < n; ++i) {
+    // Use local date formatting to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+    
     out.push({
-      date: date.toISOString().split('T')[0],
+      date: dateString,
       month: months[date.getMonth()],
       day: date.getDate().toString(),
       dayName: days[date.getDay()],
@@ -153,13 +160,17 @@ export default function SelectDateTimeScreen() {
     clinicId, 
     clinicName, 
     doctorName, 
-    doctorSpecialty 
+    doctorSpecialty,
+    isFollowUp,
+    originalAppointmentId
   } = useLocalSearchParams<{ 
     doctorId: string; 
     clinicId: string; 
     clinicName: string; 
     doctorName: string; 
-    doctorSpecialty: string; 
+    doctorSpecialty: string;
+    isFollowUp?: string;
+    originalAppointmentId?: string;
   }>();
   
   // State
@@ -195,7 +206,12 @@ export default function SelectDateTimeScreen() {
     for (let i = 0; i < 30; i++) {
       const date = new Date(currentDate);
       date.setDate(currentDate.getDate() + i);
-      const dateString = date.toISOString().split('T')[0];
+      
+      // Use local date formatting to avoid timezone issues
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
       
       dates.push({
         date: dateString,
@@ -329,6 +345,13 @@ export default function SelectDateTimeScreen() {
     console.log('🔍 bookedTimeSlots state changed:', bookedTimeSlots);
   }, [bookedTimeSlots]);
 
+  // Initialize follow-up mode
+  useEffect(() => {
+    if (isFollowUp === 'true') {
+      setSelectedPurpose('Follow-up Visit');
+    }
+  }, [isFollowUp]);
+
   // Refresh time slots when screen comes into focus (in case someone else booked a slot)
   useFocusEffect(
     React.useCallback(() => {
@@ -407,9 +430,11 @@ export default function SelectDateTimeScreen() {
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ChevronLeft size={24} color="#1F2937" />
-          </TouchableOpacity>
+          {isFollowUp !== 'true' && (
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <ChevronLeft size={24} color="#1F2937" />
+            </TouchableOpacity>
+          )}
           <Text style={styles.headerTitle}>Select Date & Time</Text>
           <View style={styles.headerRight} />
         </View>
@@ -426,9 +451,11 @@ export default function SelectDateTimeScreen() {
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ChevronLeft size={24} color="#1F2937" />
-          </TouchableOpacity>
+          {isFollowUp !== 'true' && (
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <ChevronLeft size={24} color="#1F2937" />
+            </TouchableOpacity>
+          )}
           <Text style={styles.headerTitle}>Select Date & Time</Text>
           <View style={styles.headerRight} />
         </View>
@@ -448,9 +475,11 @@ export default function SelectDateTimeScreen() {
 
              {/* Header */}
        <View style={styles.header}>
-         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-           <ChevronLeft size={24} color="#1E40AF" />
-         </TouchableOpacity>
+         {isFollowUp !== 'true' && (
+           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+             <ChevronLeft size={24} color="#1E40AF" />
+           </TouchableOpacity>
+         )}
          <Text style={styles.headerTitle}>Select Date & Time</Text>
          <View style={styles.headerRight} />
        </View>
@@ -633,16 +662,21 @@ export default function SelectDateTimeScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Appointment Purpose</Text>
           <TouchableOpacity
-            style={styles.purposeDropdown}
-            onPress={() => setShowPurposeDropdown(!showPurposeDropdown)}
+            style={[
+              styles.purposeDropdown,
+              isFollowUp === 'true' && styles.purposeDropdownDisabled
+            ]}
+            onPress={() => isFollowUp !== 'true' && setShowPurposeDropdown(!showPurposeDropdown)}
+            disabled={isFollowUp === 'true'}
           >
             <Text style={[
               styles.purposeDropdownText,
-              !selectedPurpose && styles.purposePlaceholder
+              !selectedPurpose && styles.purposePlaceholder,
+              isFollowUp === 'true' && styles.purposeDropdownTextDisabled
             ]}>
               {selectedPurpose || 'Select appointment purpose'}
             </Text>
-            <ChevronDown size={20} color="#6B7280" />
+            {isFollowUp !== 'true' && <ChevronDown size={20} color="#6B7280" />}
           </TouchableOpacity>
           
           {showPurposeDropdown && (
@@ -1151,6 +1185,13 @@ const styles = StyleSheet.create({
   },
   purposePlaceholder: {
     color: '#9CA3AF',
+  },
+  purposeDropdownDisabled: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#D1D5DB',
+  },
+  purposeDropdownTextDisabled: {
+    color: '#6B7280',
   },
   purposeDropdownMenu: {
     position: 'absolute',

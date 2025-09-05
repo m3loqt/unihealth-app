@@ -221,10 +221,19 @@ export default function AppointmentsScreen() {
   };
 
   const handleFollowUp = (appointment: Appointment) => {
-    // TODO: Implement follow-up functionality
-    // This will be defined later as requested by the user
-    console.log('Follow-up requested for appointment:', appointment.id);
-    Alert.alert('Follow-up', 'Follow-up functionality will be implemented soon.');
+    // Navigate to select-datetime screen with appointment data for follow-up
+    router.push({
+      pathname: '/(patient)/book-visit/select-datetime',
+      params: {
+        doctorId: appointment.doctorId,
+        clinicId: appointment.clinicId,
+        clinicName: appointment.clinicName || '',
+        doctorName: `${appointment.doctorFirstName || ''} ${appointment.doctorLastName || ''}`.trim(),
+        doctorSpecialty: appointment.specialty || 'General Consultation',
+        isFollowUp: 'true',
+        originalAppointmentId: appointment.id || '',
+      }
+    });
   };
 
   // Handle tag selection
@@ -859,7 +868,9 @@ export default function AppointmentsScreen() {
     const formatDisplayDate = (dateString: string) => {
       if (!dateString) return 'Date not specified';
       try {
-        const date = new Date(dateString);
+        // Parse the date string as local date to avoid timezone issues
+        const [year, month, day] = dateString.split('-').map(Number);
+        const date = new Date(year, month - 1, day); // month is 0-indexed
         return date.toLocaleDateString('en-US', {
           month: 'short',
           day: 'numeric',
