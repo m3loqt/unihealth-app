@@ -70,7 +70,7 @@ export default function ReviewConfirmScreen() {
     const loadClinicData = async () => {
       if (clinicId) {
         try {
-          const clinic = await databaseService.getClinicById(clinicId as string);
+          const clinic = await databaseService.getClinicByIdForDisplay(clinicId as string);
           setClinicData(clinic);
         } catch (error) {
           console.error('Error loading clinic data:', error);
@@ -241,64 +241,44 @@ export default function ReviewConfirmScreen() {
           
           {/* Clinic Info */}
           <View style={styles.clinicSection}>
-            <View style={styles.clinicInfo}>
-              <Text style={styles.clinicName}>{clinic.name}</Text>
-              {clinicData && (
-                <View style={styles.locationContainer}>
-                  <Text style={styles.locationText}>{formatClinicAddress(clinicData)}</Text>
-                </View>
-              )}
-              {clinicData?.operatingHours && (
-                <View style={styles.hoursContainer}>
-                  <Clock size={14} color="#6B7280" />
-                  <Text style={styles.hoursText}>{clinicData.operatingHours}</Text>
-                </View>
-              )}
-            </View>
+            <Text style={styles.clinicName}>{clinic.name}</Text>
+            {clinicData && (
+              <Text style={styles.clinicAddress}>{formatClinicAddress(clinicData)}</Text>
+            )}
           </View>
 
-          <View style={styles.dividerSubtle} />
+          <View style={styles.dividerLine} />
 
           {/* Doctor Information */}
           {doctorName && (
-            <View style={styles.doctorRow}>
-              <Text style={styles.doctorLabel}>Doctor:</Text>
-              <Text style={styles.doctorValue}>Dr. {doctorName}</Text>
+            <View style={styles.appointmentDetailRow}>
+              <Text style={styles.appointmentDetailLabel}>Doctor:</Text>
+              <Text style={styles.appointmentDetailValue}>Dr. {doctorName}</Text>
             </View>
           )}
 
           {/* Appointment Details */}
-          <View style={styles.detailsSection}>
-            <View style={styles.detailRow}>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Date</Text>
-                <Text style={styles.detailValue}>{formatDate(selectedDate as string)}</Text>
-              </View>
-            </View>
-
-            <View style={styles.detailRow}>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Time</Text>
-                <Text style={styles.detailValue}>{selectedTime}</Text>
-              </View>
-            </View>
-
-            <View style={styles.detailRow}>
-              <View style={styles.detailContent}>
-                <Text style={styles.detailLabel}>Purpose of Visit</Text>
-                <Text style={styles.detailValue}>{selectedPurpose}</Text>
-              </View>
-            </View>
-
-            {notes ? (
-              <View style={styles.detailRow}>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Additional Notes</Text>
-                  <Text style={styles.detailValue}>{notes}</Text>
-                </View>
-              </View>
-            ) : null}
+          <View style={styles.appointmentDetailRow}>
+            <Text style={styles.appointmentDetailLabel}>Date:</Text>
+            <Text style={styles.appointmentDetailValue}>{formatDate(selectedDate as string)}</Text>
           </View>
+
+          <View style={styles.appointmentDetailRow}>
+            <Text style={styles.appointmentDetailLabel}>Time:</Text>
+            <Text style={styles.appointmentDetailValue}>{selectedTime}</Text>
+          </View>
+
+          <View style={styles.appointmentDetailRow}>
+            <Text style={styles.appointmentDetailLabel}>Purpose of Visit:</Text>
+            <Text style={styles.appointmentDetailValue}>{selectedPurpose}</Text>
+          </View>
+
+          {notes ? (
+            <View style={styles.appointmentDetailRow}>
+              <Text style={styles.appointmentDetailLabel}>Additional Notes:</Text>
+              <Text style={styles.appointmentDetailValue}>{notes}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Important Information */}
@@ -527,99 +507,39 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   clinicSection: {
-    marginBottom: 18,
+    marginBottom: 16,
   },
-  clinicInfo: { flex: 1 },
   clinicName: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
-    marginBottom: 7,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 6,
-  },
-  locationText: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    flex: 1,
-    lineHeight: 19,
-  },
-  hoursContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  hoursText: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginLeft: 5,
-    flex: 1,
-    lineHeight: 19,
-  },
-  doctorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  doctorText: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginLeft: 5,
-  },
-  dividerSubtle: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginBottom: 16,
-  },
-  detailsSection: {
-    gap: 16,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     marginBottom: 4,
-    justifyContent: 'space-between',
   },
-  detailContent: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  detailLabel: {
+  clinicAddress: {
     fontSize: 13,
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
-    marginBottom: 2,
-    minWidth: 100,
+    lineHeight: 18,
   },
-  detailValue: {
-    fontSize: 15,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-    lineHeight: 22,
-    textAlign: 'right',
-    flex: 1,
-    marginLeft: 12,
-  },
-  doctorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  dividerLine: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
     marginBottom: 16,
-    justifyContent: 'space-between',
   },
-  doctorLabel: {
+  appointmentDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingVertical: 2,
+  },
+  appointmentDetailLabel: {
     fontSize: 13,
     fontFamily: 'Inter-Medium',
     color: '#6B7280',
-    minWidth: 100,
+    flex: 1,
   },
-  doctorValue: {
+  appointmentDetailValue: {
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',

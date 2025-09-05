@@ -166,6 +166,7 @@ export interface Clinic {
   id: string;
   name: string;
   address: string;
+  addressLine?: string; // Alternative address field
   city: string;
   province: string;
   zipCode: string;
@@ -186,6 +187,13 @@ export interface Doctor {
   specialty: string;
   contactNumber: string;
   clinicAffiliations: string[];
+  isSpecialist?: boolean;
+  middleName?: string;
+  phoneNumber?: string;
+  phone?: string;
+  specialization?: string;
+  clinicName?: string;
+  clinicAddress?: string;
   availability: {
     lastUpdated: string;
     weeklySchedule: {
@@ -212,6 +220,7 @@ export interface Referral {
   assignedSpecialistFirstName: string;
   assignedSpecialistId: string;
   assignedSpecialistLastName: string;
+  assignedSpecialistMiddleName?: string;
   clinicAppointmentId: string;
   consultationId?: string;
   referralConsultationId?: string;
@@ -496,6 +505,29 @@ export const databaseService = {
       return null;
     } catch (error) {
       console.error('Get clinic by ID error:', error);
+      throw new Error('Failed to load clinic from database');
+    }
+  },
+
+  // Get clinic by ID without strict address validation (for display purposes)
+  async getClinicByIdForDisplay(clinicId: string): Promise<Clinic | null> {
+    try {
+      const clinicRef = ref(database, `clinics/${clinicId}`);
+      const snapshot = await get(clinicRef);
+      
+      if (snapshot.exists()) {
+        const clinicData = snapshot.val();
+        // Return active clinics even without strict address validation
+        if (clinicData.isActive) {
+          return {
+            id: snapshot.key!,
+            ...clinicData
+          };
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Get clinic by ID for display error:', error);
       throw new Error('Failed to load clinic from database');
     }
   },
