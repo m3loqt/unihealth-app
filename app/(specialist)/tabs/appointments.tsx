@@ -234,7 +234,7 @@ export default function SpecialistAppointmentsScreen() {
       // Load referring clinic data if referringClinicId exists
       if (referral?.referringClinicId && !clinicData[referral.referringClinicId]) {
         try {
-          const clinic = await databaseService.getClinicById(referral.referringClinicId);
+          const clinic = await databaseService.getClinicByIdForDisplay(referral.referringClinicId);
           setClinicData(prev => ({ ...prev, [referral.referringClinicId]: clinic }));
         } catch (error) {
           console.error('Error loading referring clinic data:', error);
@@ -390,7 +390,7 @@ export default function SpecialistAppointmentsScreen() {
       // Load clinic and patient data if not already loaded
       if (appointment.clinicId && !clinicData[appointment.clinicId]) {
         try {
-          const clinic = await databaseService.getClinicById(appointment.clinicId);
+          const clinic = await databaseService.getClinicByIdForDisplay(appointment.clinicId);
           setClinicData(prev => ({ ...prev, [appointment.clinicId]: clinic }));
         } catch (error) {
           console.error('Error loading clinic data:', error);

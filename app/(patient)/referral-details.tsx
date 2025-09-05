@@ -428,9 +428,9 @@ export default function PatientReferralDetailsScreen() {
     const params = {
       doctorId: specialistId,
       clinicId: clinicId,
-      clinicName: '', // Will be fetched from clinic data
+      clinicName: '', // Will be fetched from clinic data in select-datetime screen
       doctorName: specialistName,
-      doctorSpecialty: 'Specialist Consultation', // Will be fetched from doctor data
+      doctorSpecialty: 'Specialist Consultation', // Will be fetched from doctor data in select-datetime screen
       isFollowUp: 'true',
       originalAppointmentId: String(id),
       isReferralFollowUp: 'true', // Flag to indicate this is a referral follow-up

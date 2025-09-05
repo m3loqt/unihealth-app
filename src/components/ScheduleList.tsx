@@ -86,7 +86,9 @@ export default function ScheduleList({
     const hasConfirmedAppointments = referrals.some(referral => {
       if (referral.status !== 'confirmed' && referral.status !== 'completed') return false;
       
-      const appointmentDate = new Date(referral.appointmentDate);
+      // Parse appointment date as local date to avoid timezone issues
+      const [year, month, day] = referral.appointmentDate.split('-').map(Number);
+      const appointmentDate = new Date(year, month - 1, day); // month is 0-indexed
       
       // Check if appointment date is on or after the schedule's validFrom date
       if (appointmentDate < validFromDate) return false;

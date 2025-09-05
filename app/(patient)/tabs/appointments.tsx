@@ -271,7 +271,7 @@ export default function AppointmentsScreen() {
         // Handle appointment feedback
         doctorData = await databaseService.getDoctorById(feedbackAppointment.doctorId);
         doctorName = doctorData ? `${doctorData.firstName || ''} ${doctorData.lastName || ''}`.trim() : 'Unknown Doctor';
-        clinicData = await databaseService.getClinicById(feedbackAppointment.clinicId);
+        clinicData = await databaseService.getClinicByIdForDisplay(feedbackAppointment.clinicId);
         clinicName = clinicData?.name || 'Unknown Clinic';
         serviceType = feedbackAppointment.relatedReferralId ? 'referral' : 'appointment';
         treatmentType = feedbackAppointment.appointmentPurpose || 'General Consultation';
@@ -282,7 +282,7 @@ export default function AppointmentsScreen() {
         // Handle referral feedback
         doctorData = await databaseService.getDoctorById(feedbackReferral.assignedSpecialistId);
         doctorName = doctorData ? `${doctorData.firstName || ''} ${doctorData.lastName || ''}`.trim() : 'Unknown Doctor';
-        clinicData = await databaseService.getClinicById(feedbackReferral.referringClinicId);
+        clinicData = await databaseService.getClinicByIdForDisplay(feedbackReferral.referringClinicId);
         clinicName = clinicData?.name || feedbackReferral.referringClinicName || 'Unknown Clinic';
         serviceType = 'referral';
         treatmentType = feedbackReferral.initialReasonForReferral || 'General Consultation';
@@ -358,7 +358,7 @@ export default function AppointmentsScreen() {
     try {
       // Load clinic data if not already loaded
       if (appointment.clinicId && !clinicData[appointment.clinicId]) {
-        const clinic = await databaseService.getClinicById(appointment.clinicId);
+        const clinic = await databaseService.getClinicByIdForDisplay(appointment.clinicId);
         setClinicData(prev => ({ ...prev, [appointment.clinicId]: clinic }));
       }
       
@@ -477,7 +477,7 @@ export default function AppointmentsScreen() {
       const clinicPromises = hookReferrals.map(async (referral) => {
         if (referral.referringClinicId && !clinicData[referral.referringClinicId]) {
           try {
-            const clinic = await databaseService.getClinicById(referral.referringClinicId);
+            const clinic = await databaseService.getClinicByIdForDisplay(referral.referringClinicId);
             setClinicData(prev => ({ ...prev, [referral.referringClinicId]: clinic }));
           } catch (error) {
             console.error('Error loading referring clinic data:', error);
