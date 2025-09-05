@@ -594,7 +594,16 @@ export default function HomeScreen() {
                     <View style={styles.appointmentTime}>
                       <Clock size={16} color="#6B7280" />
                       <Text style={styles.appointmentDate}>
-                        {appt.appointmentDate ? new Date(appt.appointmentDate).toLocaleDateString() : 'Date not specified'}
+                        {appt.appointmentDate ? (() => {
+                          try {
+                            // Parse the date string as local date to avoid timezone issues
+                            const [year, month, day] = appt.appointmentDate.split('-').map(Number);
+                            const date = new Date(year, month - 1, day); // month is 0-indexed
+                            return date.toLocaleDateString();
+                          } catch (error) {
+                            return 'Invalid date';
+                          }
+                        })() : 'Date not specified'}
                       </Text>
                     </View>
                   </View>
