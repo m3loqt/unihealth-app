@@ -404,6 +404,46 @@ export default function PatientReferralDetailsScreen() {
     }));
   };
 
+  const handleReferralFollowUp = () => {
+    if (!referralData) return;
+    
+    // Extract specialist information from referral data
+    const specialistId = referralData.assignedSpecialistId;
+    const clinicId = referralData.practiceLocation?.clinicId;
+    const specialistName = `${referralData.assignedSpecialistFirstName || ''} ${referralData.assignedSpecialistLastName || ''}`.trim();
+    
+    console.log('🔍 Referral follow-up data:', {
+      specialistId,
+      clinicId,
+      specialistName,
+      referralData: referralData
+    });
+    
+    if (!specialistId || !clinicId) {
+      Alert.alert('Error', 'Unable to book follow-up. Missing specialist or clinic information.');
+      return;
+    }
+    
+    // Navigate to select-datetime screen with referral data for follow-up
+    const params = {
+      doctorId: specialistId,
+      clinicId: clinicId,
+      clinicName: '', // Will be fetched from clinic data
+      doctorName: specialistName,
+      doctorSpecialty: 'Specialist Consultation', // Will be fetched from doctor data
+      isFollowUp: 'true',
+      originalAppointmentId: String(id),
+      isReferralFollowUp: 'true', // Flag to indicate this is a referral follow-up
+    };
+    
+    console.log('🔍 Navigating with params:', params);
+    
+    router.push({
+      pathname: '/(patient)/book-visit/select-datetime',
+      params
+    });
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -783,6 +823,14 @@ export default function PatientReferralDetailsScreen() {
           >
             <FileText size={18} color="#1E40AF" style={{ marginRight: 8 }} />
             <Text style={styles.secondaryBottomButtonOutlineText}>Generate E‑Prescription</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.secondaryBottomButtonOutline, { marginTop: 10 }]}
+            onPress={handleReferralFollowUp}
+            activeOpacity={0.8}
+          >
+            <Stethoscope size={18} color="#1E40AF" style={{ marginRight: 8 }} />
+            <Text style={styles.secondaryBottomButtonOutlineText}>Book Follow-up</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.secondaryBottomButtonOutline, { marginTop: 10 }]}
