@@ -91,7 +91,7 @@ export interface DoctorNode {
   prcExpiryDate?: string;
   prcId?: string;
   professionalFee?: number;
-  professionalFeeStatus?: 'pending' | 'confirmed';
+  professionalFeeStatus?: 'pending' | 'confirmed' | 'approved' | 'rejected';
   profileImageUrl?: string;
   specialty?: string;
   status?: string;

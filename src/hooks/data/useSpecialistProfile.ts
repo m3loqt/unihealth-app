@@ -15,7 +15,7 @@ export interface SpecialistProfile {
   prcId?: string;
   prcExpiryDate?: string;
   professionalFee?: number;
-  professionalFeeStatus?: 'pending' | 'confirmed';
+  professionalFeeStatus?: 'pending' | 'confirmed' | 'approved' | 'rejected';
   gender?: string;
   dateOfBirth?: string;
   civilStatus?: string;

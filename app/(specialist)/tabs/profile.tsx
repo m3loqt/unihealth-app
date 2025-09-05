@@ -106,6 +106,7 @@ export default function SpecialistProfileScreen() {
     const s = (status || '').toLowerCase();
     if (s === 'pending') return { icon: <Clock size={14} color="#6B7280" />, text: 'Pending' };
     if (s === 'approved' || s === 'active') return { icon: <CheckCircle size={14} color="#6B7280" />, text: 'Active' };
+    if (s === 'verified') return { icon: <CheckCircle size={14} color="#6B7280" />, text: 'Verified' };
     if (s === 'rejected' || s === 'inactive') return { icon: <XCircle size={14} color="#6B7280" />, text: 'Inactive' };
     return { icon: <Clock size={14} color="#6B7280" />, text: status || 'Unknown' };
   };
@@ -170,6 +171,11 @@ export default function SpecialistProfileScreen() {
   const [clinicNames, setClinicNames] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showFeeChangeModal, setShowFeeChangeModal] = useState(false);
+  const [showFeeChangeConfirmation, setShowFeeChangeConfirmation] = useState(false);
+  const [showFeeChangeSuccess, setShowFeeChangeSuccess] = useState(false);
+  const [requestedFee, setRequestedFee] = useState('');
+  const [isSubmittingFeeChange, setIsSubmittingFeeChange] = useState(false);
   // const [notifications, setNotifications] = useState([
   //   { id: 1, text: 'New referral request from Dr. Smith for patient John Doe.', read: false },
   //   { id: 2, text: 'Appointment with Sarah Johnson confirmed for tomorrow.', read: true },
@@ -684,6 +690,108 @@ export default function SpecialistProfileScreen() {
     await markAllAsRead();
   };
 
+  // Handle fee change request
+  const handleFeeChangeRequest = () => {
+    // Check if there's already a pending request
+    const currentStatus = (profile as any)?.professionalFeeStatus;
+    if (currentStatus === 'pending') {
+      Alert.alert(
+        'Request Pending',
+        'You already have a fee change request pending admin approval. Please wait for the current request to be processed.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    setRequestedFee('');
+    setShowFeeChangeModal(true);
+  };
+
+  // Handle fee change submission
+  const handleFeeChangeSubmit = () => {
+    if (!requestedFee || isNaN(parseInt(requestedFee)) || parseInt(requestedFee) <= 0) {
+      Alert.alert('Error', 'Please enter a valid fee amount.');
+      return;
+    }
+    setShowFeeChangeModal(false);
+    setShowFeeChangeConfirmation(true);
+  };
+
+  // Handle fee change confirmation
+  const handleFeeChangeConfirm = async () => {
+    if (!user) {
+      Alert.alert('Error', 'Please log in to submit fee change request.');
+      return;
+    }
+
+    setIsSubmittingFeeChange(true);
+    try {
+      const feeChangeData = {
+        previousFee: profile?.professionalFee || 0,
+        requestedFee: parseInt(requestedFee),
+        requestDate: new Date().toISOString()
+      };
+
+      const updateData = {
+        feeChangeRequest: feeChangeData,
+        professionalFeeStatus: 'pending' as const,
+        professionalFee: parseInt(requestedFee)
+      };
+
+      console.log('=== Fee Change Request Debug ===');
+      console.log('User ID:', user.uid);
+      console.log('Update data:', updateData);
+      console.log('Firebase path:', `specialists/${user.uid}`);
+
+      // Update the specialist profile with fee change request and status
+      await updateProfile(updateData);
+
+      console.log('Fee change request submitted successfully');
+      setShowFeeChangeConfirmation(false);
+      setShowFeeChangeSuccess(true);
+    } catch (error) {
+      console.error('Error submitting fee change request:', error);
+      Alert.alert('Error', `Failed to submit fee change request: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsSubmittingFeeChange(false);
+    }
+  };
+
+  // Handle fee change success close
+  const handleFeeChangeSuccessClose = () => {
+    setShowFeeChangeSuccess(false);
+    setRequestedFee('');
+  };
+
+  // Handle fee change request result (approved/rejected)
+  const handleFeeChangeResult = () => {
+    const status = (profile as any)?.professionalFeeStatus;
+    if (status === 'approved') {
+      Alert.alert(
+        'Request Approved',
+        'Your fee change request has been approved by the admin. Your new professional fee is now active.',
+        [{ text: 'OK' }]
+      );
+    } else if (status === 'rejected') {
+      Alert.alert(
+        'Request Rejected',
+        'Your fee change request has been rejected by the admin. Please contact support for more information.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  // Handle fee change status changes
+  useEffect(() => {
+    const status = (profile as any)?.professionalFeeStatus;
+    if (status === 'approved' || status === 'rejected') {
+      // Show result after a short delay to ensure UI is updated
+      setTimeout(() => {
+        handleFeeChangeResult();
+      }, 500);
+    }
+  }, [(profile as any)?.professionalFeeStatus]);
+
   // Helper function to format date safely (avoiding timezone issues)
 
    return (
@@ -836,21 +944,6 @@ export default function SpecialistProfileScreen() {
                 </Text>
               </View>
             )}
-            {professionalFee && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Professional Fee:</Text>
-                <View style={styles.feeContainer}>
-                  <Text style={styles.feeAmount}>
-                    ₱{(profile as any)?.feeChangeRequest?.previousFee || professionalFee}
-                  </Text>
-                  {(profile as any)?.feeChangeRequest?.requestedFee && (
-                    <Text style={styles.requestedFeeText}>
-                      (Requested: ₱{(profile as any).feeChangeRequest.requestedFee})
-                    </Text>
-                  )}
-                </View>
-              </View>
-            )}
             {status && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Status:</Text>
@@ -866,7 +959,40 @@ export default function SpecialistProfileScreen() {
 
         </View>
 
-
+        {/* Professional Fee Change */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Professional Fee Change</Text>
+          <View style={styles.feeChangeContainer}>
+            <View style={styles.feeChangeInfo}>
+              <Text style={styles.feeChangeLabel}>Current Professional Fee</Text>
+              <Text style={styles.feeChangeAmount}>
+                ₱{(profile as any)?.professionalFeeStatus === 'approved' && (profile as any)?.feeChangeRequest?.requestedFee 
+                  ? (profile as any).feeChangeRequest.requestedFee 
+                  : (profile as any)?.feeChangeRequest?.previousFee || professionalFee}
+              </Text>
+              {(profile as any)?.professionalFeeStatus === 'pending' && (profile as any)?.feeChangeRequest?.requestedFee && (
+                <View style={styles.feeChangeRequestContainer}>
+                  <Text style={styles.feeChangeRequestedText}>
+                    Requested: ₱{(profile as any).feeChangeRequest.requestedFee}
+                  </Text>
+                  <View style={[styles.feeChangeStatusPill, styles.feeChangeStatusPending]}>
+                    <Text style={styles.feeChangeStatusText}>
+                      Pending
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+            {(profile as any)?.professionalFeeStatus !== 'pending' && (
+              <TouchableOpacity
+                style={styles.feeChangeEditButton}
+                onPress={handleFeeChangeRequest}
+              >
+                <Edit size={18} color="#1E40AF" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
 
         {/* Quick Actions */}
         <View style={styles.card}>
@@ -1117,17 +1243,6 @@ export default function SpecialistProfileScreen() {
                                 style={styles.editInput}
                               />
                             </View>
-                           <View style={styles.modalEditField}>
-                             <Text style={styles.modalEditLabel}>Professional Fee</Text>
-                             <Input
-                               value={editableData.professionalFee}
-                               onChangeText={(text) => setEditableData(prev => ({ ...prev, professionalFee: text }))}
-                               placeholder="Enter professional fee"
-                               keyboardType="numeric"
-                               style={styles.editInput}
-                               inputStyle={styles.editInputText}
-                             />
-                           </View>
                          </View>
                        </View>
                    </>
@@ -1234,21 +1349,6 @@ export default function SpecialistProfileScreen() {
                              <Text style={styles.modalInfoValue}>
                                {formatDateSafely(prcExpiryDate)}
                              </Text>
-                           </View>
-                         )}
-                         {professionalFee && (
-                           <View style={styles.modalInfoRow}>
-                             <Text style={styles.modalInfoLabel}>Professional Fee</Text>
-                             <View style={styles.modalFeeContainer}>
-                               <Text style={styles.modalInfoValue}>
-                                 ₱{(profile as any)?.feeChangeRequest?.previousFee || professionalFee}
-                               </Text>
-                               {(profile as any)?.feeChangeRequest?.requestedFee && (
-                                 <Text style={styles.modalRequestedFeeText}>
-                                   (Requested: ₱{(profile as any).feeChangeRequest.requestedFee})
-                                 </Text>
-                               )}
-                             </View>
                            </View>
                          )}
                          {status && (
@@ -1448,6 +1548,152 @@ export default function SpecialistProfileScreen() {
                   onPress={handleConfirmLogout}
                 >
                   <Text style={styles.modalPrimaryButtonText}>Logout</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Fee Change Request Modal */}
+      <Modal
+        visible={showFeeChangeModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFeeChangeModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Edit size={32} color="#1E40AF" />
+                <Text style={styles.modalTitle}>Professional Fee Change</Text>
+                <Text style={styles.modalSubtext}>
+                  Your request to change this fee will be pending for approval by the admin.
+                </Text>
+                {(profile as any)?.professionalFeeStatus && (
+                  <View style={[styles.modalStatusPill, 
+                    (profile as any)?.professionalFeeStatus === 'approved' ? styles.feeChangeStatusApproved :
+                    (profile as any)?.professionalFeeStatus === 'rejected' ? styles.feeChangeStatusRejected :
+                    styles.feeChangeStatusPending
+                  ]}>
+                    <Text style={styles.modalStatusPillText}>
+                      Current Status: {(profile as any)?.professionalFeeStatus === 'approved' ? 'Approved' :
+                       (profile as any)?.professionalFeeStatus === 'rejected' ? 'Rejected' :
+                       'Pending'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              
+              <View style={styles.feeChangeModalContent}>
+                <View style={styles.feeChangeModalField}>
+                  <Text style={styles.feeChangeModalLabel}>Current Fee</Text>
+                  <Text style={styles.feeChangeModalCurrentFee}>
+                    ₱{(profile as any)?.professionalFeeStatus === 'approved' && (profile as any)?.feeChangeRequest?.requestedFee 
+                      ? (profile as any).feeChangeRequest.requestedFee 
+                      : (profile as any)?.feeChangeRequest?.previousFee || professionalFee}
+                  </Text>
+                </View>
+                
+                <View style={styles.feeChangeModalField}>
+                  <Text style={styles.feeChangeModalLabel}>Requested Fee</Text>
+                  <Input
+                    value={requestedFee}
+                    onChangeText={setRequestedFee}
+                    placeholder="Enter new fee amount"
+                    keyboardType="numeric"
+                    style={styles.feeChangeModalInput}
+                    inputStyle={styles.feeChangeModalInputText}
+                  />
+                </View>
+              </View>
+              
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalSecondaryButton}
+                  onPress={() => setShowFeeChangeModal(false)}
+                >
+                  <Text style={styles.modalSecondaryButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalPrimaryButton}
+                  onPress={handleFeeChangeSubmit}
+                >
+                  <Text style={styles.modalPrimaryButtonText}>Submit Request</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Fee Change Confirmation Modal */}
+      <Modal
+        visible={showFeeChangeConfirmation}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFeeChangeConfirmation(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <CheckCircle size={32} color="#1E40AF" />
+                <Text style={styles.modalTitle}>Confirm Fee Change</Text>
+                <Text style={styles.modalSubtext}>
+                  Are you sure you want to request a change from ₱{(profile as any)?.professionalFeeStatus === 'approved' && (profile as any)?.feeChangeRequest?.requestedFee 
+                    ? (profile as any).feeChangeRequest.requestedFee 
+                    : (profile as any)?.feeChangeRequest?.previousFee || professionalFee} to ₱{requestedFee}?
+                </Text>
+              </View>
+              
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalSecondaryButton}
+                  onPress={() => setShowFeeChangeConfirmation(false)}
+                >
+                  <Text style={styles.modalSecondaryButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalPrimaryButton}
+                  onPress={handleFeeChangeConfirm}
+                  disabled={isSubmittingFeeChange}
+                >
+                  <Text style={styles.modalPrimaryButtonText}>
+                    {isSubmittingFeeChange ? 'Submitting...' : 'Confirm Request'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Fee Change Success Modal */}
+      <Modal
+        visible={showFeeChangeSuccess}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleFeeChangeSuccessClose}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <CheckCircle size={32} color="#10B981" />
+                <Text style={styles.modalTitle}>Request Submitted</Text>
+                <Text style={styles.modalSubtext}>
+                  Your fee change request has been submitted successfully and is pending admin approval.
+                </Text>
+              </View>
+              
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalPrimaryButton}
+                  onPress={handleFeeChangeSuccessClose}
+                >
+                  <Text style={styles.modalPrimaryButtonText}>OK</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -2545,5 +2791,116 @@ const styles = StyleSheet.create({
   },
   notificationActionButton: {
     padding: 8,
+  },
+  // Fee Change Section Styles
+  feeChangeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  feeChangeInfo: {
+    flex: 1,
+  },
+  feeChangeLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  feeChangeAmount: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  feeChangeRequestedText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+  },
+  feeChangeRequestContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  feeChangeStatusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  feeChangeStatusApproved: {
+    backgroundColor: '#D1FAE5',
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
+  feeChangeStatusRejected: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  feeChangeStatusPending: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  feeChangeStatusText: {
+    fontSize: 10,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+  },
+  feeChangeEditButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1E40AF',
+  },
+  // Fee Change Modal Styles
+  feeChangeModalContent: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  feeChangeModalField: {
+    marginBottom: 16,
+  },
+  feeChangeModalLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  feeChangeModalCurrentFee: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    backgroundColor: '#F3F4F6',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  feeChangeModalInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  feeChangeModalInputText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
   },
 });

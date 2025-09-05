@@ -1894,6 +1894,16 @@ export const databaseService = {
         }
       }
       
+      // Handle professional fee status if explicitly provided
+      if (updates.professionalFeeStatus !== undefined) {
+        doctorUpdates.professionalFeeStatus = updates.professionalFeeStatus;
+      }
+      
+      // Handle fee change request
+      if (updates.feeChangeRequest !== undefined) {
+        doctorUpdates.feeChangeRequest = updates.feeChangeRequest;
+      }
+      
       // Update users node if there are user-specific updates
       if (Object.keys(userUpdates).length > 0) {
         const userRef = ref(database, `users/${specialistId}`);
