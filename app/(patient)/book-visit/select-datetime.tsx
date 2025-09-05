@@ -162,7 +162,8 @@ export default function SelectDateTimeScreen() {
     doctorName, 
     doctorSpecialty,
     isFollowUp,
-    originalAppointmentId
+    originalAppointmentId,
+    isReferralFollowUp
   } = useLocalSearchParams<{ 
     doctorId: string; 
     clinicId: string; 
@@ -171,6 +172,7 @@ export default function SelectDateTimeScreen() {
     doctorSpecialty: string;
     isFollowUp?: string;
     originalAppointmentId?: string;
+    isReferralFollowUp?: string;
   }>();
   
   // State
@@ -184,6 +186,7 @@ export default function SelectDateTimeScreen() {
   const [showPurposeDropdown, setShowPurposeDropdown] = useState(false);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<Array<{time: string; minutes: number}>>([]);
   const [bookedTimeSlots, setBookedTimeSlots] = useState<string[]>([]);
+  const [specialistAvailableDays, setSpecialistAvailableDays] = useState<number[]>([]);
   
   // Refs
   const dateScrollRef = useRef<ScrollView>(null);
@@ -192,7 +195,8 @@ export default function SelectDateTimeScreen() {
   // Computed values - use doctor data if available, otherwise use URL params
   const displayDoctorName = doctor ? `${doctor.firstName} ${doctor.lastName}` : doctorName || '';
   const displayDoctorSpecialty = doctor?.specialty || doctorSpecialty || '';
-  const displayClinicName = clinicName || 'Clinic Name';
+  const displayClinicName = doctor?.clinicName || clinicName || 'Clinic Name';
+  const displayClinicAddress = doctor?.clinicAddress || '';
 
   // Generate the next 30 days as selectable dates
   const AVAILABLE_DATES = useMemo(() => {
@@ -218,13 +222,26 @@ export default function SelectDateTimeScreen() {
         month: months[date.getMonth()],
         day: date.getDate().toString(),
         dayName: days[date.getDay()],
+        dayOfWeek: date.getDay(), // Add dayOfWeek for filtering
       });
     }
     
     return dates;
   }, []);
 
-  const datePager = useMemo(() => getPagerData(AVAILABLE_DATES, 7), [AVAILABLE_DATES]);
+  // Filter dates based on specialist availability
+  const FILTERED_DATES = useMemo(() => {
+    if (!doctor?.isSpecialist || !isFollowUp || specialistAvailableDays.length === 0) {
+      return AVAILABLE_DATES;
+    }
+    
+    // For specialist follow-ups, filter dates to only show available days
+    return AVAILABLE_DATES.filter(date => 
+      specialistAvailableDays.includes(date.dayOfWeek)
+    );
+  }, [AVAILABLE_DATES, doctor?.isSpecialist, isFollowUp, specialistAvailableDays]);
+
+  const datePager = useMemo(() => getPagerData(FILTERED_DATES, 7), [FILTERED_DATES]);
     // Use available time slots directly (they already include all standard slots)
   const allTimeSlots = useMemo(() => {
     console.log('🔍 allTimeSlots calculation:', {
@@ -252,6 +269,11 @@ export default function SelectDateTimeScreen() {
       }
       
       setDoctor(doctorData);
+      
+      // Load specialist available days for date filtering
+      if (doctorData.isSpecialist) {
+        await loadSpecialistAvailableDays();
+      }
     } catch (error) {
       console.error('Error loading doctor data:', error);
       setError('Failed to load doctor data');
@@ -260,17 +282,226 @@ export default function SelectDateTimeScreen() {
     }
   };
 
+  const loadReferralData = async () => {
+    if (!originalAppointmentId) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Get referral data to extract specialist and clinic information
+      const referralData = await databaseService.getReferralById(originalAppointmentId);
+      if (!referralData) {
+        setError('Referral not found');
+        return;
+      }
+      
+      console.log('🔍 Referral data loaded:', referralData);
+      
+      // Extract specialist information
+      const specialistId = referralData.assignedSpecialistId;
+      const clinicId = referralData.practiceLocation?.clinicId;
+      
+      if (!specialistId || !clinicId) {
+        setError('Missing specialist or clinic information in referral');
+        return;
+      }
+      
+      // Try to fetch specialist details from multiple nodes
+      let specialistDetails = await databaseService.getDoctorById(specialistId);
+      console.log('🔍 Specialist details from doctors node:', specialistDetails);
+      
+      // If not found in doctors node, try direct document fetch
+      if (!specialistDetails) {
+        specialistDetails = await databaseService.getDocument(`doctors/${specialistId}`);
+        console.log('🔍 Specialist details from doctors node (direct):', specialistDetails);
+      }
+      
+      // If still not found, try specialists node
+      if (!specialistDetails) {
+        specialistDetails = await databaseService.getDocument(`specialists/${specialistId}`);
+        console.log('🔍 Specialist details from specialists node:', specialistDetails);
+      }
+      
+      // If still not found, try users node
+      if (!specialistDetails) {
+        specialistDetails = await databaseService.getDocument(`users/${specialistId}`);
+        console.log('🔍 Specialist details from users node:', specialistDetails);
+      }
+      
+      // Fetch clinic details from clinics node
+      const clinicDetails = await databaseService.getClinicById(clinicId);
+      console.log('🔍 Clinic details from clinics node:', clinicDetails);
+      
+      // Create a doctor object with all the fetched information
+      const specialistData = {
+        id: specialistId,
+        firstName: referralData.assignedSpecialistFirstName || specialistDetails?.firstName || specialistDetails?.first_name || '',
+        lastName: referralData.assignedSpecialistLastName || specialistDetails?.lastName || specialistDetails?.last_name || '',
+        middleName: referralData.assignedSpecialistMiddleName || specialistDetails?.middleName || specialistDetails?.middle_name || '',
+        fullName: `${referralData.assignedSpecialistFirstName || ''} ${referralData.assignedSpecialistLastName || ''}`.trim(),
+        specialty: specialistDetails?.specialty || specialistDetails?.specialization || 'Specialist Consultation',
+        isSpecialist: true, // Mark as specialist
+        contactNumber: specialistDetails?.contactNumber || specialistDetails?.phoneNumber || specialistDetails?.phone || '',
+        clinicAffiliations: [clinicId],
+        // Add clinic information for display
+        clinicName: clinicDetails?.name || 'Clinic Name',
+        clinicAddress: clinicDetails?.addressLine || 
+          (clinicDetails ? 
+            [clinicDetails.address, clinicDetails.city, clinicDetails.province]
+              .filter(Boolean)
+              .join(', ') 
+            : 'Address not available'
+          ),
+      };
+      
+      console.log('🔍 Created specialist data with all details:', specialistData);
+      
+      setDoctor(specialistData);
+      
+      // Load specialist available days for date filtering
+      if (specialistData.isSpecialist) {
+        await loadSpecialistAvailableDays();
+      }
+      
+    } catch (error) {
+      console.error('Error loading referral data:', error);
+      setError('Failed to load referral data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loadAvailableTimeSlots = async () => {
-    if (!doctorId || !selectedDate) {
-      console.log('🔍 loadAvailableTimeSlots: Missing doctorId or selectedDate', { doctorId, selectedDate });
+    if (!doctor || !selectedDate) {
+      console.log('🔍 loadAvailableTimeSlots: Missing doctor or selectedDate', { doctor, selectedDate });
       return;
     }
     
-    console.log('🔍 loadAvailableTimeSlots: Starting with', { doctorId, selectedDate });
+    console.log('🔍 loadAvailableTimeSlots: Starting with', { doctorId: doctor.id, selectedDate });
+    console.log('🔍 isFollowUp:', isFollowUp);
+    console.log('🔍 isReferralFollowUp:', isReferralFollowUp);
     
     try {
+      // Check if this is a follow-up for a specialist referral
+      if (isFollowUp === 'true' && doctor?.isSpecialist) {
+        console.log('🔍 This is a follow-up for a specialist referral, loading specialist schedules');
+        await loadSpecialistTimeSlots();
+        return;
+      }
+      
+      // For all other cases (generalist doctors or regular appointments), use the existing logic
+      await loadGeneralistTimeSlots();
+      
+    } catch (error) {
+      console.error('❌ Error loading time slots:', error);
+      setAvailableTimeSlots([]);
+      setBookedTimeSlots([]);
+    }
+  };
+
+  const loadSpecialistAvailableDays = async () => {
+    if (!doctor?.isSpecialist) return;
+    
+    try {
+      console.log('🔍 Loading specialist available days for:', doctor.id);
+      
+      // Get specialist schedules
+      const specialistSchedules = await databaseService.getSpecialistSchedules(doctor.id);
+      if (!specialistSchedules) {
+        console.log('🔍 No specialist schedules found');
+        return;
+      }
+
+      // Find all active schedules and collect their available days
+      const allAvailableDays = new Set<number>();
+      const today = new Date();
+      
+      Object.values(specialistSchedules).forEach((schedule: any) => {
+        if (schedule.isActive && new Date(schedule.validFrom) <= today) {
+          schedule.recurrence.dayOfWeek.forEach((day: number) => {
+            allAvailableDays.add(day);
+          });
+        }
+      });
+
+      const availableDaysArray = Array.from(allAvailableDays).sort();
+      setSpecialistAvailableDays(availableDaysArray);
+      console.log('🔍 Specialist available days loaded:', availableDaysArray);
+
+    } catch (error) {
+      console.error('❌ Error loading specialist available days:', error);
+    }
+  };
+
+  const loadSpecialistTimeSlots = async () => {
+    try {
+      console.log('🔍 Loading specialist schedules for:', doctor?.id);
+      
+      // Get specialist schedules
+      const specialistSchedules = await databaseService.getSpecialistSchedules(doctor!.id);
+      if (!specialistSchedules) {
+        setError('Specialist schedule functionality is not available yet. Please contact support.');
+        setAvailableTimeSlots([]);
+        setBookedTimeSlots([]);
+        return;
+      }
+
+      // Get specialist referrals to check for booked slots
+      const specialistReferrals = await databaseService.getSpecialistReferrals(doctor!.id);
+      console.log('🔍 Specialist referrals:', specialistReferrals);
+
+      // Find active schedule for the selected date
+      const selectedDateObj = new Date(selectedDate);
+      const dayOfWeek = selectedDateObj.getDay();
+      
+      const activeSchedule = Object.values(specialistSchedules).find((schedule: any) => {
+        if (!schedule.isActive || new Date(schedule.validFrom) > selectedDateObj) return false;
+        return schedule.recurrence.dayOfWeek.includes(dayOfWeek);
+      });
+
+      if (!activeSchedule) {
+        setError('No available schedule for this date. Please select a different date.');
+        setAvailableTimeSlots([]);
+        setBookedTimeSlots([]);
+        return;
+      }
+
+      console.log('🔍 Found active schedule:', activeSchedule);
+
+      // Generate time slots from specialist's slotTemplate
+      const specialistTimeSlots = Object.keys(activeSchedule.slotTemplate).map(time => ({
+        time,
+        minutes: activeSchedule.slotTemplate[time].durationMinutes || 0
+      }));
+
+      // Check for booked slots from referrals
+      const bookedSlots = specialistReferrals
+        .filter((referral: any) => 
+          referral.assignedSpecialistId === doctor!.id &&
+          referral.appointmentDate === selectedDate &&
+          (referral.status === 'confirmed' || referral.status === 'completed')
+        )
+        .map((referral: any) => referral.appointmentTime);
+
+      console.log('🔍 Specialist time slots:', specialistTimeSlots);
+      console.log('🔍 Booked slots from referrals:', bookedSlots);
+
+      setAvailableTimeSlots(specialistTimeSlots);
+      setBookedTimeSlots(bookedSlots);
+
+    } catch (error) {
+      console.error('❌ Error loading specialist time slots:', error);
+      setError('Specialist schedule functionality is not available yet. Please contact support.');
+      setAvailableTimeSlots([]);
+      setBookedTimeSlots([]);
+    }
+  };
+
+  const loadGeneralistTimeSlots = async () => {
+    try {
              // Get booked time slots for this doctor on this date
-       const bookedSlots = await databaseService.getBookedTimeSlots(doctorId, selectedDate);
+      const bookedSlots = await databaseService.getBookedTimeSlots(doctor!.id, selectedDate);
        console.log('🔍 Booked slots found:', bookedSlots);
        
        // Booked slots are already in 12-hour format from the database, no need to convert
@@ -324,15 +555,32 @@ export default function SelectDateTimeScreen() {
        }, 100);
       
     } catch (error) {
-      console.error('❌ Error loading time slots:', error);
+      console.error('❌ Error loading generalist time slots:', error);
       setAvailableTimeSlots([]);
       setBookedTimeSlots([]);
     }
   };
 
   useEffect(() => {
+    console.log('🔍 useEffect triggered:', { 
+      doctorId, 
+      isReferralFollowUp, 
+      isFollowUp, 
+      originalAppointmentId 
+    });
+    
+    if (isReferralFollowUp === 'true') {
+      console.log('🔍 Loading referral data...');
+      loadReferralData();
+    } else if (isFollowUp === 'true' && originalAppointmentId && !doctorId) {
+      // Fallback: if it's a follow-up but missing doctorId, try to load from referral
+      console.log('🔍 Follow-up missing doctorId, trying to load from referral...');
+      loadReferralData();
+    } else {
+      console.log('🔍 Loading doctor data...');
     loadDoctorData();
-  }, [doctorId]);
+    }
+  }, [doctorId, isReferralFollowUp]);
 
   useEffect(() => {
     if (selectedDate) {
@@ -506,6 +754,9 @@ export default function SelectDateTimeScreen() {
             <View style={styles.clinicCardNameCol}>
               <Text style={styles.clinicName}>{displayDoctorName}</Text>
               <Text style={styles.clinicDistance}>{displayClinicName}</Text>
+              {displayClinicAddress ? (
+                <Text style={styles.clinicAddress}>{displayClinicAddress}</Text>
+              ) : null}
             </View>
             <View style={styles.clinicCardIconContainer}>
               <User size={24} color="#1E40AF" />
@@ -946,6 +1197,12 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     fontFamily: 'Inter-Medium',
     marginBottom: 2,
+  },
+  clinicAddress: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    marginTop: 2,
   },
   servicesTags: {
     flexDirection: 'row',
