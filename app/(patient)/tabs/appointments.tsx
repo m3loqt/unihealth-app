@@ -27,6 +27,7 @@ import {
   X,
   Star,
   Search,
+  MessageCircle,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
@@ -217,6 +218,13 @@ export default function AppointmentsScreen() {
   const handleRetry = () => {
     // The hook handles error state, just trigger a refresh
     hookRefresh();
+  };
+
+  const handleFollowUp = (appointment: Appointment) => {
+    // TODO: Implement follow-up functionality
+    // This will be defined later as requested by the user
+    console.log('Follow-up requested for appointment:', appointment.id);
+    Alert.alert('Follow-up', 'Follow-up functionality will be implemented soon.');
   };
 
   // Handle tag selection
@@ -785,22 +793,54 @@ export default function AppointmentsScreen() {
               const hasFeedback = existingReferralFeedback[referral.id!];
 
               return !hasFeedback ? (
-                <TouchableOpacity
-                  style={styles.outlinedButton}
-                  onPress={() => {
-                    setFeedbackReferral(referral);
-                    setFeedbackAppointment(null);
-                    setFeedbackStars(0);
-                    setFeedbackReason('');
-                    setFeedbackSubmitted(false);
-                    setShowFeedbackModal(true);
-                  }}
-                >
-                  <Text style={styles.outlinedButtonText}>Give Feedback</Text>
-                </TouchableOpacity>
+                <View style={styles.completedActionsContainer}>
+                  <TouchableOpacity
+                    style={styles.followUpButton}
+                    onPress={() => {
+                      // For referrals, we'll pass a mock appointment object
+                      handleFollowUp({
+                        id: referral.id!,
+                        patientFirstName: referral.patientFirstName || 'Patient',
+                        patientLastName: referral.patientLastName || '',
+                      } as Appointment);
+                    }}
+                  >
+                    <MessageCircle size={16} color="#1E40AF" />
+                    <Text style={styles.followUpButtonText}>Follow-up</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.outlinedButton}
+                    onPress={() => {
+                      setFeedbackReferral(referral);
+                      setFeedbackAppointment(null);
+                      setFeedbackStars(0);
+                      setFeedbackReason('');
+                      setFeedbackSubmitted(false);
+                      setShowFeedbackModal(true);
+                    }}
+                  >
+                    <Text style={styles.outlinedButtonText}>Give Feedback</Text>
+                  </TouchableOpacity>
+                </View>
               ) : (
-                <View style={styles.feedbackSubmittedContainer}>
-                  <Text style={styles.feedbackSubmittedText}>✓ Feedback Submitted</Text>
+                <View style={styles.completedActionsContainer}>
+                  <TouchableOpacity
+                    style={styles.followUpButton}
+                    onPress={() => {
+                      // For referrals, we'll pass a mock appointment object
+                      handleFollowUp({
+                        id: referral.id!,
+                        patientFirstName: referral.patientFirstName || 'Patient',
+                        patientLastName: referral.patientLastName || '',
+                      } as Appointment);
+                    }}
+                  >
+                    <MessageCircle size={16} color="#1E40AF" />
+                    <Text style={styles.followUpButtonText}>Follow-up</Text>
+                  </TouchableOpacity>
+                  <View style={styles.feedbackSubmittedContainer}>
+                    <Text style={styles.feedbackSubmittedText}>✓ Feedback Submitted</Text>
+                  </View>
                 </View>
               );
             })()}
@@ -935,21 +975,43 @@ export default function AppointmentsScreen() {
             const hasFeedback = existingFeedback[appointment.id!];
 
             return !hasFeedback ? (
-              <TouchableOpacity
-                style={styles.outlinedButton}
-                onPress={() => {
-                  setFeedbackAppointment(appointment);
-                  setFeedbackStars(0);
-                  setFeedbackReason('');
-                  setFeedbackSubmitted(false);
-                  setShowFeedbackModal(true);
-                }}
-              >
-                <Text style={styles.outlinedButtonText}>Give Feedback</Text>
-              </TouchableOpacity>
+              <View style={styles.completedActionsContainer}>
+                <TouchableOpacity
+                  style={styles.followUpButton}
+                  onPress={() => {
+                    handleFollowUp(appointment);
+                  }}
+                >
+                  <MessageCircle size={16} color="#1E40AF" />
+                  <Text style={styles.followUpButtonText}>Follow-up</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.outlinedButton}
+                  onPress={() => {
+                    setFeedbackAppointment(appointment);
+                    setFeedbackStars(0);
+                    setFeedbackReason('');
+                    setFeedbackSubmitted(false);
+                    setShowFeedbackModal(true);
+                  }}
+                >
+                  <Text style={styles.outlinedButtonText}>Give Feedback</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
-              <View style={styles.feedbackSubmittedContainer}>
-                <Text style={styles.feedbackSubmittedText}>✓ Feedback Submitted</Text>
+              <View style={styles.completedActionsContainer}>
+                <TouchableOpacity
+                  style={styles.followUpButton}
+                  onPress={() => {
+                    handleFollowUp(appointment);
+                  }}
+                >
+                  <MessageCircle size={16} color="#1E40AF" />
+                  <Text style={styles.followUpButtonText}>Follow-up</Text>
+                </TouchableOpacity>
+                <View style={styles.feedbackSubmittedContainer}>
+                  <Text style={styles.feedbackSubmittedText}>✓ Feedback Submitted</Text>
+                </View>
               </View>
             );
           })()}
@@ -1495,17 +1557,34 @@ const styles = StyleSheet.create({
   },
   // Outlined feedback button
   outlinedButton: {
-    flex: 1,
     backgroundColor: 'transparent',
     borderWidth: 1.5,
     borderColor: '#D1D5DB',
     borderRadius: 8,
     alignItems: 'center',
     paddingVertical: 12,
-    marginRight: 8,
+    paddingHorizontal: 20,
   },
   outlinedButtonText: {
     color: '#6B7280',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+  },
+  // Follow-up button
+  followUpButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#1E40AF',
+    borderRadius: 8,
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  followUpButtonText: {
+    color: '#1E40AF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
   },
@@ -2045,13 +2124,26 @@ feedbackModalButton: {
     fontFamily: 'Inter-SemiBold',
     marginBottom: 12,
   },
+  completedActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    gap: 16,
+  },
   feedbackSubmittedContainer: {
-    alignItems: 'flex-end',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1.5,
+    borderColor: '#1E40AF',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
   },
   feedbackSubmittedText: {
     fontSize: 14,
     color: '#1E40AF',
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'Inter-SemiBold',
   },
   // Tag selection styles
   tagsContainer: {
