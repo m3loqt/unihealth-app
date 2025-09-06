@@ -766,22 +766,32 @@ export default function SelectDateTimeScreen() {
         selectedTime,
         selectedPurpose,
         notes,
+        doctor: doctor,
+        displayClinicName,
+        displayClinicAddress
       });
+      
+      // Use fetched doctor data if available, otherwise fall back to URL params
+      const finalClinicName = displayClinicName || clinicName || '';
+      const finalClinicAddress = displayClinicAddress || '';
+      const finalDoctorName = displayDoctorName || doctorName || '';
+      const finalDoctorSpecialty = displayDoctorSpecialty || doctorSpecialty || '';
       
       // More robust parameter validation - ensure all values are strings and not undefined
       const params = {
         clinicId: String(clinicId || ''),
-        clinicName: String(clinicName || ''),
+        clinicName: String(finalClinicName),
+        clinicAddress: String(finalClinicAddress), // Add clinic address to params
         doctorId: String(doctorId || ''),
-        doctorName: String(doctorName || ''),
-        doctorSpecialty: String(doctorSpecialty || ''),
+        doctorName: String(finalDoctorName),
+        doctorSpecialty: String(finalDoctorSpecialty),
         selectedDate: String(selectedDate),
         selectedTime: String(selectedTime),
         selectedPurpose: String(selectedPurpose),
         notes: String(notes || ''),
       };
       
-      console.log('Sanitized parameters:', params);
+      console.log('Sanitized parameters with fetched data:', params);
       
       // Additional validation to ensure no undefined values
       const hasUndefinedValues = Object.values(params).some(value => value === 'undefined' || value === undefined);

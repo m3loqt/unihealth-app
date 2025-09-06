@@ -29,6 +29,7 @@ export default function ReviewConfirmScreen() {
   const { 
     clinicId, 
     clinicName, 
+    clinicAddress,
     doctorId, 
     doctorName, 
     doctorSpecialty, 
@@ -242,9 +243,11 @@ export default function ReviewConfirmScreen() {
           {/* Clinic Info */}
           <View style={styles.clinicSection}>
             <Text style={styles.clinicName}>{clinic.name}</Text>
-            {clinicData && (
+            {clinicData ? (
               <Text style={styles.clinicAddress}>{formatClinicAddress(clinicData)}</Text>
-            )}
+            ) : clinicAddress ? (
+              <Text style={styles.clinicAddress}>{clinicAddress}</Text>
+            ) : null}
           </View>
 
           <View style={styles.dividerLine} />
