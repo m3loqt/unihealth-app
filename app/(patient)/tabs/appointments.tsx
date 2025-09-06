@@ -205,6 +205,13 @@ export default function AppointmentsScreen() {
     checkFeedbackForReferrals();
   }, [hookReferrals]);
 
+  // Load appointment data when appointments change
+  useEffect(() => {
+    if (appointments && appointments.length > 0) {
+      loadAllAppointmentsData();
+    }
+  }, [appointments]);
+
   const handleRefresh = async () => {
     setRefreshing(true);
     // Refresh both appointments and referrals via their respective hooks
@@ -364,12 +371,31 @@ export default function AppointmentsScreen() {
       
       // Load specialist data if not already loaded
       if (appointment.doctorId && !specialistData[appointment.doctorId]) {
-        const specialist = await databaseService.getDoctorById(appointment.doctorId);
-        setSpecialistData(prev => ({ ...prev, [appointment.doctorId]: specialist }));
+        // Fetch both doctor name (from users) and specialty (from doctors) data
+        const [doctorNameData, doctorSpecialtyData] = await Promise.all([
+          databaseService.getDocument(`users/${appointment.doctorId}`), // Get name from users node
+          databaseService.getDocument(`doctors/${appointment.doctorId}`) // Get specialty from doctors node
+        ]);
+        
+        // Combine the data
+        const specialistData = {
+          ...doctorNameData,
+          specialty: doctorSpecialtyData?.specialty || 'General Medicine'
+        };
+        
+        setSpecialistData(prev => ({ ...prev, [appointment.doctorId]: specialistData }));
       }
     } catch (error) {
       console.error('Error loading appointment data:', error);
     }
+  };
+
+  // Load data for all appointments to improve display
+  const loadAllAppointmentsData = async () => {
+    if (!appointments || appointments.length === 0) return;
+    
+    const promises = appointments.map(appointment => loadAppointmentData(appointment));
+    await Promise.all(promises);
   };
 
   const loadMedicalHistory = async (appointment: Appointment, source: 'appointment' | 'referral' = 'appointment') => {
@@ -806,12 +832,30 @@ export default function AppointmentsScreen() {
                   <TouchableOpacity
                     style={styles.followUpButton}
                     onPress={() => {
-                      // For referrals, we'll pass a mock appointment object
-                      handleFollowUp({
-                        id: referral.id!,
-                        patientFirstName: referral.patientFirstName || 'Patient',
-                        patientLastName: referral.patientLastName || '',
-                      } as Appointment);
+                      // For referrals, we need to pass the specialist and clinic information
+                      // Navigate directly to select-datetime with referral data for follow-up
+                      const specialistId = referral.assignedSpecialistId;
+                      const clinicId = referral.practiceLocation?.clinicId;
+                      const specialistName = `${referral.assignedSpecialistFirstName || ''} ${referral.assignedSpecialistLastName || ''}`.trim();
+                      
+                      if (!specialistId || !clinicId) {
+                        Alert.alert('Error', 'Unable to book follow-up. Missing specialist or clinic information.');
+                        return;
+                      }
+                      
+                      router.push({
+                        pathname: '/(patient)/book-visit/select-datetime',
+                        params: {
+                          doctorId: specialistId,
+                          clinicId: clinicId,
+                          clinicName: '', // Will be fetched from clinic data in select-datetime screen
+                          doctorName: specialistName,
+                          doctorSpecialty: 'Specialist Consultation', // Will be fetched from doctor data in select-datetime screen
+                          isFollowUp: 'true',
+                          originalAppointmentId: referral.id!,
+                          isReferralFollowUp: 'true', // Flag to indicate this is a referral follow-up
+                        }
+                      });
                     }}
                   >
                     <MessageCircle size={16} color="#1E40AF" />
@@ -836,12 +880,30 @@ export default function AppointmentsScreen() {
                   <TouchableOpacity
                     style={styles.followUpButton}
                     onPress={() => {
-                      // For referrals, we'll pass a mock appointment object
-                      handleFollowUp({
-                        id: referral.id!,
-                        patientFirstName: referral.patientFirstName || 'Patient',
-                        patientLastName: referral.patientLastName || '',
-                      } as Appointment);
+                      // For referrals, we need to pass the specialist and clinic information
+                      // Navigate directly to select-datetime with referral data for follow-up
+                      const specialistId = referral.assignedSpecialistId;
+                      const clinicId = referral.practiceLocation?.clinicId;
+                      const specialistName = `${referral.assignedSpecialistFirstName || ''} ${referral.assignedSpecialistLastName || ''}`.trim();
+                      
+                      if (!specialistId || !clinicId) {
+                        Alert.alert('Error', 'Unable to book follow-up. Missing specialist or clinic information.');
+                        return;
+                      }
+                      
+                      router.push({
+                        pathname: '/(patient)/book-visit/select-datetime',
+                        params: {
+                          doctorId: specialistId,
+                          clinicId: clinicId,
+                          clinicName: '', // Will be fetched from clinic data in select-datetime screen
+                          doctorName: specialistName,
+                          doctorSpecialty: 'Specialist Consultation', // Will be fetched from doctor data in select-datetime screen
+                          isFollowUp: 'true',
+                          originalAppointmentId: referral.id!,
+                          isReferralFollowUp: 'true', // Flag to indicate this is a referral follow-up
+                        }
+                      });
                     }}
                   >
                     <MessageCircle size={16} color="#1E40AF" />
@@ -902,15 +964,54 @@ export default function AppointmentsScreen() {
       }
     };
 
-    const doctorName = safeDataAccess.getAppointmentDoctorName(appointment, 'Doctor not specified');
+    // Get doctor data from fetched specialist data or fallback to appointment data
+    const fetchedSpecialist = specialistData[appointment.doctorId];
+    
+    const doctorName = (() => {
+      // First try appointment data
+      if (appointment.doctorFirstName && appointment.doctorLastName) {
+        return `${appointment.doctorFirstName} ${appointment.doctorLastName}`;
+      }
+      // Then try fetched specialist data
+      if (fetchedSpecialist) {
+        const firstName = fetchedSpecialist.firstName || fetchedSpecialist.first_name || '';
+        const middleName = fetchedSpecialist.middleName || fetchedSpecialist.middle_name || '';
+        const lastName = fetchedSpecialist.lastName || fetchedSpecialist.last_name || '';
+        const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
+        return fullName || 'Doctor not specified';
+      }
+      return 'Doctor not specified';
+    })();
+    
+    const doctorSpecialty = (() => {
+      // First try appointment data
+      if (appointment.specialty) {
+        return appointment.specialty;
+      }
+      // Then try fetched specialist data
+      if (fetchedSpecialist?.specialty) {
+        return fetchedSpecialist.specialty;
+      }
+      return 'General Medicine';
+    })();
+    
     const doctorInitials = (() => {
+      // First try appointment data
       const firstName = appointment.doctorFirstName || '';
       const lastName = appointment.doctorLastName || '';
       if (firstName && lastName) {
         return `${firstName[0]}${lastName[0]}`.toUpperCase();
       }
-      if (firstName) {
-        return firstName[0].toUpperCase();
+      // Then try fetched specialist data
+      if (fetchedSpecialist) {
+        const firstName = fetchedSpecialist.firstName || fetchedSpecialist.first_name || '';
+        const lastName = fetchedSpecialist.lastName || fetchedSpecialist.last_name || '';
+        if (firstName && lastName) {
+          return `${firstName[0]}${lastName[0]}`.toUpperCase();
+        }
+        if (firstName) {
+          return firstName[0].toUpperCase();
+        }
       }
       return 'DR';
     })();
@@ -934,7 +1035,7 @@ export default function AppointmentsScreen() {
                 {doctorName ? `Dr. ${doctorName}` : 'Dr. Unknown'}
               </Text>
               <Text style={styles.doctorSpecialty}>
-                {appointment.specialty || 'General Medicine'}
+                {doctorSpecialty}
               </Text>
             </View>
           </View>
