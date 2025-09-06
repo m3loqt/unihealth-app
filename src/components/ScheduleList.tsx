@@ -16,6 +16,7 @@ interface ScheduleListProps {
   schedules: SpecialistSchedule[];
   clinics: Clinic[];
   referrals: any[];
+  appointments?: any[]; // Optional appointments for blocking check
   onEdit: (schedule: SpecialistSchedule) => void;
   onDelete: (scheduleId: string) => Promise<void>;
   onAddNew: () => void;
@@ -27,6 +28,7 @@ export default function ScheduleList({
   schedules, 
   clinics, 
   referrals,
+  appointments = [],
   onEdit, 
   onDelete, 
   onAddNew 
@@ -78,13 +80,13 @@ export default function ScheduleList({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Check if there are any confirmed referrals that match this schedule's pattern
-    // A schedule should be locked if there's a confirmed referral that matches:
+    // Check if there are any referrals that match this schedule's pattern
+    // A schedule should be locked if there's a referral that matches:
     // 1. The schedule's recurrence pattern (day of week)
     // 2. The schedule's time slots
     // 3. The appointment date is on or after the schedule's validFrom date
-    const hasConfirmedAppointments = referrals.some(referral => {
-      if (referral.status !== 'confirmed' && referral.status !== 'completed') return false;
+    const hasConfirmedReferrals = referrals.some(referral => {
+      if (referral.status !== 'pending' && referral.status !== 'confirmed' && referral.status !== 'completed') return false;
       
       // Parse appointment date as local date to avoid timezone issues
       const [year, month, day] = referral.appointmentDate.split('-').map(Number);
@@ -104,7 +106,31 @@ export default function ScheduleList({
       return true;
     });
 
-    return !hasConfirmedAppointments;
+    // Also check if there are any appointments (not cancelled) that match this schedule's pattern
+    // This includes follow-up appointments and other direct bookings
+    const hasConfirmedAppointments = appointments.some(appointment => {
+      // Block if status is NOT cancelled (pending, confirmed, completed all block)
+      if (appointment.status === 'cancelled') return false;
+      
+      // Parse appointment date as local date to avoid timezone issues
+      const [year, month, day] = appointment.appointmentDate.split('-').map(Number);
+      const appointmentDate = new Date(year, month - 1, day); // month is 0-indexed
+      
+      // Check if appointment date is on or after the schedule's validFrom date
+      if (appointmentDate < validFromDate) return false;
+      
+      // Check if the appointment day of week matches the schedule's recurrence pattern
+      const appointmentDayOfWeek = appointmentDate.getDay(); // 0-6 (Sunday-Saturday)
+      if (!schedule.recurrence.dayOfWeek.includes(appointmentDayOfWeek)) return false;
+      
+      // Check if the appointment time matches one of the schedule's time slots
+      const scheduleTimeSlots = Object.keys(schedule.slotTemplate);
+      if (!scheduleTimeSlots.includes(appointment.appointmentTime)) return false;
+      
+      return true;
+    });
+
+    return !hasConfirmedReferrals && !hasConfirmedAppointments;
   };
 
   if (schedules.length === 0) {

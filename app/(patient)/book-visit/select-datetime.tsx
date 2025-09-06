@@ -645,19 +645,34 @@ export default function SelectDateTimeScreen() {
       }));
 
       // Check for booked slots from referrals
-      const bookedSlots = specialistReferrals
+      const bookedSlotsFromReferrals = specialistReferrals
         .filter((referral: any) => 
           referral.assignedSpecialistId === doctor!.id &&
           referral.appointmentDate === selectedDate &&
-          (referral.status === 'confirmed' || referral.status === 'completed')
+          (referral.status === 'pending' || referral.status === 'confirmed' || referral.status === 'completed')
         )
         .map((referral: any) => referral.appointmentTime);
 
+      // Also check for booked slots from appointments (follow-up appointments, etc.)
+      const specialistAppointments = await databaseService.getAppointments(doctor!.id, 'specialist');
+      const bookedSlotsFromAppointments = specialistAppointments
+        .filter((appointment: any) => 
+          appointment.doctorId === doctor!.id &&
+          appointment.appointmentDate === selectedDate &&
+          appointment.status !== 'cancelled' // Block if status is NOT cancelled
+        )
+        .map((appointment: any) => appointment.appointmentTime);
+
+      // Combine both sources of booked slots
+      const allBookedSlots = [...new Set([...bookedSlotsFromReferrals, ...bookedSlotsFromAppointments])];
+
       console.log('🔍 Specialist time slots:', specialistTimeSlots);
-      console.log('🔍 Booked slots from referrals:', bookedSlots);
+      console.log('🔍 Booked slots from referrals:', bookedSlotsFromReferrals);
+      console.log('🔍 Booked slots from appointments:', bookedSlotsFromAppointments);
+      console.log('🔍 All booked slots:', allBookedSlots);
 
       setAvailableTimeSlots(specialistTimeSlots);
-      setBookedTimeSlots(bookedSlots);
+      setBookedTimeSlots(allBookedSlots);
 
     } catch (error) {
       console.error('❌ Error loading specialist time slots:', error);
