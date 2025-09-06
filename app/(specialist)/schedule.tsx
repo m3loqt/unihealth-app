@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -53,6 +53,25 @@ export default function SpecialistScheduleScreen() {
     deleteSchedule,
   } = useSpecialistSchedules(user?.uid || '');
 
+  // Load appointments for blocking check
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+
+  // Load appointments for the specialist
+  const loadAppointments = useCallback(async () => {
+    if (!user?.uid) return;
+    
+    setAppointmentsLoading(true);
+    try {
+      const specialistAppointments = await databaseService.getAppointments(user.uid, 'specialist');
+      setAppointments(specialistAppointments);
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+    } finally {
+      setAppointmentsLoading(false);
+    }
+  }, [user?.uid]);
+
   // Generate calendar data for the current month
   const calendarData = useMemo(() => {
     const year = currentDate.getFullYear();
@@ -95,13 +114,23 @@ export default function SpecialistScheduleScreen() {
 
         if (activeSchedule) {
           slots = Object.entries(activeSchedule.slotTemplate).map(([time, slot]) => {
-            // Simple check: is this specific date and time slot booked?
-            const isBooked = referrals.some(referral =>
+            // Check if this specific date and time slot is booked by referrals
+            const isBookedByReferral = referrals.some(referral =>
               referral.assignedSpecialistId === user?.uid &&
               referral.appointmentDate === dateString &&
               referral.appointmentTime === time &&
-              (referral.status === 'confirmed' || referral.status === 'completed')
+              (referral.status === 'pending' || referral.status === 'confirmed' || referral.status === 'completed')
             );
+
+            // Check if this specific date and time slot is booked by appointments (not cancelled)
+            const isBookedByAppointment = appointments.some(appointment =>
+              appointment.doctorId === user?.uid &&
+              appointment.appointmentDate === dateString &&
+              appointment.appointmentTime === time &&
+              appointment.status !== 'cancelled' // Block if status is NOT cancelled
+            );
+
+            const isBooked = isBookedByReferral || isBookedByAppointment;
 
             return {
               time,
@@ -125,7 +154,7 @@ export default function SpecialistScheduleScreen() {
     }
 
     return days;
-  }, [currentDate, schedules, referrals, user?.uid]);
+  }, [currentDate, schedules, referrals, appointments, user?.uid]);
 
   // Load clinic data for schedules
   useEffect(() => {
@@ -157,9 +186,14 @@ export default function SpecialistScheduleScreen() {
     loadClinicData();
   }, [schedules]);
 
+  // Load appointments for blocking check
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadSchedules();
+    await Promise.all([loadSchedules(), loadAppointments()]);
     setRefreshing(false);
   };
 
@@ -471,6 +505,7 @@ export default function SpecialistScheduleScreen() {
               schedules={schedules}
               clinics={Object.values(clinicData).filter(Boolean)}
               referrals={referrals}
+              appointments={appointments}
               onEdit={handleEditSchedule}
               onDelete={handleDeleteSchedule}
               onAddNew={handleAddSchedule}
