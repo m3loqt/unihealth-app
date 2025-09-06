@@ -218,14 +218,16 @@ export default function VisitOverviewScreen() {
       const appointment = await databaseService.getAppointmentById(id as string);
       
               if (appointment) {
-          // Load clinic and doctor data for complete information
+          // Load clinic, doctor name (from users), and doctor specialty (from doctors) data
           let clinicData = null;
-          let doctorData = null;
+          let doctorNameData = null;
+          let doctorSpecialtyData = null;
           
           try {
-            [clinicData, doctorData] = await Promise.all([
+            [clinicData, doctorNameData, doctorSpecialtyData] = await Promise.all([
               databaseService.getDocument(`clinics/${appointment.clinicId}`),
-              databaseService.getDocument(`specialists/${appointment.doctorId}`)
+              databaseService.getDocument(`users/${appointment.doctorId}`), // Get name from users node
+              databaseService.getDocument(`doctors/${appointment.doctorId}`) // Get specialty from doctors node
             ]);
           } catch (error) {
             console.log('Could not fetch clinic or doctor data:', error);
@@ -254,18 +256,30 @@ export default function VisitOverviewScreen() {
           });
           
           console.log('🔍 CLINIC DATA:', clinicData);
-          console.log('🔍 DOCTOR DATA:', doctorData);
+          console.log('🔍 DOCTOR NAME DATA (users):', doctorNameData);
+          console.log('🔍 DOCTOR SPECIALTY DATA (doctors):', doctorSpecialtyData);
           
           // Combine appointment data with consultation data
           const combinedVisitData: VisitData = {
             ...appointment,
-            // Use appointment data first, then fallback to fetched data
-            doctorName: appointment.doctorFirstName && appointment.doctorLastName 
-              ? `Dr. ${appointment.doctorFirstName} ${appointment.doctorLastName}` 
-              : doctorData 
-                ? `Dr. ${doctorData.firstName} ${doctorData.lastName}`
-                : 'Dr. Unknown Doctor',
-            doctorSpecialty: appointment.doctorSpecialty || doctorData?.specialty || 'General Medicine',
+            // Construct doctor name from users node (firstName, middleName, lastName)
+            doctorName: (() => {
+              // First try appointment data
+              if (appointment.doctorFirstName && appointment.doctorLastName) {
+                return `Dr. ${appointment.doctorFirstName} ${appointment.doctorLastName}`;
+              }
+              // Then try users node data
+              if (doctorNameData) {
+                const firstName = doctorNameData.firstName || doctorNameData.first_name || '';
+                const middleName = doctorNameData.middleName || doctorNameData.middle_name || '';
+                const lastName = doctorNameData.lastName || doctorNameData.last_name || '';
+                const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
+                return fullName ? `Dr. ${fullName}` : 'Dr. Unknown Doctor';
+              }
+              return 'Dr. Unknown Doctor';
+            })(),
+            // Get specialty from doctors node
+            doctorSpecialty: appointment.doctorSpecialty || doctorSpecialtyData?.specialty || 'General Medicine',
             clinic: clinicData?.name || appointment.clinicName || 'Unknown Clinic',
             date: appointment.appointmentDate,
             time: appointment.appointmentTime,
