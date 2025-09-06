@@ -200,6 +200,8 @@ export default function SelectDateTimeScreen() {
   const [bookedTimeSlots, setBookedTimeSlots] = useState<string[]>([]);
   const [specialistAvailableDays, setSpecialistAvailableDays] = useState<number[]>([]);
   const [specialistDaysLoaded, setSpecialistDaysLoaded] = useState(false);
+  const [generalistAvailableDays, setGeneralistAvailableDays] = useState<number[]>([]);
+  const [generalistDaysLoaded, setGeneralistDaysLoaded] = useState(false);
   
   // Refs
   const dateScrollRef = useRef<ScrollView>(null);
@@ -242,7 +244,7 @@ export default function SelectDateTimeScreen() {
     return dates;
   }, []);
 
-  // Filter dates based on specialist availability
+  // Filter dates based on doctor availability (both specialist and generalist)
   const FILTERED_DATES = useMemo(() => {
     console.log('🔍 FILTERED_DATES calculation:', {
       isSpecialist: doctor?.isSpecialist,
@@ -250,7 +252,10 @@ export default function SelectDateTimeScreen() {
       isReferralFollowUpType: typeof isReferralFollowUp,
       isReferralFollowUpValue: isReferralFollowUp,
       specialistAvailableDays,
-      availableDaysLength: specialistAvailableDays.length,
+      generalistAvailableDays,
+      specialistDaysLoaded,
+      generalistDaysLoaded,
+      availableDaysLength: doctor?.isSpecialist ? specialistAvailableDays.length : generalistAvailableDays.length,
       doctorId: doctor?.id
     });
     
@@ -260,26 +265,50 @@ export default function SelectDateTimeScreen() {
       return AVAILABLE_DATES;
     }
     
-    // Only filter dates for specialists (they have custom schedules)
-    if (!doctor?.isSpecialist) {
-      console.log('🔍 Not a specialist doctor, using all dates. doctor:', doctor);
+    // For specialists, use specialist availability filtering
+    if (doctor?.isSpecialist) {
+      if (!specialistDaysLoaded || specialistAvailableDays.length === 0) {
+        console.log('🔍 Specialist days not loaded yet or empty, using all dates for now');
+        return AVAILABLE_DATES;
+      }
+      
+      // For specialist follow-ups, filter dates to only show available days
+      const filtered = AVAILABLE_DATES.filter(date => 
+        specialistAvailableDays.includes(date.dayOfWeek)
+      );
+      console.log('🔍 Filtered dates for specialist:', filtered.length, 'out of', AVAILABLE_DATES.length);
+      console.log('🔍 Available days:', specialistAvailableDays);
+      console.log('🔍 Sample dates being filtered:', AVAILABLE_DATES.slice(0, 5).map(d => ({ date: d.date, dayOfWeek: d.dayOfWeek })));
+      return filtered;
+    }
+    
+    // For generalists, use generalist availability filtering
+    if (!generalistDaysLoaded) {
+      console.log('🔍 Generalist days not loaded yet, using all dates for now');
       return AVAILABLE_DATES;
     }
     
-    if (!specialistDaysLoaded || specialistAvailableDays.length === 0) {
-      console.log('🔍 Specialist days not loaded yet or empty, using all dates for now');
-      return AVAILABLE_DATES;
+    if (generalistAvailableDays.length === 0) {
+      console.log('🔍 No generalist availability found, showing no dates');
+      return [];
     }
     
-    // For specialist follow-ups, filter dates to only show available days
-    const filtered = AVAILABLE_DATES.filter(date => 
-      specialistAvailableDays.includes(date.dayOfWeek)
-    );
-    console.log('🔍 Filtered dates for specialist:', filtered.length, 'out of', AVAILABLE_DATES.length);
-    console.log('🔍 Available days:', specialistAvailableDays);
+    // For generalists, filter dates to only show available days
+    console.log('🔍 DEBUG - Filtering generalist dates:');
+    console.log('🔍 DEBUG - generalistAvailableDays:', generalistAvailableDays);
+    console.log('🔍 DEBUG - AVAILABLE_DATES sample:', AVAILABLE_DATES.slice(0, 3).map(d => ({ date: d.date, dayOfWeek: d.dayOfWeek })));
+    
+    const filtered = AVAILABLE_DATES.filter(date => {
+      const isAvailable = generalistAvailableDays.includes(date.dayOfWeek);
+      console.log('🔍 DEBUG - Date:', date.date, 'DayOfWeek:', date.dayOfWeek, 'Available:', isAvailable);
+      return isAvailable;
+    });
+    
+    console.log('🔍 Filtered dates for generalist:', filtered.length, 'out of', AVAILABLE_DATES.length);
+    console.log('🔍 Available days:', generalistAvailableDays);
     console.log('🔍 Sample dates being filtered:', AVAILABLE_DATES.slice(0, 5).map(d => ({ date: d.date, dayOfWeek: d.dayOfWeek })));
     return filtered;
-  }, [AVAILABLE_DATES, doctor?.isSpecialist, isReferralFollowUp, specialistAvailableDays, specialistDaysLoaded, loading]);
+  }, [AVAILABLE_DATES, doctor?.isSpecialist, isReferralFollowUp, specialistAvailableDays, generalistAvailableDays, specialistDaysLoaded, generalistDaysLoaded, loading]);
 
   const datePager = useMemo(() => getPagerData(FILTERED_DATES, 7), [FILTERED_DATES]);
     // Use available time slots directly (they already include all standard slots)
@@ -310,9 +339,11 @@ export default function SelectDateTimeScreen() {
       
       setDoctor(doctorData);
       
-      // Load specialist available days for date filtering
+      // Load available days for date filtering
       if (doctorData.isSpecialist) {
         await loadSpecialistAvailableDays(doctorId);
+      } else {
+        await loadGeneralistAvailableDays(doctorData);
       }
     } catch (error) {
       console.error('Error loading doctor data:', error);
@@ -404,9 +435,11 @@ export default function SelectDateTimeScreen() {
       
       setDoctor(specialistData);
       
-      // Load specialist available days for date filtering
+      // Load available days for date filtering
       if (specialistData.isSpecialist) {
         await loadSpecialistAvailableDays(specialistId);
+      } else {
+        await loadGeneralistAvailableDays(specialistData);
       }
       
     } catch (error) {
@@ -487,6 +520,61 @@ export default function SelectDateTimeScreen() {
 
     } catch (error) {
       console.error('❌ Error loading specialist available days:', error);
+    }
+  };
+
+  const loadGeneralistAvailableDays = async (doctorData: any) => {
+    if (!doctorData) return;
+    
+    setGeneralistDaysLoaded(false);
+    
+    try {
+      console.log('🔍 Loading generalist available days for:', doctorData.id);
+      
+      // Check if doctor has availability data
+      if (!doctorData.availability?.weeklySchedule) {
+        console.log('🔍 No generalist availability found for doctor:', doctorData.id);
+        setGeneralistAvailableDays([]);
+        setGeneralistDaysLoaded(true);
+        return;
+      }
+
+      console.log('🔍 Raw generalist availability:', doctorData.availability.weeklySchedule);
+
+      // Find all days where enabled is true and timeSlots exist
+      const allAvailableDays = new Set<number>();
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      
+      dayNames.forEach((dayName, index) => {
+        const daySchedule = doctorData.availability.weeklySchedule[dayName as keyof typeof doctorData.availability.weeklySchedule];
+        console.log('🔍 Processing day:', dayName, 'index:', index, daySchedule);
+        
+        // Check if day is enabled and has timeSlots with startTime and endTime
+        if (daySchedule?.enabled && daySchedule.timeSlots && daySchedule.timeSlots.length > 0) {
+          // Verify that timeSlots have valid startTime and endTime
+          const hasValidTimeSlots = daySchedule.timeSlots.some(slot => 
+            slot.startTime && slot.endTime && 
+            slot.startTime.trim() !== '' && slot.endTime.trim() !== ''
+          );
+          
+          if (hasValidTimeSlots) {
+            console.log('🔍 Found valid generalist schedule for', dayName, 'index:', index, ':', daySchedule.timeSlots);
+            allAvailableDays.add(index);
+          } else {
+            console.log('🔍 Day', dayName, 'enabled but no valid time slots');
+          }
+        } else {
+          console.log('🔍 Day', dayName, 'not available - enabled:', daySchedule?.enabled, 'timeSlots:', daySchedule?.timeSlots?.length || 0);
+        }
+      });
+
+      const availableDaysArray = Array.from(allAvailableDays).sort();
+      setGeneralistAvailableDays(availableDaysArray);
+      setGeneralistDaysLoaded(true);
+      console.log('🔍 Generalist available days loaded:', availableDaysArray);
+
+    } catch (error) {
+      console.error('❌ Error loading generalist available days:', error);
     }
   };
 

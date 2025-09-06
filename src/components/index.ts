@@ -30,6 +30,8 @@ export { default as FormulaSelectionModal } from './FormulaSelectionModal';
 export { RealTimeTest } from './RealTimeTest';
 export { RealTimeDataExample } from './shared/RealTimeDataExample';
 export { default as TestNotificationButton } from './shared/TestNotificationButton';
+export { GeneralistAvailabilityTest } from './GeneralistAvailabilityTest';
+export { GeneralistDateFilteringTest } from './GeneralistDateFilteringTest';
 
 // Schedule Components
 export { default as ScheduleForm } from './ScheduleForm';
