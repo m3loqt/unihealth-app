@@ -190,9 +190,9 @@ export default function PrescriptionsScreen() {
   })();
 
   // Validate prescriptions data and calculate status
-  const validPrescriptions = useDeepMemo(() => 
-    dataValidation.validateArray(prescriptions, dataValidation.isValidPrescription)
-      .map(prescription => {
+  const validPrescriptions: Prescription[] = useDeepMemo<Prescription[]>(() => 
+    (dataValidation.validateArray(prescriptions, dataValidation.isValidPrescription) as Prescription[])
+      .map((prescription: Prescription) => {
         // If status is already completed or discontinued, keep it
         if (prescription.status === 'completed' || prescription.status === 'discontinued') {
           return prescription;
@@ -251,7 +251,7 @@ export default function PrescriptionsScreen() {
         
         // If we can't determine the status or it's still valid, keep as active
         return prescription;
-      }), [prescriptions]
+      }) as Prescription[], [prescriptions]
   );
 
   const handleRetry = () => {
@@ -272,12 +272,12 @@ export default function PrescriptionsScreen() {
     setShowSort(false);
   }, []);
 
-  const activePrescriptions = useDeepMemo(() => 
-    validPrescriptions.filter(p => p.status === 'active'), [validPrescriptions]
+  const activePrescriptions: Prescription[] = useDeepMemo<Prescription[]>(() => 
+    validPrescriptions.filter((p: Prescription) => p.status === 'active'), [validPrescriptions]
   );
   
-  const pastPrescriptions = useDeepMemo(() => 
-    validPrescriptions.filter(p => p.status === 'completed' || p.status === 'discontinued'), [validPrescriptions]
+  const pastPrescriptions: Prescription[] = useDeepMemo<Prescription[]>(() => 
+    validPrescriptions.filter((p: Prescription) => p.status === 'completed' || p.status === 'discontinued'), [validPrescriptions]
   );
   
   // Debug logging

@@ -1,0 +1,103 @@
+[33mcommit af047d1b2d4b83f5db2c180ccaabb03ea4e2d281[m
+Author:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+AuthorDate: Wed Sep 3 14:24:45 2025 +0800
+Commit:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+CommitDate: Wed Sep 3 14:24:45 2025 +0800
+
+    Tininin
+
+[33mcommit 78463b5b1650b5143b1d66175b0d48946b47fa48[m
+Author:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+AuthorDate: Wed Sep 3 03:34:46 2025 +0800
+Commit:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+CommitDate: Wed Sep 3 03:34:46 2025 +0800
+
+    added Legends
+
+[33mcommit 6772d572c805d1a9f24d78c16bab3f02780f41a4[m
+Author:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+AuthorDate: Wed Sep 3 03:19:55 2025 +0800
+Commit:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+CommitDate: Wed Sep 3 03:19:55 2025 +0800
+
+    Tweaked Schedule
+
+[33mcommit 587cea77ed80d00ed0ff42a3d25619f3460aa783[m
+Author:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+AuthorDate: Wed Sep 3 02:57:24 2025 +0800
+Commit:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+CommitDate: Wed Sep 3 02:57:24 2025 +0800
+
+    Added Loader
+
+[33mcommit 9fe16c8080a2326b2d1605541f2ab974b3e8be0f[m
+Author:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+AuthorDate: Wed Sep 3 01:21:16 2025 +0800
+Commit:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+CommitDate: Wed Sep 3 01:21:16 2025 +0800
+
+    Remvoed Recent Appointments
+
+[33mcommit c329f9017d74049e3da63af14ff56d00e21b6a08[m
+Author:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+AuthorDate: Wed Sep 3 01:05:56 2025 +0800
+Commit:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+CommitDate: Wed Sep 3 01:05:56 2025 +0800
+
+    Wiwowiwowi
+
+[33mcommit b184bbdf8720436a99010eed36307aa95df0c4a0[m
+Author:     hatdogmarie05 <apur.rosales.swu@phinmaed.com>
+AuthorDate: Tue Sep 2 08:43:24 2025 -0700
+Commit:     hatdogmarie05 <apur.rosales.swu@phinmaed.com>
+CommitDate: Tue Sep 2 08:43:24 2025 -0700
+
+    specialist pending cannot log in implemented
+
+[33mcommit 8ce3b01181f05b1f9aec69a3ac2a772aebd3bee0[m
+Author:     hatdogmarie05 <apur.rosales.swu@phinmaed.com>
+AuthorDate: Tue Sep 2 08:14:59 2025 -0700
+Commit:     hatdogmarie05 <apur.rosales.swu@phinmaed.com>
+CommitDate: Tue Sep 2 08:14:59 2025 -0700
+
+    email existing validation added
+
+[33mcommit 53081ce554a37270243dec52d0b5af78ccacca23[m
+Author:     hatdogmarie05 <apur.rosales.swu@phinmaed.com>
+AuthorDate: Tue Sep 2 03:57:52 2025 -0700
+Commit:     hatdogmarie05 <apur.rosales.swu@phinmaed.com>
+CommitDate: Tue Sep 2 03:57:52 2025 -0700
+
+    added hint bubble for diagnosis, prescription, certificate when diagnosing
+
+[33mcommit 46901dc1ec108bbd56b7806b988ad8833db0188a[m
+Author:     hatdogmarie05 <apur.rosales.swu@phinmaed.com>
+AuthorDate: Tue Sep 2 03:23:37 2025 -0700
+Commit:     hatdogmarie05 <apur.rosales.swu@phinmaed.com>
+CommitDate: Tue Sep 2 03:23:37 2025 -0700
+
+    feedback for referrals fixed, ui for appointment purpose fixed
+
+[33mcommit 32bec3dd9e110bceff183bc18712a95b9074d9ab[m
+Author:     hatdogmarie05 <apur.rosales.swu@phinmaed.com>
+AuthorDate: Tue Sep 2 02:52:51 2025 -0700
+Commit:     hatdogmarie05 <apur.rosales.swu@phinmaed.com>
+CommitDate: Tue Sep 2 02:52:51 2025 -0700
+
+    tweaking notification referral routes done
+
+[33mcommit cc65460b3ab55a57f5d55bc71f2988e249db9332[m
+Author:     hatdogmarie05 <apur.rosales.swu@phinmaed.com>
+AuthorDate: Tue Sep 2 02:27:33 2025 -0700
+Commit:     hatdogmarie05 <apur.rosales.swu@phinmaed.com>
+CommitDate: Tue Sep 2 02:27:33 2025 -0700
+
+    real time update for appointment status, fixed notification, need tweaking for notification referral routes
+
+[33mcommit 0e8c10b617ad127fd0ec1c14472077ff4a854160[m
+Author:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+AuthorDate: Tue Sep 2 13:37:50 2025 +0800
+Commit:     Mel Angelo <mees.cortes.swu@phinmaed.com>
+CommitDate: Tue Sep 2 13:37:50 2025 +0800
+
+    Removed ID in the QR Code Generation Modal
