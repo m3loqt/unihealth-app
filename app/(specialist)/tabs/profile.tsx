@@ -14,6 +14,7 @@ import {
   Modal,
   Dimensions,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ChevronRight,
   User,
@@ -763,8 +764,49 @@ export default function SpecialistProfileScreen() {
     setRequestedFee('');
   };
 
+  // Track if fee change result has been shown to prevent showing on every profile load
+  const [feeChangeResultShown, setFeeChangeResultShown] = useState(false);
+
+  // Get storage key for fee change result shown status
+  const getFeeChangeResultKey = useCallback(() => {
+    return user?.uid ? `feeChangeResultShown_${user.uid}` : null;
+  }, [user?.uid]);
+
+  // Load fee change result shown status from storage
+  const loadFeeChangeResultShown = useCallback(async () => {
+    const key = getFeeChangeResultKey();
+    if (!key) return;
+    
+    try {
+      const stored = await AsyncStorage.getItem(key);
+      if (stored) {
+        const data = JSON.parse(stored);
+        setFeeChangeResultShown(data.shown || false);
+      }
+    } catch (error) {
+      console.error('Error loading fee change result shown status:', error);
+    }
+  }, [getFeeChangeResultKey]);
+
+  // Save fee change result shown status to storage
+  const saveFeeChangeResultShown = useCallback(async (shown: boolean) => {
+    const key = getFeeChangeResultKey();
+    if (!key) return;
+    
+    try {
+      await AsyncStorage.setItem(key, JSON.stringify({ shown }));
+    } catch (error) {
+      console.error('Error saving fee change result shown status:', error);
+    }
+  }, [getFeeChangeResultKey]);
+
+  // Load stored status on component mount
+  useEffect(() => {
+    loadFeeChangeResultShown();
+  }, [loadFeeChangeResultShown]);
+
   // Handle fee change request result (approved/rejected)
-  const handleFeeChangeResult = () => {
+  const handleFeeChangeResult = async () => {
     const status = (profile as any)?.professionalFeeStatus;
     if (status === 'approved') {
       Alert.alert(
@@ -779,18 +821,30 @@ export default function SpecialistProfileScreen() {
         [{ text: 'OK' }]
       );
     }
+    // Mark as shown to prevent showing again
+    setFeeChangeResultShown(true);
+    await saveFeeChangeResultShown(true);
   };
 
   // Handle fee change status changes
   useEffect(() => {
     const status = (profile as any)?.professionalFeeStatus;
-    if (status === 'approved' || status === 'rejected') {
+    if ((status === 'approved' || status === 'rejected') && !feeChangeResultShown) {
       // Show result after a short delay to ensure UI is updated
       setTimeout(() => {
         handleFeeChangeResult();
       }, 500);
     }
-  }, [(profile as any)?.professionalFeeStatus]);
+  }, [(profile as any)?.professionalFeeStatus, feeChangeResultShown]);
+
+  // Reset fee change result shown flag when status changes to pending (new request)
+  useEffect(() => {
+    const status = (profile as any)?.professionalFeeStatus;
+    if (status === 'pending') {
+      setFeeChangeResultShown(false);
+      saveFeeChangeResultShown(false);
+    }
+  }, [(profile as any)?.professionalFeeStatus, saveFeeChangeResultShown]);
 
   // Helper function to format date safely (avoiding timezone issues)
 
