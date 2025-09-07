@@ -64,6 +64,7 @@ export default function EditProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showRelationshipModal, setShowRelationshipModal] = useState(false);
   const [showBloodTypeModal, setShowBloodTypeModal] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   
   // Allergy selection state
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
@@ -226,7 +227,15 @@ export default function EditProfileScreen() {
     }));
   };
 
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = () => {
+    // Show confirmation modal before saving
+    setShowConfirmationModal(true);
+  };
+
+  const confirmSaveProfile = async () => {
+    // Close confirmation modal
+    setShowConfirmationModal(false);
+    
     if (!user) {
       Alert.alert('Error', 'Please log in to update your profile.');
       return;
@@ -294,6 +303,9 @@ export default function EditProfileScreen() {
 
       console.log('Profile update completed successfully');
       console.log('After update - profileData state:', profileData);
+
+      // Hide allergy list after successful save
+      setShowAllergyList(false);
 
       Alert.alert('Success', 'Profile updated successfully!', [
         { text: 'OK', onPress: () => router.back() }
@@ -599,6 +611,39 @@ export default function EditProfileScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={showConfirmationModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowConfirmationModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Confirm Changes</Text>
+              <Text style={styles.confirmationText}>
+                Are you sure you want to save the changes to your profile?
+              </Text>
+              <View style={styles.confirmationButtons}>
+                <TouchableOpacity
+                  style={[styles.confirmButton, styles.cancelButton]}
+                  onPress={() => setShowConfirmationModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={confirmSaveProfile}
+                >
+                  <Text style={styles.confirmButtonText}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Relationship Modal */}
       <Modal
@@ -998,5 +1043,40 @@ const styles = StyleSheet.create({
   },
   selectedAllergyOptionText: {
     color: '#FFFFFF',
+  },
+  // Confirmation modal styles
+  confirmationText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  confirmationButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  confirmButton: {
+    flex: 1,
+    backgroundColor: '#1E40AF',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+  cancelButtonText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
   },
 });
