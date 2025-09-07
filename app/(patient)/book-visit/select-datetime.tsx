@@ -1305,8 +1305,11 @@ export default function SelectDateTimeScreen() {
 
       <ScrollView
         style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={true}
+        contentContainerStyle={styles.scrollViewContent}
+        bounces={true}
+        scrollEnabled={true}
+        nestedScrollEnabled={true}
       >
         {/* Doctor Card */}
         <View style={styles.clinicCardContainer}>
@@ -1634,6 +1637,10 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    paddingBottom: 200,
+    minHeight: '100%',
   },
   progressBarRoot: {
     height: 26,
