@@ -9,6 +9,7 @@ import {
   Platform,
   Modal,
   StatusBar,
+  ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
 import {
@@ -19,6 +20,7 @@ import {
   ChevronDown,
   ChevronLeft,
   Mail,
+  X,
 } from 'lucide-react-native';
 import { ErrorModal } from '../../../src/components/shared';
 import { KeyboardAvoidingScrollView } from '../../../src/components/ui';
@@ -30,6 +32,7 @@ import {
   type ValidationError,
   type SignupFormData 
 } from '../../../src/utils/signupValidation';
+import { COMMON_ALLERGIES } from '../../../src/constants/allergies';
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Other', 'Prefer not to say'];
 const BLOOD_TYPE_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Not known yet'];
@@ -81,16 +84,119 @@ export default function SignUpStep1Screen() {
   const [showEducationalAttainmentModal, setShowEducationalAttainmentModal] = useState(false);
   const [showBloodTypeModal, setShowBloodTypeModal] = useState(false);
   
+  // Allergy selection state
+  const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
+  const [showAllergyList, setShowAllergyList] = useState(false);
+  const [customAllergies, setCustomAllergies] = useState<string[]>([]);
+  
   // Error handling state
   const [currentError, setCurrentError] = useState<ValidationError | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, ValidationError>>({});
+
+  // Get the final clean allergies for display and submission
+  const getFinalAllergies = () => {
+    // Parse current input field to get all typed allergies including the one being typed
+    const currentTypedAllergies = formData.allergies.split(',')
+      .map(a => a.trim())
+      .filter(a => a.length > 0);
+    
+    // Remove duplicates with selected common allergies
+    const uniqueTypedAllergies = currentTypedAllergies.filter(typed => 
+      !selectedAllergies.some(selected => selected.toLowerCase() === typed.toLowerCase())
+    );
+    
+    // Combine selected common allergies with unique typed allergies
+    const allAllergies = [...selectedAllergies, ...uniqueTypedAllergies];
+    
+    return allAllergies.join(', ');
+  };
+
+  // Handle allergy selection from common list
+  const handleAllergyToggle = (allergy: string) => {
+    setSelectedAllergies(prev => {
+      const isSelected = prev.includes(allergy);
+      let newSelected;
+      
+      if (isSelected) {
+        // Remove from selected allergies
+        newSelected = prev.filter(a => a !== allergy);
+      } else {
+        // Add to selected allergies and remove from custom if it exists there
+        newSelected = [...prev, allergy];
+        // Also remove from custom allergies to avoid duplicates
+        const newCustom = customAllergies.filter(a => a.toLowerCase() !== allergy.toLowerCase());
+        setCustomAllergies(newCustom);
+        updateAllergiesField(newSelected, newCustom);
+        return newSelected;
+      }
+      
+      // Update the combined allergies field
+      updateAllergiesField(newSelected, customAllergies);
+      return newSelected;
+    });
+  };
+
+  // Handle custom allergy input
+  const handleCustomAllergyAdd = (value: string) => {
+    if (value.trim()) {
+      const newCustom = value.split(',')
+        .map(a => a.trim())
+        .filter(a => a.length > 0)
+        .filter(a => !selectedAllergies.some(selected => selected.toLowerCase() === a.toLowerCase())); // Remove duplicates with selected
+      
+      setCustomAllergies(newCustom);
+      updateAllergiesField(selectedAllergies, newCustom);
+    }
+  };
+
+  // Update the combined allergies field (only called when selecting/deselecting from common list)
+  const updateAllergiesField = (selected: string[], custom: string[]) => {
+    // Remove duplicates between selected and custom (case-insensitive)
+    const filteredCustom = custom.filter(customAllergy => 
+      !selected.some(selectedAllergy => selectedAllergy.toLowerCase() === customAllergy.toLowerCase())
+    );
+    
+    const allAllergies = [...selected, ...filteredCustom];
+    const allergiesString = allAllergies.join(', ');
+    setFormData(prev => ({
+      ...prev,
+      allergies: allergiesString,
+    }));
+  };
+
+  // Remove selected allergy
+  const removeSelectedAllergy = (allergy: string) => {
+    if (selectedAllergies.includes(allergy)) {
+      handleAllergyToggle(allergy);
+    } else {
+      // Remove from custom allergies
+      const newCustom = customAllergies.filter(a => a !== allergy);
+      setCustomAllergies(newCustom);
+      updateAllergiesField(selectedAllergies, newCustom);
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
     }));
+    
+    if (field === 'allergies') {
+      // Parse the typed text to update custom allergies
+      // Handle both comma-separated and the current typing (including the last item without comma)
+      const typedAllergies = value.split(',')
+        .map(a => a.trim())
+        .filter(a => a.length > 0); // This now properly includes the last typed item
+      
+      // Only update custom allergies with items that aren't already selected from common list
+      const newCustomAllergies = typedAllergies.filter(a => 
+        !selectedAllergies.some(selected => selected.toLowerCase() === a.toLowerCase())
+      );
+      
+      setCustomAllergies(newCustomAllergies);
+    }
     
     // Clear field error when user starts typing
     if (fieldErrors[field]) {
@@ -158,10 +264,16 @@ export default function SignUpStep1Screen() {
   const handleContinue = async () => {
     setIsValidating(true);
     
+    // Before validation, ensure allergies field reflects the actual selected allergies
+    const finalFormData = {
+      ...formData,
+      allergies: getFinalAllergies()
+    };
+    
     // First, do comprehensive email validation if email is provided
-    if (formData.email.trim()) {
+    if (finalFormData.email.trim()) {
       try {
-        const emailError = await checkEmailAvailability(formData.email);
+        const emailError = await checkEmailAvailability(finalFormData.email);
         if (emailError) {
           setFieldErrors(prev => ({
             ...prev,
@@ -178,8 +290,8 @@ export default function SignUpStep1Screen() {
       }
     }
     
-    // Validate the form
-    const errors = validateSignupForm(formData);
+    // Validate the form with final data
+    const errors = validateSignupForm(finalFormData);
     
     if (errors.length > 0) {
       // Show the first error
@@ -230,7 +342,7 @@ export default function SignUpStep1Screen() {
     router.push({
       pathname: '/signup/step2',
       params: {
-        step1Data: JSON.stringify(formData),
+        step1Data: JSON.stringify(finalFormData),
       },
     });
   };
@@ -525,12 +637,98 @@ export default function SignUpStep1Screen() {
               <User size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Enter allergies (comma-separated)"
+                placeholder="Type allergies or select from common ones below"
                 placeholderTextColor="#9CA3AF"
                 value={formData.allergies}
                 onChangeText={value => handleInputChange('allergies', value)}
+                onFocus={() => setShowAllergyList(true)}
               />
             </View>
+            
+            {/* Always show what will be saved */}
+            {/* {formData.allergies && (
+              <View style={styles.finalAllergiesPreview}>
+                <Text style={styles.finalAllergiesLabel}>Will be saved as:</Text>
+                <Text style={styles.finalAllergiesText}>{getFinalAllergies()}</Text>
+              </View>
+            )} */}
+            
+            {/* Selected Allergies Display */}
+            {(selectedAllergies.length > 0 || customAllergies.length > 0) && (
+              <View style={styles.selectedAllergiesContainer}>
+                <Text style={styles.selectedAllergiesTitle}>Selected Allergies:</Text>
+                <View style={styles.selectedAllergiesList}>
+                  {/* Show selected common allergies first */}
+                  {selectedAllergies.map((allergy, index) => (
+                    <View key={`selected-${allergy}-${index}`} style={styles.allergyChip}>
+                      <Text style={styles.allergyChipText}>{allergy}</Text>
+                      <TouchableOpacity 
+                        onPress={() => removeSelectedAllergy(allergy)}
+                        style={styles.removeAllergyButton}
+                      >
+                        <X size={14} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  {/* Show custom allergies (already filtered for duplicates) */}
+                  {customAllergies
+                    .filter(customAllergy => 
+                      !selectedAllergies.some(selectedAllergy => 
+                        selectedAllergy.toLowerCase() === customAllergy.toLowerCase()
+                      )
+                    )
+                    .map((allergy, index) => (
+                    <View key={`custom-${allergy}-${index}`} style={[styles.allergyChip, styles.customAllergyChip]}>
+                      <Text style={styles.allergyChipText}>{allergy}</Text>
+                      <TouchableOpacity 
+                        onPress={() => removeSelectedAllergy(allergy)}
+                        style={styles.removeAllergyButton}
+                      >
+                        <X size={14} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+            
+            {/* Common Allergies List */}
+            {showAllergyList && (
+              <View style={styles.commonAllergiesContainer}>
+                <View style={styles.commonAllergiesHeader}>
+                  <Text style={styles.commonAllergiesTitle}>Common Allergies</Text>
+                  <TouchableOpacity 
+                    onPress={() => setShowAllergyList(false)}
+                    style={styles.hideAllergiesButton}
+                  >
+                    <Text style={styles.hideAllergiesText}>Hide</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView 
+                  style={styles.allergiesScrollView}
+                  contentContainerStyle={styles.allergiesGrid}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {COMMON_ALLERGIES.map((allergy) => (
+                    <TouchableOpacity
+                      key={allergy}
+                      style={[
+                        styles.allergyOption,
+                        selectedAllergies.includes(allergy) && styles.selectedAllergyOption
+                      ]}
+                      onPress={() => handleAllergyToggle(allergy)}
+                    >
+                      <Text style={[
+                        styles.allergyOptionText,
+                        selectedAllergies.includes(allergy) && styles.selectedAllergyOptionText
+                      ]}>
+                        {allergy}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
           </View>
 
           {/* Email */}
@@ -883,5 +1081,126 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     marginTop: 4,
     marginLeft: 4,
+  },
+  // Allergy selection styles
+  finalAllergiesPreview: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  finalAllergiesLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter-Medium',
+    color: '#92400E',
+    marginBottom: 2,
+  },
+  finalAllergiesText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#92400E',
+  },
+  selectedAllergiesContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  selectedAllergiesTitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  selectedAllergiesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  allergyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E40AF',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 6,
+    marginBottom: 6,
+  },
+  customAllergyChip: {
+    backgroundColor: '#059669', // Green color for custom allergies
+  },
+  allergyChipText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#FFFFFF',
+    marginRight: 6,
+  },
+  removeAllergyButton: {
+    padding: 2,
+  },
+  commonAllergiesContainer: {
+    marginTop: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    maxHeight: 200,
+  },
+  commonAllergiesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  commonAllergiesTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+  },
+  hideAllergiesButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  hideAllergiesText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#1E40AF',
+  },
+  allergiesScrollView: {
+    flex: 1,
+  },
+  allergiesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 12,
+    gap: 8,
+  },
+  allergyOption: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 4,
+  },
+  selectedAllergyOption: {
+    backgroundColor: '#1E40AF',
+    borderColor: '#1E40AF',
+  },
+  allergyOptionText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+  },
+  selectedAllergyOptionText: {
+    color: '#FFFFFF',
   },
 });
