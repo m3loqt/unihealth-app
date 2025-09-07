@@ -58,6 +58,64 @@ const APPOINTMENT_PURPOSES = [
   'Other',
 ];
 
+// Configuration for appointment purpose specific form inputs
+const APPOINTMENT_PURPOSE_CONFIGS = {
+  'General Consultation': {
+    inputType: 'textarea',
+    label: 'Chief Complaint',
+    placeholder: 'Please describe your main symptom or concern...',
+    required: true
+  },
+  'Vaccination': {
+    inputType: 'multiselect',
+    label: 'Vaccine Type(s)',
+    options: ['COVID-19 Vaccine', 'Flu/Influenza Vaccine', 'Hepatitis A/B', 'Tetanus/Diphtheria', 'MMR (Measles, Mumps, Rubella)', 'Pneumococcal', 'HPV', 'Travel Vaccines', 'Other'],
+    placeholder: 'Select vaccine type(s) needed...',
+    required: true
+  },
+  'Medical Certificate': {
+    inputType: 'dropdown_with_text',
+    label: 'Certificate Type',
+    options: ['Fitness to Work Certificate', 'Medical Leave/Sick Leave Certificate', 'Travel Fitness Certificate', 'Pre-employment Medical Certificate', 'School/Student Medical Certificate', 'Insurance Medical Certificate', 'Other'],
+    secondaryLabel: 'Purpose/Details',
+    secondaryPlaceholder: 'Please specify the purpose or additional details...',
+    required: true
+  },
+  'Prescription Renewal': {
+    inputType: 'textarea',
+    label: 'Current Medications',
+    placeholder: 'Please list your current medications, dosages, and last prescription date...',
+    required: true
+  },
+  'Preventive Care': {
+    inputType: 'dropdown',
+    label: 'Type of Preventive Service',
+    options: ['Routine Health Screening', 'Cancer Screening', 'Cardiovascular Assessment', 'Diabetes Screening', 'Wellness Consultation', 'Other'],
+    placeholder: 'Select type of preventive service...',
+    required: true
+  },
+  'Minor Illness': {
+    inputType: 'textarea',
+    label: 'Symptoms Description',
+    placeholder: 'Please describe your symptoms...',
+    required: true
+  },
+  'Other': {
+    inputType: 'textarea',
+    label: 'Additional Notes',
+    placeholder: 'Please describe the purpose of your visit...',
+    required: true
+  }
+};
+
+// Default config for appointment purposes not specified above
+const DEFAULT_PURPOSE_CONFIG = {
+  inputType: 'textarea',
+  label: 'Additional Notes',
+  placeholder: 'Add any additional information...',
+  required: false
+};
+
 // ---- Helper functions ----
 
 function getNextNDays(n: number) {
@@ -116,6 +174,51 @@ function convertTo12HourFormat(time24: string): string {
   const ampm = hours >= 12 ? 'PM' : 'AM';
   const displayHour = hours % 12 || 12;
   return `${displayHour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+}
+
+// Format structured purpose form data into readable text for additionalNotes
+function formatPurposeDataToText(purpose: string, formData: { primaryValue: string | string[]; secondaryValue?: string; }, generalNotes: string): string {
+  const config = APPOINTMENT_PURPOSE_CONFIGS[purpose];
+  
+  // If purpose has specific config, use structured formatting
+  if (config) {
+    let formattedText = '';
+    
+    // Handle different input types
+    switch (config.inputType) {
+      case 'multiselect':
+        if (Array.isArray(formData.primaryValue) && formData.primaryValue.length > 0) {
+          formattedText = `${config.label}: ${formData.primaryValue.join(', ')}`;
+        }
+        break;
+        
+      case 'dropdown_with_text':
+        if (formData.primaryValue && typeof formData.primaryValue === 'string') {
+          formattedText = `${config.label}: ${formData.primaryValue}`;
+          if (formData.secondaryValue) {
+            formattedText += `\n${config.secondaryLabel}: ${formData.secondaryValue}`;
+          }
+        }
+        break;
+        
+      case 'dropdown':
+        if (formData.primaryValue && typeof formData.primaryValue === 'string') {
+          formattedText = `${config.label}: ${formData.primaryValue}`;
+        }
+        break;
+        
+      case 'textarea':
+        if (formData.primaryValue && typeof formData.primaryValue === 'string') {
+          formattedText = `${config.label}: ${formData.primaryValue}`;
+        }
+        break;
+    }
+    
+    return formattedText;
+  } else {
+    // For purposes without specific config (Follow-up, Health Checkup, etc.), use general notes
+    return generalNotes.trim();
+  }
 }
 
 function getPagerData(items: any[], numPages: number) {
@@ -195,6 +298,15 @@ export default function SelectDateTimeScreen() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [selectedPurpose, setSelectedPurpose] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
+  
+  // Dynamic form state for appointment purpose specific inputs
+  const [purposeFormData, setPurposeFormData] = useState<{
+    primaryValue: string | string[];
+    secondaryValue?: string;
+  }>({
+    primaryValue: '',
+    secondaryValue: ''
+  });
   const [showPurposeDropdown, setShowPurposeDropdown] = useState(false);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<Array<{time: string; minutes: number}>>([]);
   const [bookedTimeSlots, setBookedTimeSlots] = useState<string[]>([]);
@@ -830,6 +942,19 @@ export default function SelectDateTimeScreen() {
     }
   }, [isFollowUp]);
 
+  // Reset purpose form data when purpose changes
+  useEffect(() => {
+    if (selectedPurpose) {
+      const config = APPOINTMENT_PURPOSE_CONFIGS[selectedPurpose];
+      if (config) {
+        setPurposeFormData({
+          primaryValue: config.inputType === 'multiselect' ? [] : '',
+          secondaryValue: ''
+        });
+      }
+    }
+  }, [selectedPurpose]);
+
   // Refresh time slots when screen comes into focus (in case someone else booked a slot)
   useFocusEffect(
     React.useCallback(() => {
@@ -856,8 +981,196 @@ export default function SelectDateTimeScreen() {
     // setTimePage(Math.round(x / w)); 
   };
 
+  // Render purpose-specific form components
+  const renderPurposeSpecificForm = () => {
+    if (!selectedPurpose) return null;
+    
+    const config = APPOINTMENT_PURPOSE_CONFIGS[selectedPurpose];
+    if (!config) return null;
+
+    switch (config.inputType) {
+      case 'textarea':
+        return (
+          <>
+            <Text style={styles.sectionTitle}>{config.label}</Text>
+            <TextInput
+              style={[styles.notesInput, { minHeight: 88 }]}
+              placeholder={config.placeholder}
+              value={typeof purposeFormData.primaryValue === 'string' ? purposeFormData.primaryValue : ''}
+              onChangeText={(text) => setPurposeFormData(prev => ({ ...prev, primaryValue: text }))}
+              multiline
+              numberOfLines={4}
+              placeholderTextColor="#9CA3AF"
+            />
+          </>
+        );
+
+      case 'dropdown':
+        return (
+          <>
+            <Text style={styles.sectionTitle}>{config.label}</Text>
+            <TouchableOpacity
+              style={styles.purposeDropdown}
+              onPress={() => setShowPurposeDropdown(!showPurposeDropdown)}
+            >
+              <Text style={[
+                styles.purposeDropdownText,
+                !purposeFormData.primaryValue && styles.purposePlaceholder
+              ]}>
+                {purposeFormData.primaryValue || config.placeholder || `Select ${config.label.toLowerCase()}`}
+              </Text>
+              <ChevronDown size={20} color="#6B7280" />
+            </TouchableOpacity>
+            
+            {showPurposeDropdown && (
+              <View style={styles.purposeDropdownMenu}>
+                <ScrollView style={styles.purposeDropdownScrollView}>
+                  {config.options?.map((option, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.purposeDropdownItem}
+                      onPress={() => {
+                        setPurposeFormData(prev => ({ ...prev, primaryValue: option }));
+                        setShowPurposeDropdown(false);
+                      }}
+                    >
+                      <Text style={styles.purposeDropdownItemText}>{option}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </>
+        );
+
+      case 'multiselect':
+        return (
+          <>
+            <Text style={styles.sectionTitle}>{config.label}</Text>
+            <View style={styles.multiselectContainer}>
+              {config.options?.map((option, index) => {
+                const isSelected = Array.isArray(purposeFormData.primaryValue) && 
+                                 purposeFormData.primaryValue.includes(option);
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.multiselectOption,
+                      isSelected && styles.multiselectOptionSelected
+                    ]}
+                    onPress={() => {
+                      const currentValues = Array.isArray(purposeFormData.primaryValue) 
+                        ? purposeFormData.primaryValue 
+                        : [];
+                      
+                      let newValues;
+                      if (isSelected) {
+                        newValues = currentValues.filter(v => v !== option);
+                      } else {
+                        newValues = [...currentValues, option];
+                      }
+                      
+                      setPurposeFormData(prev => ({ ...prev, primaryValue: newValues }));
+                    }}
+                  >
+                    <Text style={[
+                      styles.multiselectOptionText,
+                      isSelected && styles.multiselectOptionTextSelected
+                    ]}>
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        );
+
+      case 'dropdown_with_text':
+        return (
+          <>
+            <Text style={styles.sectionTitle}>{config.label}</Text>
+            <TouchableOpacity
+              style={styles.purposeDropdown}
+              onPress={() => setShowPurposeDropdown(!showPurposeDropdown)}
+            >
+              <Text style={[
+                styles.purposeDropdownText,
+                !purposeFormData.primaryValue && styles.purposePlaceholder
+              ]}>
+                {purposeFormData.primaryValue || `Select ${config.label.toLowerCase()}`}
+              </Text>
+              <ChevronDown size={20} color="#6B7280" />
+            </TouchableOpacity>
+            
+            {showPurposeDropdown && (
+              <View style={styles.purposeDropdownMenu}>
+                <ScrollView style={styles.purposeDropdownScrollView}>
+                  {config.options?.map((option, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.purposeDropdownItem}
+                      onPress={() => {
+                        setPurposeFormData(prev => ({ ...prev, primaryValue: option }));
+                        setShowPurposeDropdown(false);
+                      }}
+                    >
+                      <Text style={styles.purposeDropdownItemText}>{option}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            
+            {purposeFormData.primaryValue && config.secondaryLabel && (
+              <View style={{ marginTop: 16 }}>
+                <Text style={styles.sectionTitle}>{config.secondaryLabel}</Text>
+                <TextInput
+                  style={[styles.notesInput, { minHeight: 88 }]}
+                  placeholder={config.secondaryPlaceholder}
+                  value={purposeFormData.secondaryValue || ''}
+                  onChangeText={(text) => setPurposeFormData(prev => ({ ...prev, secondaryValue: text }))}
+                  multiline
+                  numberOfLines={4}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+            )}
+          </>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // Check if purpose-specific form is valid
+  const isPurposeFormValid = () => {
+    if (!selectedPurpose) return false;
+    
+    const config = APPOINTMENT_PURPOSE_CONFIGS[selectedPurpose];
+    
+    // If purpose has specific config, validate structured form
+    if (config) {
+      if (!config.required) return true;
+      
+      // Check if primary value is filled
+      if (config.inputType === 'multiselect') {
+        return Array.isArray(purposeFormData.primaryValue) && purposeFormData.primaryValue.length > 0;
+      } else {
+        return purposeFormData.primaryValue && String(purposeFormData.primaryValue).trim().length > 0;
+      }
+    } else {
+      // For purposes without specific config, no validation needed (notes are optional)
+      return true;
+    }
+  };
+
   const handleContinue = () => {
-    if (selectedDate && selectedTime && selectedPurpose) {
+    if (selectedDate && selectedTime && selectedPurpose && isPurposeFormValid()) {
+      // Format the structured purpose data into text for additionalNotes
+      const formattedNotes = formatPurposeDataToText(selectedPurpose, purposeFormData, notes);
+      
       // Debug: Log all parameters before navigation
       console.log('Navigation parameters:', {
         clinicId,
@@ -869,6 +1182,8 @@ export default function SelectDateTimeScreen() {
         selectedTime,
         selectedPurpose,
         notes,
+        formattedNotes,
+        purposeFormData,
         doctor: doctor,
         displayClinicName,
         displayClinicAddress
@@ -891,7 +1206,7 @@ export default function SelectDateTimeScreen() {
         selectedDate: String(selectedDate),
         selectedTime: String(selectedTime),
         selectedPurpose: String(selectedPurpose),
-        notes: String(notes || ''),
+        notes: String(formattedNotes || ''), // Use formatted notes instead of raw notes
       };
       
       console.log('Sanitized parameters with fetched data:', params);
@@ -909,7 +1224,18 @@ export default function SelectDateTimeScreen() {
         params,
       });
     } else {
-      Alert.alert('Missing Information', 'Please select a date, time, and appointment purpose.');
+      let missingInfo = [];
+      if (!selectedDate) missingInfo.push('date');
+      if (!selectedTime) missingInfo.push('time');
+      if (!selectedPurpose) missingInfo.push('appointment purpose');
+      if (selectedPurpose && !isPurposeFormValid()) {
+        const config = APPOINTMENT_PURPOSE_CONFIGS[selectedPurpose];
+        if (config) {
+          missingInfo.push(config.label.toLowerCase());
+        }
+      }
+      
+      Alert.alert('Missing Information', `Please provide: ${missingInfo.join(', ')}.`);
     }
   };
 
@@ -1190,19 +1516,27 @@ export default function SelectDateTimeScreen() {
           )}
         </View>
 
-        {/* Notes */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Additional Notes (Optional)</Text>
-          <TextInput
-            style={styles.notesInput}
-            placeholder="Add any additional information..."
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-            numberOfLines={4}
-            placeholderTextColor="#9CA3AF"
-          />
-        </View>
+        {/* Dynamic Purpose-Specific Form OR Additional Notes */}
+        {selectedPurpose && (
+          <View style={styles.section}>
+            {APPOINTMENT_PURPOSE_CONFIGS[selectedPurpose] ? (
+              renderPurposeSpecificForm()
+            ) : (
+              <>
+                <Text style={styles.sectionTitle}>Additional Notes (Optional)</Text>
+                <TextInput
+                  style={styles.notesInput}
+                  placeholder="Add any additional information..."
+                  value={notes}
+                  onChangeText={setNotes}
+                  multiline
+                  numberOfLines={4}
+                  placeholderTextColor="#9CA3AF"
+                />
+              </>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       {/* Continue Button */}
@@ -1210,14 +1544,14 @@ export default function SelectDateTimeScreen() {
         <TouchableOpacity
           style={[
             styles.continueButton,
-            (!selectedDate || !selectedTime || !selectedPurpose) && styles.continueButtonDisabled
+            (!selectedDate || !selectedTime || !selectedPurpose || !isPurposeFormValid()) && styles.continueButtonDisabled
           ]}
           onPress={handleContinue}
-          disabled={!selectedDate || !selectedTime || !selectedPurpose}
+          disabled={!selectedDate || !selectedTime || !selectedPurpose || !isPurposeFormValid()}
         >
           <Text style={[
             styles.continueButtonText,
-            (!selectedDate || !selectedTime || !selectedPurpose) && styles.continueButtonTextDisabled
+            (!selectedDate || !selectedTime || !selectedPurpose || !isPurposeFormValid()) && styles.continueButtonTextDisabled
           ]}>
             Continue
           </Text>
@@ -1761,5 +2095,35 @@ const styles = StyleSheet.create({
   },
   continueButtonTextDisabled: {
     color: '#9CA3AF',
+  },
+  
+  // Multiselect styles
+  multiselectContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  multiselectOption: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 8,
+    marginRight: 8,
+  },
+  multiselectOptionSelected: {
+    backgroundColor: BLUE,
+    borderColor: BLUE,
+  },
+  multiselectOptionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#1F2937',
+  },
+  multiselectOptionTextSelected: {
+    color: '#FFFFFF',
   },
 });
