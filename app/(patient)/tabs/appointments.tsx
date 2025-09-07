@@ -30,6 +30,7 @@ import {
   MessageCircle,
   Filter,
   ChevronDown,
+  Repeat,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
@@ -953,11 +954,11 @@ export default function AppointmentsScreen() {
                       });
                     }}
                   >
-                    {/* <MessageCircle size={16} color="#1E40AF" /> */}
+                    <Repeat size={16} color="#FFFFFF" />
                     <Text style={styles.followUpButtonText}>Follow-up</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.outlinedButton}
+                    style={styles.secondaryButton}
                     onPress={() => {
                       setFeedbackReferral(referral);
                       setFeedbackAppointment(null);
@@ -967,7 +968,8 @@ export default function AppointmentsScreen() {
                       setShowFeedbackModal(true);
                     }}
                   >
-                    <Text style={styles.outlinedButtonText}>Rate</Text>
+                    <MessageCircle size={16} color="#1E40AF" />
+                    <Text style={styles.secondaryButtonText}>Give Feedback</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -1001,12 +1003,12 @@ export default function AppointmentsScreen() {
                       });
                     }}
                   >
-                    {/* <MessageCircle size={16} color="#1E40AF" /> */}
+                    <Repeat size={16} color="#FFFFFF" />
                     <Text style={styles.followUpButtonText}>Follow-up</Text>
                   </TouchableOpacity>
                   <View style={styles.feedbackSubmittedContainer}>
-                    {/* <Text style={styles.feedbackSubmittedText}>✓ Rating Submitted</Text> */}
-                    <Text style={styles.feedbackSubmittedText}>Rating Submitted</Text>
+                    <MessageCircle size={16} color="#6B7280" />
+                    <Text style={styles.feedbackSubmittedText}>Give Feedback</Text>
                   </View>
                 </View>
               );
@@ -1190,11 +1192,11 @@ export default function AppointmentsScreen() {
                     handleFollowUp(appointment);
                   }}
                 >
-                  {/* <MessageCircle size={16} color="#1E40AF" /> */}
-                  <Text style={styles.followUpButtonText}>Follow-up</Text>
+                    <Repeat size={16} color="#FFFFFF" />
+                    <Text style={styles.followUpButtonText}>Follow-up</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.outlinedButton}
+                  style={styles.secondaryButton}
                   onPress={() => {
                     setFeedbackAppointment(appointment);
                     setFeedbackStars(0);
@@ -1203,7 +1205,8 @@ export default function AppointmentsScreen() {
                     setShowFeedbackModal(true);
                   }}
                 >
-                  <Text style={styles.outlinedButtonText}>Rate</Text>
+                  <MessageCircle size={16} color="#1E40AF" />
+                  <Text style={styles.secondaryButtonText}>Give Feedback</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -1214,12 +1217,12 @@ export default function AppointmentsScreen() {
                     handleFollowUp(appointment);
                   }}
                 >
-                  {/* <MessageCircle size={16} color="#1E40AF" /> */}
-                  <Text style={styles.followUpButtonText}>Follow-up</Text>
+                    <Repeat size={16} color="#FFFFFF" />
+                    <Text style={styles.followUpButtonText}>Follow-up</Text>
                 </TouchableOpacity>
                 <View style={styles.feedbackSubmittedContainer}>
-                  {/* <Text style={styles.feedbackSubmittedText}>✓ Feedback Submitted</Text> */}
-                  <Text style={styles.feedbackSubmittedText}>Rating Submitted</Text>
+                  <MessageCircle size={16} color="#6B7280" />
+                  <Text style={styles.feedbackSubmittedText}>Give Feedback</Text>
                 </View>
               </View>
             );
@@ -1443,8 +1446,10 @@ export default function AppointmentsScreen() {
             style={styles.sortButton}
             onPress={handleShowSort}
           >
-            <Filter size={22} color="#6B7280" />
-            <ChevronDown size={20} color="#6B7280" />
+            <View style={styles.sortButtonContainer}>
+              <Filter size={18} color="#6B7280" />
+              <ChevronDown size={16} color="#6B7280" />
+            </View>
           </TouchableOpacity>
         </View>
         <ScrollView
@@ -1452,17 +1457,37 @@ export default function AppointmentsScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filtersContent}
         >
-          {filters.map((filter) => (
-            <TouchableOpacity
-              key={filter}
-              style={[styles.filterButton, activeFilter === filter && styles.activeFilterButton]}
-              onPress={() => setActiveFilter(filter)}
-            >
-              <Text style={[styles.filterText, activeFilter === filter && styles.activeFilterText]}>
-                {filter}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {filters.map((filter) => {
+            const getFilterIcon = (filterName: string) => {
+              switch (filterName.toLowerCase()) {
+                case 'all':
+                  return <Search size={14} color={activeFilter === filter ? "#FFFFFF" : "#6B7280"} />;
+                case 'pending':
+                  return <Hourglass size={14} color={activeFilter === filter ? "#FFFFFF" : "#6B7280"} />;
+                case 'confirmed':
+                  return <CheckCircle size={14} color={activeFilter === filter ? "#FFFFFF" : "#6B7280"} />;
+                case 'completed':
+                  return <Check size={14} color={activeFilter === filter ? "#FFFFFF" : "#6B7280"} />;
+                case 'cancelled':
+                  return <X size={14} color={activeFilter === filter ? "#FFFFFF" : "#6B7280"} />;
+                default:
+                  return null;
+              }
+            };
+
+            return (
+              <TouchableOpacity
+                key={filter}
+                style={[styles.filterButton, activeFilter === filter && styles.activeFilterButton]}
+                onPress={() => setActiveFilter(filter)}
+              >
+                {getFilterIcon(filter)}
+                <Text style={[styles.filterText, activeFilter === filter && styles.activeFilterText]}>
+                  {filter}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
         {renderSortDropdown()}
       </View>
@@ -1614,11 +1639,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderRadius: 10,
     paddingHorizontal: 14,
-    paddingVertical: 22,
+    paddingVertical: 0,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    minHeight: 36,
+    minHeight: 64,
   },
   searchInputContainerFocused: {
     borderColor: '#1E40AF',
@@ -1640,15 +1665,18 @@ const styles = StyleSheet.create({
   },
   filtersContent: {
     paddingHorizontal: 24,
-    gap: 12,
+    gap: 8,
   },
   filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    gap: 6,
   },
   activeFilterButton: {
     backgroundColor: '#1E40AF',
@@ -1732,7 +1760,7 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
@@ -1791,9 +1819,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
   },
-  // Follow-up button
+  // Follow-up button (Primary)
   followUpButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#1E40AF',
     borderWidth: 1.5,
     borderColor: '#1E40AF',
     borderRadius: 8,
@@ -1805,7 +1833,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   followUpButtonText: {
-    color: '#1E40AF',
+    color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
   },
@@ -1822,14 +1850,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
   },
   secondaryButton: {
-    flex: 1,
-    backgroundColor: '#1E40AF',
-    paddingVertical: 12,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#1E40AF',
     borderRadius: 8,
     alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
   },
   secondaryButtonText: {
-    color: '#FFFFFF',
+    color: '#1E40AF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
   },
@@ -2348,22 +2381,24 @@ feedbackModalButton: {
   completedActionsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     width: '100%',
-    gap: 16,
+    gap: 12,
   },
   feedbackSubmittedContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#F9FAFB',
     borderWidth: 1.5,
-    borderColor: '#1E40AF',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 20,
+    gap: 6,
   },
   feedbackSubmittedText: {
     fontSize: 14,
-    color: '#1E40AF',
+    color: '#6B7280',
     fontFamily: 'Inter-SemiBold',
   },
   // Tag selection styles
@@ -2395,16 +2430,24 @@ feedbackModalButton: {
   },
   // Sort button and dropdown styles
   sortButton: {
-    height: 48, // Match search bar height (22 padding top + 22 padding bottom + minHeight 36 = ~48)
+    height: 64, // Match search bar height
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    // borderRadius: 10,
-    // backgroundColor: '#F9FAFB',
-    // borderWidth: 1,
-    // borderColor: '#E5E7EB',
-    paddingHorizontal: 2,
+    transform: [{ translateY: -4 }], // Move up 2 pixels - more responsive than margin
+  },
+  sortButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 0,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     gap: 4,
+    minHeight: 64, // Increased from 36 to 48
   },
   sortDropdownContainer: {
     ...StyleSheet.absoluteFillObject,

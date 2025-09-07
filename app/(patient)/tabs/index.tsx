@@ -15,6 +15,7 @@ import {
   Alert,
   Share as RNShare,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   QrCode,
@@ -59,7 +60,7 @@ const CARD_GAP = 16;
 const HORIZONTAL_MARGIN = 24;
 const CARD_WIDTH = SCREEN_WIDTH - 2 * HORIZONTAL_MARGIN - CARD_GAP;
 
-const healthTips = [
+const allHealthTips = [
   {
     image:
       'https://images.pexels.com/photos/40751/running-runner-long-distance-fitness-40751.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -81,6 +82,153 @@ const healthTips = [
     description:
       'Aim for 7-8 hours of quality sleep each night to help your body recover and stay healthy.',
   },
+  {
+    image:
+      'https://images.pexels.com/photos/143133/pexels-photo-143133.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Stay Hydrated',
+    description:
+      'Drink at least 8 glasses of water daily to maintain proper body function and energy levels.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1181345/pexels-photo-1181345.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Practice Mindfulness',
+    description:
+      'Take time for meditation or deep breathing to reduce stress and improve mental clarity.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1552106/pexels-photo-1552106.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Limit Screen Time',
+    description:
+      'Reduce blue light exposure before bedtime to improve sleep quality and eye health.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Eat More Fiber',
+    description:
+      'Include whole grains, fruits, and vegetables to support digestive health and maintain energy.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1181346/pexels-photo-1181346.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Take Regular Breaks',
+    description:
+      'Step away from work every hour to stretch and rest your eyes for better productivity.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1552103/pexels-photo-1552103.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Practice Good Posture',
+    description:
+      'Maintain proper alignment while sitting and standing to prevent back pain and improve breathing.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Limit Processed Foods',
+    description:
+      'Choose fresh, whole foods over processed options to reduce sodium and artificial additives.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1181343/pexels-photo-1181343.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Get Sunlight Daily',
+    description:
+      'Spend 15-30 minutes outdoors to boost vitamin D levels and improve mood naturally.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1552104/pexels-photo-1552104.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Practice Deep Breathing',
+    description:
+      'Take slow, deep breaths throughout the day to reduce stress and improve oxygen flow.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1640775/pexels-photo-1640775.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Eat Regular Meals',
+    description:
+      'Maintain consistent meal times to stabilize blood sugar and support metabolic health.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1181344/pexels-photo-1181344.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Stay Socially Connected',
+    description:
+      'Maintain relationships with friends and family to support mental health and wellbeing.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1552105/pexels-photo-1552105.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Limit Caffeine Intake',
+    description:
+      'Keep caffeine consumption moderate to avoid sleep disruption and anxiety symptoms.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1640776/pexels-photo-1640776.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Include Healthy Fats',
+    description:
+      'Add avocados, nuts, and olive oil to your diet for heart health and nutrient absorption.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1181347/pexels-photo-1181347.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Practice Gratitude',
+    description:
+      'Write down three things you\'re grateful for daily to improve mood and life satisfaction.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1552107/pexels-photo-1552107.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Wash Hands Frequently',
+    description:
+      'Clean hands regularly with soap and water to prevent illness and maintain hygiene.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1640778/pexels-photo-1640778.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Eat Mindfully',
+    description:
+      'Focus on your food while eating to improve digestion and prevent overeating.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1181348/pexels-photo-1181348.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Take Vitamin Supplements',
+    description:
+      'Consider daily vitamins to fill nutritional gaps and support overall health.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1552108/pexels-photo-1552108.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Practice Good Hygiene',
+    description:
+      'Maintain personal cleanliness to prevent infections and boost confidence.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1640779/pexels-photo-1640779.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Limit Sugar Intake',
+    description:
+      'Reduce added sugars to prevent energy crashes and support long-term health.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1181349/pexels-photo-1181349.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Stay Mentally Active',
+    description:
+      'Engage in puzzles, reading, or learning to keep your mind sharp and healthy.',
+  },
+  {
+    image:
+      'https://images.pexels.com/photos/1552109/pexels-photo-1552109.jpeg?auto=compress&cs=tinysrgb&w=400',
+    title: 'Practice Stress Management',
+    description:
+      'Use techniques like yoga or journaling to manage daily stress effectively.',
+  },
 ];
 
 export default function HomeScreen() {
@@ -98,7 +246,9 @@ export default function HomeScreen() {
     }
   } = useNotificationContext();
   const [activeTip, setActiveTip] = useState(0);
+  const [healthTips, setHealthTips] = useState(allHealthTips.slice(0, 5)); // Start with first 5
   const scrollRef = useRef<ScrollView>(null);
+  const autoScrollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const qrCodeRef = useRef<any>(null);
   const qrCodeViewShotRef = useRef<any>(null);
   const [showQRModal, setShowQRModal] = useState(false);
@@ -115,12 +265,90 @@ export default function HomeScreen() {
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
 
+  // Function to get 5 random tips for today
+  const getDailyHealthTips = async () => {
+    try {
+      const today = new Date().toDateString();
+      const storedDate = await AsyncStorage.getItem('healthTipsDate');
+      const storedTips = await AsyncStorage.getItem('healthTips');
+      
+      // If it's a new day or no stored data, generate new random tips
+      if (storedDate !== today || !storedTips) {
+        const shuffled = [...allHealthTips].sort(() => 0.5 - Math.random());
+        const selectedTips = shuffled.slice(0, 5);
+        
+        // Store for today
+        await AsyncStorage.setItem('healthTipsDate', today);
+        await AsyncStorage.setItem('healthTips', JSON.stringify(selectedTips));
+        
+        return selectedTips;
+      }
+      
+      // Return stored tips for today
+      return JSON.parse(storedTips);
+    } catch (error) {
+      console.error('Error getting daily health tips:', error);
+      // Fallback if anything fails
+      const shuffled = [...allHealthTips].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, 5);
+    }
+  };
+
   // Load user data
   useEffect(() => {
     if (user) {
       loadDashboardData();
     }
   }, [user]);
+
+  // Initialize daily health tips
+  useEffect(() => {
+    const loadDailyTips = async () => {
+      const dailyTips = await getDailyHealthTips();
+      setHealthTips(dailyTips);
+    };
+    loadDailyTips();
+  }, []);
+
+  // Cleanup intervals on unmount
+  useEffect(() => {
+    return () => {
+      if (autoScrollInterval.current) {
+        clearInterval(autoScrollInterval.current);
+        autoScrollInterval.current = null;
+      }
+    };
+  }, []);
+
+  // Auto-scroll functionality
+  useEffect(() => {
+    // Clear any existing interval
+    if (autoScrollInterval.current) {
+      clearInterval(autoScrollInterval.current);
+      autoScrollInterval.current = null;
+    }
+
+    // Only start auto-scroll if we have more than 1 tip and tips are loaded
+    if (healthTips.length > 1) {
+      autoScrollInterval.current = setInterval(() => {
+        setActiveTip(prev => {
+          const nextTip = (prev + 1) % healthTips.length;
+          scrollRef.current?.scrollTo({
+            x: nextTip * (CARD_WIDTH + CARD_GAP),
+            animated: true,
+          });
+          return nextTip;
+        });
+      }, 4000); // Change tip every 4 seconds
+    }
+
+    return () => {
+      if (autoScrollInterval.current) {
+        clearInterval(autoScrollInterval.current);
+        autoScrollInterval.current = null;
+      }
+    };
+  }, [healthTips]);
 
   const loadDashboardData = async () => {
     if (!user) return;
@@ -134,8 +362,19 @@ export default function HomeScreen() {
       const appointments = await databaseService.getAppointments(user.uid, user.role);
       const validAppointments = dataValidation.validateArray(appointments, dataValidation.isValidAppointment);
       const upcoming = validAppointments.filter(appt =>
-        appt.status === 'confirmed' || appt.status === 'pending'
+        appt.status === 'confirmed'
       ).slice(0, 3);
+      
+      // Debug logging for doctor names
+      console.log('Upcoming appointments doctor data:', upcoming.map(appt => ({
+        id: appt.id,
+        doctorId: appt.doctorId,
+        doctorFirstName: appt.doctorFirstName,
+        doctorLastName: appt.doctorLastName,
+        specialty: appt.specialty,
+        type: appt.type
+      })));
+      
       setUpcomingAppointments(upcoming);
       setAppointmentsLoading(false);
       
@@ -224,7 +463,7 @@ export default function HomeScreen() {
   // Performance optimization: memoize filtered data
   const filteredAppointments = performanceUtils.useDeepMemo(() => 
     upcomingAppointments.filter(appt => 
-      appt.status === 'confirmed' || appt.status === 'pending'
+      appt.status === 'confirmed'
     ), [upcomingAppointments]
   );
 
@@ -238,8 +477,33 @@ export default function HomeScreen() {
   const handleScroll = performanceUtils.useStableCallback((event: any) => {
     const x = event.nativeEvent.contentOffset.x;
     const page = Math.round(x / (CARD_WIDTH + CARD_GAP));
-    setActiveTip(page);
-  }, []);
+    setActiveTip(Math.min(page, healthTips.length - 1));
+  }, [healthTips.length]);
+
+  // Handle manual scroll (pause auto-scroll temporarily)
+  const handleManualScroll = performanceUtils.useStableCallback(() => {
+    // Clear existing interval
+    if (autoScrollInterval.current) {
+      clearInterval(autoScrollInterval.current);
+      autoScrollInterval.current = null;
+    }
+    
+    // Resume auto-scroll after 10 seconds of inactivity
+    setTimeout(() => {
+      if (healthTips.length > 1 && !autoScrollInterval.current) {
+        autoScrollInterval.current = setInterval(() => {
+          setActiveTip(prev => {
+            const nextTip = (prev + 1) % healthTips.length;
+            scrollRef.current?.scrollTo({
+              x: nextTip * (CARD_WIDTH + CARD_GAP),
+              animated: true,
+            });
+            return nextTip;
+          });
+        }, 4000);
+      }
+    }, 10000);
+  }, [healthTips]);
 
   // Header initials for logged in user
   const userInitials = (() => {
@@ -468,9 +732,11 @@ export default function HomeScreen() {
                 paddingRight: HORIZONTAL_MARGIN,
               }}
               onScroll={handleScroll}
+              onScrollBeginDrag={handleManualScroll}
               scrollEventThrottle={16}
               snapToInterval={CARD_WIDTH + CARD_GAP}
               decelerationRate="fast"
+              bounces={false}
             >
               {healthTips.map((tip, idx) => (
                 <View
@@ -489,11 +755,11 @@ export default function HomeScreen() {
                     style={styles.tipGradient}
                   />
                   <View style={styles.tipTextContent}>
-                    <Text style={styles.tipCarouselTitle}>{tip.title}</Text>
-                    <Text style={styles.tipCarouselDesc}>{tip.description}</Text>
-                  </View>
-                  <View style={styles.tipInfoCircle}>
-                    <Info size={18} color="#FFFFFF" />
+                    <View style={styles.tipTitleContainer}>
+                      <Info size={14} color="#FFFFFF" />
+                      <Text style={styles.tipCarouselTitle}>{tip.title}</Text>
+                    </View>
+                    <Text style={styles.tipCarouselDesc} numberOfLines={2} ellipsizeMode="tail">{tip.description}</Text>
                   </View>
                 </View>
               ))}
@@ -547,7 +813,7 @@ export default function HomeScreen() {
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.appointmentsContainer}>
+          <View>
             {appointmentsLoading ? (
               <LoadingState 
                 message="Loading appointments..." 
@@ -565,7 +831,12 @@ export default function HomeScreen() {
               renderAppointmentPlaceholder()
             ) : (
               upcomingAppointments.map((appt) => (
-                <TouchableOpacity key={appt.id} style={styles.appointmentCard}>
+                <TouchableOpacity 
+                  key={appt.id} 
+                  style={styles.appointmentCard}
+                  onPress={() => router.push(`/visit-overview?id=${appt.id}`)}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.appointmentHeader}>
                     <View style={styles.doctorAvatar}>
                       <Text style={styles.doctorInitial}>
@@ -585,7 +856,19 @@ export default function HomeScreen() {
                     <View style={styles.appointmentDetails}>
                       <Text style={styles.doctorName}>
                         {(() => {
-                          const doctorName = safeDataAccess.getAppointmentDoctorName(appt, 'General');
+                          // Try to get doctor name from appointment data
+                          if (appt.doctorFirstName && appt.doctorLastName) {
+                            return `Dr. ${appt.doctorFirstName} ${appt.doctorLastName}`;
+                          }
+                          if (appt.doctorFirstName) {
+                            return `Dr. ${appt.doctorFirstName}`;
+                          }
+                          if (appt.doctorLastName) {
+                            return `Dr. ${appt.doctorLastName}`;
+                          }
+                          
+                          // Fallback to safeDataAccess
+                          const doctorName = safeDataAccess.getAppointmentDoctorName(appt, 'Dr. Unknown');
                           return doctorName.startsWith('Dr.') ? doctorName : `Dr. ${doctorName}`;
                         })()}
                       </Text>
@@ -607,15 +890,12 @@ export default function HomeScreen() {
                       </Text>
                     </View>
                   </View>
-                                     <View style={styles.appointmentFooter}>
-                     <Text style={styles.appointmentType}>{appt.appointmentPurpose || 'Consultation'}</Text>
-                     <TouchableOpacity 
-                       style={styles.joinButton}
-                       onPress={() => router.push(`/visit-overview?id=${appt.id}`)}
-                     >
-                       <Text style={styles.joinButtonText}>View details</Text>
-                     </TouchableOpacity>
-                   </View>
+                  <View style={styles.appointmentFooter}>
+                    <Text style={styles.appointmentType}>{appt.appointmentPurpose || 'Consultation'}</Text>
+                    <View style={styles.joinButton}>
+                      <Text style={styles.joinButtonText}>View details</Text>
+                    </View>
+                  </View>
                 </TouchableOpacity>
               ))
             )}
@@ -1078,35 +1358,42 @@ const styles = StyleSheet.create({
     right: 16,
     zIndex: 10,
   },
+  tipTitleContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+    backdropFilter: 'blur(10px)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   tipCarouselTitle: {
-    fontSize: 17,
-    fontFamily: 'Inter-SemiBold',
-    color: '#FFF',
-    marginBottom: 6,
-    textShadowColor: 'rgba(0,0,0,0.18)',
-    textShadowRadius: 3,
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowRadius: 2,
     textShadowOffset: { width: 0, height: 1 },
   },
   tipCarouselDesc: {
     fontSize: 14,
     color: '#F1F5F9',
-    lineHeight: 19,
+    lineHeight: 18,
     fontFamily: 'Inter-Regular',
     textShadowColor: 'rgba(0,0,0,0.17)',
     textShadowRadius: 3,
     textShadowOffset: { width: 0, height: 1 },
-  },
-  tipInfoCircle: {
-    position: 'absolute',
-    left: 20,
-    top: 20,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0,0,0,0.44)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
+    maxHeight: 36, // 2 lines * 18px line height
   },
   carouselIndicators: {
     flexDirection: 'row',
@@ -1151,7 +1438,7 @@ const styles = StyleSheet.create({
     marginTop: 8, 
     textAlign: 'center' 
   },
-  appointmentsContainer: { gap: 12 },
+  
   appointmentCard: {
     padding: 16,
     backgroundColor: '#F9FAFB',

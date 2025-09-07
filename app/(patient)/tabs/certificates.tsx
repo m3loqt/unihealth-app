@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import {
   FileText, Search, Shield, Activity, Syringe, Heart, Stethoscope,
-  Filter, ChevronDown, Check
+  Filter, ChevronDown, Check, X, Clock, CheckCircle
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -400,8 +400,10 @@ export default function CertificatesScreen() {
             onPress={handleShowSort}
             ref={sortBtnRef}
           >
-            <Filter size={22} color="#6B7280" />
-            <ChevronDown size={20} color="#6B7280" />
+            <View style={styles.sortButtonContainer}>
+              <Filter size={18} color="#6B7280" />
+              <ChevronDown size={16} color="#6B7280" />
+            </View>
           </TouchableOpacity>
         </View>
         <View style={styles.filtersBarRow}>
@@ -411,25 +413,41 @@ export default function CertificatesScreen() {
             contentContainerStyle={styles.filtersContent}
           >
             <View style={styles.filtersLeft}>
-              {FILTERS.map((filter) => (
-                <TouchableOpacity
-                  key={filter.value}
-                  style={[
-                    styles.filterButton,
-                    statusFilter === filter.value && styles.activeFilterButton,
-                  ]}
-                  onPress={() => setStatusFilter(filter.value)}
-                >
-                  <Text
+              {FILTERS.map((filter) => {
+                const getFilterIcon = (filterValue: string) => {
+                  switch (filterValue.toLowerCase()) {
+                    case 'all':
+                      return <Search size={14} color={statusFilter === filter.value ? "#FFFFFF" : "#6B7280"} />;
+                    case 'valid':
+                      return <CheckCircle size={14} color={statusFilter === filter.value ? "#FFFFFF" : "#6B7280"} />;
+                    case 'expired':
+                      return <X size={14} color={statusFilter === filter.value ? "#FFFFFF" : "#6B7280"} />;
+                    default:
+                      return null;
+                  }
+                };
+
+                return (
+                  <TouchableOpacity
+                    key={filter.value}
                     style={[
-                      styles.filterText,
-                      statusFilter === filter.value && styles.activeFilterText,
+                      styles.filterButton,
+                      statusFilter === filter.value && styles.activeFilterButton,
                     ]}
+                    onPress={() => setStatusFilter(filter.value)}
                   >
-                    {filter.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    {getFilterIcon(filter.value)}
+                    <Text
+                      style={[
+                        styles.filterText,
+                        statusFilter === filter.value && styles.activeFilterText,
+                      ]}
+                    >
+                      {filter.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </ScrollView>
         </View>
@@ -508,11 +526,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderRadius: 10,
     paddingHorizontal: 14,
-    paddingVertical: 22,
+    paddingVertical: 0,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    minHeight: 36,
+    minHeight: 64,
   },
   searchIcon: {
     marginRight: 10,
@@ -533,7 +551,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   filtersContent: {
-    gap: 10,
+    gap: 8,
     alignItems: 'center',
     paddingVertical: 2,
   },
@@ -543,6 +561,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -550,6 +570,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     marginRight: 6,
+    gap: 6,
   },
   activeFilterButton: {
     backgroundColor: '#1E40AF',
@@ -563,12 +584,24 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   sortButton: {
-    height: 48, // Match search bar height (22 padding top + 22 padding bottom + minHeight 36 = ~48)
+    height: 64, // Match search bar height
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 2,
+    transform: [{ translateY: -4 }], // Move up 4 pixels to align with search bar
+  },
+  sortButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 0,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     gap: 4,
+    minHeight: 64,
   },
   scrollView: {
     flex: 1,
