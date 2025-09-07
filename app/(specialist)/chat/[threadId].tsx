@@ -22,9 +22,12 @@ import {
   Phone,
   Video,
   Send,
+  Mic,
 } from 'lucide-react-native';
 
 import { useAuth } from '@/hooks/auth/useAuth';
+import { chatService } from '@/services/chatService';
+import { useVoiceToText } from '@/hooks/useVoiceToText';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 
@@ -33,7 +36,7 @@ interface ChatParticipant {
   firstName: string;
   lastName: string;
   email: string;
-  role: 'patient' | 'specialist' | 'admin';
+  role: 'patient' | 'specialist' | 'generalist';
   specialty?: string;
   avatar?: string;
 }
@@ -57,37 +60,108 @@ interface Message {
 }
 
 export default function SpecialistChatScreen() {
-  const { threadId } = useLocalSearchParams<{ threadId: string }>();
+  const { threadId, patientId, patientName, patientSpecialty } = useLocalSearchParams<{ 
+    threadId: string; 
+    patientId: string; 
+    patientName: string; 
+    patientSpecialty: string; 
+  }>();
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [participant, setParticipant] = useState<ChatParticipant | null>(null);
   const [loading, setLoading] = useState(true);
+  const [participantLoading, setParticipantLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [isOnline, setIsOnline] = useState(false);
   const [lastSeen, setLastSeen] = useState(0);
+  const [currentThread, setCurrentThread] = useState<any>(null);
 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const flatListRef = useRef<FlatList>(null);
+
+  // Voice to text functionality
+  const {
+    isRecording,
+    isProcessingVoice,
+    transcript,
+    startRecording,
+    stopRecording,
+    resetTranscript,
+  } = useVoiceToText();
 
   // Load participant info
   const loadParticipantInfo = useCallback(async () => {
     if (!user || !threadId) return;
 
-    // Mock participant data for UI testing
-    const mockParticipant: ChatParticipant = {
-      uid: 'patient1',
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'john.doe@example.com',
-      role: 'patient',
-      specialty: '',
-      avatar: '',
-    };
-    
-    setParticipant(mockParticipant);
-  }, [user, threadId]);
+    try {
+      setParticipantLoading(true);
+      
+      // First try to get participant info from the thread
+      const threadData = await chatService.getThreadById(threadId);
+      setCurrentThread(threadData);
+      
+      if (threadData && threadData.participants) {
+        // Find the patient participant (not the current user)
+        const participantId = Object.keys(threadData.participants).find(id => id !== user.uid);
+        
+        if (participantId) {
+          // Get patient data from users collection
+          const patientData = await chatService.getUserById(participantId);
+          
+          if (patientData) {
+            setParticipant({
+              uid: participantId,
+              firstName: patientData.firstName || patientData.first_name || 'Unknown',
+              lastName: patientData.lastName || patientData.last_name || 'Patient',
+              email: patientData.email || '',
+              role: 'patient',
+              specialty: patientData.specialty || patientSpecialty || 'General Medicine',
+              avatar: patientData.avatar || patientData.profilePicture || '',
+            });
+            return;
+          }
+        }
+      }
+      
+      // Fallback to URL parameters if thread doesn't exist yet
+      if (patientId && patientName) {
+        const [firstName, ...lastNameParts] = patientName.split(' ');
+        const lastName = lastNameParts.join(' ') || 'Patient';
+        
+        setParticipant({
+          uid: patientId,
+          firstName,
+          lastName,
+          email: '',
+          role: 'patient',
+          specialty: patientSpecialty || 'General Medicine',
+          avatar: '',
+        });
+      }
+    } catch (error) {
+      console.error('Error loading participant info:', error);
+      
+      // Fallback to URL parameters
+      if (patientId && patientName) {
+        const [firstName, ...lastNameParts] = patientName.split(' ');
+        const lastName = lastNameParts.join(' ') || 'Patient';
+        
+        setParticipant({
+          uid: patientId,
+          firstName,
+          lastName,
+          email: '',
+          role: 'patient',
+          specialty: patientSpecialty || 'General Medicine',
+          avatar: '',
+        });
+      }
+    } finally {
+      setParticipantLoading(false);
+    }
+  }, [user, threadId, patientId, patientName, patientSpecialty]);
 
   // Load messages
   const loadMessages = useCallback(async () => {
@@ -96,47 +170,6 @@ export default function SpecialistChatScreen() {
     try {
       setLoading(true);
       
-      // For now, create mock messages to test the UI
-      const mockMessages: Message[] = [
-        {
-          id: 'msg1',
-          text: 'Hi, Jimmy! Any update today?',
-          senderId: participant?.uid || 'other',
-          timestamp: Date.now() - 3600000, // 1 hour ago
-          isOwn: false,
-          attachmentUrl: undefined,
-        },
-        {
-          id: 'msg2',
-          text: 'All good! we have some update ✨',
-          senderId: user?.uid || 'me',
-          timestamp: Date.now() - 3000000, // 50 minutes ago
-          isOwn: true,
-          attachmentUrl: undefined,
-        },
-        {
-          id: 'msg3',
-          text: 'Cool! I have some feedbacks on the "How it work" section. but overall looks good now! 👍',
-          senderId: participant?.uid || 'other',
-          timestamp: Date.now() - 1800000, // 30 minutes ago
-          isOwn: false,
-          attachmentUrl: undefined,
-        },
-        {
-          id: 'msg4',
-          text: 'Perfect! Will check it 🔥',
-          senderId: user?.uid || 'me',
-          timestamp: Date.now() - 900000, // 15 minutes ago
-          isOwn: true,
-          attachmentUrl: undefined,
-        },
-      ];
-
-      setMessages(mockMessages);
-      setLoading(false);
-
-      // TODO: Uncomment when database is fixed
-      /*
       // Listen to messages in real-time
       const unsubscribe = chatService.listenToThreadMessages(threadId, (chatMessages) => {
         const formattedMessages: Message[] = chatMessages.map((msg: ChatMessage) => ({
@@ -153,18 +186,33 @@ export default function SpecialistChatScreen() {
       });
 
       return unsubscribe;
-      */
     } catch (error) {
       console.error('Error loading messages:', error);
+      setMessages([]);
       setLoading(false);
     }
-  }, [threadId, user, participant]);
+  }, [threadId, user]);
 
   // Mark messages as read when screen focuses
   useFocusEffect(
     useCallback(() => {
-      // Mock implementation - no database calls
-    }, [threadId, user])
+      const markAsRead = async () => {
+        if (!user || !currentThread) {
+          console.log('Cannot mark as read - user or thread not ready');
+          return;
+        }
+
+        try {
+          await chatService.markThreadAsRead(threadId, user.uid);
+        } catch (error) {
+          console.log('Continuing despite read marking error');
+        }
+      };
+
+      // Add a delay to ensure thread is fully loaded
+      const timeoutId = setTimeout(markAsRead, 1000);
+      return () => clearTimeout(timeoutId);
+    }, [threadId, user, currentThread])
   );
 
   // Listen to typing status
@@ -206,17 +254,7 @@ export default function SpecialistChatScreen() {
       const text = messageText.trim();
       setMessageText('');
 
-      // Mock message sending for UI testing
-      const newMessage: Message = {
-        id: `msg_${Date.now()}`,
-        text: text,
-        senderId: user.uid,
-        timestamp: Date.now(),
-        isOwn: true,
-        attachmentUrl: undefined,
-      };
-
-      setMessages(prev => [...prev, newMessage]);
+      await chatService.sendMessage(threadId, user.uid, text);
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
@@ -228,8 +266,24 @@ export default function SpecialistChatScreen() {
   // Handle typing
   const handleTextChange = (text: string) => {
     setMessageText(text);
-    // Mock implementation - no database calls
   };
+
+  // Handle voice recording
+  const handleStartVoiceRecording = () => {
+    startRecording();
+  };
+
+  const handleStopVoiceRecording = () => {
+    stopRecording();
+  };
+
+  // Update message text when transcript changes
+  useEffect(() => {
+    if (transcript) {
+      setMessageText(transcript);
+      resetTranscript();
+    }
+  }, [transcript, resetTranscript]);
 
   // Format message time
   const formatMessageTime = (timestamp: number): string => {
@@ -306,7 +360,7 @@ export default function SpecialistChatScreen() {
     );
   };
 
-  if (loading) {
+  if (loading || participantLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
@@ -331,7 +385,12 @@ export default function SpecialistChatScreen() {
       <SafeAreaView style={styles.container}>
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
         
-        {/* Header */}
+        <KeyboardAvoidingView
+          style={styles.keyboardContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+          {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
@@ -347,7 +406,7 @@ export default function SpecialistChatScreen() {
               ) : (
                 <View style={styles.headerAvatarPlaceholder}>
                   <Text style={styles.headerAvatarText}>
-                    {participant.firstName.charAt(0).toUpperCase()}
+                    {participant.firstName.charAt(0).toUpperCase()}{participant.lastName.charAt(0).toUpperCase()}
                   </Text>
                 </View>
               )}
@@ -376,11 +435,7 @@ export default function SpecialistChatScreen() {
         </View>
 
         {/* Messages */}
-        <KeyboardAvoidingView
-          style={styles.chatContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-        >
+        <View style={styles.chatContainer}>
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -391,8 +446,18 @@ export default function SpecialistChatScreen() {
             onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
             ListFooterComponent={renderTypingIndicator}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           />
-        </KeyboardAvoidingView>
+          
+          {/* Empty state positioned at bottom */}
+          {messages.length === 0 && (
+            <View style={styles.emptyStateContainer}>
+              <Text style={styles.emptyStateText}>
+                Start a conversation with {participant.firstName}
+              </Text>
+            </View>
+          )}
+        </View>
 
         {/* Input */}
         <View style={styles.inputContainer}>
@@ -406,6 +471,17 @@ export default function SpecialistChatScreen() {
             maxLength={1000}
           />
           <TouchableOpacity
+            style={[
+              styles.voiceButton,
+              isRecording && styles.voiceButtonActive,
+              isProcessingVoice && styles.voiceButtonDisabled
+            ]}
+            onPress={isRecording ? handleStopVoiceRecording : handleStartVoiceRecording}
+            disabled={isProcessingVoice}
+          >
+            <Mic size={20} color={isRecording ? "#FFFFFF" : "#6B7280"} />
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.sendButton, !messageText.trim() && styles.sendButtonDisabled]}
             onPress={handleSendMessage}
             disabled={!messageText.trim() || sending}
@@ -417,6 +493,21 @@ export default function SpecialistChatScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Voice recording indicator */}
+        {isRecording && (
+          <View style={styles.voiceRecordingIndicator}>
+            <Text style={styles.voiceRecordingText}>Recording... Tap to stop</Text>
+          </View>
+        )}
+
+        {/* Voice processing indicator */}
+        {isProcessingVoice && (
+          <View style={styles.voiceProcessingIndicator}>
+            <Text style={styles.voiceProcessingText}>Processing voice...</Text>
+          </View>
+        )}
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </ErrorBoundary>
   );
@@ -427,6 +518,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  keyboardContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -559,6 +653,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
+    minHeight: 60,
   },
   textInput: {
     flex: 1,
@@ -595,6 +690,62 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#DC2626',
+    textAlign: 'center',
+  },
+  emptyStateContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 48,
+    paddingBottom: 16,
+    paddingTop: 8,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
+  voiceButton: {
+    backgroundColor: '#F3F4F6',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  voiceButtonActive: {
+    backgroundColor: '#1E40AF',
+  },
+  voiceButtonDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  voiceRecordingIndicator: {
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#FECACA',
+  },
+  voiceRecordingText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#DC2626',
+    textAlign: 'center',
+  },
+  voiceProcessingIndicator: {
+    backgroundColor: '#F0F9FF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#BFDBFE',
+  },
+  voiceProcessingText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#1E40AF',
     textAlign: 'center',
   },
 });

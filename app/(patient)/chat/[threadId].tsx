@@ -440,7 +440,12 @@ export default function PatientChatScreen() {
       <SafeAreaView style={styles.container}>
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
         
-        {/* Header */}
+        <KeyboardAvoidingView
+          style={styles.keyboardContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+          {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
@@ -485,11 +490,7 @@ export default function PatientChatScreen() {
         </View>
 
         {/* Messages */}
-        <KeyboardAvoidingView
-          style={styles.chatContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-        >
+        <View style={styles.chatContainer}>
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -500,6 +501,7 @@ export default function PatientChatScreen() {
             onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
             ListFooterComponent={renderTypingIndicator}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           />
           
           {/* Empty state - positioned at bottom above input */}
@@ -508,7 +510,7 @@ export default function PatientChatScreen() {
               {renderEmptyState()}
             </View>
           )}
-        </KeyboardAvoidingView>
+        </View>
 
         {/* Input */}
         <View style={styles.inputContainer}>
@@ -573,6 +575,7 @@ export default function PatientChatScreen() {
             </View>
           )}
         </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </ErrorBoundary>
   );
@@ -583,6 +586,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  keyboardContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -713,6 +719,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
+    minHeight: 60,
   },
   inputWrapper: {
     flexDirection: 'row',

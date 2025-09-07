@@ -91,10 +91,21 @@ export class FreeSpeechToTextService {
     try {
       console.log('Free Speech-to-Text: Using AssemblyAI for transcription...');
       
+      // Validate API key format
+      if (!this.apiKey || !this.apiKey.startsWith('sk-')) {
+        throw new Error('Invalid AssemblyAI API key. Key should start with "sk-". Please check your API key configuration.');
+      }
+      
       // Read audio file as base64
       const audioData = await FileSystem.readAsStringAsync(audioUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
+
+      if (!audioData || audioData.length === 0) {
+        throw new Error('No audio data found. Please try recording again.');
+      }
+
+      console.log('Free Speech-to-Text: Audio data size:', audioData.length, 'characters');
 
       // Convert base64 to binary for upload
       const binaryData = atob(audioData);
@@ -102,6 +113,8 @@ export class FreeSpeechToTextService {
       for (let i = 0; i < binaryData.length; i++) {
         bytes[i] = binaryData.charCodeAt(i);
       }
+
+      console.log('Free Speech-to-Text: Uploading to AssemblyAI...');
 
       // Upload to AssemblyAI
       const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {
@@ -116,7 +129,14 @@ export class FreeSpeechToTextService {
       if (!uploadResponse.ok) {
         const errorText = await uploadResponse.text();
         console.error('AssemblyAI upload response:', uploadResponse.status, errorText);
-        throw new Error(`AssemblyAI upload error: ${uploadResponse.status} - ${errorText}`);
+        
+        if (uploadResponse.status === 401) {
+          throw new Error('AssemblyAI API key is invalid or expired. Please check your API key.');
+        } else if (uploadResponse.status === 403) {
+          throw new Error('AssemblyAI API access forbidden. Please check your account status.');
+        } else {
+          throw new Error(`AssemblyAI upload error: ${uploadResponse.status} - ${errorText}`);
+        }
       }
 
       const uploadData = await uploadResponse.json();
@@ -146,10 +166,10 @@ export class FreeSpeechToTextService {
       const transcriptData = await transcriptResponse.json();
       console.log('AssemblyAI transcript submitted:', transcriptData.id);
 
-      // Poll for completion
+      // Poll for completion with shorter timeout
       const transcriptId = transcriptData.id;
       let attempts = 0;
-      const maxAttempts = 30; // 30 seconds max wait
+      const maxAttempts = 15; // 15 seconds max wait (reduced from 30)
 
       while (attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
@@ -169,7 +189,7 @@ export class FreeSpeechToTextService {
 
         if (statusData.status === 'completed') {
           console.log('AssemblyAI transcription completed:', statusData.text);
-          return { success: true, text: statusData.text };
+          return { success: true, text: statusData.text || 'No speech detected' };
         } else if (statusData.status === 'error') {
           throw new Error(`AssemblyAI transcription error: ${statusData.error}`);
         }
@@ -177,7 +197,9 @@ export class FreeSpeechToTextService {
         attempts++;
       }
 
-      throw new Error('AssemblyAI transcription timeout');
+      // Return empty result instead of throwing error for timeout
+      console.warn('AssemblyAI transcription timeout - returning empty result');
+      return { success: true, text: '' };
     } catch (error) {
       console.error('AssemblyAI transcription error:', error);
       return { 

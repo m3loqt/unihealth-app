@@ -391,15 +391,27 @@ export default function PatientConsultationScreen() {
         setHasChanges(true);
       }
 
-      // Clear activeField after updating the form
-      setTimeout(() => {
-        setActiveField(null);
-        setIsLoading(false);
-        stopPulseAnimation();
-        stopLoadingAnimation();
-      }, 500);
+      // Clear activeField and reset loading state immediately
+      setActiveField(null);
+      setIsLoading(false);
+      stopPulseAnimation();
+      stopLoadingAnimation();
     }
   }, [transcript, activeField]);
+
+  // Fallback effect to reset loading state if no transcript is received
+  useEffect(() => {
+    if (activeField && !isRecording && isLoading) {
+      const timeout = setTimeout(() => {
+        console.log('Fallback: Resetting loading state due to no transcript');
+        setIsLoading(false);
+        stopLoadingAnimation();
+        setActiveField(null);
+      }, 5000); // 5 second fallback
+
+      return () => clearTimeout(timeout);
+    }
+  }, [activeField, isRecording, isLoading]);
 
   // Auto-show diagnosis tooltip for 5 seconds when on diagnosis step
   useEffect(() => {
@@ -503,7 +515,13 @@ export default function PatientConsultationScreen() {
       setIsLoading(true);
       startLoadingAnimation();
       await stopRecording();
-      // activeField will be cleared in the transcript effect
+      
+      // Reset loading state after a short delay to allow transcript processing
+      setTimeout(() => {
+        setIsLoading(false);
+        stopLoadingAnimation();
+        setActiveField(null);
+      }, 2000); // Give 2 seconds for transcript processing
     } catch (error) {
       console.error('Stop recording error:', error);
       stopPulseAnimation();

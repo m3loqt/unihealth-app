@@ -11,6 +11,7 @@ import {
   Platform,
   RefreshControl,
   Alert,
+  TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -22,13 +23,14 @@ import {
   ChevronRight,
   Plus,
   Search,
-  Edit3,
   Check,
   CheckCheck,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 
 import { useAuth } from '@/hooks/auth/useAuth';
+import { useSpecialistChatPatients } from '@/hooks/data/useSpecialistChatPatients';
+import { chatService } from '@/services/chatService';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 
@@ -60,97 +62,123 @@ interface ChatListItem {
   participant: ChatParticipant;
   lastMessageTime: string;
   unreadCount: number;
+  patient: {
+    uid: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: 'patient';
+    specialty?: string;
+    avatar?: string;
+    source: 'appointment' | 'referral';
+    sourceId: string;
+    lastInteraction?: number;
+  };
 }
 
 export default function SpecialistChatsScreen() {
   const { user } = useAuth();
+  const { patients, loading: patientsLoading, error: patientsError, loadPatients, refresh: refreshPatients } = useSpecialistChatPatients();
   const [chats, setChats] = useState<ChatListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load chat participants from appointments and referrals
-  const loadChatParticipants = useCallback(async () => {
-    if (!user) return [];
-
-    // Mock data for UI testing
-    return [
-      {
-        uid: 'patient1',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@example.com',
-        role: 'patient' as const,
-        specialty: '',
-        avatar: '',
-      },
-      {
-        uid: 'patient2',
-        firstName: 'Jane',
-        lastName: 'Smith',
-        email: 'jane.smith@example.com',
-        role: 'patient' as const,
-        specialty: '',
-        avatar: '',
-      },
-      {
-        uid: 'patient3',
-        firstName: 'Robert',
-        lastName: 'Johnson',
-        email: 'robert.johnson@example.com',
-        role: 'patient' as const,
-        specialty: '',
-        avatar: '',
-      },
-    ];
-  }, [user]);
-
   // Load chat threads
   const loadChats = useCallback(async () => {
-    if (!user) return;
+    if (!user || patientsLoading || patients.length === 0) {
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
 
-      const participants = await loadChatParticipants();
       const chatList: ChatListItem[] = [];
 
-      // Create mock chat threads
-      for (const participant of participants) {
-        const mockThread: ChatThread = {
-          id: `thread_${user.uid}_${participant.uid}`,
-          participants: { [user.uid]: true, [participant.uid]: true },
-          type: 'direct',
-          lastMessage: {
-            text: participant.uid === 'patient1' ? 'Hi, Jimmy! Any update today?' : 
-                  participant.uid === 'patient2' ? 'Cool! I have some feedbacks on the "How it work" section. but overall looks good now! 👍' : 
-                  'Here\'s the new landing page design! https://www.figma.com/file/EQJUT...',
-            at: Date.now() - Math.random() * 86400000, // Random time within last 24 hours
-            senderId: Math.random() > 0.5 ? user.uid : participant.uid,
-          },
-          unread: { [user.uid]: Math.floor(Math.random() * 5) },
-          createdAt: Date.now() - Math.random() * 604800000, // Random time within last week
+      // Get existing chat threads for this user
+      let existingThreads: ChatThread[] = [];
+      try {
+        existingThreads = await chatService.getUserThreads(user.uid);
+        console.log('📋 Loaded existing threads for specialist:', existingThreads.length);
+        existingThreads.forEach(thread => {
+          console.log('📋 Thread:', thread.id, 'participants:', Object.keys(thread.participants), 'lastMessage:', thread.lastMessage?.text);
+        });
+      } catch (threadError) {
+        console.error('Error loading existing threads:', threadError);
+        // Continue without existing threads - we'll create placeholders for all patients
+      }
+      
+      // Create chat list items from patients
+      console.log('👥 Processing patients:', patients.length);
+      for (const patient of patients) {
+        console.log('👥 Processing patient:', patient.firstName, patient.lastName, 'UID:', patient.uid);
+        
+        // Try to find existing thread with this patient
+        let thread: ChatThread | undefined;
+        
+        // First, try to find by checking if both participants exist in any thread
+        for (const existingThread of existingThreads) {
+          console.log('🔍 Checking thread:', existingThread.id, 'participants:', Object.keys(existingThread.participants), 'looking for specialist:', user.uid, 'patient:', patient.uid);
+          
+          if (existingThread.participants[user.uid] && existingThread.participants[patient.uid]) {
+            console.log('✅ Found existing thread for patient:', patient.firstName, patient.lastName, 'thread ID:', existingThread.id, 'last message:', existingThread.lastMessage?.text || 'No last message');
+            thread = existingThread;
+            break;
+          }
+        }
+
+        // If no existing thread found, create a placeholder
+        if (!thread) {
+          console.log('📝 Creating placeholder for patient:', patient.firstName, patient.lastName);
+          thread = {
+            id: `${user.uid}_${patient.uid}`, // Use consistent ID format
+            participants: { [user.uid]: true, [patient.uid]: true },
+            type: patient.source === 'referral' ? 'referral' : 'direct',
+            unread: { [user.uid]: 0, [patient.uid]: 0 },
+            createdAt: patient.lastInteraction || Date.now(),
+            // No lastMessage - this will show "Start a conversation with your patient"
+          };
+        } else {
+          console.log('✅ Found existing thread for patient:', patient.firstName, patient.lastName, 'thread ID:', thread.id, 'with last message:', thread.lastMessage?.text || 'No last message');
+        }
+
+        const lastMessageTime = thread.lastMessage 
+          ? formatMessageTime(thread.lastMessage.at)
+          : formatMessageTime(thread.createdAt);
+        const unreadCount = thread.unread?.[user.uid] || 0;
+
+        // Create participant object
+        const participant: ChatParticipant = {
+          uid: patient.uid,
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          email: patient.email,
+          role: 'patient',
+          specialty: patient.specialty,
+          avatar: patient.avatar,
         };
 
-        const lastMessageTime = formatMessageTime(mockThread.lastMessage.at);
-        const unreadCount = mockThread.unread?.[user.uid] || 0;
-
         chatList.push({
-          thread: mockThread,
+          thread,
           participant,
           lastMessageTime,
           unreadCount,
+          patient,
         });
       }
 
-      // Sort by last message time
+      // Sort by last message time or creation time (most recent first)
       chatList.sort((a, b) => {
-        const timeA = a.thread.lastMessage?.at || 0;
-        const timeB = b.thread.lastMessage?.at || 0;
+        const timeA = a.thread.lastMessage?.at || a.thread.createdAt;
+        const timeB = b.thread.lastMessage?.at || b.thread.createdAt;
         return timeB - timeA;
       });
 
+      console.log('📋 Final chat list for specialist:', chatList.length, 'items');
+      chatList.forEach(chat => {
+        console.log('📋 Chat item:', chat.patient.firstName, chat.patient.lastName, 'has lastMessage:', !!chat.thread.lastMessage, 'text:', chat.thread.lastMessage?.text || 'N/A');
+      });
       setChats(chatList);
     } catch (error) {
       console.error('Error loading chats:', error);
@@ -158,19 +186,79 @@ export default function SpecialistChatsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user, loadChatParticipants]);
+  }, [user, patients, patientsLoading]);
+
+  // Load patients when component mounts
+  useEffect(() => {
+    if (user?.uid) {
+      loadPatients(user.uid);
+    }
+  }, [user?.uid, loadPatients]);
 
   // Listen to real-time chat updates
   useEffect(() => {
-    // Mock implementation - no database calls
-  }, [user, loadChatParticipants]);
+    loadChats();
+  }, [loadChats]);
+
+  // Set up real-time listener for chat threads
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('👂 Setting up real-time listener for specialist:', user.uid);
+    
+    const unsubscribe = chatService.listenToUserThreads(user.uid, (threads) => {
+      console.log('📨 Real-time update received for specialist:', threads.length, 'threads');
+      
+      // Update chats with real-time data
+      setChats(prevChats => {
+        const updatedChats = prevChats.map(chatItem => {
+          // Find matching thread in real-time data by checking both participants
+          const realTimeThread = threads.find(thread => 
+            thread.participants[chatItem.patient.uid] === true && 
+            thread.participants[user.uid] === true
+          );
+          
+          if (realTimeThread) {
+            console.log('🔄 Updating chat with real-time data for patient:', chatItem.patient.firstName, 'last message:', realTimeThread.lastMessage?.text);
+            
+            // Update with real-time thread data
+            const lastMessageTime = realTimeThread.lastMessage 
+              ? formatMessageTime(realTimeThread.lastMessage.at)
+              : formatMessageTime(realTimeThread.createdAt);
+            const unreadCount = realTimeThread.unread?.[user.uid] || 0;
+            
+            return {
+              ...chatItem,
+              thread: realTimeThread,
+              lastMessageTime,
+              unreadCount,
+            };
+          }
+          
+          return chatItem;
+        });
+        
+        // Sort by last message time or creation time (most recent first)
+        return updatedChats.sort((a, b) => {
+          const timeA = a.thread.lastMessage?.at || a.thread.createdAt;
+          const timeB = b.thread.lastMessage?.at || b.thread.createdAt;
+          return timeB - timeA;
+        });
+      });
+    });
+
+    return () => {
+      console.log('🔇 Unsubscribing from real-time updates for specialist');
+      unsubscribe();
+    };
+  }, [user]);
 
   // Refresh chats
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadChats();
+    await Promise.all([refreshPatients(), loadChats()]);
     setRefreshing(false);
-  }, [loadChats]);
+  }, [refreshPatients, loadChats]);
 
   // Load chats when screen focuses
   useFocusEffect(
@@ -198,25 +286,85 @@ export default function SpecialistChatsScreen() {
 
   // Handle chat press
   const handleChatPress = async (chatItem: ChatListItem) => {
-    try {
-      // Use the thread ID from the chat item
-      const threadId = chatItem.thread.id;
+    if (!user) return;
 
-      // Navigate to chat screen
-      router.push(`/(specialist)/chat/${threadId}`);
+    try {
+      const { patient, thread } = chatItem;
+      
+      // Debug logging
+      console.log('Opening chat with patient:', {
+        patientId: patient.uid,
+        patientName: `${patient.firstName} ${patient.lastName}`,
+        source: patient.source,
+        sourceId: patient.sourceId,
+        specialistId: user.uid,
+        existingThreadId: thread.id
+      });
+      
+      // Validate required data
+      if (!patient.uid) {
+        throw new Error('Patient ID is missing');
+      }
+      
+      let threadId = thread.id;
+      
+       // If this is a placeholder thread (no real thread exists), create one
+       // Check if this is a placeholder by looking at the thread ID format and lack of lastMessage
+       const isPlaceholder = thread.id.startsWith(`${user.uid}_${patient.uid}`) && !thread.lastMessage;
+       
+       if (isPlaceholder) {
+         console.log('📝 Creating new thread for patient:', patient.firstName, patient.lastName, 'placeholder detected');
+         
+         // Prepare linked object, filtering out undefined values
+         const linked: { referralId?: string; appointmentId?: string; clinicId?: string } = {};
+         if (patient.source === 'referral' && patient.sourceId) {
+           linked.referralId = patient.sourceId;
+         } else if (patient.source === 'appointment' && patient.sourceId) {
+           linked.appointmentId = patient.sourceId;
+         }
+         
+         try {
+           // Create or get existing chat thread
+           threadId = await chatService.createOrGetThread(
+             user.uid,
+             patient.uid,
+             patient.source === 'referral' ? 'referral' : 'direct',
+             Object.keys(linked).length > 0 ? linked : undefined
+           );
+           
+           console.log('✅ Successfully created new thread:', threadId);
+           
+           // Add a small delay to ensure the thread is fully created in Firebase
+           await new Promise(resolve => setTimeout(resolve, 500));
+         } catch (error) {
+           console.error('Error creating thread:', error);
+           // Continue with the placeholder thread ID - the individual chat screen will handle it
+           console.log('Continuing with placeholder thread ID');
+         }
+       } else {
+         console.log('Using existing thread:', threadId);
+       }
+
+      // Navigate to chat screen with patient info as parameters
+      const patientName = `${patient.firstName} ${patient.lastName}`;
+      router.push(`/(specialist)/chat/${threadId}?patientId=${patient.uid}&patientName=${encodeURIComponent(patientName)}&patientSpecialty=${encodeURIComponent(patient.specialty || 'General Medicine')}`);
     } catch (error) {
       console.error('Error opening chat:', error);
-      Alert.alert('Error', 'Failed to open chat. Please try again.');
+      Alert.alert('Error', `Failed to open chat: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   // Render chat item
   const renderChatItem = ({ item }: { item: ChatListItem }) => {
-    const { thread, participant, lastMessageTime, unreadCount } = item;
+    const { thread, participant, lastMessageTime, unreadCount, patient } = item;
+    const hasUnreadMessages = unreadCount > 0;
 
     return (
       <TouchableOpacity
-        style={styles.chatItem}
+        style={[
+          styles.chatItem,
+          hasUnreadMessages && styles.chatItemUnread
+        ]}
         onPress={() => handleChatPress(item)}
         activeOpacity={0.7}
       >
@@ -226,7 +374,7 @@ export default function SpecialistChatsScreen() {
           ) : (
             <View style={styles.avatarPlaceholder}>
               <Text style={styles.avatarText}>
-                {participant.firstName.charAt(0).toUpperCase()}
+                {participant.firstName.charAt(0).toUpperCase()}{participant.lastName.charAt(0).toUpperCase()}
               </Text>
             </View>
           )}
@@ -253,7 +401,10 @@ export default function SpecialistChatsScreen() {
           
           <View style={styles.chatFooter}>
             <Text style={styles.lastMessage} numberOfLines={1}>
-              {thread.lastMessage ? thread.lastMessage.text : 'No messages yet'}
+              {thread.lastMessage 
+                ? thread.lastMessage.text 
+                : 'Start a conversation with your patient'
+              }
             </Text>
             {unreadCount > 0 && (
               <View style={styles.unreadBadge}>
@@ -262,6 +413,13 @@ export default function SpecialistChatsScreen() {
                 </Text>
               </View>
             )}
+          </View>
+          
+          {/* Show specialty info */}
+          <View style={styles.sourceInfo}>
+            <Text style={styles.sourceText}>
+              {patient.specialty}
+            </Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -272,14 +430,15 @@ export default function SpecialistChatsScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <MessageCircle size={64} color="#D1D5DB" />
-      <Text style={styles.emptyTitle}>No Chats Yet</Text>
+      <Text style={styles.emptyTitle}>No Patients Available</Text>
       <Text style={styles.emptyDescription}>
-        You'll see your patients here once you have appointments or referrals.
+        You'll see your patients here once you have appointments or referrals.{'\n'}
+        Patients will appear here when they book appointments with you.
       </Text>
     </View>
   );
 
-  if (loading) {
+  if (loading || patientsLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
@@ -293,26 +452,31 @@ export default function SpecialistChatsScreen() {
       <SafeAreaView style={styles.container}>
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
         
-        {/* Header with Search */}
+        {/* Header */}
         <View style={styles.header}>
+          <Text style={styles.headerTitle}>Chats</Text>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchSection}>
           <View style={styles.searchContainer}>
-            <Search size={20} color="#9CA3AF" style={styles.searchIcon} />
+            <Search size={18} color="#9CA3AF" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search message..."
+              placeholder="Search chats..."
               placeholderTextColor="#9CA3AF"
+              returnKeyType="search"
+              blurOnSubmit={true}
             />
           </View>
-          <TouchableOpacity style={styles.editButton}>
-            <Edit3 size={20} color="#1E40AF" />
-          </TouchableOpacity>
+          <View style={styles.divider} />
         </View>
 
         {/* Chat List */}
-        {error ? (
+        {error || patientsError ? (
           <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={loadChats}>
+            <Text style={styles.errorText}>{error || patientsError}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
           </View>
@@ -337,9 +501,9 @@ export default function SpecialistChatsScreen() {
         )}
 
         {/* Floating Action Button */}
-        <TouchableOpacity style={styles.fab}>
+        {/* <TouchableOpacity style={styles.fab}>
           <Plus size={24} color="#FFFFFF" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </SafeAreaView>
     </ErrorBoundary>
   );
@@ -352,35 +516,45 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+  },
+  headerTitle: {
+    fontSize: 24,
+    color: '#1F2937',
+  },
+  searchSection: {
+    paddingBottom: 8,
+    backgroundColor: '#FFFFFF',
   },
   searchContainer: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginRight: 12,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 0,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minHeight: 64,
+    marginHorizontal: 24,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: 'Inter-Regular',
     color: '#1F2937',
+    paddingVertical: 0,
   },
-  editButton: {
-    padding: 8,
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginTop: 16,
   },
   chatList: {
     paddingHorizontal: 20,
@@ -394,25 +568,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
+  chatItemUnread: {
+    backgroundColor: '#F8FAFC',
+  },
   chatAvatar: {
     marginRight: 16,
   },
   avatarImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   avatarPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#1E40AF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: 'Inter-Bold',
   },
   chatContent: {
@@ -454,6 +631,14 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     flex: 1,
     marginRight: 8,
+  },
+  sourceInfo: {
+    marginTop: 2,
+  },
+  sourceText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
   },
   unreadBadge: {
     backgroundColor: '#1E40AF',

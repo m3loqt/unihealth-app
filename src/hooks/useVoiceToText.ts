@@ -24,8 +24,18 @@ export const useVoiceToText = (): UseVoiceToTextReturn => {
   useEffect(() => {
     // Initialize free speech-to-text service for mobile
     if (Platform.OS !== 'web') {
-      // Using your AssemblyAI API key
-      initializeFreeSpeechToText('61cbee4c74db45528001e951a5ea3b97');
+      // TODO: Replace with your actual AssemblyAI API key
+      // Get your free API key from: https://www.assemblyai.com/
+      // The key should start with 'sk-'
+      const apiKey = 'YOUR_ASSEMBLYAI_API_KEY_HERE';
+      
+      if (apiKey === 'YOUR_ASSEMBLYAI_API_KEY_HERE') {
+        console.warn('⚠️ AssemblyAI API key not configured. Voice-to-text will not work on mobile.');
+        console.log('📝 To fix: Get your free API key from https://www.assemblyai.com/ and replace YOUR_ASSEMBLYAI_API_KEY_HERE');
+        setError('AssemblyAI API key not configured. Please set up your API key to use voice-to-text on mobile.');
+      } else {
+        initializeFreeSpeechToText(apiKey);
+      }
     }
 
     return () => {
@@ -102,7 +112,7 @@ export const useVoiceToText = (): UseVoiceToTextReturn => {
         console.log('Mobile Platform - Starting AssemblyAI recording');
         
         if (!freeSpeechToTextService) {
-          throw new Error('Free speech-to-text service not initialized');
+          throw new Error('AssemblyAI API key not configured. Please set up your API key to use voice-to-text on mobile. See VOICE_TO_TEXT_SETUP_INSTRUCTIONS.md for details.');
         }
 
         await freeSpeechToTextService.startRecording();
@@ -119,6 +129,7 @@ export const useVoiceToText = (): UseVoiceToTextReturn => {
       if (Platform.OS === 'web' && recognitionRef.current) {
         console.log('Web Platform - Stopping Web Speech API recording');
         recognitionRef.current.stop();
+        setIsRecording(false);
       } else if (Platform.OS !== 'web' && freeSpeechToTextService) {
         console.log('Mobile Platform - Stopping AssemblyAI recording');
         // Guard: avoid calling stop if service is not currently recording
@@ -127,6 +138,8 @@ export const useVoiceToText = (): UseVoiceToTextReturn => {
           setIsRecording(false);
           return;
         }
+        
+        setIsRecording(false); // Set recording to false immediately
         const result = await freeSpeechToTextService.stopRecording();
         
         if (result.success && result.text) {
@@ -139,12 +152,8 @@ export const useVoiceToText = (): UseVoiceToTextReturn => {
             setError(result.error);
           }
         }
-      }
-      
-      setIsRecording(false);
-      // Clear any interim transcript when stopping without result
-      if (!transcript) {
-        setTranscript('');
+      } else {
+        setIsRecording(false);
       }
     } catch (error) {
       console.error('Stop recording error:', error);

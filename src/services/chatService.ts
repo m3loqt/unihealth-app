@@ -477,6 +477,34 @@ class ChatService {
 
     return unsubscribe;
   }
+
+  /**
+   * Get user by ID
+   */
+  async getUserById(userId: string): Promise<any> {
+    try {
+      const userRef = ref(database, `users/${userId}`);
+      const snapshot = await get(userRef);
+      return snapshot.exists() ? snapshot.val() : null;
+    } catch (error) {
+      console.error('Error getting user by ID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get thread by ID
+   */
+  async getThreadById(threadId: string): Promise<ChatThread | null> {
+    try {
+      const threadRef = ref(database, `chatThreads/${threadId}`);
+      const snapshot = await get(threadRef);
+      return snapshot.exists() ? snapshot.val() : null;
+    } catch (error) {
+      console.error('Error getting thread by ID:', error);
+      return null;
+    }
+  }
 }
 
 export const chatService = new ChatService();

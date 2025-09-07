@@ -369,10 +369,14 @@ export default function PatientChatsScreen() {
   // Render chat item
   const renderChatItem = ({ item }: { item: ChatListItem }) => {
     const { thread, participant, lastMessageTime, unreadCount, doctor } = item;
+    const hasUnreadMessages = unreadCount > 0;
 
     return (
       <TouchableOpacity
-        style={styles.chatItem}
+        style={[
+          styles.chatItem,
+          hasUnreadMessages && styles.chatItemUnread
+        ]}
         onPress={() => handleChatPress(item)}
         activeOpacity={0.7}
       >
@@ -575,6 +579,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+  },
+  chatItemUnread: {
+    backgroundColor: '#F8FAFC',
   },
   chatAvatar: {
     marginRight: 16,
