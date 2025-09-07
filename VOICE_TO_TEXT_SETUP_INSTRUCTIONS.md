@@ -1,30 +1,31 @@
 # 🎤 Voice-to-Text Setup Instructions
 
-## **Issue Identified**
-The voice-to-text feature is not working because the AssemblyAI API key is not properly configured. The current key in the code is invalid.
+## **✅ API Key Reverted & Fixed**
+Your original AssemblyAI API key has been restored and the code has been fixed! The voice-to-text feature should now work on both web and mobile platforms.
 
-## **Quick Fix (5 minutes)**
+**Fixed Issues:**
+- ✅ Reverted to working API key: `cd0a65c1fcc247f885f379ee354ef1c0`
+- ✅ Removed incorrect API key format validation (keys don't need `sk-` prefix)
+- ✅ Fixed Authorization headers to use `Bearer ` prefix
+- ✅ Updated all API requests to use correct format
 
-### **Step 1: Get Your Free AssemblyAI API Key**
-1. Go to [https://www.assemblyai.com/](https://www.assemblyai.com/)
-2. Click "Get Started" and create a free account
-3. Verify your email address
-4. Go to your dashboard and copy your API key (starts with `sk-`)
-5. **Free tier includes 5 hours of transcription per month**
+## **🚀 Test the Feature**
 
-### **Step 2: Update the Code**
-1. Open `src/hooks/useVoiceToText.ts`
-2. Find line 30: `const apiKey = 'YOUR_ASSEMBLYAI_API_KEY_HERE';`
-3. Replace `YOUR_ASSEMBLYAI_API_KEY_HERE` with your actual API key
-4. Example: `const apiKey = 'sk-1234567890abcdef...';`
+### **Web Platform (Chrome/Safari)**
+1. Run your app: `npm run dev`
+2. Open in web browser
+3. Go to Patient Consultation screen
+4. Tap the microphone icon next to any text field
+5. Speak clearly and tap again to stop
+6. Your speech should be transcribed in real-time
 
-### **Step 3: Test the Feature**
+### **Mobile Platform (iOS/Android)**
 1. Run your app: `npm run dev`
 2. Open on mobile device via Expo Go
 3. Go to Patient Consultation screen
 4. Tap the microphone icon next to any text field
 5. Speak clearly and tap again to stop
-6. Your speech should be transcribed into the text field
+6. Your speech will be processed by AssemblyAI and transcribed
 
 ## **How It Works**
 

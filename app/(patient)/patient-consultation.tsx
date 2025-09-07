@@ -261,6 +261,38 @@ export default function PatientConsultationScreen() {
   const [activeField, setActiveField] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isProcessingSpeech, setIsProcessingSpeech] = useState(false);
+  
+  // Animated progress
+  const [animatedProgress, setAnimatedProgress] = useState(0);
+  
+  // Animate progress bar when progressPercent changes
+  useEffect(() => {
+    const duration = 800; // Animation duration in ms
+    const startTime = Date.now();
+    const startProgress = animatedProgress;
+    const targetProgress = progressPercent;
+    
+    if (startProgress === targetProgress) return;
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function for smooth animation
+      const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+      const currentProgress = startProgress + (targetProgress - startProgress) * easeOutCubic;
+      
+      setAnimatedProgress(Math.round(currentProgress));
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    
+    requestAnimationFrame(animate);
+  }, [progressPercent]);
+  
   const [showAddPrescription, setShowAddPrescription] = useState(false);
   const [showAddCertificate, setShowAddCertificate] = useState(false);
   const [showFrequencyModal, setShowFrequencyModal] = useState(false);
@@ -363,11 +395,15 @@ export default function PatientConsultationScreen() {
     console.log('Transcript effect triggered - transcript:', transcript, 'activeField:', activeField);
     if (transcript && activeField) {
       console.log('Updating field:', activeField, 'with transcript:', transcript);
-      const isDiagnosisDesc = activeField.startsWith('diagnoses.description.');
-      const isNewDiagnosisDesc = activeField === 'newDiagnosis.description';
+      
+      // Store the current activeField to prevent race conditions
+      const currentField = activeField;
+      
+      const isDiagnosisDesc = currentField.startsWith('diagnoses.description.');
+      const isNewDiagnosisDesc = currentField === 'newDiagnosis.description';
 
       if (isDiagnosisDesc) {
-        const indexStr = activeField.split('.').pop() as string;
+        const indexStr = currentField.split('.').pop() as string;
         const index = parseInt(indexStr, 10);
         setFormData((prev) => {
           const next = { ...prev };
@@ -385,7 +421,7 @@ export default function PatientConsultationScreen() {
       } else {
         setFormData((prev) => {
           const updated: any = { ...prev };
-          (updated as any)[activeField] = transcript; // fallback for simple fields
+          (updated as any)[currentField] = transcript; // fallback for simple fields
           return updated;
         });
         setHasChanges(true);
@@ -394,6 +430,7 @@ export default function PatientConsultationScreen() {
       // Clear activeField and reset loading state immediately
       setActiveField(null);
       setIsLoading(false);
+      setIsProcessingSpeech(false);
       stopPulseAnimation();
       stopLoadingAnimation();
     }
@@ -405,6 +442,7 @@ export default function PatientConsultationScreen() {
       const timeout = setTimeout(() => {
         console.log('Fallback: Resetting loading state due to no transcript');
         setIsLoading(false);
+        setIsProcessingSpeech(false);
         stopLoadingAnimation();
         setActiveField(null);
       }, 5000); // 5 second fallback
@@ -492,12 +530,29 @@ export default function PatientConsultationScreen() {
       return;
     }
 
-    if (isRecording) {
+    // If already recording for a different field, stop that first
+    if (isRecording && activeField !== fieldName) {
+      console.log('Stopping previous recording for field:', activeField);
+      await stopRecording();
+      // Wait a bit for the previous recording to fully stop
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    // If already recording for the same field, stop it
+    if (isRecording && activeField === fieldName) {
       await stopRecording();
       return;
     }
 
     try {
+      // Reset any previous processing state
+      setIsProcessingSpeech(false);
+      setIsLoading(false);
+      stopLoadingAnimation();
+      
+      // Clear any previous transcript
+      resetTranscript();
+      
       setActiveField(fieldName);
       startPulseAnimation();
       await startRecording();
@@ -511,7 +566,14 @@ export default function PatientConsultationScreen() {
 
   const handleStopRecording = async () => {
     try {
-      // Start loading animation immediately, before awaiting stop
+      // Only process if we have an active field
+      if (!activeField) {
+        console.log('No active field to stop recording for');
+        return;
+      }
+
+      // Start processing speech overlay
+      setIsProcessingSpeech(true);
       setIsLoading(true);
       startLoadingAnimation();
       await stopRecording();
@@ -521,6 +583,7 @@ export default function PatientConsultationScreen() {
         setIsLoading(false);
         stopLoadingAnimation();
         setActiveField(null);
+        setIsProcessingSpeech(false);
       }, 2000); // Give 2 seconds for transcript processing
     } catch (error) {
       console.error('Stop recording error:', error);
@@ -528,6 +591,7 @@ export default function PatientConsultationScreen() {
       stopLoadingAnimation();
       setIsLoading(false);
       setActiveField(null);
+      setIsProcessingSpeech(false);
     }
   };
 
@@ -1190,10 +1254,10 @@ export default function PatientConsultationScreen() {
         <View style={styles.stepProgressBar}>
           <View style={styles.stepProgressText}>
             <Text style={styles.stepProgressLabel}>Step {currentStep} of {totalSteps}</Text>
-            <Text style={styles.stepProgressPercentage}>{progressPercent}% Complete</Text>
+            <Text style={styles.stepProgressPercentage}>{animatedProgress}% Complete</Text>
           </View>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
+            <View style={[styles.progressFill, { width: `${animatedProgress}%` }]} />
           </View>
         </View>
         
@@ -1292,7 +1356,7 @@ export default function PatientConsultationScreen() {
       </View>
       {activeField === field && isRecording && (
         <Text style={styles.recordingIndicator}>
-          🎤 Recording... Speak now! Tap microphone to stop
+           Recording... Tap microphone to stop
         </Text>
       )}
       {activeField === field && isLoading && (
@@ -2485,6 +2549,57 @@ export default function PatientConsultationScreen() {
         onSelect={(formula) => setNewPrescription((prev) => ({ ...prev, formula }))}
         userRole="specialist"
       />
+
+      {/* Processing Speech Overlay */}
+      {isProcessingSpeech && (
+        <View style={styles.processingOverlay}>
+          <View style={styles.processingContainer}>
+            <View style={styles.processingIconContainer}>
+              <Mic size={32} color="#1E40AF" />
+            </View>
+            <Text style={styles.processingTitle}>Processing Speech</Text>
+            <Text style={styles.processingSubtitle}>Converting your voice to text...</Text>
+            <View style={styles.processingDotsContainer}>
+              <Animated.View
+                style={[
+                  styles.processingDot,
+                  {
+                    opacity: dot1Anim,
+                    transform: [{ scale: dot1Anim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.5, 1]
+                    })}]
+                  }
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.processingDot,
+                  {
+                    opacity: dot2Anim,
+                    transform: [{ scale: dot2Anim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.5, 1]
+                    })}]
+                  }
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.processingDot,
+                  {
+                    opacity: dot3Anim,
+                    transform: [{ scale: dot3Anim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.5, 1]
+                    })}]
+                  }
+                ]}
+              />
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -3472,6 +3587,66 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF6FF',
     borderWidth: 1,
     borderColor: '#DBEAFE',
+  },
+  
+  // Processing Speech Overlay Styles
+  processingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  processingContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    minWidth: 280,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  processingIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#DBEAFE',
+  },
+  processingTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  processingSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  processingDotsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  processingDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#1E40AF',
   },
 });
 

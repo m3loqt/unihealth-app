@@ -24,18 +24,11 @@ export const useVoiceToText = (): UseVoiceToTextReturn => {
   useEffect(() => {
     // Initialize free speech-to-text service for mobile
     if (Platform.OS !== 'web') {
-      // TODO: Replace with your actual AssemblyAI API key
-      // Get your free API key from: https://www.assemblyai.com/
-      // The key should start with 'sk-'
-      const apiKey = 'YOUR_ASSEMBLYAI_API_KEY_HERE';
+      // AssemblyAI API key configured
+      const apiKey = 'cd0a65c1fcc247f885f379ee354ef1c0';
       
-      if (apiKey === 'YOUR_ASSEMBLYAI_API_KEY_HERE') {
-        console.warn('⚠️ AssemblyAI API key not configured. Voice-to-text will not work on mobile.');
-        console.log('📝 To fix: Get your free API key from https://www.assemblyai.com/ and replace YOUR_ASSEMBLYAI_API_KEY_HERE');
-        setError('AssemblyAI API key not configured. Please set up your API key to use voice-to-text on mobile.');
-      } else {
-        initializeFreeSpeechToText(apiKey);
-      }
+      console.log('🎤 Initializing AssemblyAI voice-to-text service...');
+      initializeFreeSpeechToText(apiKey);
     }
 
     return () => {
@@ -112,7 +105,7 @@ export const useVoiceToText = (): UseVoiceToTextReturn => {
         console.log('Mobile Platform - Starting AssemblyAI recording');
         
         if (!freeSpeechToTextService) {
-          throw new Error('AssemblyAI API key not configured. Please set up your API key to use voice-to-text on mobile. See VOICE_TO_TEXT_SETUP_INSTRUCTIONS.md for details.');
+          throw new Error('Voice-to-text service not initialized. Please try again.');
         }
 
         await freeSpeechToTextService.startRecording();

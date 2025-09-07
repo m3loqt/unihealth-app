@@ -91,9 +91,9 @@ export class FreeSpeechToTextService {
     try {
       console.log('Free Speech-to-Text: Using AssemblyAI for transcription...');
       
-      // Validate API key format
-      if (!this.apiKey || !this.apiKey.startsWith('sk-')) {
-        throw new Error('Invalid AssemblyAI API key. Key should start with "sk-". Please check your API key configuration.');
+      // Validate API key exists
+      if (!this.apiKey) {
+        throw new Error('AssemblyAI API key not provided. Please check your API key configuration.');
       }
       
       // Read audio file as base64
@@ -115,6 +115,8 @@ export class FreeSpeechToTextService {
       }
 
       console.log('Free Speech-to-Text: Uploading to AssemblyAI...');
+      console.log('API Key being used:', this.apiKey);
+      console.log('Authorization header:', this.apiKey);
 
       // Upload to AssemblyAI
       const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {

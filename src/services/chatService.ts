@@ -26,6 +26,11 @@ export interface ChatMessage {
   attachmentUrl?: string;
   at: number;
   seenBy: { [uid: string]: boolean };
+  voiceMessage?: {
+    audioUrl: string;
+    duration: number;
+    waveform?: number[];
+  };
 }
 
 export interface ChatParticipant {
@@ -223,6 +228,75 @@ class ChatService {
       return messageId;
     } catch (error) {
       console.error('Error sending message:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send a voice message
+   */
+  async sendVoiceMessage(
+    threadId: string,
+    senderId: string,
+    audioUrl: string,
+    duration: number,
+    waveform?: number[]
+  ): Promise<string> {
+    try {
+      // Create message
+      const messageRef = ref(database, `messages/${threadId}`);
+      const newMessageRef = push(messageRef);
+      const messageId = newMessageRef.key!;
+
+      const message: ChatMessage = {
+        id: messageId,
+        senderId,
+        text: '🎤 Voice message', // Placeholder text for display
+        at: Date.now(),
+        seenBy: {
+          [senderId]: true,
+        },
+        voiceMessage: {
+          audioUrl,
+          duration,
+          waveform,
+        },
+      };
+
+      await set(newMessageRef, message);
+
+      // Update thread with last message and unread counts
+      const threadRef = ref(database, `chatThreads/${threadId}`);
+      
+      await runTransaction(threadRef, (currentData) => {
+        if (currentData) {
+          // Ensure unread object exists
+          if (!currentData.unread) {
+            currentData.unread = {};
+          }
+
+          // Update last message
+          currentData.lastMessage = {
+            text: '🎤 Voice message',
+            at: message.at,
+            senderId,
+          };
+
+          // Reset sender's unread count and increment others
+          Object.keys(currentData.participants).forEach((participantId) => {
+            if (participantId === senderId) {
+              currentData.unread[participantId] = 0;
+            } else {
+              currentData.unread[participantId] = (currentData.unread[participantId] || 0) + 1;
+            }
+          });
+        }
+        return currentData;
+      });
+
+      return messageId;
+    } catch (error) {
+      console.error('Error sending voice message:', error);
       throw error;
     }
   }

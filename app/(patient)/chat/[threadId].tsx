@@ -19,17 +19,19 @@ import { useLocalSearchParams, useFocusEffect, router } from 'expo-router';
 import {
   ArrowLeft,
   MoreVertical,
-  Phone,
-  Video,
   Send,
   Mic,
+  Play,
+  Pause,
 } from 'lucide-react-native';
 
 import { useAuth } from '@/hooks/auth/useAuth';
-import { chatService } from '@/services/chatService';
-import { useVoiceToText } from '@/hooks/useVoiceToText';
+import { chatService, ChatMessage } from '@/services/chatService';
+import { voiceMessageService } from '@/services/voiceMessageService';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { Audio } from 'expo-av';
+import { testSupabaseConnection } from '@/utils/testSupabase';
 
 interface ChatParticipant {
   uid: string;
@@ -41,14 +43,6 @@ interface ChatParticipant {
   avatar?: string;
 }
 
-interface ChatMessage {
-  id: string;
-  senderId: string;
-  text: string;
-  at: number;
-  attachmentUrl?: string;
-  seenBy: { [uid: string]: boolean };
-}
 
 interface Message {
   id: string;
@@ -57,6 +51,11 @@ interface Message {
   timestamp: number;
   isOwn: boolean;
   attachmentUrl?: string;
+  voiceMessage?: {
+    audioUrl: string;
+    duration: number;
+    waveform?: number[];
+  };
 }
 
 export default function PatientChatScreen() {
@@ -78,22 +77,13 @@ export default function PatientChatScreen() {
   const [lastSeen, setLastSeen] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const [voiceProgress, setVoiceProgress] = useState<{ [messageId: string]: { current: number; total: number } }>({});
 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const currentSoundRef = useRef<Audio.Sound | null>(null);
 
-  // Voice-to-text hook
-  const {
-    isRecording: voiceIsRecording,
-    error: voiceError,
-    startRecording,
-    stopRecording,
-    transcript,
-    resetTranscript,
-  } = useVoiceToText();
-
-  // Voice availability - always true since we have fallbacks
-  const isVoiceAvailable = true;
 
   // Load participant info
   const loadParticipantInfo = useCallback(async () => {
@@ -175,6 +165,7 @@ export default function PatientChatScreen() {
           timestamp: msg.at,
           isOwn: msg.senderId === user?.uid,
           attachmentUrl: msg.attachmentUrl,
+          voiceMessage: msg.voiceMessage,
         }));
 
         setMessages(formattedMessages);
@@ -283,24 +274,11 @@ export default function PatientChatScreen() {
 
   // Handle voice recording
   const handleStartVoiceRecording = async () => {
-    if (!isVoiceAvailable) {
-      Alert.alert(
-        'Voice Recognition Unavailable', 
-        voiceError || 'Voice recognition is not available on this device.'
-      );
-      return;
-    }
-
-    if (voiceIsRecording) {
-      await handleStopVoiceRecording();
-      return;
-    }
-
     try {
       setIsRecording(true);
-      await startRecording();
+      await voiceMessageService.startRecording();
     } catch (error) {
-      console.error('Start recording error:', error);
+      console.error('Error starting voice recording:', error);
       setIsRecording(false);
       Alert.alert('Error', 'Failed to start voice recording. Please try again.');
     }
@@ -309,23 +287,98 @@ export default function PatientChatScreen() {
   const handleStopVoiceRecording = async () => {
     try {
       setIsProcessingVoice(true);
-      await stopRecording();
-    } catch (error) {
-      console.error('Stop recording error:', error);
+      const { uri, duration, waveform } = await voiceMessageService.stopRecording();
+      
+      // Upload voice message to Supabase
+      const audioUrl = await voiceMessageService.uploadVoiceMessage(uri, threadId, 'temp', user!.uid);
+      
+      // Send voice message to chat with waveform data
+      await chatService.sendVoiceMessage(threadId, user!.uid, audioUrl, duration, waveform);
+      
       setIsProcessingVoice(false);
+    } catch (error) {
+      console.error('Error stopping voice recording:', error);
+      setIsProcessingVoice(false);
+      Alert.alert('Error', 'Failed to send voice message. Please try again.');
+    } finally {
       setIsRecording(false);
     }
   };
 
-  // Handle transcript updates
-  useEffect(() => {
-    if (transcript && transcript.trim()) {
-      setMessageText(transcript);
-      setIsProcessingVoice(false);
-      setIsRecording(false);
-      resetTranscript();
+  // Handle playing voice messages
+  const handlePlayVoiceMessage = async (messageId: string, audioUrl: string) => {
+    try {
+      // Stop current sound if playing
+      if (currentSoundRef.current) {
+        await currentSoundRef.current.unloadAsync();
+        currentSoundRef.current = null;
+      }
+
+      setPlayingVoiceId(messageId);
+      const sound = await voiceMessageService.playVoiceMessage(audioUrl);
+      currentSoundRef.current = sound;
+
+      // Set up progress tracking
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded) {
+          const currentTime = status.positionMillis || 0;
+          const totalTime = status.durationMillis || 0;
+          
+          setVoiceProgress(prev => ({
+            ...prev,
+            [messageId]: { current: currentTime, total: totalTime }
+          }));
+
+          if (status.didJustFinish) {
+            setPlayingVoiceId(null);
+            currentSoundRef.current = null;
+            setVoiceProgress(prev => {
+              const newProgress = { ...prev };
+              delete newProgress[messageId];
+              return newProgress;
+            });
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error playing voice message:', error);
+      setPlayingVoiceId(null);
+      Alert.alert('Error', 'Failed to play voice message.');
     }
-  }, [transcript, resetTranscript]);
+  };
+
+  const handleStopVoiceMessage = async () => {
+    try {
+      if (currentSoundRef.current) {
+        await currentSoundRef.current.unloadAsync();
+        currentSoundRef.current = null;
+      }
+      setPlayingVoiceId(null);
+      setVoiceProgress(prev => {
+        const newProgress = { ...prev };
+        // Clear all progress when stopping
+        Object.keys(newProgress).forEach(key => delete newProgress[key]);
+        return newProgress;
+      });
+    } catch (error) {
+      console.error('Error stopping voice message:', error);
+    }
+  };
+
+  // Test Supabase connection
+  const testSupabase = async () => {
+    try {
+      const result = await testSupabaseConnection();
+      if (result.success) {
+        Alert.alert('Success', 'Supabase connection is working!');
+      } else {
+        Alert.alert('Error', `Supabase test failed: ${result.error}`);
+      }
+    } catch (error) {
+      Alert.alert('Error', `Test failed: ${error}`);
+    }
+  };
+
 
   // Format message time
   const formatMessageTime = (timestamp: number): string => {
@@ -364,30 +417,107 @@ export default function PatientChatScreen() {
   };
 
   // Render message item
-  const renderMessage = ({ item }: { item: Message }) => (
-    <View style={[
-      styles.messageContainer,
-      item.isOwn ? styles.ownMessage : styles.otherMessage
-    ]}>
+  const renderMessage = ({ item }: { item: Message }) => {
+    const isPlaying = playingVoiceId === item.id;
+    
+    return (
       <View style={[
-        styles.messageBubble,
-        item.isOwn ? styles.ownBubble : styles.otherBubble
+        styles.messageContainer,
+        item.isOwn ? styles.ownMessage : styles.otherMessage
       ]}>
-        <Text style={[
-          styles.messageText,
-          item.isOwn ? styles.ownMessageText : styles.otherMessageText
+        <View style={[
+          styles.messageBubble,
+          item.isOwn ? styles.ownBubble : styles.otherBubble
         ]}>
-          {item.text}
-        </Text>
-        <Text style={[
-          styles.messageTime,
-          item.isOwn ? styles.ownMessageTime : styles.otherMessageTime
-        ]}>
-          {formatMessageTime(item.timestamp)}
-        </Text>
+          {item.voiceMessage ? (
+            <View style={[
+              styles.voiceMessageContainer,
+              item.isOwn ? styles.ownVoiceContainer : styles.otherVoiceContainer
+            ]}>
+              <TouchableOpacity
+                style={[
+                  styles.voicePlayButton,
+                  item.isOwn ? styles.ownVoiceButton : styles.otherVoiceButton
+                ]}
+                onPress={() => {
+                  if (isPlaying) {
+                    handleStopVoiceMessage();
+                  } else {
+                    handlePlayVoiceMessage(item.id, item.voiceMessage!.audioUrl);
+                  }
+                }}
+              >
+                {isPlaying ? (
+                  <Pause size={16} color={item.isOwn ? "#FFFFFF" : "#1E40AF"} />
+                ) : (
+                  <Play size={16} color={item.isOwn ? "#FFFFFF" : "#1E40AF"} />
+                )}
+              </TouchableOpacity>
+              <View style={styles.voiceWaveform}>
+                {(item.voiceMessage.waveform || Array.from({ length: 20 }, () => Math.random())).map((height, i) => {
+                  const progress = voiceProgress[item.id];
+                  const progressRatio = progress ? progress.current / progress.total : 0;
+                  const totalBars = item.voiceMessage.waveform?.length || 20;
+                  const currentBar = Math.floor(progressRatio * totalBars);
+                  
+                  // Determine if this bar should be highlighted (played portion)
+                  const isPlayed = i <= currentBar;
+                  
+                  return (
+                    <View
+                      key={i}
+                      style={[
+                        styles.waveformBar,
+                        {
+                          height: (height * 20) + 4, // Scale height (0-1 to 4-24px)
+                          backgroundColor: isPlayed 
+                            ? (item.isOwn ? "#FFFFFF" : "#1E40AF") // Played portion - full color
+                            : (item.isOwn ? "rgba(255, 255, 255, 0.3)" : "rgba(30, 64, 175, 0.3)"), // Unplayed portion - faded
+                        }
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+              <Text style={[
+                styles.voiceDuration,
+                item.isOwn ? styles.ownVoiceDuration : styles.otherVoiceDuration
+              ]}>
+                {voiceProgress[item.id] 
+                  ? (() => {
+                      const remaining = voiceProgress[item.id].total - voiceProgress[item.id].current;
+                      const totalSeconds = Math.floor(remaining / 1000);
+                      const minutes = Math.floor(totalSeconds / 60);
+                      const seconds = totalSeconds % 60;
+                      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    })()
+                  : (() => {
+                      const totalSeconds = Math.floor(item.voiceMessage.duration / 1000);
+                      const minutes = Math.floor(totalSeconds / 60);
+                      const seconds = totalSeconds % 60;
+                      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    })()
+                }
+              </Text>
+            </View>
+          ) : (
+            <Text style={[
+              styles.messageText,
+              item.isOwn ? styles.ownMessageText : styles.otherMessageText
+            ]}>
+              {item.text}
+            </Text>
+          )}
+          <Text style={[
+            styles.messageTime,
+            item.isOwn ? styles.ownMessageTime : styles.otherMessageTime
+          ]}>
+            {formatMessageTime(item.timestamp)}
+          </Text>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   // Render typing indicator
   const renderTypingIndicator = () => {
@@ -478,12 +608,6 @@ export default function PatientChatScreen() {
 
           <View style={styles.headerActions}>
             <TouchableOpacity style={styles.actionButton}>
-              <Video size={20} color="#6B7280" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <Phone size={20} color="#6B7280" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
               <MoreVertical size={20} color="#6B7280" />
             </TouchableOpacity>
           </View>
@@ -528,21 +652,14 @@ export default function PatientChatScreen() {
               <TouchableOpacity 
                 style={[
                   styles.voiceButton,
-                  isRecording && styles.voiceButtonActive,
-                  !isVoiceAvailable && styles.voiceButtonDisabled
+                  isRecording && styles.voiceButtonActive
                 ]}
-                onPress={handleStartVoiceRecording}
-                disabled={!isVoiceAvailable}
+                onPress={isRecording ? handleStopVoiceRecording : handleStartVoiceRecording}
+                disabled={isProcessingVoice}
               >
                 <Mic 
                   size={20} 
-                  color={
-                    !isVoiceAvailable 
-                      ? "#9CA3AF" 
-                      : isRecording 
-                        ? "#FFFFFF" 
-                        : "#6B7280"
-                  } 
+                  color={isRecording ? "#FFFFFF" : "#6B7280"} 
                 />
               </TouchableOpacity>
               <TouchableOpacity 
@@ -563,7 +680,7 @@ export default function PatientChatScreen() {
           {isRecording && (
             <View style={styles.voiceRecordingIndicator}>
               <Text style={styles.voiceRecordingText}>
-                🎤 Recording... Speak now! Tap microphone to stop
+                🎤 Recording... Tap microphone to stop
               </Text>
             </View>
           )}
@@ -571,7 +688,7 @@ export default function PatientChatScreen() {
           {/* Voice processing indicator */}
           {isProcessingVoice && (
             <View style={styles.voiceProcessingIndicator}>
-              <Text style={styles.voiceProcessingText}>Processing speech...</Text>
+              <Text style={styles.voiceProcessingText}>Processing voice message...</Text>
             </View>
           )}
         </View>
@@ -740,6 +857,19 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 4,
   },
+  sendButton: {
+    backgroundColor: '#1E40AF',
+    borderRadius: 20,
+    padding: 8,
+    marginLeft: 8,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
   inputActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -761,21 +891,61 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E40AF',
     borderColor: '#1E40AF',
   },
-  voiceButtonDisabled: {
-    opacity: 0.5,
+  voiceMessageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 16,
+    minHeight: 40,
+    alignSelf: 'flex-start',
   },
-  sendButton: {
-    backgroundColor: '#1E40AF',
-    borderRadius: 20,
-    padding: 8,
-    marginLeft: 8,
-    width: 40,
-    height: 40,
+  ownVoiceContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  otherVoiceContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  voicePlayButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  sendButtonDisabled: {
-    backgroundColor: '#9CA3AF',
+  ownVoiceButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  otherVoiceButton: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#1E40AF',
+  },
+  voiceWaveform: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 24,
+    paddingHorizontal: 2,
+  },
+  waveformBar: {
+    width: 2,
+    marginRight: 2,
+    borderRadius: 1,
+    minHeight: 4,
+  },
+  voiceDuration: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    marginLeft: 5,
+    minWidth: 40,
+  },
+  ownVoiceDuration: {
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  otherVoiceDuration: {
+    color: '#6B7280',
   },
   voiceRecordingIndicator: {
     paddingHorizontal: 16,
