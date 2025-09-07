@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
   sortDropdown: {
     position: 'absolute',
     minWidth: 170,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
   },
   sortDropdownActiveText: {
     color: '#1E40AF',
-    fontWeight: 'bold',
+    fontFamily: 'Inter-Medium',
   },
 });
 

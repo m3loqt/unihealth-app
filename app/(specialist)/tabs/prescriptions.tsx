@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
-import { Pill, CircleCheck as CheckCircle, Bell, RefreshCw, Trash2, Check, Search } from 'lucide-react-native';
+import { Pill, CircleCheck as CheckCircle, Bell, RefreshCw, Trash2, Check, Search, Filter, ChevronDown } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { useNotificationContext } from '../../../src/contexts/NotificationContext';
@@ -175,6 +175,20 @@ export default function SpecialistPrescriptionsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [patientNames, setPatientNames] = useState<{ [patientId: string]: string }>({});
+  
+  // Sort functionality
+  const [sortBy, setSortBy] = useState('date-newest');
+  const [showSort, setShowSort] = useState(false);
+  
+  // Memoized sort options
+  const SORT_OPTIONS = useMemo(() => [
+    { key: 'date-newest', label: 'Latest Prescribed' },
+    { key: 'date-oldest', label: 'Oldest Prescribed' },
+    { key: 'medication-az', label: 'Medication A-Z' },
+    { key: 'medication-za', label: 'Medication Z-A' },
+    { key: 'patient-az', label: 'Patient A-Z' },
+    { key: 'patient-za', label: 'Patient Z-A' },
+  ], []);
 
   // Notification Modal State
   const [showNotificationModal, setShowNotificationModal] = useState(false);
@@ -270,6 +284,20 @@ export default function SpecialistPrescriptionsScreen() {
     loadPrescriptions();
   };
 
+  // Sort dropdown handlers - memoized for performance
+  const handleShowSort = useCallback(() => {
+    setShowSort(prev => !prev);
+  }, []);
+
+  const handleSortOptionSelect = useCallback((optionKey: string) => {
+    setSortBy(optionKey);
+    setShowSort(false);
+  }, []);
+
+  const handleCloseSortDropdown = useCallback(() => {
+    setShowSort(false);
+  }, []);
+
   // Performance optimization: memoize filtered prescriptions
   const activePrescriptions = useDeepMemo(() => 
     prescriptions.filter(p => p.status === 'active'), [prescriptions]
@@ -279,12 +307,63 @@ export default function SpecialistPrescriptionsScreen() {
     prescriptions.filter(p => p.status === 'completed' || p.status === 'discontinued'), [prescriptions]
   );
 
-  const filterPrescriptions = (list: Prescription[]) =>
-    list.filter((item: Prescription) => {
+  const filterPrescriptions = (list: Prescription[]) => {
+    const filtered = list.filter((item: Prescription) => {
       const medicationMatch = item.medication?.toLowerCase().includes(searchQuery.toLowerCase());
       const patientNameMatch = patientNames[item.patientId]?.toLowerCase().includes(searchQuery.toLowerCase());
       return medicationMatch || patientNameMatch;
     });
+
+    // Apply sorting
+    const sortData = filtered.map(prescription => {
+      const medication = prescription.medication?.toLowerCase() || '';
+      const patientName = patientNames[prescription.patientId]?.toLowerCase() || '';
+      const prescribedDate = new Date(prescription.prescribedDate || '').getTime() || 0;
+      
+      switch (sortBy) {
+        case 'date-newest':
+        case 'date-oldest':
+          return {
+            prescription,
+            sortValue: prescribedDate
+          };
+        case 'medication-az':
+        case 'medication-za':
+          return {
+            prescription,
+            sortValue: medication
+          };
+        case 'patient-az':
+        case 'patient-za':
+          return {
+            prescription,
+            sortValue: patientName
+          };
+        default:
+          return { prescription, sortValue: 0 };
+      }
+    });
+
+    // Sort based on pre-computed values with direction awareness
+    sortData.sort((a, b) => {
+      switch (sortBy) {
+        case 'date-newest':
+          return (b.sortValue as number) - (a.sortValue as number); // Newest first
+        case 'date-oldest':
+          return (a.sortValue as number) - (b.sortValue as number); // Oldest first
+        case 'medication-az':
+        case 'patient-az':
+          return (a.sortValue as string).localeCompare(b.sortValue as string); // A-Z
+        case 'medication-za':
+        case 'patient-za':
+          return (b.sortValue as string).localeCompare(a.sortValue as string); // Z-A
+        default:
+          return 0;
+      }
+    });
+
+    return sortData.map(item => item.prescription);
+  };
 
   const renderActivePrescription = (prescription: Prescription) => (
     <View key={prescription.id} style={styles.prescriptionCard}>
@@ -419,6 +498,45 @@ export default function SpecialistPrescriptionsScreen() {
     </View>
   );
 
+  // Sort dropdown render function
+  const renderSortDropdown = useCallback(() => {
+    if (!showSort) return null;
+    
+    return (
+      <View style={styles.sortDropdownContainer}>
+        <TouchableOpacity
+          style={styles.sortDropdownBackdrop}
+          activeOpacity={1}
+          onPress={handleCloseSortDropdown}
+        />
+        <View style={styles.sortDropdown}>
+          {SORT_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.key}
+              style={[
+                styles.sortDropdownItem,
+                sortBy === option.key && styles.sortDropdownActiveItem,
+              ]}
+              onPress={() => handleSortOptionSelect(option.key)}
+            >
+              <Text
+                style={[
+                  styles.sortDropdownText,
+                  sortBy === option.key && styles.sortDropdownActiveText,
+                ]}
+              >
+                {option.label}
+              </Text>
+              {sortBy === option.key && (
+                <Check size={16} color="#1E40AF" style={{ marginLeft: 6 }} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  }, [showSort, sortBy, SORT_OPTIONS, handleCloseSortDropdown, handleSortOptionSelect]);
+
   const renderContent = () => {
     if (loading) {
       return (
@@ -513,21 +631,27 @@ export default function SpecialistPrescriptionsScreen() {
           onNotificationPress={handleOpenNotifications}
           notificationCount={notifications.filter(n => !n.read).length}
         />
-             {/* Search Bar */}
-       <View style={styles.searchContainer}>
-         <View style={styles.searchInputContainer}>
-           <Search size={20} color="#9CA3AF" style={styles.searchIcon} />
-           <TextInput
-             style={styles.searchInput}
-             placeholder="Search prescriptions or patient names..."
-             placeholderTextColor="#9CA3AF"
-             value={searchQuery}
-             onChangeText={setSearchQuery}
-           />
-         </View>
-       </View>
-
+       {/* Filters Container */}
        <View style={styles.filtersContainer}>
+         <View style={styles.searchRow}>
+           <View style={styles.searchInputContainer}>
+             <Search size={18} color="#9CA3AF" style={styles.searchIcon} />
+             <TextInput
+               style={styles.searchInput}
+               placeholder="Search prescriptions or patient names..."
+               placeholderTextColor="#9CA3AF"
+               value={searchQuery}
+               onChangeText={setSearchQuery}
+             />
+           </View>
+           <TouchableOpacity
+             style={styles.sortButton}
+             onPress={handleShowSort}
+           >
+             <Filter size={22} color="#6B7280" />
+             <ChevronDown size={20} color="#6B7280" />
+           </TouchableOpacity>
+         </View>
          <View style={styles.filtersBarRow}>
            <ScrollView
              horizontal
@@ -557,6 +681,7 @@ export default function SpecialistPrescriptionsScreen() {
              </View>
            </ScrollView>
          </View>
+         {renderSortDropdown()}
        </View>
       {renderContent()}
       
@@ -669,29 +794,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
-  searchContainer: {
-    backgroundColor: '#FFFFFF',
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 24,
+    paddingTop: 8,
     paddingBottom: 8,
+    gap: 12,
   },
   searchInputContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    minHeight: 36,
   },
   searchIcon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    color: '#1F2937',
+    fontSize: 15,
     fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    paddingVertical: 0,
   },
   filtersContainer: {
     backgroundColor: '#FFFFFF',
@@ -887,6 +1019,58 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Sort button and dropdown styles
+  sortButton: {
+    height: 48, // Match search bar height
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+    gap: 4,
+  },
+  sortDropdownContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+  },
+  sortDropdownBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+  },
+  sortDropdown: {
+    position: 'absolute',
+    top: 90, // Adjust based on header height
+    right: 24,
+    minWidth: 160,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  sortDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  sortDropdownActiveItem: {
+    backgroundColor: '#F3F4F6',
+  },
+  sortDropdownText: {
+    fontSize: 14,
+    color: '#374151',
+    fontFamily: 'Inter-Regular',
+  },
+  sortDropdownActiveText: {
+    color: '#1E40AF',
+    fontFamily: 'Inter-Medium',
   },
 });
 

@@ -16,7 +16,7 @@ import {
   Modal,
 } from 'react-native';
 import {
-  FileText, Search, Download, Eye, ChevronDown, Check, Bell, RefreshCw, Trash2, CheckCircle
+  FileText, Search, Download, Eye, ChevronDown, Check, Bell, RefreshCw, Trash2, CheckCircle, Filter
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
@@ -418,6 +418,14 @@ export default function SpecialistCertificatesScreen() {
               onChangeText={setSearchQuery}
             />
           </View>
+          <TouchableOpacity
+            style={styles.sortButton}
+            onPress={handleShowSort}
+            ref={sortBtnRef}
+          >
+            <Filter size={22} color="#6B7280" />
+            <ChevronDown size={20} color="#6B7280" />
+          </TouchableOpacity>
         </View>
         <View style={styles.filtersBarRow}>
           <ScrollView
@@ -447,13 +455,6 @@ export default function SpecialistCertificatesScreen() {
               ))}
             </View>
           </ScrollView>
-          <TouchableOpacity
-            style={styles.sortButton}
-            onPress={handleShowSort}
-            ref={sortBtnRef}
-          >
-            <ChevronDown size={16} color="#6B7280" />
-          </TouchableOpacity>
         </View>
         {renderSortDropdown()}
       </View>
@@ -604,11 +605,15 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: 8,
     paddingBottom: 8,
+    gap: 12,
   },
   searchInputContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
@@ -669,18 +674,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   sortButton: {
-    height: 36,
+    height: 48, // Match search bar height (14 padding top + 14 padding bottom + minHeight 36 = ~48)
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 18,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginLeft: 12,
-    paddingHorizontal: 14,
-    alignSelf: 'center',
-    zIndex: 10,
+    paddingHorizontal: 2,
+    gap: 4,
   },
   scrollView: {
     flex: 1,
@@ -892,7 +891,7 @@ const styles = StyleSheet.create({
   sortDropdown: {
     position: 'absolute',
     minWidth: 170,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -919,7 +918,7 @@ const styles = StyleSheet.create({
   },
   sortDropdownActiveText: {
     color: '#1E40AF',
-    fontWeight: 'bold',
+    fontFamily: 'Inter-Medium',
   },
   errorContainer: {
     alignItems: 'center',

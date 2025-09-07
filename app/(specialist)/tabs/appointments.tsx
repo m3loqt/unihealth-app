@@ -145,6 +145,19 @@ export default function SpecialistAppointmentsScreen() {
   const [activeFilter, setActiveFilter] = useState(
     filter ? String(filter).charAt(0).toUpperCase() + String(filter).slice(1) : 'Confirmed'
   );
+  
+  // Sort functionality
+  const [sortBy, setSortBy] = useState('date-newest');
+  const [showSort, setShowSort] = useState(false);
+  
+  // Memoized sort options
+  const SORT_OPTIONS = useMemo(() => [
+    { key: 'date-newest', label: 'Latest Appointment' },
+    { key: 'date-oldest', label: 'Oldest Appointment' },
+    { key: 'patient-az', label: 'Patient A-Z' },
+    { key: 'patient-za', label: 'Patient Z-A' },
+    // { key: 'status', label: 'By Status' },
+  ], []);
 
   // Accept/Decline Modals for Referrals
   const [showAcceptModal, setShowAcceptModal] = useState(false);
@@ -192,6 +205,20 @@ export default function SpecialistAppointmentsScreen() {
     // The hook handles error state, just trigger a refresh
     hookRefresh();
   };
+
+  // Sort dropdown handlers - memoized for performance
+  const handleShowSort = useCallback(() => {
+    setShowSort(prev => !prev);
+  }, []);
+
+  const handleSortOptionSelect = useCallback((optionKey: string) => {
+    setSortBy(optionKey);
+    setShowSort(false);
+  }, []);
+
+  const handleCloseSortDropdown = useCallback(() => {
+    setShowSort(false);
+  }, []);
 
   // Handle search parameter from URL
   useEffect(() => {
@@ -441,30 +468,80 @@ export default function SpecialistAppointmentsScreen() {
     handleDiagnosePatient(appointment);
   };
 
-  // ---- FILTER ----
-  const filteredAppointments = appointments.filter((appointment) => {
-    // Exclude referral appointments from regular appointment list
-    if (appointment.relatedReferralId || appointment.type === 'Referral') {
-      return false;
-    }
-    
-    const patientName = `${appointment.patientFirstName} ${appointment.patientLastName}`;
-    const matchesSearch =
-      patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      appointment.type.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Handle status mapping between filter options and actual status values
-    let matchesFilter = false;
-    if (activeFilter === 'All') {
-      matchesFilter = true;
-            } else if (activeFilter === 'Cancelled') {
-          matchesFilter = appointment.status === 'cancelled';
-    } else {
-      matchesFilter = appointment.status === activeFilter.toLowerCase();
-    }
-    
-    return matchesSearch && matchesFilter;
-  });
+  // ---- FILTER AND SORT ----
+  const filteredAppointments = useDeepMemo(() => {
+    const filtered = appointments.filter((appointment) => {
+      // Exclude referral appointments from regular appointment list
+      if (appointment.relatedReferralId || appointment.type === 'Referral') {
+        return false;
+      }
+      
+      const patientName = `${appointment.patientFirstName} ${appointment.patientLastName}`;
+      const matchesSearch =
+        patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        appointment.type.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Handle status mapping between filter options and actual status values
+      let matchesFilter = false;
+      if (activeFilter === 'All') {
+        matchesFilter = true;
+      } else if (activeFilter === 'Cancelled') {
+        matchesFilter = appointment.status === 'cancelled';
+      } else {
+        matchesFilter = appointment.status === activeFilter.toLowerCase();
+      }
+      
+      return matchesSearch && matchesFilter;
+    });
+
+    // Apply sorting
+    const sortData = filtered.map(appointment => {
+      const patientName = `${appointment.patientFirstName} ${appointment.patientLastName}`.toLowerCase();
+      const appointmentDate = new Date(appointment.appointmentDate || '').getTime() || 0;
+      
+      switch (sortBy) {
+        case 'date-newest':
+        case 'date-oldest':
+          return {
+            appointment,
+            sortValue: appointmentDate
+          };
+        case 'patient-az':
+        case 'patient-za':
+          return {
+            appointment,
+            sortValue: patientName
+          };
+        case 'status':
+          return {
+            appointment,
+            sortValue: appointment.status
+          };
+        default:
+          return { appointment, sortValue: 0 };
+      }
+    });
+
+    // Sort based on pre-computed values with direction awareness
+    sortData.sort((a, b) => {
+      switch (sortBy) {
+        case 'date-newest':
+          return (b.sortValue as number) - (a.sortValue as number); // Newest first
+        case 'date-oldest':
+          return (a.sortValue as number) - (b.sortValue as number); // Oldest first
+        case 'patient-az':
+          return (a.sortValue as string).localeCompare(b.sortValue as string); // A-Z
+        case 'patient-za':
+          return (b.sortValue as string).localeCompare(a.sortValue as string); // Z-A
+        case 'status':
+          return (a.sortValue as string).localeCompare(b.sortValue as string); // Status A-Z
+        default:
+          return 0;
+      }
+    });
+
+    return sortData.map(item => item.appointment);
+  }, [appointments, searchQuery, activeFilter, sortBy]);
 
   // Get referrals for appointments
   const getReferralCards = () => {
@@ -1005,6 +1082,45 @@ export default function SpecialistAppointmentsScreen() {
 
 
   // Unified Appointment Details Modal
+  // Sort dropdown render function
+  const renderSortDropdown = useCallback(() => {
+    if (!showSort) return null;
+    
+    return (
+      <View style={styles.sortDropdownContainer}>
+        <TouchableOpacity
+          style={styles.sortDropdownBackdrop}
+          activeOpacity={1}
+          onPress={handleCloseSortDropdown}
+        />
+        <View style={styles.sortDropdown}>
+          {SORT_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.key}
+              style={[
+                styles.sortDropdownItem,
+                sortBy === option.key && styles.sortDropdownActiveItem,
+              ]}
+              onPress={() => handleSortOptionSelect(option.key)}
+            >
+              <Text
+                style={[
+                  styles.sortDropdownText,
+                  sortBy === option.key && styles.sortDropdownActiveText,
+                ]}
+              >
+                {option.label}
+              </Text>
+              {sortBy === option.key && (
+                <Check size={16} color="#1E40AF" style={{ marginLeft: 6 }} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  }, [showSort, sortBy, SORT_OPTIONS, handleCloseSortDropdown, handleSortOptionSelect]);
+
   const renderAppointmentDetailsModal = () => {
     if (!modalAppointment) return null;
     
@@ -1055,6 +1171,13 @@ export default function SpecialistAppointmentsScreen() {
             onChangeText={setSearchQuery}
           />
         </View>
+        <TouchableOpacity
+          style={styles.sortButton}
+          onPress={handleShowSort}
+        >
+          <Filter size={22} color="#6B7280" />
+          <ChevronDown size={20} color="#6B7280" />
+        </TouchableOpacity>
       </View>
 
       {/* Filters */}
@@ -1085,6 +1208,7 @@ export default function SpecialistAppointmentsScreen() {
           ))}
         </ScrollView>
       </View>
+      {renderSortDropdown()}
 
       {/* Appointment List */}
       <ScrollView
@@ -1271,11 +1395,15 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 24,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
+    gap: 12,
   },
   searchInputContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
@@ -2051,6 +2179,58 @@ const styles = StyleSheet.create({
   },
   statusTextCanceled: {
     color: '#374151',
+  },
+  // Sort button and dropdown styles
+  sortButton: {
+    height: 48, // Match search bar height
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+    gap: 4,
+  },
+  sortDropdownContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+  },
+  sortDropdownBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+  },
+  sortDropdown: {
+    position: 'absolute',
+    top: 90, // Adjust based on header height
+    right: 24,
+    minWidth: 160,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  sortDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  sortDropdownActiveItem: {
+    backgroundColor: '#F3F4F6',
+  },
+  sortDropdownText: {
+    fontSize: 14,
+    color: '#374151',
+    fontFamily: 'Inter-Regular',
+  },
+  sortDropdownActiveText: {
+    color: '#1E40AF',
+    fontFamily: 'Inter-Medium',
   },
 });
 
