@@ -8,6 +8,8 @@ import {
   StyleSheet,
   Platform,
   Dimensions,
+  ScrollView,
+  FlatList,
 } from 'react-native';
 import { HelpCircle, X } from 'lucide-react-native';
 import { COLORS } from '../../constants/colors';
@@ -55,21 +57,27 @@ export default function Tooltip({
         animationType="fade"
         onRequestClose={handleClose}
       >
-        <Pressable style={styles.modalBackdrop} onPress={handleClose}>
+        <View style={styles.modalBackdrop}>
           <View style={styles.tooltipContainer}>
-            <Pressable style={styles.tooltipContent} onPress={() => {}}>
+            <View style={styles.tooltipContent}>
               <View style={styles.tooltipHeader}>
                 <Text style={styles.tooltipTitle}>{title}</Text>
                 <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
                   <X size={18} color="#6B7280" />
                 </TouchableOpacity>
               </View>
-              <View style={styles.tooltipBody}>
-                <Text style={styles.tooltipText}>{content}</Text>
-              </View>
-            </Pressable>
+              <ScrollView 
+                style={styles.tooltipBody}
+                showsVerticalScrollIndicator={true}
+                contentContainerStyle={styles.tooltipScrollContent}
+              >
+                <Text style={styles.tooltipText}>
+                  {content.replace(/^[^•]*\n/, '')}
+                </Text>
+              </ScrollView>
+            </View>
           </View>
-        </Pressable>
+        </View>
       </Modal>
     </>
   );
@@ -87,20 +95,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: Platform.OS === 'ios' ? 60 : 40,
+    padding: 20,
   },
   tooltipContainer: {
-    width: '100%',
-    maxWidth: Platform.OS === 'web' ? 400 : SCREEN_WIDTH * 0.9,
-    maxHeight: Platform.OS === 'web' ? SCREEN_HEIGHT * 0.7 : SCREEN_HEIGHT * 0.75,
-    minHeight: Platform.OS === 'web' ? 400 : 500,
+    width: SCREEN_WIDTH * 0.9,
+    height: SCREEN_HEIGHT * 0.7,
+    maxWidth: 400,
   },
   tooltipContent: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     flex: 1,
-    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -131,14 +136,26 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tooltipBody: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
     flex: 1,
+  },
+  tooltipScrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 30,
   },
   tooltipText: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#374151',
     lineHeight: 24,
+    marginBottom: 6,
+  },
+  descriptionText: {
+    marginBottom: 20,
+  },
+  bulletPoint: {
+    marginLeft: 0,
+    marginBottom: 8,
+    paddingLeft: 8,
   },
 });

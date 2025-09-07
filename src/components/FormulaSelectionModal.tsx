@@ -82,9 +82,7 @@ export default function FormulaSelectionModal({
                 {userRole === 'specialist' && (
                   <Tooltip
                     title="Formula Abbreviations Guide"
-                    content="Common pharmaceutical formula abbreviations used in prescriptions:
-                    
-• Cap, caps = Capsule (Take: capsule(s), Total: capsule(s))
+                    content="• Cap, caps = Capsule (Take: capsule(s), Total: capsule(s))
 • El, elix = Elixir (Take: mL(s), Total: bottle(s))
 • sol = Solution (Take: mL(s) or drop(s), Total: bottle(s) or mL(s))
 • Sp = Spirit (Take: mL(s), Total: bottle(s))

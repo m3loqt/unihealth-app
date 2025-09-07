@@ -95,9 +95,7 @@ export default function FrequencySelectionModal({
                 {userRole === 'specialist' && (
                   <Tooltip
                     title="Time Abbreviations Guide"
-                    content="Common medical time abbreviations used in prescriptions:
-                    
-• ac = before meals
+                    content="• ac = before meals
 • pc = after meals  
 • bid = twice a day
 • tid = three times a day

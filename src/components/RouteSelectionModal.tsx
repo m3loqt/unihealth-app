@@ -88,9 +88,7 @@ export default function RouteSelectionModal({
                 {userRole === 'specialist' && (
                   <Tooltip
                     title="Route Abbreviations Guide"
-                    content="Common medical route abbreviations used in prescriptions:
-                    
-• right ear = right ear
+                    content="• right ear = right ear
 • left ear = left ear
 • each ear = each ear
 • HHN = handheld nebulizer
