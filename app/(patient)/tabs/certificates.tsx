@@ -309,9 +309,8 @@ export default function CertificatesScreen() {
         } else if (certificate.type === 'Fit to Travel Certificate') {
           route = '/e-certificate-fit-to-travel';
         }
-        
         // Pass the consultation ID and certificate ID for proper data loading
-        router.push(`${route}?id=${certificate.consultationId}&certificateId=${certificate.id}`);
+        router.push(route + `?id=${certificate.consultationId}&certificateId=${certificate.id}` as any);
       }}
     >
       {renderPDFThumbnail(certificate)}

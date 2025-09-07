@@ -56,6 +56,35 @@
         ".read": "auth != null && (!root.child('doctors').child(auth.uid).exists() || root.child('doctors').child(auth.uid).child('status').val() != 'pending')",
         ".write": "auth != null && (!root.child('doctors').child(auth.uid).exists() || root.child('doctors').child(auth.uid).child('status').val() != 'pending')"
       }
+    },
+    "chatThreads": {
+      ".indexOn": ["participants"],
+      "$threadId": {
+        ".read": "auth != null && data.child('participants').child(auth.uid).val() === true",
+        ".write": "auth != null && data.child('participants').child(auth.uid).val() === true",
+        ".indexOn": ["createdAt", "lastMessage/at", "participants"]
+      }
+    },
+    "messages": {
+      "$threadId": {
+        ".read": "auth != null && root.child('chatThreads').child($threadId).child('participants').child(auth.uid).val() === true",
+        ".write": "auth != null && root.child('chatThreads').child($threadId).child('participants').child(auth.uid).val() === true",
+        "$messageId": {
+          ".indexOn": ["at"]
+        }
+      }
+    },
+    "typing": {
+      "$threadId": {
+        ".read": "auth != null && root.child('chatThreads').child($threadId).child('participants').child(auth.uid).val() === true",
+        ".write": "auth != null && root.child('chatThreads').child($threadId).child('participants').child(auth.uid).val() === true"
+      }
+    },
+    "status": {
+      "$userId": {
+        ".read": "auth != null",
+        ".write": "$userId === auth.uid"
+      }
     }
   }
 }

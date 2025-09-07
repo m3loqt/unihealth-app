@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, StatusBar } from 'react-native';
-import { Bell, Calendar, User } from 'lucide-react-native';
+import { Bell, Calendar, User, MessageCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../hooks/auth/useAuth';
 import { getFirstName } from '../../utils/string';
@@ -43,6 +43,13 @@ export default function SpecialistHeader({
       </View>
       
       <View style={styles.headerIcons}>
+        <TouchableOpacity 
+          style={styles.iconButton}
+          onPress={() => router.push('/(specialist)/tabs/chats')}
+        >
+          <MessageCircle size={24} color="#6B7280" />
+        </TouchableOpacity>
+        
         <TouchableOpacity 
           style={styles.iconButton}
           onPress={onNotificationPress}

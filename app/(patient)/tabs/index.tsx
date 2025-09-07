@@ -33,6 +33,7 @@ import {
   RefreshCw,
   Check,
   Trash2,
+  MessageCircle,
 } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { BlurView } from 'expo-blur';
@@ -698,6 +699,12 @@ export default function HomeScreen() {
             <Text style={styles.userName}>{user?.firstName || ''}</Text>
           </View>
           <View style={styles.headerIcons}>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => router.push('/(patient)/tabs/chats')}
+            >
+              <MessageCircle size={24} color="#6B7280" />
+            </TouchableOpacity>
             <TouchableOpacity 
               style={styles.iconButton}
               onPress={handleOpenNotifications}
