@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
   RefreshControl,
   Modal,
 } from 'react-native';
-import { Search, User, Users, CheckCircle, Hourglass, XCircle, Check, Bell, RefreshCw, Trash2 } from 'lucide-react-native';
+import { Search, User, Users, CheckCircle, Hourglass, XCircle, Check, Bell, RefreshCw, Trash2, Filter, ChevronDown } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { useNotificationContext } from '../../../src/contexts/NotificationContext';
@@ -56,6 +56,20 @@ export default function SpecialistPatientsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [referrerByPatientId, setReferrerByPatientId] = useState<{ [patientId: string]: string }>({});
   const filters = ['All', 'Active', 'Completed'];
+
+  // Sort functionality
+  const [sortBy, setSortBy] = useState('name-az');
+  const [showSort, setShowSort] = useState(false);
+  
+  // Memoized sort options
+  const SORT_OPTIONS = useMemo(() => [
+    { key: 'name-az', label: 'Patient Name A-Z' },
+    { key: 'name-za', label: 'Patient Name Z-A' },
+    { key: 'visit-newest', label: 'Latest Visit' },
+    { key: 'visit-oldest', label: 'Oldest Visit' },
+    { key: 'registration-newest', label: 'Recently Added' },
+    { key: 'registration-oldest', label: 'Oldest Added' },
+  ], []);
 
   // Notification Modal State
   const [showNotificationModal, setShowNotificationModal] = useState(false);
@@ -187,7 +201,21 @@ export default function SpecialistPatientsScreen() {
     loadPatients();
   };
 
-  // Performance optimization: memoize filtered patients
+  // Sort dropdown handlers - memoized for performance
+  const handleShowSort = useCallback(() => {
+    setShowSort(prev => !prev);
+  }, []);
+
+  const handleSortOptionSelect = useCallback((optionKey: string) => {
+    setSortBy(optionKey);
+    setShowSort(false);
+  }, []);
+
+  const handleCloseSortDropdown = useCallback(() => {
+    setShowSort(false);
+  }, []);
+
+  // Performance optimization: memoize filtered and sorted patients
   const filteredPatients = useDeepMemo(() => {
     console.log('🔍 Filtering patients:', {
       totalPatients: patients.length,
@@ -234,8 +262,58 @@ export default function SpecialistPatientsScreen() {
       filteredPatients: filtered.map(p => ({ id: p.id, status: p.status, name: `${p.patientFirstName} ${p.patientLastName}` }))
     });
     
-    return filtered;
-  }, [patients, searchQuery, activeFilter]);
+    // Apply sorting with optimized comparisons
+    const sortData = filtered.map(patient => {
+      const fullName = patient.patientFirstName && patient.patientLastName 
+        ? `${patient.patientFirstName} ${patient.patientLastName}`.toLowerCase()
+        : safeDataAccess.getUserFullName(patient, '').toLowerCase();
+      const lastVisitDate = new Date(patient.lastVisit || '').getTime() || 0;
+      const registrationDate = new Date(patient.createdAt || patient.id || '').getTime() || 0;
+      
+      switch (sortBy) {
+        case 'name-az':
+        case 'name-za':
+          return {
+            patient,
+            sortValue: fullName
+          };
+        case 'visit-newest':
+        case 'visit-oldest':
+          return {
+            patient,
+            sortValue: lastVisitDate
+          };
+        case 'registration-newest':
+        case 'registration-oldest':
+          return {
+            patient,
+            sortValue: registrationDate
+          };
+        default:
+          return { patient, sortValue: 0 };
+      }
+    });
+
+    // Sort based on pre-computed values with direction awareness
+    sortData.sort((a, b) => {
+      switch (sortBy) {
+        case 'name-az':
+          return (a.sortValue as string).localeCompare(b.sortValue as string); // A-Z
+        case 'name-za':
+          return (b.sortValue as string).localeCompare(a.sortValue as string); // Z-A
+        case 'visit-newest':
+        case 'registration-newest':
+          return (b.sortValue as number) - (a.sortValue as number); // Newest first
+        case 'visit-oldest':
+        case 'registration-oldest':
+          return (a.sortValue as number) - (b.sortValue as number); // Oldest first
+        default:
+          return 0;
+      }
+    });
+
+    return sortData.map(item => item.patient);
+  }, [patients, searchQuery, activeFilter, sortBy]);
 
   const formatDoctorName = (name?: string): string => {
     if (!name || name.trim().length === 0 || name.toLowerCase().includes('unknown')) {
@@ -253,6 +331,45 @@ export default function SpecialistPatientsScreen() {
     if (s === 'cancelled' || s === 'canceled') return <XCircle size={14} color="#6B7280" />;
     return <Hourglass size={14} color="#6B7280" />;
   };
+
+  // Sort dropdown render function
+  const renderSortDropdown = useCallback(() => {
+    if (!showSort) return null;
+    
+    return (
+      <View style={styles.sortDropdownContainer}>
+        <TouchableOpacity
+          style={styles.sortDropdownBackdrop}
+          activeOpacity={1}
+          onPress={handleCloseSortDropdown}
+        />
+        <View style={styles.sortDropdown}>
+          {SORT_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.key}
+              style={[
+                styles.sortDropdownItem,
+                sortBy === option.key && styles.sortDropdownActiveItem,
+              ]}
+              onPress={() => handleSortOptionSelect(option.key)}
+            >
+              <Text
+                style={[
+                  styles.sortDropdownText,
+                  sortBy === option.key && styles.sortDropdownActiveText,
+                ]}
+              >
+                {option.label}
+              </Text>
+              {sortBy === option.key && (
+                <Check size={16} color="#1E40AF" style={{ marginLeft: 6 }} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  }, [showSort, sortBy, SORT_OPTIONS, handleCloseSortDropdown, handleSortOptionSelect]);
 
   const renderPatientCard = (patient: SpecialistPatient) => {
     // Use the fields that the database service actually returns
@@ -347,6 +464,13 @@ export default function SpecialistPatientsScreen() {
             onChangeText={setSearchQuery}
           />
         </View>
+        <TouchableOpacity
+          style={styles.sortButton}
+          onPress={handleShowSort}
+        >
+          <Filter size={22} color="#6B7280" />
+          <ChevronDown size={20} color="#6B7280" />
+        </TouchableOpacity>
       </View>
 
       {/* Filters */}
@@ -377,6 +501,7 @@ export default function SpecialistPatientsScreen() {
           ))}
         </ScrollView>
       </View>
+      {renderSortDropdown()}
 
       {/* Patients List */}
       <ScrollView
@@ -555,11 +680,15 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 24,
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
+    gap: 12,
   },
   searchInputContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
@@ -756,6 +885,62 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
+  },
+  // Sort button and dropdown styles
+  sortButton: {
+    height: 48, // Match search bar height (12 padding top + 12 padding bottom + content)
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // borderRadius: 12,
+    // backgroundColor: '#F9FAFB',
+    // borderWidth: 1,
+    // borderColor: '#E5E7EB',
+    paddingHorizontal: 2,
+    gap: 4,
+  },
+  sortDropdownContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+  },
+  sortDropdownBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+  },
+  sortDropdown: {
+    position: 'absolute',
+    top: 90, // Adjust based on header height
+    right: 24,
+    minWidth: 160,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  sortDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  sortDropdownActiveItem: {
+    backgroundColor: '#F3F4F6',
+  },
+  sortDropdownText: {
+    fontSize: 14,
+    color: '#374151',
+    fontFamily: 'Inter-Regular',
+  },
+  sortDropdownActiveText: {
+    color: '#1E40AF',
+    fontFamily: 'Inter-Medium',
   },
 });
 

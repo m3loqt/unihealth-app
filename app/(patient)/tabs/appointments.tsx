@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,8 @@ import {
   Star,
   Search,
   MessageCircle,
+  Filter,
+  ChevronDown,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
@@ -63,6 +65,18 @@ export default function AppointmentsScreen() {
   // Search functionality
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  
+  // Sort functionality
+  const [sortBy, setSortBy] = useState('date-newest');
+  const [showSort, setShowSort] = useState(false);
+  
+  // Memoize sort options to prevent recreation on every render
+  const SORT_OPTIONS = useMemo(() => [
+    { key: 'date-newest', label: 'Latest Added' },
+    { key: 'date-oldest', label: 'Oldest Added' },
+    { key: 'doctor-az', label: 'Doctor A-Z' },
+    { key: 'doctor-za', label: 'Doctor Z-A' },
+  ], []);
   
   // Function to open modal and load medical history if needed
   const openAppointmentModal = async (appointment: Appointment) => {
@@ -350,11 +364,11 @@ export default function AppointmentsScreen() {
       console.error('Error submitting feedback:', error);
       Alert.alert(
         'Error',
-        error.message === 'Feedback already submitted for this appointment' 
-          ? 'You have already submitted feedback for this appointment.'
-          : error.message === 'Feedback already submitted for this referral'
-          ? 'You have already submitted feedback for this referral.'
-          : 'Failed to submit feedback. Please try again.'
+        error.message === 'Rating already submitted for this appointment' 
+          ? 'You have already submitted a rating for this appointment.'
+          : error.message === 'Rating a rating already submitted for this referral'
+          ? 'You have already submitted a rating for this referral.'
+          : 'Failed to submit a rating. Please try again.'
       );
       setSubmittingFeedback(false);
     }
@@ -601,21 +615,50 @@ export default function AppointmentsScreen() {
       });
     }
     
-    // Sort appointments so Pending comes first, then Confirmed, then Completed, then Cancelled
-    return filtered.sort((a, b) => {
-      const statusOrder = {
-        'pending': 1,
-        'confirmed': 2,
-        'completed': 3,
-        'cancelled': 4,
-      };
+    // Apply sorting with optimized comparisons
+    const sortedFiltered = [...filtered]; // Create a new array to avoid mutating original
+    
+    // Pre-compute sort values for better performance on large lists
+    const sortData = sortedFiltered.map(appointment => {
+      const appointmentDate = new Date(appointment.appointmentDate || '').getTime() || 0;
+      const doctorName = safeDataAccess.getAppointmentDoctorName(appointment, '').toLowerCase();
       
-      const aOrder = statusOrder[a.status.toLowerCase()] || 5;
-      const bOrder = statusOrder[b.status.toLowerCase()] || 5;
-      
-      return aOrder - bOrder;
+      switch (sortBy) {
+        case 'date-newest':
+        case 'date-oldest':
+          return {
+            appointment,
+            sortValue: appointmentDate
+          };
+        case 'doctor-az':
+        case 'doctor-za':
+          return {
+            appointment,
+            sortValue: doctorName
+          };
+        default:
+          return { appointment, sortValue: 0 };
+      }
     });
-  }, [appointments, activeFilter, searchQuery]);
+
+    // Sort based on pre-computed values with direction awareness
+    sortData.sort((a, b) => {
+      switch (sortBy) {
+        case 'date-newest':
+          return (b.sortValue as number) - (a.sortValue as number); // Newest first
+        case 'date-oldest':
+          return (a.sortValue as number) - (b.sortValue as number); // Oldest first
+        case 'doctor-az':
+          return (a.sortValue as string).localeCompare(b.sortValue as string); // A-Z
+        case 'doctor-za':
+          return (b.sortValue as string).localeCompare(a.sortValue as string); // Z-A
+        default:
+          return 0;
+      }
+    });
+
+    return sortData.map(item => item.appointment);
+  }, [appointments, activeFilter, searchQuery, sortBy]);
 
   // Filter appointments based on active filter (legacy function for compatibility)
   const getFilteredAppointments = () => filteredAppointments;
@@ -713,6 +756,58 @@ export default function AppointmentsScreen() {
         return null;
     }
   };
+
+  // Sort dropdown handlers - memoized for performance
+  const handleShowSort = useCallback(() => {
+    setShowSort(prev => !prev);
+  }, []);
+
+  const handleSortOptionSelect = useCallback((optionKey: string) => {
+    setSortBy(optionKey);
+    setShowSort(false);
+  }, []);
+
+  const handleCloseSortDropdown = useCallback(() => {
+    setShowSort(false);
+  }, []);
+
+  const renderSortDropdown = useCallback(() => {
+    if (!showSort) return null;
+    
+    return (
+      <View style={styles.sortDropdownContainer}>
+        <TouchableOpacity
+          style={styles.sortDropdownBackdrop}
+          activeOpacity={1}
+          onPress={handleCloseSortDropdown}
+        />
+        <View style={styles.sortDropdown}>
+          {SORT_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.key}
+              style={[
+                styles.sortDropdownItem,
+                sortBy === option.key && styles.sortDropdownActiveItem,
+              ]}
+              onPress={() => handleSortOptionSelect(option.key)}
+            >
+              <Text
+                style={[
+                  styles.sortDropdownText,
+                  sortBy === option.key && styles.sortDropdownActiveText,
+                ]}
+              >
+                {option.label}
+              </Text>
+              {sortBy === option.key && (
+                <Check size={16} color="#1E40AF" style={{ marginLeft: 6 }} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  }, [showSort, sortBy, SORT_OPTIONS, handleCloseSortDropdown, handleSortOptionSelect]);
 
   // === Referral Card ===
   const renderReferralCard = (referralData: any) => {
@@ -858,7 +953,7 @@ export default function AppointmentsScreen() {
                       });
                     }}
                   >
-                    <MessageCircle size={16} color="#1E40AF" />
+                    {/* <MessageCircle size={16} color="#1E40AF" /> */}
                     <Text style={styles.followUpButtonText}>Follow-up</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -872,7 +967,7 @@ export default function AppointmentsScreen() {
                       setShowFeedbackModal(true);
                     }}
                   >
-                    <Text style={styles.outlinedButtonText}>Give Feedback</Text>
+                    <Text style={styles.outlinedButtonText}>Rate</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -906,11 +1001,12 @@ export default function AppointmentsScreen() {
                       });
                     }}
                   >
-                    <MessageCircle size={16} color="#1E40AF" />
+                    {/* <MessageCircle size={16} color="#1E40AF" /> */}
                     <Text style={styles.followUpButtonText}>Follow-up</Text>
                   </TouchableOpacity>
                   <View style={styles.feedbackSubmittedContainer}>
-                    <Text style={styles.feedbackSubmittedText}>✓ Feedback Submitted</Text>
+                    {/* <Text style={styles.feedbackSubmittedText}>✓ Rating Submitted</Text> */}
+                    <Text style={styles.feedbackSubmittedText}>Rating Submitted</Text>
                   </View>
                 </View>
               );
@@ -1094,7 +1190,7 @@ export default function AppointmentsScreen() {
                     handleFollowUp(appointment);
                   }}
                 >
-                  <MessageCircle size={16} color="#1E40AF" />
+                  {/* <MessageCircle size={16} color="#1E40AF" /> */}
                   <Text style={styles.followUpButtonText}>Follow-up</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1107,7 +1203,7 @@ export default function AppointmentsScreen() {
                     setShowFeedbackModal(true);
                   }}
                 >
-                  <Text style={styles.outlinedButtonText}>Give Feedback</Text>
+                  <Text style={styles.outlinedButtonText}>Rate</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -1118,11 +1214,12 @@ export default function AppointmentsScreen() {
                     handleFollowUp(appointment);
                   }}
                 >
-                  <MessageCircle size={16} color="#1E40AF" />
+                  {/* <MessageCircle size={16} color="#1E40AF" /> */}
                   <Text style={styles.followUpButtonText}>Follow-up</Text>
                 </TouchableOpacity>
                 <View style={styles.feedbackSubmittedContainer}>
-                  <Text style={styles.feedbackSubmittedText}>✓ Feedback Submitted</Text>
+                  {/* <Text style={styles.feedbackSubmittedText}>✓ Feedback Submitted</Text> */}
+                  <Text style={styles.feedbackSubmittedText}>Rating Submitted</Text>
                 </View>
               </View>
             );
@@ -1174,7 +1271,7 @@ export default function AppointmentsScreen() {
           <View style={styles.modalCard}>
             {/* Modal header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Give Feedback</Text>
+              <Text style={styles.modalTitle}>Give Rating</Text>
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={() => {
@@ -1275,7 +1372,7 @@ export default function AppointmentsScreen() {
     onPress={handleSubmitFeedback}
   >
     <Text style={styles.feedbackModalButtonText}>
-      {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+      {submittingFeedback ? 'Submitting...' : 'Submit Rating'}
     </Text>
   </TouchableOpacity>
 </View>
@@ -1342,6 +1439,13 @@ export default function AppointmentsScreen() {
               </TouchableOpacity>
             )}
           </View>
+          <TouchableOpacity
+            style={styles.sortButton}
+            onPress={handleShowSort}
+          >
+            <Filter size={22} color="#6B7280" />
+            <ChevronDown size={20} color="#6B7280" />
+          </TouchableOpacity>
         </View>
         <ScrollView
           horizontal
@@ -1360,6 +1464,7 @@ export default function AppointmentsScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+        {renderSortDropdown()}
       </View>
 
       <ScrollView
@@ -1495,11 +1600,15 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: 8,
     paddingBottom: 8,
+    gap: 12,
   },
   searchInputContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
@@ -2283,5 +2392,61 @@ feedbackModalButton: {
   },
   tagTextSelected: {
     color: '#FFFFFF',
+  },
+  // Sort button and dropdown styles
+  sortButton: {
+    height: 48, // Match search bar height (22 padding top + 22 padding bottom + minHeight 36 = ~48)
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // borderRadius: 10,
+    // backgroundColor: '#F9FAFB',
+    // borderWidth: 1,
+    // borderColor: '#E5E7EB',
+    paddingHorizontal: 2,
+    gap: 4,
+  },
+  sortDropdownContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+  },
+  sortDropdownBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+  },
+  sortDropdown: {
+    position: 'absolute',
+    top: 90, // Adjust based on header height
+    right: 24,
+    minWidth: 160,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  sortDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  sortDropdownActiveItem: {
+    backgroundColor: '#F3F4F6',
+  },
+  sortDropdownText: {
+    fontSize: 14,
+    color: '#374151',
+    fontFamily: 'Inter-Regular',
+  },
+  sortDropdownActiveText: {
+    color: '#1E40AF',
+    fontFamily: 'Inter-Medium',
   },
 });

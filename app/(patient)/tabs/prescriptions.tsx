@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,9 @@ import {
   Pill,
   CircleCheck as CheckCircle,
   Search,
+  Filter,
+  ChevronDown,
+  Check,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -160,6 +163,20 @@ export default function PrescriptionsScreen() {
   const { prescriptions, loading, error, refresh } = usePrescriptions();
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Sort functionality
+  const [sortBy, setSortBy] = useState('date-newest');
+  const [showSort, setShowSort] = useState(false);
+  
+  // Memoized sort options
+  const SORT_OPTIONS = useMemo(() => [
+    { key: 'date-newest', label: 'Latest Added' },
+    { key: 'date-oldest', label: 'Oldest Added' },
+    { key: 'medication-az', label: 'Medication A-Z' },
+    { key: 'medication-za', label: 'Medication Z-A' },
+    { key: 'duration-short', label: 'Duration: Short to Long' },
+    { key: 'duration-long', label: 'Duration: Long to Short' },
+  ], []);
 
   // Header initials for logged in user
   const userInitials = (() => {
@@ -241,6 +258,20 @@ export default function PrescriptionsScreen() {
     refresh();
   };
 
+  // Sort dropdown handlers - memoized for performance
+  const handleShowSort = useCallback(() => {
+    setShowSort(prev => !prev);
+  }, []);
+
+  const handleSortOptionSelect = useCallback((optionKey: string) => {
+    setSortBy(optionKey);
+    setShowSort(false);
+  }, []);
+
+  const handleCloseSortDropdown = useCallback(() => {
+    setShowSort(false);
+  }, []);
+
   const activePrescriptions = useDeepMemo(() => 
     validPrescriptions.filter(p => p.status === 'active'), [validPrescriptions]
   );
@@ -256,8 +287,130 @@ export default function PrescriptionsScreen() {
   console.log('Past prescriptions:', pastPrescriptions.length);
   console.log('Available statuses:', Array.from(new Set(validPrescriptions.map(p => p.status))));
 
-  const filterPrescriptions = (list: Prescription[]) =>
-    list.filter((item: Prescription) => item.medication?.toLowerCase().includes(searchQuery.toLowerCase()));
+  // Optimized filter and sort function
+  const filterAndSortPrescriptions = useCallback((list: Prescription[]) => {
+    // First filter by search query
+    let filtered = list.filter((item: Prescription) => 
+      item.medication?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Then apply sorting with optimized comparisons
+    const sortData = filtered.map(prescription => {
+      const prescriptionDate = new Date(prescription.prescribedDate || '').getTime() || 0;
+      const medicationName = (prescription.medication || '').toLowerCase();
+      
+      // Convert duration to comparable number (days) for duration sorting
+      const durationMatch = prescription.duration?.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
+      let durationDays = 0;
+      if (durationMatch) {
+        const [, amount, unit] = durationMatch;
+        const durationAmount = parseInt(amount, 10);
+        const durationUnit = unit.toLowerCase();
+        switch (durationUnit) {
+          case 'day':
+          case 'days':
+            durationDays = durationAmount;
+            break;
+          case 'week':
+          case 'weeks':
+            durationDays = durationAmount * 7;
+            break;
+          case 'month':
+          case 'months':
+            durationDays = durationAmount * 30; // Approximate
+            break;
+          case 'year':
+          case 'years':
+            durationDays = durationAmount * 365; // Approximate
+            break;
+        }
+      }
+      
+      switch (sortBy) {
+        case 'date-newest':
+        case 'date-oldest':
+          return {
+            prescription,
+            sortValue: prescriptionDate
+          };
+        case 'medication-az':
+        case 'medication-za':
+          return {
+            prescription,
+            sortValue: medicationName
+          };
+        case 'duration-short':
+        case 'duration-long':
+          return {
+            prescription,
+            sortValue: durationDays
+          };
+        default:
+          return { prescription, sortValue: 0 };
+      }
+    });
+
+    // Sort based on pre-computed values with direction awareness
+    sortData.sort((a, b) => {
+      switch (sortBy) {
+        case 'date-newest':
+          return (b.sortValue as number) - (a.sortValue as number); // Newest first
+        case 'date-oldest':
+          return (a.sortValue as number) - (b.sortValue as number); // Oldest first
+        case 'medication-az':
+          return (a.sortValue as string).localeCompare(b.sortValue as string); // A-Z
+        case 'medication-za':
+          return (b.sortValue as string).localeCompare(a.sortValue as string); // Z-A
+        case 'duration-short':
+          return (a.sortValue as number) - (b.sortValue as number); // Short to long
+        case 'duration-long':
+          return (b.sortValue as number) - (a.sortValue as number); // Long to short
+        default:
+          return 0;
+      }
+    });
+
+    return sortData.map(item => item.prescription);
+  }, [searchQuery, sortBy]);
+
+  // Sort dropdown render function
+  const renderSortDropdown = useCallback(() => {
+    if (!showSort) return null;
+    
+    return (
+      <View style={styles.sortDropdownContainer}>
+        <TouchableOpacity
+          style={styles.sortDropdownBackdrop}
+          activeOpacity={1}
+          onPress={handleCloseSortDropdown}
+        />
+        <View style={styles.sortDropdown}>
+          {SORT_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.key}
+              style={[
+                styles.sortDropdownItem,
+                sortBy === option.key && styles.sortDropdownActiveItem,
+              ]}
+              onPress={() => handleSortOptionSelect(option.key)}
+            >
+              <Text
+                style={[
+                  styles.sortDropdownText,
+                  sortBy === option.key && styles.sortDropdownActiveText,
+                ]}
+              >
+                {option.label}
+              </Text>
+              {sortBy === option.key && (
+                <Check size={16} color="#1E40AF" style={{ marginLeft: 6 }} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  }, [showSort, sortBy, SORT_OPTIONS, handleCloseSortDropdown, handleSortOptionSelect]);
 
   const renderActivePrescription = (prescription: Prescription) => (
     <View key={prescription.id} style={styles.prescriptionCard}>
@@ -396,8 +549,8 @@ export default function PrescriptionsScreen() {
     </View>
   );
 
-  let filteredActive = filterPrescriptions(activePrescriptions);
-  let filteredPast = filterPrescriptions(pastPrescriptions);
+  let filteredActive = filterAndSortPrescriptions(activePrescriptions);
+  let filteredPast = filterAndSortPrescriptions(pastPrescriptions);
   
   // Debug logging for filtered results
   console.log('Active prescriptions:', activePrescriptions.length);
@@ -431,6 +584,13 @@ export default function PrescriptionsScreen() {
               onChangeText={setSearchQuery}
             />
           </View>
+          <TouchableOpacity
+            style={styles.sortButton}
+            onPress={handleShowSort}
+          >
+            <Filter size={22} color="#6B7280" />
+            <ChevronDown size={20} color="#6B7280" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.filtersContainer}>
@@ -464,6 +624,7 @@ export default function PrescriptionsScreen() {
                          </ScrollView>
            </View>
          </View>
+         {renderSortDropdown()}
 
          <ScrollView
           style={styles.scrollView}
@@ -546,11 +707,15 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: 8,
     paddingBottom: 8,
+    gap: 12,
   },
   searchInputContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
@@ -775,5 +940,61 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Sort button and dropdown styles
+  sortButton: {
+    height: 48, // Match search bar height
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // borderRadius: 10,
+    // backgroundColor: '#F9FAFB',
+    // borderWidth: 1,
+    // borderColor: '#E5E7EB',
+    paddingHorizontal: 2,
+    gap: 4,
+  },
+  sortDropdownContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+  },
+  sortDropdownBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+  },
+  sortDropdown: {
+    position: 'absolute',
+    top: 90, // Adjust based on header height
+    right: 24,
+    minWidth: 160,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  sortDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  sortDropdownActiveItem: {
+    backgroundColor: '#F3F4F6',
+  },
+  sortDropdownText: {
+    fontSize: 14,
+    color: '#374151',
+    fontFamily: 'Inter-Regular',
+  },
+  sortDropdownActiveText: {
+    color: '#1E40AF',
+    fontFamily: 'Inter-Medium',
   },
 });
