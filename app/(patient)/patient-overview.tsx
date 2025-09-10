@@ -116,11 +116,12 @@ export default function PatientOverviewScreen() {
       setError(null);
       
       // Load all patient data in parallel
-      const [patient, patientAppointments, patientMedicalHistory, patientPrescriptions] = await Promise.all([
+      const [patient, patientAppointments, patientMedicalHistory, patientPrescriptions, allReferrals] = await Promise.all([
         databaseService.getPatientById(id as string),
         databaseService.getAppointmentsByPatient(id as string),
         databaseService.getMedicalHistory(id as string),
-        databaseService.getPrescriptions(id as string)
+        databaseService.getPrescriptions(id as string),
+        databaseService.getDocument('referrals')
       ]);
 
       if (patient) {
@@ -128,24 +129,48 @@ export default function PatientOverviewScreen() {
         const validAppointments = dataValidation.validateArray(patientAppointments, dataValidation.isValidAppointment);
         const validPrescriptions = dataValidation.validateArray(patientPrescriptions, dataValidation.isValidPrescription);
 
+        // Filter medical history to only show entries that have a corresponding appointment with appointmentConsultationId
+        // or referral with referralConsultationId
+        const filteredMedicalHistory = patientMedicalHistory?.filter(historyItem => {
+          // Check if there's an appointment with appointmentConsultationId matching this medical history entry ID
+          const hasMatchingAppointment = validAppointments.some(appointment => 
+            appointment.appointmentConsultationId === historyItem.id
+          );
+          
+          // Check if there's a referral with referralConsultationId matching this medical history entry ID
+          let hasMatchingReferral = false;
+          if (allReferrals) {
+            hasMatchingReferral = Object.values(allReferrals as Record<string, any>).some((referral: any) => 
+              referral?.patientId === id && 
+              referral?.referralConsultationId === historyItem.id
+            );
+          }
+          
+          return hasMatchingAppointment || hasMatchingReferral;
+        }) || [];
+
         setPatientData(patient as any);
         setAppointments(validAppointments);
-        setMedicalHistory(patientMedicalHistory);
+        setMedicalHistory(filteredMedicalHistory);
         setPrescriptions(validPrescriptions);
 
         // Debug logging for medical history
-        console.log('🔍 MEDICAL HISTORY DEBUG:', {
-          count: patientMedicalHistory?.length || 0,
-          items: patientMedicalHistory?.map(item => ({
+        console.log('🔍 MEDICAL HISTORY FILTERING DEBUG:', {
+          originalCount: patientMedicalHistory?.length || 0,
+          filteredCount: filteredMedicalHistory.length,
+          filteredOutCount: (patientMedicalHistory?.length || 0) - filteredMedicalHistory.length,
+          filteredItems: filteredMedicalHistory.map(item => ({
             id: item.id,
             type: item.type,
             consultationDate: item.consultationDate,
-            relatedAppointment: item.relatedAppointment,
-            relatedReferral: (item as any)?.relatedReferral,
             provider: item.provider,
-            // Add more fields to help debug routing
-            consultationId: (item as any)?.consultationId,
-            referralId: (item as any)?.referralId
+            hasMatchingAppointment: validAppointments.some(appointment => 
+              appointment.appointmentConsultationId === item.id
+            ),
+            hasMatchingReferral: allReferrals ? Object.values(allReferrals as Record<string, any>).some((referral: any) => 
+              referral?.patientId === id && 
+              referral?.referralConsultationId === item.id
+            ) : false
           }))
         });
 
@@ -372,8 +397,6 @@ export default function PatientOverviewScreen() {
       console.log('🔍 MEDICAL HISTORY PRESS DEBUG:', {
         historyItemId: historyItem.id,
         historyItemType: historyItem.type,
-        relatedAppointment: (historyItem as any)?.relatedAppointment,
-        hasRelatedAppointment: !!(historyItem as any)?.relatedAppointment?.id,
         userRole: user?.role
       });
 
@@ -385,25 +408,40 @@ export default function PatientOverviewScreen() {
         return;
       }
 
-      // Check if this medical history item has a related appointment ID
-      if ((historyItem as any)?.relatedAppointment?.id) {
-        // If it has a related appointment, route to visit overview
-        console.log('🔍 Routing to visit overview with appointment ID:', (historyItem as any).relatedAppointment.id);
-        console.log('🔍 Full route path:', `/visit-overview?id=${(historyItem as any).relatedAppointment.id}`);
-        console.log('🔍 Current user role:', user?.role);
-        console.log('🔍 Attempting to navigate...');
-        try {
-          router.push(`/visit-overview?id=${(historyItem as any).relatedAppointment.id}`);
-          console.log('🔍 Navigation successful');
-        } catch (error) {
-          console.error('🔍 Navigation error:', error);
+      // Instead of using relatedAppointment.id, find the appointment by checking appointmentConsultationId
+      // Get all appointments for this patient and find the one with matching appointmentConsultationId
+      const patientIdStr = String(id);
+      console.log('🔍 Finding appointment for medical history entry ID:', historyItem.id);
+      console.log('🔍 Patient ID:', patientIdStr);
+      
+      try {
+        // Get all appointments for this patient
+        const patientAppointments = await databaseService.getAppointmentsByPatient(patientIdStr);
+        console.log('🔍 Retrieved patient appointments:', patientAppointments);
+        
+        // Find the appointment that has appointmentConsultationId matching this medical history entry ID
+        const matchingAppointment = patientAppointments.find(appointment => 
+          appointment.appointmentConsultationId === historyItem.id
+        );
+        
+        if (matchingAppointment) {
+          console.log('🔍 Found matching appointment:', matchingAppointment);
+          console.log('🔍 Routing to visit overview with appointment ID:', matchingAppointment.id);
+          router.push(`/visit-overview?id=${matchingAppointment.id}`);
+          return;
+        } else {
+          console.log('🔍 No matching appointment found for medical history entry ID:', historyItem.id);
+          Alert.alert('No Medical History', 'Medical history is only available for completed consultations.');
+          return;
         }
+      } catch (error) {
+        console.error('🔍 Error fetching appointments:', error);
+        Alert.alert('Error', 'Failed to load appointment details. Please try again.');
         return;
       }
 
       // Check if this medical history item has a consultation ID that matches a referral
       const allReferrals = await databaseService.getDocument('referrals');
-      const patientIdStr = String(id);
       let matchedReferralId: string | null = null;
 
       if (allReferrals) {
@@ -496,9 +534,23 @@ export default function PatientOverviewScreen() {
 
   const formatDate = (dateString: string) => {
     try {
-      // Parse the date string as local date to avoid timezone issues
-      const [year, month, day] = dateString.split('-').map(Number);
-      const date = new Date(year, month - 1, day); // month is 0-indexed
+      // Handle both ISO date strings and YYYY-MM-DD format
+      let date: Date;
+      
+      if (dateString.includes('T')) {
+        // ISO date string (e.g., "2024-01-15T10:30:00.000Z")
+        date = new Date(dateString);
+      } else {
+        // YYYY-MM-DD format
+        const [year, month, day] = dateString.split('-').map(Number);
+        date = new Date(year, month - 1, day); // month is 0-indexed
+      }
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+      
       return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -646,7 +698,11 @@ export default function PatientOverviewScreen() {
                   {patientData?.allergies && patientData.allergies.length > 0 && (
                     <View style={styles.detailsRow}>
                       <Text style={styles.detailsLabel}>Allergies</Text>
-                      <Text style={styles.detailsValue}>{patientData.allergies.join(', ')}</Text>
+                      <Text style={styles.detailsValue}>
+                        {patientData.allergies
+                          .map(allergy => allergy.charAt(0).toUpperCase() + allergy.slice(1).toLowerCase())
+                          .join(', ')}
+                      </Text>
                     </View>
                   )}
                   <View style={styles.detailsRowNoBorder}>
@@ -672,7 +728,9 @@ export default function PatientOverviewScreen() {
                       {patientData.medicalConditions.map((condition, index) => (
                         <View key={index} style={styles.conditionItem}>
                           <AlertCircle size={14} color="#EF4444" />
-                          <Text style={styles.conditionText}>{condition}</Text>
+                          <Text style={styles.conditionText}>
+                            {condition.charAt(0).toUpperCase() + condition.slice(1).toLowerCase()}
+                          </Text>
                         </View>
                       ))}
                     </View>
@@ -781,7 +839,7 @@ export default function PatientOverviewScreen() {
                             })()}
                       </Text>
                       <Text style={styles.consultationDate}>
-                        {activeConsultations[0]?.appointmentDate || 'N/A'} at {(() => {
+                        {activeConsultations[0]?.appointmentDate ? formatDate(activeConsultations[0].appointmentDate) : 'N/A'} at {(() => {
                           const timeString = activeConsultations[0]?.appointmentTime;
                           if (!timeString) return 'N/A';
                           // Handle time strings that already have AM/PM

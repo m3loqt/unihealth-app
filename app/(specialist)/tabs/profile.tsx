@@ -43,7 +43,8 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { useSpecialistProfile } from '../../../src/hooks/data/useSpecialistProfile';
-import { useNotificationContext } from '../../../src/contexts/NotificationContext';
+import { useRealtimeNotificationContext } from '../../../src/contexts/RealtimeNotificationContext';
+import { getSafeNotifications, getSafeUnreadCount } from '../../../src/utils/notificationUtils';
 import { databaseService } from '../../../src/services/database/firebase';
 import { Input, Dropdown, DatePicker } from '../../../src/components/ui/Input';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
@@ -52,22 +53,25 @@ import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { performanceUtils } from '../../../src/utils/performance';
 import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
+import { GlobalNotificationModal } from '../../../src/components/shared';
 
 export default function SpecialistProfileScreen() {
   const { user, signOut } = useAuth();
   const { profile, loading: profileLoading, error: profileError, updateProfile } = useSpecialistProfile();
   const { 
-    notifications: {
-      notifications, 
-      loading: notificationsLoading, 
-      error: notificationsError,
-      markAsRead,
-      markAllAsRead,
-      deleteNotification,
-      refresh: refreshNotifications,
-      handleNotificationPress
-    }
-  } = useNotificationContext();
+    notifications: realtimeNotificationData,
+  } = useRealtimeNotificationContext();
+  
+  // Safely extract notifications and unread count
+  const notifications = getSafeNotifications(realtimeNotificationData.notifications);
+  const unreadCount = getSafeUnreadCount(realtimeNotificationData.unreadCount);
+  const notificationsLoading = realtimeNotificationData.loading;
+  const notificationsError = realtimeNotificationData.error;
+  const markAsRead = realtimeNotificationData.markAsRead;
+  const markAllAsRead = realtimeNotificationData.markAllAsRead;
+  const deleteNotification = realtimeNotificationData.deleteNotification;
+  const refreshNotifications = realtimeNotificationData.refresh;
+  const handleNotificationPress = realtimeNotificationData.handleNotificationPress;
 
   // Debug logging
   React.useEffect(() => {
@@ -863,7 +867,7 @@ export default function SpecialistProfileScreen() {
         <SpecialistHeader 
           title="Profile" 
           onNotificationPress={handleOpenNotifications}
-          notificationCount={notifications.filter(n => !n.read).length}
+          notificationCount={unreadCount}
         />
 
         {/* Loading and Error States */}
@@ -1020,7 +1024,7 @@ export default function SpecialistProfileScreen() {
             <View style={styles.feeChangeInfo}>
               <Text style={styles.feeChangeLabel}>Current Professional Fee</Text>
               <Text style={styles.feeChangeAmount}>
-                ₱{(profile as any)?.professionalFeeStatus === 'approved' && (profile as any)?.feeChangeRequest?.requestedFee 
+                {(profile as any)?.professionalFeeStatus === 'approved' && (profile as any)?.feeChangeRequest?.requestedFee 
                   ? (profile as any).feeChangeRequest.requestedFee 
                   : (profile as any)?.feeChangeRequest?.previousFee || professionalFee}
               </Text>
@@ -1474,103 +1478,12 @@ export default function SpecialistProfileScreen() {
          </View>
        </Modal>
 
-      {/* Notification Modal */}
-      <Modal
+      {/* Global Notification Modal */}
+      <GlobalNotificationModal
         visible={showNotificationModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowNotificationModal(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Bell size={32} color="#1E40AF" />
-                <Text style={styles.modalTitle}>Notifications</Text>
-                <Text style={styles.modalSubtext}>
-                  {notifications.filter(n => !n.read).length} unread notification{notifications.filter(n => !n.read).length !== 1 ? 's' : ''}
-                </Text>
-              </View>
-              
-              {/* Action Buttons */}
-              <View style={[notificationModalStyles.modalActions, { marginBottom: 12 }]}>
-                <TouchableOpacity
-                  style={notificationModalStyles.modalActionButton}
-                  onPress={refreshNotifications}
-                >
-                  <RefreshCw size={20} color="#1E40AF" />
-                  <Text style={notificationModalStyles.modalActionButtonText}>Refresh</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={notificationModalStyles.modalActionButton}
-                  onPress={handleMarkAllAsRead}
-                >
-                  <Check size={20} color="#1E40AF" />
-                  <Text style={notificationModalStyles.modalActionButtonText}>Mark All Read</Text>
-                </TouchableOpacity>
-              </View>
-
-              {notifications.length === 0 ? (
-                <Text style={notificationModalStyles.emptyNotificationText}>No notifications yet</Text>
-              ) : (
-                <ScrollView
-                  style={notificationModalStyles.notificationScroll}
-                  contentContainerStyle={notificationModalStyles.notificationListContent}
-                  showsVerticalScrollIndicator
-                >
-                  {notifications.map((notification) => (
-                    <TouchableOpacity 
-                      key={notification.id} 
-                      style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}
-                      onPress={() => handleNotificationPress(notification, () => setShowNotificationModal(false))}
-                      activeOpacity={0.7}
-                    >
-                      <View style={notificationModalStyles.notificationContent}>
-                        <Text style={[notificationModalStyles.notificationText, !notification.read && notificationModalStyles.unreadText]}>
-                          {notification.message}
-                        </Text>
-                        <Text style={notificationModalStyles.notificationTime}>
-                          {new Date(notification.timestamp).toLocaleString()}
-                        </Text>
-                      </View>
-                      <View style={notificationModalStyles.notificationActions}>
-                        {!notification.read && (
-                          <TouchableOpacity
-                            style={notificationModalStyles.notificationActionButton}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              handleMarkAsRead(notification.id);
-                            }}
-                          >
-                            <Check size={16} color="#1E40AF" />
-                          </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                          style={notificationModalStyles.notificationActionButton}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleDeleteNotification(notification.id);
-                          }}
-                        >
-                          <Trash2 size={16} color="#DC2626" />
-                        </TouchableOpacity>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
-              <View style={notificationModalStyles.modalActions}>
-                <TouchableOpacity
-                  style={notificationModalStyles.modalSecondaryButton}
-                  onPress={() => setShowNotificationModal(false)}
-                >
-                  <Text style={notificationModalStyles.modalSecondaryButtonText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowNotificationModal(false)}
+        userRole="specialist"
+      />
 
       {/* Logout Confirmation Modal */}
       <Modal
@@ -1759,140 +1672,6 @@ export default function SpecialistProfileScreen() {
   );
 }
 
-const notificationModalStyles = StyleSheet.create({
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.42)',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    width: '100%',
-    maxWidth: '100%',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-    paddingBottom: 24,
-  },
-  modalHeader: {
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-    marginTop: 8,
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  modalSubtext: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 16,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-    justifyContent: 'center',
-  },
-  modalActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  modalActionButtonText: {
-    color: '#1E40AF',
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    marginLeft: 8,
-  },
-  modalSecondaryButton: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  modalSecondaryButtonText: {
-    color: '#374151',
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-  },
-  notificationScroll: {
-    width: '100%',
-    maxHeight: 400,
-    marginBottom: 16,
-  },
-  notificationListContent: {
-    paddingBottom: 8,
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-    backgroundColor: '#F3F4F6',
-  },
-  unreadNotification: {
-    backgroundColor: '#E0F2FE',
-    borderColor: '#1E40AF',
-    borderWidth: 1,
-  },
-  notificationContent: {
-    flex: 1,
-    marginRight: 10,
-    maxWidth: '85%',
-  },
-  notificationText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-    lineHeight: 20,
-  },
-  unreadText: {
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-  },
-  notificationTime: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
-    marginTop: 4,
-  },
-  notificationActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  notificationActionButton: {
-    padding: 4,
-  },
-  emptyNotificationText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-});
 
 const styles = StyleSheet.create({
   safeArea: {

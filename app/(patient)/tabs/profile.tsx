@@ -41,7 +41,9 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { usePatientProfile } from '@/hooks/data/usePatientProfile';
-import { useNotificationContext } from '@/contexts/NotificationContext';
+import { useRealtimeNotificationContext } from '@/contexts/RealtimeNotificationContext';
+import { getSafeNotifications, getSafeUnreadCount } from '@/utils/notificationUtils';
+import { GlobalNotificationModal } from '@/components/shared';
 import { safeDataAccess } from '@/utils/safeDataAccess';
 import { capitalizeRelationship } from '@/utils/formatting';
 import { RealTimeTest } from '@/components/RealTimeTest';
@@ -71,17 +73,18 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { profile, loading: profileLoading, error: profileError } = usePatientProfile();
       const { 
-    notifications: {
-      notifications, 
-      loading: notificationsLoading, 
-      error: notificationsError,
-      markAsRead,
-      markAllAsRead,
-      deleteNotification,
-      refresh: refreshNotifications,
-      handleNotificationPress
-    }
-  } = useNotificationContext();
+    notifications: realtimeNotificationData,
+  } = useRealtimeNotificationContext();
+  
+  // Safely extract notifications and unread count
+  const notifications = getSafeNotifications(realtimeNotificationData.notifications);
+  const unreadCount = getSafeUnreadCount(realtimeNotificationData.unreadCount);
+  const notificationsLoading = realtimeNotificationData.loading;
+  const notificationsError = realtimeNotificationData.error;
+  const markAsRead = realtimeNotificationData.markAsRead;
+  const markAllAsRead = realtimeNotificationData.markAllAsRead;
+  const deleteNotification = realtimeNotificationData.deleteNotification;
+  const refreshNotifications = realtimeNotificationData.refresh;
 
   // Initials for profile avatar header
   const userInitials = (() => {
@@ -383,102 +386,12 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {/* Notification Modal */}
-      <Modal
+      {/* Global Notification Modal */}
+      <GlobalNotificationModal
         visible={showNotificationModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowNotificationModal(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Bell size={32} color={BLUE} />
-                <Text style={styles.modalTitle}>Notifications</Text>
-                <Text style={styles.modalSubtext}>
-                  {notifications.filter(n => !n.read).length} unread notification{notifications.filter(n => !n.read).length !== 1 ? 's' : ''}
-                </Text>
-              </View>
-              
-              {/* Action Buttons */}
-              <View style={[styles.modalActions, { marginBottom: 12 }]}>
-                <TouchableOpacity
-                  style={styles.modalActionButton}
-                  onPress={refreshNotifications}
-                >
-                  <RefreshCw size={20} color={BLUE} />
-                  <Text style={styles.modalActionButtonText}>Refresh</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalActionButton}
-                  onPress={handleMarkAllAsRead}
-                >
-                  <Check size={20} color={BLUE} />
-                  <Text style={styles.modalActionButtonText}>Mark All Read</Text>
-                </TouchableOpacity>
-              </View>
-              {notifications.length === 0 ? (
-                <Text style={styles.emptyNotificationText}>No notifications yet</Text>
-              ) : (
-                <ScrollView
-                  style={styles.notificationScroll}
-                  contentContainerStyle={styles.notificationListContent}
-                  showsVerticalScrollIndicator
-                >
-                  {notifications.map((notification) => (
-                    <TouchableOpacity 
-                      key={notification.id} 
-                      style={[styles.notificationItem, !notification.read && styles.unreadNotification]}
-                      onPress={() => handleNotificationPress(notification, () => setShowNotificationModal(false))}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.notificationContent}>
-                        <Text style={[styles.notificationText, !notification.read && styles.unreadText]}>
-                          {notification.message}
-                        </Text>
-                        <Text style={styles.notificationTime}>
-                          {new Date(notification.timestamp).toLocaleString()}
-                        </Text>
-                      </View>
-                      <View style={styles.notificationActions}>
-                        {!notification.read && (
-                          <TouchableOpacity
-                            style={styles.notificationActionButton}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              handleMarkAsRead(notification.id);
-                            }}
-                          >
-                            <Check size={16} color={BLUE} />
-                          </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                          style={styles.notificationActionButton}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleDeleteNotification(notification.id);
-                          }}
-                        >
-                          <Trash2 size={16} color="#DC2626" />
-                        </TouchableOpacity>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.modalSecondaryButton}
-                  onPress={() => setShowNotificationModal(false)}
-                >
-                  <Text style={styles.modalSecondaryButtonText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowNotificationModal(false)}
+        userRole="patient"
+      />
 
       {/* Logout Confirmation Modal */}
       <Modal
@@ -1031,64 +944,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
-  },
-  notificationScroll: {
-    width: '100%',
-    maxHeight: SCREEN_HEIGHT * 0.55,
-    marginBottom: 16,
-  },
-  notificationListContent: {
-    paddingBottom: 8,
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-    backgroundColor: '#F3F4F6',
-  },
-  unreadNotification: {
-    backgroundColor: '#E0F2FE',
-    borderColor: BLUE,
-    borderWidth: 1,
-  },
-  notificationContent: {
-    flex: 1,
-    marginRight: 10,
-    maxWidth: '86%',
-  },
-  notificationText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-    lineHeight: 20,
-  },
-  unreadText: {
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-  },
-  notificationTime: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
-    marginTop: 4,
-  },
-  notificationActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  notificationActionButton: {
-    padding: 4,
-  },
-  emptyNotificationText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 8,
   },
   modalActionButton: {
     flexDirection: 'row',

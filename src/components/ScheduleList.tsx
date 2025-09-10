@@ -11,6 +11,7 @@ import {
 import { Edit, Trash2, Calendar, Clock, MapPin, Building } from 'lucide-react-native';
 import { SpecialistSchedule, Clinic } from '../types/schedules';
 import Button from './ui/Button';
+import { formatDate } from '../utils/date';
 
 interface ScheduleListProps {
   schedules: SpecialistSchedule[];
@@ -43,12 +44,38 @@ export default function ScheduleList({
     return days.map(day => DAYS_OF_WEEK[day]).join(', ');
   };
 
+  // Helper function to convert time string to minutes for proper sorting
+  const timeToMinutes = (timeStr: string): number => {
+    const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!timeMatch) return 0;
+    
+    const [, hoursStr, minutesStr, period] = timeMatch;
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+    
+    let hour24 = hours;
+    if (period === 'PM' && hours !== 12) {
+      hour24 += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hour24 = 0;
+    }
+    
+    return hour24 * 60 + minutes;
+  };
+
+  // Helper function to sort times chronologically
+  const sortTimesChronologically = (times: string[]): string[] => {
+    return times.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+  };
+
   const formatTimeRange = (slotTemplate: any) => {
-    const times = Object.keys(slotTemplate).sort();
+    const times = Object.keys(slotTemplate);
     if (times.length === 0) return 'No time slots';
     
-    const startTime = times[0];
-    const endTime = times[times.length - 1];
+    // Sort times chronologically instead of alphabetically
+    const sortedTimes = sortTimesChronologically(times);
+    const startTime = sortedTimes[0];
+    const endTime = sortedTimes[sortedTimes.length - 1];
     const duration = slotTemplate[startTime]?.durationMinutes || 20;
     
     return `${startTime} - ${endTime} (${duration} min slots)`;
@@ -221,7 +248,7 @@ export default function ScheduleList({
                 <View style={styles.detailRow}>
                   <Calendar size={14} color="#6B7280" />
                   <Text style={styles.detailText}>
-                    Valid from: {new Date(schedule.validFrom).toLocaleDateString()}
+                    Valid from: {formatDate(schedule.validFrom, 'short')}
                   </Text>
                 </View>
 

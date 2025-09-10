@@ -1027,43 +1027,8 @@ export const databaseService = {
       await set(newAppointmentRef, appointmentData);
       
       // Create notifications for the appointment (pending status)
-      try {
-        const { notificationService } = await import('../notificationService');
-        console.log('🔔 Creating appointment creation notifications...');
-        
-        // Create patient notification
-        await notificationService.createAppointmentStatusNotification(
-          appointment.patientId,
-          newAppointmentRef.key!,
-          'pending',
-          {
-            date: appointment.appointmentDate,
-            time: appointment.appointmentTime,
-            doctorId: appointment.doctorId,
-            clinicId: appointment.clinicId,
-            clinicName: appointment.clinicName
-          }
-        );
-        
-        // Create doctor notification
-        await notificationService.createDoctorNotification(
-          appointment.doctorId,
-          newAppointmentRef.key!,
-          'pending',
-          {
-            date: appointment.appointmentDate,
-            time: appointment.appointmentTime,
-            patientId: appointment.patientId,
-            clinicId: appointment.clinicId,
-            clinicName: appointment.clinicName
-          }
-        );
-        
-        console.log('✅ Appointment creation notifications created successfully');
-      } catch (notificationError) {
-        console.warn('⚠️ Failed to create appointment creation notifications:', notificationError);
-        // Don't fail the appointment creation if notification fails
-      }
+      // Notification creation disabled - using real-time listeners instead
+      console.log('🔔 Real-time notifications will handle appointment creation');
       
       return newAppointmentRef.key!;
     } catch (error) {
@@ -2175,71 +2140,8 @@ export const databaseService = {
       await update(appointmentRef, updates);
       console.log('✅ Appointment status updated successfully');
 
-      // Send notifications to both patient and doctor
-      try {
-        console.log('🔔 Attempting to import notification service...');
-        const { notificationService } = await import('../notificationService');
-        console.log('✅ Notification service imported successfully');
-        
-        // Send to patient
-        console.log('🔔 Creating patient notification for:', appointment.patientId);
-        const patientNotificationId = await notificationService.createAppointmentStatusNotification(
-          appointment.patientId,
-          id,
-          status,
-          {
-            date: appointment.appointmentDate,
-            time: appointment.appointmentTime,
-            doctorId: appointment.doctorId,
-            clinicId: appointment.clinicId,
-            clinicName: appointment.clinicName // Keep for backward compatibility
-          }
-        );
-        console.log('✅ Patient notification created with ID:', patientNotificationId);
-
-        // Send to doctor
-        console.log('🔔 Creating doctor notification for:', appointment.doctorId);
-        const doctorNotificationId = await notificationService.createDoctorNotification(
-          appointment.doctorId,
-          id,
-          status,
-          {
-            date: appointment.appointmentDate,
-            time: appointment.appointmentTime,
-            patientId: appointment.patientId,
-            clinicId: appointment.clinicId,
-            clinicName: appointment.clinicName // Keep for backward compatibility
-          }
-        );
-        console.log('✅ Doctor notification created with ID:', doctorNotificationId);
-
-      } catch (notificationError) {
-        console.error('❌ Error creating notifications:', notificationError);
-        
-        // Fallback: Create notifications directly using database service
-        console.log('🔄 Attempting fallback notification creation...');
-        try {
-          await this.createFallbackNotification(
-            appointment.patientId,
-            'appointment',
-            id,
-            status,
-            `Your appointment status has been updated to: ${status}`
-          );
-          
-          await this.createFallbackNotification(
-            appointment.doctorId,
-            'appointment',
-            id,
-            status,
-            `Appointment status updated to: ${status}`
-          );
-          
-          console.log('✅ Fallback notifications created successfully');
-        } catch (fallbackError) {
-          console.error('❌ Fallback notification creation also failed:', fallbackError);
-        }
-      }
+      // Notification creation disabled - using real-time listeners instead
+      console.log('🔔 Real-time notifications will handle appointment status changes');
 
     } catch (error) {
       console.error('❌ Update appointment status error:', error);
@@ -3546,41 +3448,8 @@ export const databaseService = {
       console.log('✅ Referral created with Firebase push key:', referralId);
       
       // Create notifications for the referral (pending status)
-      try {
-        const { notificationService } = await import('../notificationService');
-        console.log('🔔 Creating referral creation notifications...');
-        
-        // Create patient notification
-        await notificationService.createReferralNotification(
-          referralData.patientId!,
-          referralId,
-          'pending',
-          {
-            patientId: referralData.patientId!,
-            assignedSpecialistId: referralData.assignedSpecialistId!,
-            clinicId: referralData.practiceLocation?.clinicId,
-            clinicName: referralData.referringClinicName
-          }
-        );
-        
-        // Create specialist notification
-        await notificationService.createReferralNotification(
-          referralData.assignedSpecialistId!,
-          referralId,
-          'pending',
-          {
-            patientId: referralData.patientId!,
-            assignedSpecialistId: referralData.assignedSpecialistId!,
-            clinicId: referralData.practiceLocation?.clinicId,
-            clinicName: referralData.referringClinicName
-          }
-        );
-        
-        console.log('✅ Referral creation notifications created successfully');
-      } catch (notificationError) {
-        console.warn('⚠️ Failed to create referral creation notifications:', notificationError);
-        // Don't fail the referral creation if notification fails
-      }
+      // Notification creation disabled - using real-time listeners instead
+      console.log('🔔 Real-time notifications will handle referral creation');
       
       return referralId;
     } catch (error) {
@@ -3842,11 +3711,12 @@ export const databaseService = {
       // Sanitize the notification key to ensure it's a valid Firebase key
       const sanitizedKey = notificationKey.replace(/[.#$[\]]/g, '_');
       
-      const processedRef = ref(database, `processedNotifications/${userId}/${sanitizedKey}`);
-      await set(processedRef, {
-        processedAt: Date.now(),
-        timestamp: Date.now()
-      });
+      // Processed notifications disabled - using real-time listeners instead
+      // const processedRef = ref(database, `processedNotifications/${userId}/${sanitizedKey}`);
+      // await set(processedRef, {
+      //   processedAt: Date.now(),
+      //   timestamp: Date.now()
+      // });
       
       console.log('✅ Marked notification as processed:', sanitizedKey);
     } catch (error) {
@@ -3870,9 +3740,11 @@ export const databaseService = {
       // Sanitize the notification key to ensure it's a valid Firebase key
       const sanitizedKey = notificationKey.replace(/[.#$[\]]/g, '_');
       
-      const processedRef = ref(database, `processedNotifications/${userId}/${sanitizedKey}`);
-      const snapshot = await get(processedRef);
-      return snapshot.exists();
+      // Processed notifications disabled - using real-time listeners instead
+      // const processedRef = ref(database, `processedNotifications/${userId}/${sanitizedKey}`);
+      // const snapshot = await get(processedRef);
+      // return snapshot.exists();
+      return false; // Always return false since we're not tracking processed notifications
     } catch (error) {
       console.error('❌ Error checking if notification is processed:', error, {
         userId,
@@ -3891,8 +3763,10 @@ export const databaseService = {
         return;
       }
 
-      const processedRef = ref(database, `processedNotifications/${userId}`);
-      const snapshot = await get(processedRef);
+      // Processed notifications disabled - using real-time listeners instead
+      // const processedRef = ref(database, `processedNotifications/${userId}`);
+      // const snapshot = await get(processedRef);
+      return; // Skip cleanup since we're not using processed notifications
       
       if (snapshot.exists()) {
         const processedData = snapshot.val();

@@ -17,6 +17,7 @@ import { Input } from './ui/Input';
 import Button from './ui/Button';
 import TimePicker from './ui/TimePicker';
 import DatePicker from './ui/DatePicker';
+import { formatDate } from '../utils/date';
 
 interface ScheduleFormProps {
   visible: boolean;
@@ -109,29 +110,137 @@ export default function ScheduleForm({
   };
 
   const getStartTimeFromSlots = (slotTemplate: any): string => {
-    const times = Object.keys(slotTemplate).sort();
-    return times[0] || '';
+    const times = Object.keys(slotTemplate);
+    if (times.length === 0) return '';
+    
+    // Sort times chronologically instead of alphabetically
+    const sortedTimes = sortTimesChronologically(times);
+    return sortedTimes[0] || '';
+  };
+
+  // Helper function to convert time string to minutes for proper sorting
+  const timeToMinutes = (timeStr: string): number => {
+    const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!timeMatch) return 0;
+    
+    const [, hoursStr, minutesStr, period] = timeMatch;
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+    
+    let hour24 = hours;
+    if (period === 'PM' && hours !== 12) {
+      hour24 += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hour24 = 0;
+    }
+    
+    return hour24 * 60 + minutes;
+  };
+
+  // Helper function to sort times chronologically
+  const sortTimesChronologically = (times: string[]): string[] => {
+    return times.sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
   };
 
   const getEndTimeFromSlots = (slotTemplate: any): string => {
-    const times = Object.keys(slotTemplate).sort();
-    if (times.length === 0) return '';
-    
-    const lastTime = times[times.length - 1];
-    const lastSlot = slotTemplate[lastTime];
-    const lastTimeDate = new Date(`2000-01-01 ${lastTime}`);
-    lastTimeDate.setMinutes(lastTimeDate.getMinutes() + lastSlot.durationMinutes);
-    
-    return lastTimeDate.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
+    try {
+      const times = Object.keys(slotTemplate);
+      if (times.length === 0) return '';
+      
+      // Sort times chronologically instead of alphabetically
+      const sortedTimes = sortTimesChronologically(times);
+      const lastTime = sortedTimes[sortedTimes.length - 1];
+      const lastSlot = slotTemplate[lastTime];
+      
+      console.log('Debug - all times:', times);
+      console.log('Debug - sorted times:', sortedTimes);
+      console.log('Debug - lastTime (chronologically):', lastTime);
+      console.log('Debug - lastSlot:', lastSlot);
+      
+      if (!lastSlot || !lastSlot.durationMinutes) {
+        console.warn('Invalid slot data:', lastSlot);
+        return '';
+      }
+      
+      // Parse the last time and add duration
+      const timeMatch = lastTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if (!timeMatch) {
+        console.error('Invalid time format:', lastTime);
+        return '';
+      }
+      
+      const [, hoursStr, minutesStr, period] = timeMatch;
+      const hours = parseInt(hoursStr, 10);
+      const minutes = parseInt(minutesStr, 10);
+      
+      console.log('Debug - timeStr:', hoursStr, 'minutesStr:', minutesStr, 'period:', period);
+      console.log('Debug - hours:', hours, 'minutes:', minutes);
+      
+      // Validate parsed values
+      if (isNaN(hours) || isNaN(minutes)) {
+        console.error('Invalid time format:', lastTime);
+        return '';
+      }
+      
+      // Convert to 24-hour format
+      let hour24 = hours;
+      if (period === 'PM' && hours !== 12) {
+        hour24 += 12;
+      } else if (period === 'AM' && hours === 12) {
+        hour24 = 0;
+      }
+      
+      // Add duration
+      const totalMinutes = hour24 * 60 + minutes + lastSlot.durationMinutes;
+      const endHour24 = Math.floor(totalMinutes / 60);
+      const endMinutes = totalMinutes % 60;
+      
+      // Convert back to 12-hour format
+      const endHour12 = endHour24 === 0 ? 12 : endHour24 > 12 ? endHour24 - 12 : endHour24;
+      const endPeriod = endHour24 >= 12 ? 'PM' : 'AM';
+      
+      const result = `${endHour12}:${endMinutes.toString().padStart(2, '0')} ${endPeriod}`;
+      console.log('Debug - calculated end time:', result);
+      
+      return result;
+    } catch (error) {
+      console.error('Error parsing end time from slots:', error);
+      return '';
+    }
   };
 
   const getDurationFromSlots = (slotTemplate: any): number => {
     const firstSlot = Object.values(slotTemplate)[0] as any;
     return firstSlot?.durationMinutes || 20;
+  };
+
+  const compareTimes = (time1: string, time2: string): number => {
+    // Convert time strings to minutes for comparison
+    const parseTime = (time: string): number => {
+      const timeMatch = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if (!timeMatch) {
+        console.error('Invalid time format in comparison:', time);
+        return 0;
+      }
+      
+      const [, hoursStr, minutesStr, period] = timeMatch;
+      const hours = parseInt(hoursStr, 10);
+      const minutes = parseInt(minutesStr, 10);
+      
+      let hour24 = hours;
+      if (period === 'PM' && hours !== 12) {
+        hour24 += 12;
+      } else if (period === 'AM' && hours === 12) {
+        hour24 = 0;
+      }
+      
+      return hour24 * 60 + minutes;
+    };
+    
+    const minutes1 = parseTime(time1);
+    const minutes2 = parseTime(time2);
+    
+    return minutes1 - minutes2;
   };
 
   const handleSubmit = async () => {
@@ -235,7 +344,7 @@ export default function ScheduleForm({
       Alert.alert('Error', 'Please select an end time');
       return false;
     }
-    if (formData.startTime >= formData.endTime) {
+    if (compareTimes(formData.startTime, formData.endTime) >= 0) {
       console.log('❌ End time must be after start time');
       Alert.alert('Error', 'End time must be after start time');
       return false;
@@ -333,7 +442,7 @@ export default function ScheduleForm({
         >
           <Calendar size={16} color="#6B7280" />
           <Text style={[styles.dateInputText, !formData.validFrom && styles.placeholderText]}>
-            {formData.validFrom || 'Select date...'}
+            {formData.validFrom ? formatDate(formData.validFrom, 'short') : 'Select date...'}
           </Text>
         </TouchableOpacity>
 
@@ -483,7 +592,7 @@ export default function ScheduleForm({
               
               <View style={styles.confirmationSection}>
                 <Text style={styles.confirmationLabel}>Valid From:</Text>
-                <Text style={styles.confirmationValue}>{formData.validFrom}</Text>
+                <Text style={styles.confirmationValue}>{formatDate(formData.validFrom, 'short')}</Text>
               </View>
               
               <View style={styles.confirmationSection}>
@@ -589,7 +698,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     width: '90%',
     maxWidth: 400,
-    maxHeight: '80%',
+    maxHeight: '90%',
+    minHeight: '70%',
     overflow: 'hidden',
   },
   header: {
@@ -612,6 +722,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
+    maxHeight: '60%',
   },
   section: {
     marginVertical: 20,
@@ -786,6 +897,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
     gap: 12,
+    backgroundColor: '#FFFFFF',
+    minHeight: 80,
   },
   cancelButton: {
     flex: 1,
@@ -804,7 +917,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     width: '90%',
     maxWidth: 400,
-    maxHeight: '80%',
+    maxHeight: '90%',
+    minHeight: '60%',
     overflow: 'hidden',
   },
   confirmationHeader: {

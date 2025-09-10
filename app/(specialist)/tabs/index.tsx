@@ -50,7 +50,8 @@ import { router } from 'expo-router';
 import { getGreeting } from '../../../src/utils/greeting';
 import { getFirstName } from '../../../src/utils/string';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
-import { useNotificationContext } from '../../../src/contexts/NotificationContext';
+import { useRealtimeNotificationContext } from '../../../src/contexts/RealtimeNotificationContext';
+import { getSafeNotifications, getSafeUnreadCount } from '../../../src/utils/notificationUtils';
 import { useReferrals } from '../../../src/hooks/data/useReferrals';
 import { databaseService } from '../../../src/services/database/firebase';
 import { safeDataAccess } from '../../../src/utils/safeDataAccess';
@@ -60,23 +61,30 @@ import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { useDeepMemo } from '../../../src/utils/performance';
 import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
+import { GlobalNotificationModal } from '../../../src/components/shared';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function SpecialistHomeScreen() {
   const { user } = useAuth();
   const { 
-    notifications: {
-      notifications, 
-      loading: notificationsLoading, 
-      error: notificationsError,
-      markAsRead,
-      markAllAsRead,
-      deleteNotification,
-      refresh: refreshNotifications,
-      handleNotificationPress
-    }
-  } = useNotificationContext();
+    notifications: realtimeNotificationData,
+  } = useRealtimeNotificationContext();
+  
+  // Safely extract notifications and unread count
+  const notifications = getSafeNotifications(realtimeNotificationData.notifications);
+  const unreadCount = getSafeUnreadCount(realtimeNotificationData.unreadCount);
+  const notificationsLoading = realtimeNotificationData.loading;
+  const notificationsError = realtimeNotificationData.error;
+  const markAsRead = realtimeNotificationData.markAsRead;
+  const markAllAsRead = realtimeNotificationData.markAllAsRead;
+  const deleteNotification = realtimeNotificationData.deleteNotification;
+  const refreshNotifications = realtimeNotificationData.refresh;
+  // const handleNotificationPress = realtimeNotificationData.handleNotificationPress;
+  
+  // Debug log to check notification count
+  console.log('🔔 Specialist Home page - unreadCount:', unreadCount);
+
   
   const { 
     referrals, 
@@ -1586,104 +1594,12 @@ export default function SpecialistHomeScreen() {
         </View>
       </Modal>
       
-      {/* === NOTIFICATION MODAL === */}
-      <Modal
+      {/* === GLOBAL NOTIFICATION MODAL === */}
+      <GlobalNotificationModal
         visible={showNotificationModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={handleCloseNotificationModal}
-      >
-        <View style={notificationModalStyles.modalBackdrop}>
-          <View style={notificationModalStyles.modalContainer}>
-            <View style={notificationModalStyles.modalContent}>
-              <View style={notificationModalStyles.modalHeader}>
-                <Bell size={32} color="#1E40AF" />
-                <Text style={notificationModalStyles.modalTitle}>Notifications</Text>
-                <Text style={notificationModalStyles.modalSubtext}>
-                  {notifications.filter(n => !n.read).length} unread notification{notifications.filter(n => !n.read).length !== 1 ? 's' : ''}
-                </Text>
-              </View>
-              
-              {/* Action Buttons */}
-              <View style={[notificationModalStyles.modalActions, { marginBottom: 12 }]}>
-                <TouchableOpacity
-                  style={notificationModalStyles.modalActionButton}
-                  onPress={refreshNotifications}
-                >
-                  <RefreshCw size={20} color="#1E40AF" />
-                  <Text style={notificationModalStyles.modalActionButtonText}>Refresh</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={notificationModalStyles.modalActionButton}
-                  onPress={handleMarkAllAsRead}
-                >
-                  <Check size={20} color="#1E40AF" />
-                  <Text style={notificationModalStyles.modalActionButtonText}>Mark All Read</Text>
-                </TouchableOpacity>
-              </View>
-
-              {notifications.length === 0 ? (
-                <Text style={[notificationModalStyles.emptyNotificationText, { marginBottom: 12, marginTop: 12 }]}>No notifications yet</Text>
-              ) : (
-                <ScrollView
-                  style={notificationModalStyles.notificationScroll}
-                  contentContainerStyle={notificationModalStyles.notificationListContent}
-                  showsVerticalScrollIndicator
-                >
-                  {notifications.map((notification) => (
-                    <TouchableOpacity 
-                      key={notification.id} 
-                      style={[notificationModalStyles.notificationItem, !notification.read && notificationModalStyles.unreadNotification]}
-                      onPress={() => handleNotificationPress(notification, handleCloseNotificationModal)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={notificationModalStyles.notificationContent}>
-                        <Text style={[notificationModalStyles.notificationText, !notification.read && notificationModalStyles.unreadText]}>
-                          {notification.message}
-                        </Text>
-                        <Text style={notificationModalStyles.notificationTime}>
-                          {new Date(notification.timestamp).toLocaleString()}
-                        </Text>
-                      </View>
-                      <View style={notificationModalStyles.notificationActions}>
-                        {!notification.read && (
-                          <TouchableOpacity
-                            style={notificationModalStyles.notificationActionButton}
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              handleMarkAsRead(notification.id);
-                            }}
-                          >
-                            <Check size={16} color="#1E40AF" />
-                          </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                          style={notificationModalStyles.notificationActionButton}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleDeleteNotification(notification.id);
-                          }}
-                        >
-                          <Trash2 size={16} color="#DC2626" />
-                        </TouchableOpacity>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
-
-              <View style={notificationModalStyles.modalActions}>
-                <TouchableOpacity
-                  style={notificationModalStyles.modalSecondaryButton}
-                  onPress={handleCloseNotificationModal}
-                >
-                  <Text style={notificationModalStyles.modalSecondaryButtonText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={handleCloseNotificationModal}
+        userRole="specialist"
+      />
       </ErrorBoundary>
   );
 }
@@ -2735,139 +2651,4 @@ const patientModalStyles = StyleSheet.create({
   },
 });
 
-// Notification Modal Styles
-const notificationModalStyles = StyleSheet.create({
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.42)',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    width: '100%',
-    maxWidth: '100%',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-    paddingBottom: 24,
-  },
-  modalHeader: {
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-    marginTop: 8,
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  modalSubtext: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 16,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-    justifyContent: 'center',
-  },
-  modalActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  modalActionButtonText: {
-    color: '#1E40AF',
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    marginLeft: 8,
-  },
-  modalSecondaryButton: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  modalSecondaryButtonText: {
-    color: '#374151',
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-  },
-  notificationScroll: {
-    width: '100%',
-    maxHeight: 400,
-    marginBottom: 16,
-  },
-  notificationListContent: {
-    paddingBottom: 8,
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-    backgroundColor: '#F3F4F6',
-  },
-  unreadNotification: {
-    backgroundColor: '#E0F2FE',
-    borderColor: '#1E40AF',
-    borderWidth: 1,
-  },
-  notificationContent: {
-    flex: 1,
-    marginRight: 10,
-    maxWidth: '85%',
-  },
-  notificationText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-    lineHeight: 20,
-  },
-  unreadText: {
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-  },
-  notificationTime: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
-    marginTop: 4,
-  },
-  notificationActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  notificationActionButton: {
-    padding: 4,
-  },
-  emptyNotificationText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-});
  

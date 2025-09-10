@@ -88,7 +88,7 @@ export default function TabBar({ activeTab }: TabBarProps) {
       <View style={styles.tabBar}>
         {TABS.map(({ name, icon: Icon, route, label }) => {
           const isFocused = currentActiveTab === name;
-          const showBadge = name === 'profile' && unreadCount > 0;
+          const showBadge = false; // No badges on tab bar
           const animatedValue = animatedValues[name];
 
           return (

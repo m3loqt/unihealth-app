@@ -39,7 +39,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
     { name: 'index', icon: Home, route: '/(specialist)/tabs', label: 'Home', isAction: false },
     { name: 'patients', icon: Users, route: '/(specialist)/tabs/patients', label: 'Patients', isAction: false },
     { name: 'qr-code', icon: QrCode, route: null, label: 'QR Code', isAction: true },
-    { name: 'appointments', icon: Calendar, route: '/(specialist)/tabs/appointments', label: 'Schedule', isAction: false },
+    { name: 'appointments', icon: Calendar, route: '/(specialist)/tabs/appointments', label: 'Visits', isAction: false },
     { name: 'profile', icon: User, route: '/(specialist)/tabs/profile', label: 'Profile', isAction: false },
   ] as const;
 
@@ -224,7 +224,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
         <View style={styles.tabBar}>
           {TABS.map(({ name, icon: Icon, route, label, isAction }) => {
             const isFocused = currentActiveTab === name;
-            const showBadge = name === 'profile' && unreadCount > 0;
+            const showBadge = false; // No badges on tab bar
             const animatedValue = animatedValues[name];
 
             if (isAction) {

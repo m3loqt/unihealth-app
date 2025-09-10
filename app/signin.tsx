@@ -440,7 +440,7 @@ export default function SignInScreen() {
                     styles.roleDescription,
                     selectedRole === 'specialist' && styles.roleDescriptionSelected
                   ]}>
-                    Manage patients, appointments and{"\n"}provide best medical care
+                    Manage patients, appointments, and{"\n"}provide best medical care
                   </Text>
                 </TouchableOpacity>
               </View>
