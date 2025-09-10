@@ -340,8 +340,9 @@ export default function SignUpStep3Screen() {
     }
   };
 
-  const handleGoToLogin = () => {
+  const handleGoToSignIn = () => {
     setShowSuccessModal(false);
+    // Redirect to sign-in screen
     router.replace('/');
   };
 
@@ -585,9 +586,9 @@ export default function SignUpStep3Screen() {
           visible={showSuccessModal}
           transparent={true}
           animationType="slide"
-          onRequestClose={handleGoToLogin}
+          onRequestClose={handleGoToSignIn}
         >
-          <Pressable style={styles.successModalBackdrop} onPress={handleGoToLogin}>
+          <Pressable style={styles.successModalBackdrop} onPress={handleGoToSignIn}>
             <View style={styles.successModalBackdropOverlay} />
           </Pressable>
           <View style={styles.successModalContainer}>
@@ -606,7 +607,7 @@ export default function SignUpStep3Screen() {
                   </Text>
                   
                   <Text style={styles.successModalSuccessSubtitle}>
-                    Welcome to UniHEALTH, {userProfile?.firstName}! Your account has been created and you can now sign in.
+                    Welcome to UniHEALTH, {userProfile?.firstName}! Your account has been created successfully. You can now sign in to access your account.
                   </Text>
                 </View>
                 
@@ -614,7 +615,7 @@ export default function SignUpStep3Screen() {
                 <View style={styles.successModalActions}>
                   <TouchableOpacity
                     style={styles.successModalPrimaryButton}
-                    onPress={handleGoToLogin}
+                    onPress={handleGoToSignIn}
                   >
                     <Text style={styles.successModalPrimaryButtonText}>Continue to Sign In</Text>
                   </TouchableOpacity>

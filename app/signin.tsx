@@ -112,6 +112,31 @@ export default function SignInScreen() {
       const result = await signIn(email, password);
 
       if (result.success && result.userProfile) {
+        // Check if this is a Firebase user (not static user) and email verification is required
+        // Only apply email verification to patients - specialists are verified via website backend
+        if (!result.userProfile.uid.startsWith('static-') && result.userProfile.role === 'patient') {
+          const { auth } = await import('../src/config/firebase');
+          const currentUser = auth.currentUser;
+          
+          if (currentUser && !currentUser.emailVerified) {
+            // Send email verification on first sign-in (with rate limiting)
+            try {
+              const { authService } = await import('../src/services/api/auth');
+              const result = await authService.sendEmailVerification(currentUser);
+              console.log('📧 Email verification result:', result.message);
+            } catch (error) {
+              console.warn('⚠️ Failed to send email verification:', error);
+            }
+            
+            // Redirect to email verification screen
+            router.push({
+              pathname: '/(auth)/verify-email' as any,
+              params: { email: currentUser.email }
+            });
+            return;
+          }
+        }
+
         const targetRoute =
           result.userProfile.role === 'specialist' ? '/(specialist)/tabs' : '/(patient)/tabs';
 
