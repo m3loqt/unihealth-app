@@ -11,7 +11,6 @@ import {
 import { ref, set, get, child, remove, query, orderByChild, equalTo } from 'firebase/database';
 import { auth, database } from '../../config/firebase';
 import { emailService } from '../email/emailService';
-import { passwordResetService } from '../database/passwordResetService';
 import { capitalizeRelationship } from '../../utils/formatting';
 import { cleanOptionalString, processAllergies, filterUndefinedValues } from '../../utils/string';
 
@@ -161,13 +160,6 @@ export interface DoctorNode {
   userId: string;
 }
 
-export interface PasswordResetCode {
-  code: string;
-  email: string;
-  createdAt: string;
-  expiresAt: string;
-  used: boolean;
-}
 
 export interface RateLimitData {
   email: string;
@@ -1062,165 +1054,8 @@ export const authService = {
   //   }
   // },
 
-  async requestPasswordResetCode(email: string): Promise<{ success: boolean; message: string; devCode?: string }> {
-    try {
-      // Check if user exists in database
-      const userRecord = await this.findUserByEmail(email);
-      if (!userRecord) {
-        return { success: false, message: 'User not found' };
-      }
   
-      // Generate and store reset code
-      const code = await passwordResetService.createResetCode(email);
-      
-      // Send email with code
-      try {
-        // If we can find the user's name, pass it so the template can render {{user_name}}
-        let userName: string | undefined = undefined;
-        try {
-          const userRecord = await this.findUserByEmail(email);
-          if (userRecord) {
-            const u = userRecord.userData as any;
-            const first = u.firstName || u.first_name || '';
-            const last = u.lastName || u.last_name || '';
-            const full = `${first} ${last}`.trim();
-            userName = full || undefined;
-          }
-        } catch {}
-        await emailService.sendPasswordResetCode(email, code, userName);
-        return { success: true, message: 'Reset code sent to your email' };
-      } catch (e: any) {
-        const message = e?.message || '';
-        const isDev = (typeof __DEV__ !== 'undefined' && __DEV__) || process.env.NODE_ENV !== 'production';
-        // In development, allow showing the code when email cannot be sent
-        if (isDev) {
-          console.warn('Email sending failed in dev. Exposing code for testing only.');
-          return { success: true, message: 'Development mode: code generated', devCode: code };
-        }
-        // In production, treat as failure
-        console.error('Email send failed in production:', message);
-        return { success: false, message: 'Failed to send reset code' };
-      }
-    } catch (error) {
-      console.error('Error requesting password reset:', error);
-      return { success: false, message: 'Failed to send reset code' };
-    }
-  },
   
-  async verifyPasswordResetCode(email: string, code: string): Promise<{ success: boolean; message: string }> {
-    try {
-      console.log('=== VERIFYING PASSWORD RESET CODE ===');
-      console.log('Email:', email);
-      console.log('Code:', code);
-      
-      const isValid = await passwordResetService.verifyResetCode(email, code);
-      
-      console.log('Verification result:', isValid);
-      
-      if (isValid) {
-        return { success: true, message: 'Code verified successfully' };
-      } else {
-        return { success: false, message: 'Invalid or expired code' };
-      }
-    } catch (error) {
-      console.error('Error verifying reset code:', error);
-      return { success: false, message: 'Failed to verify code' };
-    }
-  },
-  
-  async resetPasswordWithCode(email: string, code: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    try {
-      console.log('=== RESETTING PASSWORD WITH CODE ===');
-      console.log('Email:', email);
-      console.log('Code:', code);
-      console.log('New password length:', newPassword.length);
-      
-      // First verify the code
-      const isValid = await passwordResetService.verifyResetCode(email, code);
-      console.log('Code verification result:', isValid);
-      
-      if (!isValid) {
-        return { success: false, message: 'Invalid or expired code' };
-      }
-
-      // Mark the code as used to prevent reuse
-      console.log('Marking code as used...');
-      await this.markResetCodeAsUsed(email, code);
-      console.log('Code marked as used successfully');
-
-      try {
-        const userData = await this.findUserByEmail(email);
-        if (!userData) {
-          console.error('User not found for password reset:', email);
-          return { success: false, message: 'User not found' };
-        }
-        
-        console.log('Found user for password reset:', userData.databaseUid);
-        
-        // IMPORTANT: For a proper password reset, we need to actually update Firebase Auth
-        // Since we can't do this without the user being signed in, we'll use a different approach
-        
-        // We'll create a temporary reset token that allows the user to sign in once
-        // and then immediately update their password in Firebase Auth
-        
-        const userRef = ref(database, `users/${userData.databaseUid}`);
-        await set(userRef, {
-          ...userData.userData,
-          passwordResetPending: true,
-          pendingPassword: newPassword,
-          resetToken: this.generateResetToken(), // Generate a secure token
-          resetTokenExpiry: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
-          lastPasswordUpdate: new Date().toISOString()
-        });
-        
-        console.log('Password reset pending for email:', email);
-        return { success: true, message: 'Password reset successfully. Please sign in with your new password.' };
-        
-      } catch (error) {
-        console.error('Error updating user data during password reset:', error);
-        return { success: false, message: 'Failed to complete password reset' };
-      }
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      return { success: false, message: 'Failed to reset password' };
-    }
-  },
-
-  // Mark reset code as used
-  async markResetCodeAsUsed(email: string, code: string): Promise<void> {
-    try {
-      // Use the passwordResetService to mark the code as used
-      await passwordResetService.markCodeAsUsed(email, code);
-    } catch (error: any) {
-      console.error('Mark reset code as used error:', error);
-    }
-  },
-
-  // Clean up expired reset codes
-  async cleanupExpiredResetCodes(): Promise<void> {
-    try {
-      const resetCodesRef = ref(database, 'passwordResetCodes');
-      const snapshot = await get(resetCodesRef);
-      
-      if (snapshot.exists()) {
-        const now = new Date();
-        const cleanupPromises: Promise<void>[] = [];
-        
-        snapshot.forEach((childSnapshot) => {
-          const resetCodeData = childSnapshot.val() as PasswordResetCode;
-          const expiresAt = new Date(resetCodeData.expiresAt);
-          
-          if (now > expiresAt) {
-            cleanupPromises.push(remove(childSnapshot.ref));
-          }
-        });
-        
-        await Promise.all(cleanupPromises);
-      }
-    } catch (error: any) {
-      console.error('Cleanup expired reset codes error:', error);
-    }
-  },
 
           // Change password for authenticated user
         async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {

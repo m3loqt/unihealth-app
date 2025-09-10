@@ -38,7 +38,9 @@ export default function ForgotPasswordScreen() {
     setIsLoading(true);
 
     try {
+      console.log('Sending password reset email to:', email);
       await authService.requestPasswordReset(email);
+      console.log('Password reset email sent successfully');
       
       // Show success message and navigate back to sign in
       Alert.alert(
@@ -52,16 +54,21 @@ export default function ForgotPasswordScreen() {
         ]
       );
     } catch (error: any) {
+      console.error('Password reset error:', error);
       let errorMessage = 'Failed to send password reset email. Please try again.';
       
-      if (error.message.includes('user-not-found')) {
+      // Handle specific Firebase Auth errors
+      if (error.code === 'auth/user-not-found') {
         errorMessage = 'No account found with this email address. Please check your email or sign up for a new account.';
-      } else if (error.message.includes('too-many-requests')) {
+      } else if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Too many password reset requests. Please wait a few minutes before trying again.';
-      } else if (error.message.includes('invalid-email')) {
+      } else if (error.code === 'auth/invalid-email') {
         errorMessage = 'Please enter a valid email address.';
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = 'Invalid email address. Please check and try again.';
       }
       
+      console.log('Error code:', error.code, 'Error message:', error.message);
       Alert.alert('Error', errorMessage);
     } finally {
       setIsLoading(false);

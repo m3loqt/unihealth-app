@@ -269,13 +269,6 @@ export const validateAddress = (address: string): ValidationError | null => {
     };
   }
 
-  if (address.trim().length < 10) {
-    return {
-      field: 'Address',
-      message: 'Address is too short',
-      suggestion: 'Please provide a complete address including street, city, and postal code'
-    };
-  }
 
   if (address.trim().length > 200) {
     return {
