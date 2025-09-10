@@ -4,9 +4,11 @@ import { UserProfile, authService } from '@/services/api/auth';
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
+  emailVerified: boolean;
   signIn: (email: string, password: string) => Promise<{ success: boolean; userProfile?: UserProfile; error?: { type: string; message: string; suggestion?: string } }>;
   signOut: () => Promise<void>;
   signUp: (signUpData: any) => Promise<{ user: any; userProfile: UserProfile }>;
+  checkEmailVerification: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -14,14 +16,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [emailVerified, setEmailVerified] = useState(false);
 
   useEffect(() => {
     const unsubscribe = authService.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         const userProfile = await authService.getCompleteUserProfile(firebaseUser.uid);
         setUser(userProfile);
+        setEmailVerified(firebaseUser.emailVerified);
       } else {
         setUser(null);
+        setEmailVerified(false);
       }
       setLoading(false);
     });
@@ -60,8 +65,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return result;
   };
 
+  const checkEmailVerification = async (): Promise<boolean> => {
+    try {
+      const { auth } = await import('../../config/firebase');
+      if (auth.currentUser) {
+        const isVerified = await authService.checkEmailVerificationStatus(auth.currentUser);
+        setEmailVerified(isVerified);
+        return isVerified;
+      }
+      return false;
+    } catch (error) {
+      console.error('Check email verification error:', error);
+      return false;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut, signUp }}>
+    <AuthContext.Provider value={{ user, loading, emailVerified, signIn, signOut, signUp, checkEmailVerification }}>
       {children}
     </AuthContext.Provider>
   );

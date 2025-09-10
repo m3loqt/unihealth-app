@@ -6,7 +6,10 @@ import {
   signOut,
   onAuthStateChanged,
   User,
-  updatePassword
+  updatePassword,
+  sendEmailVerification,
+  applyActionCode,
+  verifyBeforeUpdateEmail
 } from 'firebase/auth';
 import { ref, set, get, child, remove, query, orderByChild, equalTo } from 'firebase/database';
 import { auth, database } from '../../config/firebase';
@@ -563,10 +566,25 @@ export const authService = {
       const filteredPatientNodeData = filterUndefinedValues(patientNodeData);
       
       // Store data in both nodes
+      console.log('📝 Storing user data to database...');
+      console.log('User data:', filteredUserNodeData);
+      console.log('Patient data:', filteredPatientNodeData);
+      
       await Promise.all([
         set(ref(database, `users/${user.uid}`), filteredUserNodeData),
         set(ref(database, `patients/${user.uid}`), filteredPatientNodeData)
       ]);
+      
+      console.log('✅ User data stored successfully in database');
+      
+      // Verify the data was stored correctly
+      const verifyUserRef = ref(database, `users/${user.uid}`);
+      const verifyUserSnapshot = await get(verifyUserRef);
+      console.log('🔍 Verification - User data exists in database:', verifyUserSnapshot.exists());
+      
+      if (!verifyUserSnapshot.exists()) {
+        throw new Error('Failed to store user data in database');
+      }
       
       // Create user profile for return with null safety
       const userProfile: UserProfile = {
@@ -594,7 +612,6 @@ export const authService = {
       const filteredUserProfile = filterUndefinedValues(userProfile);
       
       // Send welcome email (non-blocking - don't fail signup if email fails)
-
       try {
         const userName = `${signUpData.firstName} ${signUpData.lastName}`.trim();
         console.log('📧 Attempting to send welcome email to:', signUpData.email, 'for user:', userName);
@@ -604,6 +621,9 @@ export const authService = {
         console.warn('⚠️ Failed to send welcome email:', emailError);
         // Don't throw error - signup should still succeed even if email fails
       }
+
+      // Note: Email verification will be sent after first successful sign-in
+      // This signup method is only used for patients, specialists are created via website backend
       
       return { user, userProfile: filteredUserProfile as UserProfile };
     } catch (error: any) {
@@ -1095,5 +1115,85 @@ export const authService = {
             return { success: false, message: 'An unexpected error occurred' };
           }
         },
+
+  // Email verification methods
+  async sendEmailVerification(user: User): Promise<{ success: boolean; message: string }> {
+    try {
+      // Check if we've sent a verification email recently (within last 5 minutes)
+      const lastSentKey = `verification_sent_${user.uid}`;
+      const lastSent = await this.getLastVerificationSentTime(user.uid);
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+      
+      if (lastSent && (now - lastSent) < fiveMinutes) {
+        console.log('⏰ Verification email sent recently, skipping to avoid rate limit');
+        return { 
+          success: true, 
+          message: 'Verification email was sent recently. Please check your inbox.' 
+        };
+      }
+      
+      await sendEmailVerification(user);
+      
+      // Store the timestamp of when we sent the verification email
+      await this.setLastVerificationSentTime(user.uid, now);
+      
+      return { success: true, message: 'Verification email sent successfully' };
+    } catch (error: any) {
+      console.error('Send email verification error:', error);
+      return { success: false, message: error.message || 'Failed to send verification email' };
+    }
+  },
+
+  // Helper methods for tracking verification email sending
+  async getLastVerificationSentTime(uid: string): Promise<number | null> {
+    try {
+      const trackingRef = ref(database, `verification_tracking/${uid}/lastSent`);
+      const snapshot = await get(trackingRef);
+      return snapshot.exists() ? snapshot.val() : null;
+    } catch (error) {
+      console.error('Error getting last verification sent time:', error);
+      return null;
+    }
+  },
+
+  async setLastVerificationSentTime(uid: string, timestamp: number): Promise<void> {
+    try {
+      const trackingRef = ref(database, `verification_tracking/${uid}/lastSent`);
+      await set(trackingRef, timestamp);
+    } catch (error) {
+      console.error('Error setting last verification sent time:', error);
+    }
+  },
+
+  async verifyEmail(oobCode: string): Promise<{ success: boolean; message: string }> {
+    try {
+      await applyActionCode(auth, oobCode);
+      return { success: true, message: 'Email verified successfully' };
+    } catch (error: any) {
+      console.error('Verify email error:', error);
+      let errorMessage = 'Failed to verify email';
+      
+      if (error.code === 'auth/invalid-action-code') {
+        errorMessage = 'Invalid or expired verification link';
+      } else if (error.code === 'auth/expired-action-code') {
+        errorMessage = 'Verification link has expired. Please request a new one.';
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = 'This account has been disabled';
+      }
+      
+      return { success: false, message: errorMessage };
+    }
+  },
+
+  async checkEmailVerificationStatus(user: User): Promise<boolean> {
+    try {
+      await user.reload();
+      return user.emailVerified;
+    } catch (error) {
+      console.error('Check email verification error:', error);
+      return false;
+    }
+  },
 
 }; 
