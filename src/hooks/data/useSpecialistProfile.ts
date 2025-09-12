@@ -2,6 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { databaseService } from '../../services/database/firebase';
 import { useAuth } from '../auth/useAuth';
 
+export interface FeeHistoryEntry {
+  fee: number;
+  effectiveDate: string;
+  status: 'active' | 'inactive';
+}
+
 export interface SpecialistProfile {
   id: string;
   firstName?: string;
@@ -22,6 +28,7 @@ export interface SpecialistProfile {
   status?: string;
   clinicAffiliations?: string[];
   lastUpdated?: string;
+  feeHistory?: FeeHistoryEntry[];
 }
 
 export interface UseSpecialistProfileReturn {
