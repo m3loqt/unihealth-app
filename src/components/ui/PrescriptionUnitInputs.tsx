@@ -31,7 +31,7 @@ export const PrescriptionUnitInputs: React.FC<PrescriptionUnitInputsProps> = ({
     <View style={[styles.container, style]}>
       <View style={styles.inputRow}>
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Take</Text>
+          <Text style={styles.label}>Take <Text style={styles.requiredAsterisk}>*</Text></Text>
           <DynamicUnitInput
             value={takeValue}
             onChangeText={onTakeChange}
@@ -43,7 +43,7 @@ export const PrescriptionUnitInputs: React.FC<PrescriptionUnitInputsProps> = ({
         </View>
         
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Total Quantity</Text>
+          <Text style={styles.label}>Total Quantity <Text style={styles.requiredAsterisk}>*</Text></Text>
           <DynamicUnitInput
             value={totalValue}
             onChangeText={onTotalChange}
@@ -82,6 +82,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: '#374151',
     marginBottom: 6,
+  },
+  requiredAsterisk: {
+    color: '#EF4444',
+    fontWeight: 'bold',
   },
   input: {
     marginBottom: 0,
