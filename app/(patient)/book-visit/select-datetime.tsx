@@ -14,6 +14,7 @@ import {
   NativeScrollEvent,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
 } from 'react-native';
 import {
   ChevronLeft,
@@ -1303,14 +1304,20 @@ export default function SelectDateTimeScreen() {
         </View>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={true}
-        contentContainerStyle={styles.scrollViewContent}
-        bounces={true}
-        scrollEnabled={true}
-        nestedScrollEnabled={true}
+      <KeyboardAvoidingView
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={true}
+          contentContainerStyle={styles.scrollViewContent}
+          bounces={true}
+          scrollEnabled={true}
+          nestedScrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Doctor Card */}
         <View style={styles.clinicCardContainer}>
           <View style={styles.clinicCardTopRow}>
@@ -1540,7 +1547,8 @@ export default function SelectDateTimeScreen() {
             )}
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Continue Button */}
       <View style={styles.continueButtonContainer}>
@@ -1570,6 +1578,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  keyboardContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

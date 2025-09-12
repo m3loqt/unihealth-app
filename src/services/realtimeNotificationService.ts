@@ -2,6 +2,7 @@ import { ref, onValue, off, DataSnapshot, get } from 'firebase/database';
 import { database } from '../config/firebase';
 import { Appointment, Referral } from './database/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { databaseService } from './database/firebase';
 
 // Simple interface for displaying notifications in UI
 export interface RealtimeNotification {
@@ -127,8 +128,9 @@ class RealtimeNotificationService {
       const cachedNotifications = await this.loadCachedNotifications(userId);
       const existingNotificationIds = new Set(cachedNotifications.map(n => n.relatedId));
       
-      Object.values(appointments).forEach((appointment: any) => {
-        if (!appointment) return;
+      // Process appointments and enrich with patient/doctor names
+      const appointmentPromises = Object.values(appointments).map(async (appointment: any) => {
+        if (!appointment) return null;
         
         const appointmentTime = new Date(appointment.lastUpdated).getTime();
         console.log('🔔 Processing appointment:', {
@@ -142,7 +144,7 @@ class RealtimeNotificationService {
         
         if (appointmentTime < fromTime) {
           console.log('🔔 Skipping old appointment:', appointment.id, 'updated:', new Date(appointment.lastUpdated).toISOString());
-          return; // Skip old appointments
+          return null; // Skip old appointments
         }
         
         recentAppointments++;
@@ -155,7 +157,7 @@ class RealtimeNotificationService {
           
         if (!isRelevant) {
           console.log('🔔 Appointment not relevant to user:', appointment.id, 'patientId:', appointment.patientId, 'doctorId:', appointment.doctorId);
-          return;
+          return null;
         }
         
         relevantAppointments++;
@@ -164,22 +166,31 @@ class RealtimeNotificationService {
         // Check if we already have a notification for this appointment
         if (existingNotificationIds.has(appointment.id)) {
           console.log('🔔 Notification already exists for appointment:', appointment.id);
-          return;
+          return null;
         }
+        
+        // Enrich appointment data with patient and doctor names
+        const enrichedAppointment = await this.enrichAppointmentData(appointment);
         
         // Check if we should create a notification for this status
-        const shouldNotify = this.shouldCreateAppointmentNotification(appointment, userRole);
+        const shouldNotify = this.shouldCreateAppointmentNotification(enrichedAppointment, userRole);
         console.log('🔔 Should notify for appointment:', appointment.id, 'status:', appointment.status, 'shouldNotify:', shouldNotify);
         
-        if (!shouldNotify) return;
+        if (!shouldNotify) return null;
         
         // Create notification
-        const notification = this.createAppointmentNotification(userId, userRole, appointment);
+        const notification = this.createAppointmentNotification(userId, userRole, enrichedAppointment);
         if (notification) {
           console.log('🔔 Created notification for appointment:', appointment.id);
-          newNotifications.push(notification);
+          return notification;
         }
+        
+        return null;
       });
+
+      // Wait for all appointments to be processed
+      const results = await Promise.all(appointmentPromises);
+      newNotifications.push(...results.filter(notification => notification !== null));
       
       console.log('🔔 Appointment check summary:');
       console.log('  - Total appointments:', Object.keys(appointments).length);
@@ -313,8 +324,8 @@ class RealtimeNotificationService {
         const appointments = snapshot.val();
         const userAppointments: Appointment[] = [];
         
-        // Filter appointments for this user
-        Object.keys(appointments).forEach(appointmentId => {
+        // Filter appointments for this user and enrich with patient/doctor names
+        const appointmentPromises = Object.keys(appointments).map(async (appointmentId) => {
           try {
             const appointment = appointments[appointmentId];
             
@@ -323,17 +334,25 @@ class RealtimeNotificationService {
               ? appointment.patientId === userId
               : appointment.doctorId === userId;
             
-              
             if (isRelevant) {
-              userAppointments.push({
+              // Enrich appointment data with patient and doctor names
+              const enrichedAppointment = await this.enrichAppointmentData({
                 id: appointmentId,
                 ...appointment
               });
+              
+              return enrichedAppointment;
             }
+            return null;
           } catch (appointmentError) {
             console.error('🔔 Error processing appointment:', appointmentId, appointmentError);
+            return null;
           }
         });
+
+        // Wait for all appointments to be processed
+        const enrichedAppointments = await Promise.all(appointmentPromises);
+        userAppointments.push(...enrichedAppointments.filter(appointment => appointment !== null));
 
         console.log(`🔔 Found ${userAppointments.length} appointments for user ${userId}`);
         
@@ -617,6 +636,13 @@ class RealtimeNotificationService {
       console.error('Error formatting date:', error);
       return dateString; // Return original if formatting fails
     }
+  }
+
+  /**
+   * Enrich appointment data with patient and doctor names
+   */
+  private async enrichAppointmentData(appointmentData: any): Promise<any> {
+    return await databaseService.enrichAppointmentData(appointmentData);
   }
 
   /**
