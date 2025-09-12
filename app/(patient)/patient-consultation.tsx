@@ -1297,11 +1297,15 @@ export default function PatientConsultationScreen() {
   };
 
   // --- FIELD RENDERING WITH MIC ---
-  const renderFieldWithSpeech = (label: string, field: string, multiline = false) => (
+  const renderFieldWithSpeech = (label: string, field: string, multiline = false, useAsterisk = false) => (
     <View style={styles.fieldContainer}>
       <Text style={styles.fieldLabel}>
         {label}
-        <Text style={styles.requiredSuffix}> (required)</Text>
+        {useAsterisk ? (
+          <Text style={styles.requiredAsterisk}> *</Text>
+        ) : (
+          <Text style={styles.requiredSuffix}> (required)</Text>
+        )}
       </Text>
       <View style={styles.inputContainer}>
         <TextInput
@@ -1421,11 +1425,13 @@ export default function PatientConsultationScreen() {
               </View>
             </View>
             
+            <Text style={styles.requiredFieldsLegend}><Text style={styles.requiredAsterisk}>*</Text> required fields</Text>
+            
             {/* History of Present Illnesses */}
-            {renderFieldWithSpeech('History of Present Illnesses', 'presentIllnessHistory', true)}
+            {renderFieldWithSpeech('History of Present Illnesses', 'presentIllnessHistory', true, true)}
             
             {/* Review of Symptoms */}
-            {renderFieldWithSpeech('Review of Symptoms', 'reviewOfSymptoms', true)}
+            {renderFieldWithSpeech('Review of Symptoms', 'reviewOfSymptoms', true, true)}
           </View>
         );
         
@@ -1442,15 +1448,17 @@ export default function PatientConsultationScreen() {
               </View>
             </View>
             
+            <Text style={styles.requiredFieldsLegend}><Text style={styles.requiredAsterisk}>*</Text> required fields</Text>
+            
             {/* Lab Results */}
-            {renderFieldWithSpeech('Lab Results', 'labResults', true)}
+            {renderFieldWithSpeech('Lab Results', 'labResults', true, true)}
             
             {/* Medications */}
-            {renderFieldWithSpeech('Medications', 'medications', true)}
+            {renderFieldWithSpeech('Medications', 'medications', true, true)}
             
             {/* Diagnosis */}
             <View style={styles.fieldContainer}>
-              <Text style={styles.fieldLabel}>Diagnoses<Text style={styles.requiredSuffix}> (required)</Text></Text>
+              <Text style={styles.fieldLabel}>Diagnoses<Text style={styles.requiredAsterisk}> *</Text></Text>
               
               {/* Existing Diagnoses (editable inputs) */}
               {formData.diagnoses.map((diagnosis, index) => (
@@ -1481,7 +1489,7 @@ export default function PatientConsultationScreen() {
                     </View>
                     <View style={{ flex: 2, marginLeft: 12 }}>
                       <Text style={styles.fieldLabel}>
-                        Description<Text style={styles.requiredSuffix}> (required)</Text>
+                        Description<Text style={styles.requiredAsterisk}> *</Text>
                       </Text>
                       <View style={styles.inputContainerWithAction}>
                         <TextInput
@@ -1556,7 +1564,7 @@ export default function PatientConsultationScreen() {
                     </View>
                   </View>
                   <View style={{ flex: 2 }}>
-                    <Text style={styles.fieldLabel}>Description<Text style={styles.requiredSuffix}> (required)</Text></Text>
+                    <Text style={styles.fieldLabel}>Description<Text style={styles.requiredAsterisk}> *</Text></Text>
                     <View style={styles.inputContainerWithAction}>
                       <TextInput
                         style={[styles.textInput, styles.diagnosisDescriptionInput, styles.diagnosisTextInput, { flex: 1 }]}
@@ -1624,7 +1632,7 @@ export default function PatientConsultationScreen() {
             </View>
             
             {/* Differential Diagnosis */}
-            {renderFieldWithSpeech('Differential Diagnosis', 'differentialDiagnosis', true)}
+            {renderFieldWithSpeech('Differential Diagnosis', 'differentialDiagnosis', true, true)}
           </View>
         );
         
@@ -1641,11 +1649,13 @@ export default function PatientConsultationScreen() {
               </View>
             </View>
             
+            <Text style={styles.requiredFieldsLegend}><Text style={styles.requiredAsterisk}>*</Text> required fields</Text>
+            
             {/* SOAP Notes */}
-            {renderFieldWithSpeech('Subjective', 'subjective', true)}
-            {renderFieldWithSpeech('Objective', 'objective', true)}
-            {renderFieldWithSpeech('Assessment', 'assessment', true)}
-            {renderFieldWithSpeech('Plan', 'plan', true)}
+            {renderFieldWithSpeech('Subjective', 'subjective', true, true)}
+            {renderFieldWithSpeech('Objective', 'objective', true, true)}
+            {renderFieldWithSpeech('Assessment', 'assessment', true, true)}
+            {renderFieldWithSpeech('Plan', 'plan', true, true)}
           </View>
         );
         
@@ -1662,11 +1672,13 @@ export default function PatientConsultationScreen() {
               </View>
             </View>
             
+            <Text style={styles.requiredFieldsLegend}><Text style={styles.requiredAsterisk}>*</Text> required fields</Text>
+            
             {/* Treatment Plan */}
-            {renderFieldWithSpeech('Treatment Plan', 'treatmentPlan', true)}
+            {renderFieldWithSpeech('Treatment Plan', 'treatmentPlan', true, true)}
             
             {/* Clinical Summary */}
-            {renderFieldWithSpeech('Clinical Summary', 'clinicalSummary', true)}
+            {renderFieldWithSpeech('Clinical Summary', 'clinicalSummary', true, true)}
           </View>
         );
         
@@ -1753,32 +1765,42 @@ export default function PatientConsultationScreen() {
               {showAddPrescription && (
                 <View style={styles.addForm}>
                   <Text style={styles.addFormTitle}>Add New Prescription</Text>
-                  <TextInput
-                    style={styles.addFormInput}
-                    placeholder="Medication name"
-                    value={newPrescription.medication}
-                    onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, medication: value }))}
-                  />
+                  <Text style={styles.requiredFieldsLegend}><Text style={styles.requiredAsterisk}>*</Text> required fields</Text>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldLabel}>Medication name <Text style={styles.requiredAsterisk}>*</Text></Text>
+                    <TextInput
+                      style={styles.addFormInput}
+                      placeholder="Enter medication name"
+                      value={newPrescription.medication}
+                      onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, medication: value }))}
+                    />
+                  </View>
                   
                   {/* Row 2: Dosage + Formulation */}
                   <View style={styles.addFormRow}>
-                    <TextInput
-                      style={[styles.addFormInput, styles.addFormInputHalf]}
-                      placeholder="Dosage (e.g., 10mg)"
-                      value={newPrescription.dosage}
-                      onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, dosage: value }))}
-                    />
-                    <TouchableOpacity
-                      style={[styles.addFormInput, styles.addFormInputHalf, styles.frequencyButton]}
-                      onPress={() => setShowFormulaModal(true)}
-                    >
-                      <View style={styles.frequencyButtonContent}>
-                        <Text style={newPrescription.formula ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
-                          {newPrescription.formula || 'Formulation'}
-                        </Text>
-                        <ChevronDown size={16} color="#6B7280" />
-                      </View>
-                    </TouchableOpacity>
+                    <View style={styles.fieldContainerHalf}>
+                      <Text style={styles.fieldLabel}>Dosage <Text style={styles.requiredAsterisk}>*</Text></Text>
+                      <TextInput
+                        style={[styles.addFormInput, styles.addFormInputHalf]}
+                        placeholder="e.g., 10mg"
+                        value={newPrescription.dosage}
+                        onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, dosage: value }))}
+                      />
+                    </View>
+                    <View style={styles.fieldContainerHalf}>
+                      <Text style={styles.fieldLabel}>Formulation <Text style={styles.requiredAsterisk}>*</Text></Text>
+                      <TouchableOpacity
+                        style={[styles.addFormInput, styles.addFormInputHalf, styles.frequencyButton]}
+                        onPress={() => setShowFormulaModal(true)}
+                      >
+                        <View style={styles.frequencyButtonContent}>
+                          <Text style={newPrescription.formula ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
+                            {newPrescription.formula || 'Select formulation'}
+                          </Text>
+                          <ChevronDown size={16} color="#6B7280" />
+                        </View>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                   
                   {/* Row 3: Take & Total Quantity with Dynamic Units */}
@@ -1794,69 +1816,81 @@ export default function PatientConsultationScreen() {
                   
                   {/* Row 4: Frequency + Route */}
                   <View style={styles.addFormRow}>
-                    <TouchableOpacity
-                      style={[styles.addFormInput, styles.addFormInputHalf, styles.frequencyButton]}
-                      onPress={() => setShowFrequencyModal(true)}
-                    >
-                      <View style={styles.frequencyButtonContent}>
-                        <Text style={newPrescription.frequency ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
-                          {newPrescription.frequency || 'Frequency'}
-                        </Text>
-                        <ChevronDown size={16} color="#6B7280" />
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.addFormInput, styles.addFormInputHalf, styles.frequencyButton]}
-                      onPress={() => setShowRouteModal(true)}
-                    >
-                      <View style={styles.frequencyButtonContent}>
-                        <Text style={newPrescription.route ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
-                          {newPrescription.route || 'Route'}
-                        </Text>
-                        <ChevronDown size={16} color="#6B7280" />
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                  
-                  {/* Row 5: Duration */}
-                  <View style={styles.addFormRow}>
-                    <View style={[styles.addFormInput, styles.addFormInputHalf, { flexDirection: 'row', gap: 8 }]}>
-                      <TextInput
-                        style={[styles.addFormInput, { flex: 1, marginBottom: 0 }]}
-                        placeholder="Duration"
-                        value={newPrescription.durationNumber}
-                        onChangeText={(value) => {
-                          // Only allow numbers 1-30
-                          const numValue = parseInt(value, 10);
-                          if (value === '' || (numValue >= 1 && numValue <= 30)) {
-                            setNewPrescription((prev) => ({ ...prev, durationNumber: value }));
-                          }
-                        }}
-                        keyboardType="numeric"
-                        maxLength={2}
-                      />
+                    <View style={styles.fieldContainerHalf}>
+                      <Text style={styles.fieldLabel}>Frequency <Text style={styles.requiredAsterisk}>*</Text></Text>
                       <TouchableOpacity
-                        style={[styles.addFormInput, { flex: 1, marginBottom: 0 }, styles.frequencyButton]}
-                        onPress={() => setShowDurationUnitModal(true)}
+                        style={[styles.addFormInput, styles.addFormInputHalf, styles.frequencyButton]}
+                        onPress={() => setShowFrequencyModal(true)}
                       >
                         <View style={styles.frequencyButtonContent}>
-                          <Text style={newPrescription.durationUnit ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
-                            {newPrescription.durationUnit || 'Unit'}
+                          <Text style={newPrescription.frequency ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
+                            {newPrescription.frequency || 'Select frequency'}
+                          </Text>
+                          <ChevronDown size={16} color="#6B7280" />
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.fieldContainerHalf}>
+                      <Text style={styles.fieldLabel}>Route <Text style={styles.requiredAsterisk}>*</Text></Text>
+                      <TouchableOpacity
+                        style={[styles.addFormInput, styles.addFormInputHalf, styles.frequencyButton]}
+                        onPress={() => setShowRouteModal(true)}
+                      >
+                        <View style={styles.frequencyButtonContent}>
+                          <Text style={newPrescription.route ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
+                            {newPrescription.route || 'Select route'}
                           </Text>
                           <ChevronDown size={16} color="#6B7280" />
                         </View>
                       </TouchableOpacity>
                     </View>
                   </View>
-                  <TextInput
-                    style={[styles.addFormInput, styles.addFormTextArea]}
-                    placeholder="Description/Instructions"
-                    value={newPrescription.description}
-                    onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, description: value }))}
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                  />
+                  
+                  {/* Row 5: Duration */}
+                  <View style={styles.addFormRow}>
+                    <View style={styles.fieldContainerHalf}>
+                      <Text style={styles.fieldLabel}>Duration <Text style={styles.requiredAsterisk}>*</Text></Text>
+                      <View style={[styles.addFormInput, styles.addFormInputHalf, { flexDirection: 'row', gap: 8 }]}>
+                        <TextInput
+                          style={[styles.addFormInput, { flex: 1, marginBottom: 0 }]}
+                          placeholder="Enter duration"
+                          value={newPrescription.durationNumber}
+                          onChangeText={(value) => {
+                            // Only allow numbers 1-30
+                            const numValue = parseInt(value, 10);
+                            if (value === '' || (numValue >= 1 && numValue <= 30)) {
+                              setNewPrescription((prev) => ({ ...prev, durationNumber: value }));
+                            }
+                          }}
+                          keyboardType="numeric"
+                          maxLength={2}
+                        />
+                        <TouchableOpacity
+                          style={[styles.addFormInput, { flex: 1, marginBottom: 0 }, styles.frequencyButton]}
+                          onPress={() => setShowDurationUnitModal(true)}
+                        >
+                          <View style={styles.frequencyButtonContent}>
+                            <Text style={newPrescription.durationUnit ? styles.frequencyButtonText : styles.frequencyButtonPlaceholder}>
+                              {newPrescription.durationUnit || 'Unit'}
+                            </Text>
+                            <ChevronDown size={16} color="#6B7280" />
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldLabel}>Description/Instructions <Text style={styles.requiredAsterisk}>*</Text></Text>
+                    <TextInput
+                      style={[styles.addFormInput, styles.addFormTextArea]}
+                      placeholder="Enter description or instructions"
+                      value={newPrescription.description}
+                      onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, description: value }))}
+                      multiline
+                      numberOfLines={3}
+                      textAlignVertical="top"
+                    />
+                  </View>
                   <View style={styles.addFormActions}>
                     <TouchableOpacity
                       style={styles.cancelButton}
@@ -1971,8 +2005,9 @@ export default function PatientConsultationScreen() {
               {showAddCertificate && (
                 <View style={styles.addForm}>
                   <Text style={styles.addFormTitle}>Issue New Certificate</Text>
+                  <Text style={styles.requiredFieldsLegend}><Text style={styles.requiredAsterisk}>*</Text> required fields</Text>
                   <View style={styles.addFormInput}>
-                    <Text style={styles.addFormLabel}>Certificate Type</Text>
+                    <Text style={styles.addFormLabel}>Certificate Type <Text style={styles.requiredAsterisk}>*</Text></Text>
                     <View style={styles.certificateTypeSelector}>
                       {['Fit to Work Certificate', 'Medical/Sickness Certificate', 'Fit to Travel Certificate'].map((certType) => (
                         <TouchableOpacity
@@ -1993,126 +2028,171 @@ export default function PatientConsultationScreen() {
                       ))}
                     </View>
                   </View>
-                  <TextInput
-                    style={[styles.addFormInput, styles.addFormTextArea]}
-                    placeholder="Description/Medical findings"
-                    value={newCertificate.description}
-                    onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, description: value }))}
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                  />
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldLabel}>Description/Medical findings <Text style={styles.requiredAsterisk}>*</Text></Text>
+                    <TextInput
+                      style={[styles.addFormInput, styles.addFormTextArea]}
+                      placeholder="Enter description or medical findings"
+                      value={newCertificate.description}
+                      onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, description: value }))}
+                      multiline
+                      numberOfLines={3}
+                      textAlignVertical="top"
+                    />
+                  </View>
 
 
                   {/* Dynamic fields based on certificate type */}
                   {newCertificate.type === 'Fit to Work Certificate' && (
                     <>
-                      <TextInput
-                        style={[styles.addFormInput, styles.addFormTextArea]}
-                        placeholder="Fitness Statement (e.g., Patient is medically fit to return to work)"
-                        value={newCertificate.fitnessStatement}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, fitnessStatement: value }))}
-                        multiline
-                        numberOfLines={3}
-                        textAlignVertical="top"
-                      />
-                      <TextInput
-                        style={styles.addFormInput}
-                        placeholder="Work Restrictions (e.g., None, Light duty only)"
-                        value={newCertificate.workRestrictions}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, workRestrictions: value }))}
-                      />
-                      <TextInput
-                        style={styles.addFormInput}
-                        placeholder="Next Review Date (optional)"
-                        value={newCertificate.nextReviewDate}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, nextReviewDate: value }))}
-                      />
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Fitness Statement <Text style={styles.requiredAsterisk}>*</Text></Text>
+                        <TextInput
+                          style={[styles.addFormInput, styles.addFormTextArea]}
+                          placeholder="e.g., Patient is medically fit to return to work"
+                          value={newCertificate.fitnessStatement}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, fitnessStatement: value }))}
+                          multiline
+                          numberOfLines={3}
+                          textAlignVertical="top"
+                        />
+                      </View>
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Work Restrictions <Text style={styles.requiredAsterisk}>*</Text></Text>
+                        <TextInput
+                          style={styles.addFormInput}
+                          placeholder="e.g., None, Light duty only"
+                          value={newCertificate.workRestrictions}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, workRestrictions: value }))}
+                        />
+                      </View>
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Next Review Date</Text>
+                        <TextInput
+                          style={styles.addFormInput}
+                          placeholder="Optional - e.g., Aug 30, 2025"
+                          value={newCertificate.nextReviewDate}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, nextReviewDate: value }))}
+                        />
+                      </View>
                     </>
                   )}
 
                   {newCertificate.type === 'Medical/Sickness Certificate' && (
                     <>
-                      <TextInput
-                        style={styles.addFormInput}
-                        placeholder="Unfit Period Start (e.g., Aug 20, 2025)"
-                        value={newCertificate.unfitPeriodStart}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, unfitPeriodStart: value }))}
-                      />
-                      <TextInput
-                        style={styles.addFormInput}
-                        placeholder="Unfit Period End (e.g., Aug 22, 2025)"
-                        value={newCertificate.unfitPeriodEnd}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, unfitPeriodEnd: value }))}
-                      />
-                      <TextInput
-                        style={[styles.addFormInput, styles.addFormTextArea]}
-                        placeholder="Reason for Unfitness (e.g., Medical condition requiring rest)"
-                        value={newCertificate.reasonForUnfitness}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, reasonForUnfitness: value }))}
-                        multiline
-                        numberOfLines={3}
-                        textAlignVertical="top"
-                      />
-                      <TextInput
-                        style={[styles.addFormInput, styles.addFormTextArea]}
-                        placeholder="Medical Advice (e.g., Patient is advised to rest and refrain from work)"
-                        value={newCertificate.medicalAdvice}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, medicalAdvice: value }))}
-                        multiline
-                        numberOfLines={3}
-                        textAlignVertical="top"
-                      />
-                      <TextInput
-                        style={styles.addFormInput}
-                        placeholder="Follow-up Date (optional)"
-                        value={newCertificate.followUpDate}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, followUpDate: value }))}
-                      />
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Unfit Period Start <Text style={styles.requiredAsterisk}>*</Text></Text>
+                        <TextInput
+                          style={styles.addFormInput}
+                          placeholder="e.g., Aug 20, 2025"
+                          value={newCertificate.unfitPeriodStart}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, unfitPeriodStart: value }))}
+                        />
+                      </View>
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Unfit Period End <Text style={styles.requiredAsterisk}>*</Text></Text>
+                        <TextInput
+                          style={styles.addFormInput}
+                          placeholder="e.g., Aug 22, 2025"
+                          value={newCertificate.unfitPeriodEnd}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, unfitPeriodEnd: value }))}
+                        />
+                      </View>
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Reason for Unfitness <Text style={styles.requiredAsterisk}>*</Text></Text>
+                        <TextInput
+                          style={[styles.addFormInput, styles.addFormTextArea]}
+                          placeholder="e.g., Medical condition requiring rest"
+                          value={newCertificate.reasonForUnfitness}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, reasonForUnfitness: value }))}
+                          multiline
+                          numberOfLines={3}
+                          textAlignVertical="top"
+                        />
+                      </View>
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Medical Advice <Text style={styles.requiredAsterisk}>*</Text></Text>
+                        <TextInput
+                          style={[styles.addFormInput, styles.addFormTextArea]}
+                          placeholder="e.g., Patient is advised to rest and refrain from work"
+                          value={newCertificate.medicalAdvice}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, medicalAdvice: value }))}
+                          multiline
+                          numberOfLines={3}
+                          textAlignVertical="top"
+                        />
+                      </View>
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Follow-up Date</Text>
+                        <TextInput
+                          style={styles.addFormInput}
+                          placeholder="Optional - e.g., Aug 25, 2025"
+                          value={newCertificate.followUpDate}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, followUpDate: value }))}
+                        />
+                      </View>
                     </>
                   )}
 
                   {newCertificate.type === 'Fit to Travel Certificate' && (
                     <>
-                      <TextInput
-                        style={[styles.addFormInput, styles.addFormTextArea]}
-                        placeholder="Travel Fitness Statement (e.g., Patient is medically fit to travel)"
-                        value={newCertificate.travelFitnessStatement}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, travelFitnessStatement: value }))}
-                        multiline
-                        numberOfLines={3}
-                        textAlignVertical="top"
-                      />
-                      <TextInput
-                        style={styles.addFormInput}
-                        placeholder="Mode of Travel (e.g., Air, Sea, Land)"
-                        value={newCertificate.travelMode}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, travelMode: value }))}
-                      />
-                      <TextInput
-                        style={styles.addFormInput}
-                        placeholder="Destination (e.g., International, Domestic)"
-                        value={newCertificate.destination}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, destination: value }))}
-                      />
-                      <TextInput
-                        style={styles.addFormInput}
-                        placeholder="Travel Date (e.g., Aug 25, 2025)"
-                        value={newCertificate.travelDate}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, travelDate: value }))}
-                      />
-                      <TextInput
-                        style={styles.addFormInput}
-                        placeholder="Special Conditions (e.g., None, Wheelchair assistance)"
-                        value={newCertificate.specialConditions}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, specialConditions: value }))}
-                      />
-                      <TextInput
-                        style={styles.addFormInput}
-                        placeholder="Validity Period (e.g., 30 days from issue)"
-                        value={newCertificate.validityPeriod}
-                        onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, validityPeriod: value }))}
-                      />
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Travel Fitness Statement <Text style={styles.requiredAsterisk}>*</Text></Text>
+                        <TextInput
+                          style={[styles.addFormInput, styles.addFormTextArea]}
+                          placeholder="e.g., Patient is medically fit to travel"
+                          value={newCertificate.travelFitnessStatement}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, travelFitnessStatement: value }))}
+                          multiline
+                          numberOfLines={3}
+                          textAlignVertical="top"
+                        />
+                      </View>
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Mode of Travel <Text style={styles.requiredAsterisk}>*</Text></Text>
+                        <TextInput
+                          style={styles.addFormInput}
+                          placeholder="e.g., Air, Sea, Land"
+                          value={newCertificate.travelMode}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, travelMode: value }))}
+                        />
+                      </View>
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Destination <Text style={styles.requiredAsterisk}>*</Text></Text>
+                        <TextInput
+                          style={styles.addFormInput}
+                          placeholder="e.g., International, Domestic"
+                          value={newCertificate.destination}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, destination: value }))}
+                        />
+                      </View>
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Travel Date <Text style={styles.requiredAsterisk}>*</Text></Text>
+                        <TextInput
+                          style={styles.addFormInput}
+                          placeholder="e.g., Aug 25, 2025"
+                          value={newCertificate.travelDate}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, travelDate: value }))}
+                        />
+                      </View>
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Special Conditions <Text style={styles.requiredAsterisk}>*</Text></Text>
+                        <TextInput
+                          style={styles.addFormInput}
+                          placeholder="e.g., None, Wheelchair assistance"
+                          value={newCertificate.specialConditions}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, specialConditions: value }))}
+                        />
+                      </View>
+                      <View style={styles.fieldContainer}>
+                        <Text style={styles.fieldLabel}>Validity Period <Text style={styles.requiredAsterisk}>*</Text></Text>
+                        <TextInput
+                          style={styles.addFormInput}
+                          placeholder="e.g., 30 days from issue"
+                          value={newCertificate.validityPeriod}
+                          onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, validityPeriod: value }))}
+                        />
+                      </View>
                     </>
                   )}
                   <View style={styles.addFormActions}>
@@ -2684,18 +2764,6 @@ const styles = StyleSheet.create({
     marginTop: 0,
     letterSpacing: -0.2,
   },
-  fieldContainer: {
-    marginBottom: 12,
-  },
-  fieldLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  requiredAsterisk: {
-    color: '#1E40AF',
-  },
   requiredSuffix: {
     color: '#1E40AF',
   },
@@ -2985,6 +3053,30 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
     marginBottom: 16,
+  },
+  requiredFieldsLegend: {
+    fontSize: 12,
+    fontFamily: 'Inter-Italic',
+    color: '#6B7280',
+    marginBottom: 16,
+    fontStyle: 'italic',
+  },
+  fieldContainer: {
+    marginBottom: 16,
+  },
+  fieldContainerHalf: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  requiredAsterisk: {
+    color: '#EF4444',
+    fontWeight: 'bold',
   },
   addFormInput: {
     backgroundColor: '#F9FAFB',
