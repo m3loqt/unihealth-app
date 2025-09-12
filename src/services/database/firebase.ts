@@ -1932,6 +1932,49 @@ export const databaseService = {
     }
   },
 
+  // Function to add fee history entry when a fee change is approved
+  async addFeeHistoryEntry(specialistId: string, newFee: number): Promise<void> {
+    try {
+      const doctorRef = ref(database, `doctors/${specialistId}`);
+      const doctorSnapshot = await get(doctorRef);
+      
+      if (doctorSnapshot.exists()) {
+        const currentData = doctorSnapshot.val();
+        const existingFeeHistory = currentData.feeHistory || [];
+        
+        // Add new fee history entry
+        const newFeeEntry = {
+          fee: newFee,
+          effectiveDate: new Date().toISOString(),
+          status: 'active'
+        };
+        
+        // Mark previous entries as inactive
+        const updatedFeeHistory = existingFeeHistory.map((entry: any) => ({
+          ...entry,
+          status: 'inactive'
+        }));
+        
+        // Add new entry
+        updatedFeeHistory.push(newFeeEntry);
+        
+        await update(doctorRef, {
+          feeHistory: updatedFeeHistory
+        });
+        
+        console.log('📊 Fee history updated for specialist:', specialistId, {
+          newFee,
+          effectiveDate: newFeeEntry.effectiveDate
+        });
+      } else {
+        console.log('Doctor profile not found for specialist:', specialistId);
+      }
+    } catch (error) {
+      console.error('Error adding fee history entry:', error);
+      throw error;
+    }
+  },
+
   // Function to manually update professional fee status (for admin/testing purposes)
   async updateProfessionalFeeStatus(specialistId: string, status: 'pending' | 'confirmed'): Promise<void> {
     try {
@@ -1955,21 +1998,29 @@ export const databaseService = {
 
   async getPatientById(patientId: string): Promise<any> {
     try {
-      // First try to get from patients node
+      // First try to get from users node (primary source for patient names)
+      const userRef = ref(database, `users/${patientId}`);
+      const userSnapshot = await get(userRef);
+      if (userSnapshot.exists()) {
+        const userData = userSnapshot.val();
+        return { 
+          id: patientId, 
+          firstName: userData.firstName || userData.first_name || 'Unknown',
+          lastName: userData.lastName || userData.last_name || 'Patient',
+          middleName: userData.middleName || userData.middle_name || '',
+          email: userData.email || '',
+          ...userData 
+        };
+      }
+      
+      // If not found in users, try patients node as fallback
       const patientRef = ref(database, `patients/${patientId}`);
       const patientSnapshot = await get(patientRef);
       if (patientSnapshot.exists()) {
         return { id: patientId, ...patientSnapshot.val() };
       }
       
-      // If not found in patients, try users node
-      const userRef = ref(database, `users/${patientId}`);
-      const userSnapshot = await get(userRef);
-      if (userSnapshot.exists()) {
-        return { id: patientId, ...userSnapshot.val() };
-      }
-      
-      // If not found in either, get from appointments data
+      // If not found in either, get from appointments data as last resort
       const appointmentsRef = ref(database, 'appointments');
       const snapshot = await get(appointmentsRef);
       
@@ -3767,27 +3818,6 @@ export const databaseService = {
       // const processedRef = ref(database, `processedNotifications/${userId}`);
       // const snapshot = await get(processedRef);
       return; // Skip cleanup since we're not using processed notifications
-      
-      if (snapshot.exists()) {
-        const processedData = snapshot.val();
-        const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-        
-        const updates: { [key: string]: null } = {};
-        Object.entries(processedData).forEach(([key, data]: [string, any]) => {
-          if (data && data.timestamp && data.timestamp < thirtyDaysAgo) {
-            updates[key] = null;
-          }
-        });
-        
-        if (Object.keys(updates).length > 0) {
-          await update(processedRef, updates);
-          console.log(`🧹 Cleaned up ${Object.keys(updates).length} old processed notification records for user: ${userId}`);
-        } else {
-          console.log(`🧹 No old processed notification records to clean up for user: ${userId}`);
-        }
-      } else {
-        console.log(`🧹 No processed notification records found for user: ${userId}`);
-      }
     } catch (error) {
       console.error('❌ Error cleaning up processed notifications:', error, { userId });
     }
