@@ -39,10 +39,14 @@ import {
   Clock,
   XCircle,
   Pill,
+  DollarSign,
+  TrendingUp,
+  Users,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { useSpecialistProfile } from '../../../src/hooks/data/useSpecialistProfile';
+import { useSpecialistEarnings } from '../../../src/hooks/data/useSpecialistEarnings';
 import { useRealtimeNotificationContext } from '../../../src/contexts/RealtimeNotificationContext';
 import { getSafeNotifications, getSafeUnreadCount } from '../../../src/utils/notificationUtils';
 import { databaseService } from '../../../src/services/database/firebase';
@@ -58,6 +62,7 @@ import { GlobalNotificationModal } from '../../../src/components/shared';
 export default function SpecialistProfileScreen() {
   const { user, signOut } = useAuth();
   const { profile, loading: profileLoading, error: profileError, updateProfile } = useSpecialistProfile();
+  const { earnings, refreshEarnings } = useSpecialistEarnings();
   const { 
     notifications: realtimeNotificationData,
   } = useRealtimeNotificationContext();
@@ -70,8 +75,8 @@ export default function SpecialistProfileScreen() {
   const markAsRead = realtimeNotificationData.markAsRead;
   const markAllAsRead = realtimeNotificationData.markAllAsRead;
   const deleteNotification = realtimeNotificationData.deleteNotification;
-  const refreshNotifications = realtimeNotificationData.refresh;
-  const handleNotificationPress = realtimeNotificationData.handleNotificationPress;
+  // const refreshNotifications = realtimeNotificationData.refresh;
+  // const handleNotificationPress = realtimeNotificationData.handleNotificationPress || (() => {});
 
   // Debug logging
   React.useEffect(() => {
@@ -1017,6 +1022,120 @@ export default function SpecialistProfileScreen() {
 
         </View>
 
+        {/* Earnings Overview */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Earnings</Text>
+          {earnings.loading ? (
+            <View style={styles.earningsLoadingContainer}>
+              <RefreshCw size={16} color="#1E40AF" />
+              <Text style={styles.earningsLoadingText}>Calculating...</Text>
+            </View>
+          ) : earnings.error ? (
+            <View style={styles.earningsErrorContainer}>
+              <Text style={styles.earningsErrorText}>{earnings.error}</Text>
+              <TouchableOpacity 
+                style={styles.earningsRetryButton}
+                onPress={refreshEarnings}
+              >
+                <Text style={styles.earningsRetryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.earningsContainer}>
+              {/* Total Earnings */}
+              <View style={styles.totalEarningsCard}>
+                {/* <DollarSign size={20} color="#10B981" /> */}
+                <Text style={styles.totalEarningsAmount}>
+                  ₱{earnings.totalEarnings.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                </Text>
+                <Text style={styles.totalEarningsSubtext}>
+                  {earnings.totalAppointments + earnings.totalReferrals} consultations
+                </Text>
+              </View>
+
+              {/* Breakdown */}
+              <View style={styles.earningsBreakdown}>
+                <View style={styles.earningsBreakdownItem}>
+                  <Users size={16} color="#1E40AF" />
+                  <Text style={styles.earningsBreakdownText}>
+                    {earnings.totalAppointments} appointments
+                  </Text>
+                </View>
+                <View style={styles.earningsBreakdownItem}>
+                  <TrendingUp size={16} color="#1E40AF" />
+                  <Text style={styles.earningsBreakdownText}>
+                    {earnings.totalReferrals} referrals
+                  </Text>
+                </View>
+              </View>
+
+              {/* Fee Period Information */}
+              <View style={styles.feeInfoContainer}>
+                {earnings.previousPeriod && earnings.currentPeriod ? (
+                  <View style={styles.feeComparisonContainer}>
+                    {/* Previous Period */}
+                    <View style={styles.feePeriodItem}>
+                      <Text style={styles.feePeriodLabel}>Previous</Text>
+                      <Text style={styles.feePeriodAmount}>₱{earnings.previousPeriod.fee.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
+                      <View style={styles.consultationCounts}>
+                        <View style={styles.consultationItem}>
+                          <Users size={12} color="#6B7280" />
+                          <Text style={styles.consultationText}>{earnings.previousPeriod.appointments}</Text>
+                        </View>
+                        <View style={styles.consultationItem}>
+                          <TrendingUp size={12} color="#6B7280" />
+                          <Text style={styles.consultationText}>{earnings.previousPeriod.referrals}</Text>
+                        </View>
+                      </View>
+                    </View>
+                    
+                    {/* Arrow Separator */}
+                    <View style={styles.feeSeparator}>
+                      <Text style={styles.feeSeparatorText}>→</Text>
+                    </View>
+                    
+                    {/* Current Period */}
+                    <View style={styles.feePeriodItem}>
+                      <Text style={styles.feePeriodLabel}>Current</Text>
+                      <Text style={styles.feePeriodAmountCurrent}>₱{earnings.currentPeriod.fee.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
+                      <View style={styles.consultationCounts}>
+                        <View style={styles.consultationItem}>
+                          <Users size={12} color="#059669" />
+                          <Text style={styles.consultationTextCurrent}>{earnings.currentPeriod.appointments}</Text>
+                        </View>
+                        <View style={styles.consultationItem}>
+                          <TrendingUp size={12} color="#059669" />
+                          <Text style={styles.consultationTextCurrent}>{earnings.currentPeriod.referrals}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                ) : earnings.currentPeriod ? (
+                  <View style={styles.singleFeePeriodContainer}>
+                    <Text style={styles.singleFeeLabel}>Current fee</Text>
+                    <Text style={styles.singleFeeAmount}>₱{earnings.currentPeriod.fee.toLocaleString('en-PH', { minimumFractionDigits: 2 })} per consultation</Text>
+                    <View style={styles.singleConsultationCounts}>
+                      <View style={styles.consultationItem}>
+                        <Users size={12} color="#059669" />
+                        <Text style={styles.consultationTextCurrent}>{earnings.currentPeriod.appointments} appointments</Text>
+                      </View>
+                      <View style={styles.consultationItem}>
+                        <TrendingUp size={12} color="#059669" />
+                        <Text style={styles.consultationTextCurrent}>{earnings.currentPeriod.referrals} referrals</Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.singleFeeContainer}>
+                    <Text style={styles.singleFeeLabel}>Current fee</Text>
+                    <Text style={styles.singleFeeAmount}>₱{earnings.currentFee.toLocaleString('en-PH', { minimumFractionDigits: 2 })} per consultation</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* Professional Fee Change */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Professional Fee Change</Text>
@@ -1557,7 +1676,7 @@ export default function SpecialistProfileScreen() {
                 <View style={styles.feeChangeModalField}>
                   <Text style={styles.feeChangeModalLabel}>Current Fee</Text>
                   <Text style={styles.feeChangeModalCurrentFee}>
-                    ₱{(profile as any)?.professionalFeeStatus === 'approved' && (profile as any)?.feeChangeRequest?.requestedFee 
+                    {(profile as any)?.professionalFeeStatus === 'approved' && (profile as any)?.feeChangeRequest?.requestedFee 
                       ? (profile as any).feeChangeRequest.requestedFee 
                       : (profile as any)?.feeChangeRequest?.previousFee || professionalFee}
                   </Text>
@@ -2536,12 +2655,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
   },
-  feeAmount: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-    textAlign: 'right',
-  },
   previousFeeText: {
     fontSize: 12,
     fontFamily: 'Inter-Regular',
@@ -2735,5 +2848,201 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#1F2937',
+  },
+  // Earnings Styles
+  earningsLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  earningsLoadingText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#1E40AF',
+  },
+  earningsErrorContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  earningsErrorText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#DC2626',
+    textAlign: 'center',
+  },
+  earningsRetryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  earningsRetryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+  },
+  earningsContainer: {
+    gap: 12,
+  },
+  totalEarningsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#10B981',
+    borderRadius: 8,
+    padding: 16,
+    gap: 12,
+  },
+  totalEarningsAmount: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    flex: 1,
+  },
+  totalEarningsSubtext: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  earningsBreakdown: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  earningsBreakdownItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
+  },
+  earningsBreakdownText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  currentFeeInfo: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 6,
+    padding: 8,
+  },
+  currentFeeLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  // New fee display styles
+  feeInfoContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  feeComparisonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  feeItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  feeLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter-Medium',
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  feeAmount: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#6B7280',
+  },
+  feeAmountCurrent: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#059669',
+  },
+  feeSeparator: {
+    marginHorizontal: 8,
+    alignItems: 'center',
+  },
+  feeSeparatorText: {
+    fontSize: 18,
+    color: '#94A3B8',
+    fontFamily: 'Inter-Bold',
+  },
+  singleFeeContainer: {
+    alignItems: 'center',
+  },
+  singleFeeLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter-Medium',
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  singleFeeAmount: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#059669',
+  },
+  // Enhanced fee period styles
+  feePeriodItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  feePeriodLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter-Medium',
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  feePeriodAmount: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  feePeriodAmountCurrent: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#059669',
+    marginBottom: 8,
+  },
+  consultationCounts: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  singleConsultationCounts: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  consultationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  consultationText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  consultationTextCurrent: {
+    fontSize: 10,
+    fontFamily: 'Inter-Medium',
+    color: '#059669',
+  },
+  singleFeePeriodContainer: {
+    alignItems: 'center',
   },
 });
