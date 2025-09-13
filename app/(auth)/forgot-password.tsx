@@ -14,10 +14,12 @@ import {
 import { router } from 'expo-router';
 import { ChevronLeft, Mail, Send } from 'lucide-react-native';
 import { authService } from '../../src/services/api/auth';
+import { PasswordResetSuccessModal } from '../../src/components/shared';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -42,17 +44,8 @@ export default function ForgotPasswordScreen() {
       await authService.requestPasswordReset(email);
       console.log('Password reset email sent successfully');
       
-      // Show success message and navigate back to sign in
-      Alert.alert(
-        'Password Reset Email Sent',
-        'We\'ve sent a password reset link to your email address. Please check your inbox and follow the instructions to reset your password.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.push('/')
-          }
-        ]
-      );
+      // Show success modal
+      setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Password reset error:', error);
       let errorMessage = 'Failed to send password reset email. Please try again.';
@@ -76,6 +69,11 @@ export default function ForgotPasswordScreen() {
   };
 
   const handleBackToSignIn = () => {
+    router.push('/');
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
     router.push('/');
   };
 
@@ -140,6 +138,13 @@ export default function ForgotPasswordScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Password Reset Success Modal */}
+      <PasswordResetSuccessModal
+        visible={showSuccessModal}
+        onClose={handleSuccessModalClose}
+        email={email}
+      />
     </SafeAreaView>
   );
 }
