@@ -365,7 +365,7 @@ export default function VisitOverviewScreen() {
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: (visitData.status?.toLowerCase?.() === 'completed') ? 90 : 24 }}
+        contentContainerStyle={{ paddingBottom: (visitData.status?.toLowerCase?.() === 'completed') ? 120 : 24 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -435,114 +435,8 @@ export default function VisitOverviewScreen() {
           </View>
         </View>
 
-        {/* --- PRESCRIPTIONS --- */}
-        <View style={styles.sectionSpacing}>
-          <Text style={styles.sectionTitle}>Prescriptions</Text>
-          {visitData.status.toLowerCase() === 'completed' && prescriptions.length ? prescriptions.map((p) => (
-            <View key={p.id} style={styles.cardBox}>
-              <View style={styles.prescriptionHeader}>
-                <View style={[styles.medicationIcon, { backgroundColor: `${p.color}15` }]}>
-                  <Pill size={20} color={p.color} />
-                </View>
-                <View style={styles.prescriptionDetails}>
-                  <Text style={styles.medicationName}>{p.medication || 'Unknown Medication'}</Text>
-                  <Text style={styles.medicationDosage}>
-                    {p.dosage || 'N/A'} • {formatFrequency(p.frequency, 'patient')}
-                    {p.route && ` • ${formatRoute(p.route, 'patient')}`}
-                    {p.formula && ` • ${formatFormula(p.formula, 'patient')}`}
-                    {p.take && ` • Take: ${p.take}`}
-                    {p.totalQuantity && ` • Total: ${p.totalQuantity}`}
-                  </Text>
-                  <Text style={styles.prescriptionDescription}>{p.description || 'No description provided'}</Text>
-                </View>
-                <View style={styles.prescriptionStatus}>
-                  <Text style={styles.remainingDays}>{p.remaining}</Text>
-                  <Text style={styles.remainingLabel}>remaining</Text>
-                </View>
-              </View>
-              <View style={styles.prescriptionMeta}>
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Prescribed by:</Text>
-                  <Text style={styles.metaValue}>{p.prescribedBy || 'Unknown Doctor'}</Text>
-                </View>
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Next refill:</Text>
-                  <Text style={styles.metaValue}>{p.nextRefill || 'Not specified'}</Text>
-                </View>
-              </View>
-            </View>
-          )) : visitData.status.toLowerCase() === 'completed' ? (
-            <View style={styles.emptyStateCard}>
-              <Pill size={48} color="#9CA3AF" />
-              <Text style={styles.emptyStateTitle}>No Prescriptions</Text>
-              <Text style={styles.emptyStateDescription}>No prescriptions for this visit.</Text>
-            </View>
-          ) : (
-            <View style={styles.emptyStateCard}>
-              <Pill size={48} color="#9CA3AF" />
-              <Text style={styles.emptyStateTitle}>Prescriptions unavailable</Text>
-              <Text style={styles.emptyStateDescription}>Prescriptions will be available after the appointment is completed.</Text>
-            </View>
-          )}
-        </View>
-
-        {/* --- MEDICAL CERTIFICATES --- */}
-        <View style={styles.sectionSpacing}>
-          <Text style={styles.sectionTitle}>Medical Certificates</Text>
-          {visitData.status.toLowerCase() === 'completed' && certificates.length ? certificates.map((cert) => {
-            const statusStyle = getCertStatusStyles(cert.status);
-            return (
-              <View key={cert.id} style={styles.cardBox}>
-                <View style={styles.certificateIconTitleRow}>
-                  <View style={styles.uniformIconCircle}>
-                    <FileText size={20} color="#1E3A8A" />
-                  </View>
-                  <Text style={styles.certificateType}>{cert.type || 'Unknown Type'}</Text>
-                  <View style={[styles.certificateStatus, statusStyle.container]}>
-                    {statusStyle.icon}
-                    <Text style={[styles.certificateStatusText, statusStyle.text]}>
-                      {statusStyle.label}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.certificateDivider} />
-                <View style={styles.certificateInfoRow}>
-                  <Text style={styles.certificateLabel}>Issued by:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.doctor || 'Unknown Doctor'}</Text>
-                </View>
-                <View style={styles.certificateInfoRow}>
-                  <Text style={styles.certificateLabel}>Issued on:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.issuedDate || 'Date not specified'}</Text>
-                </View>
-                <View style={styles.certificateActions}>
-                  <TouchableOpacity style={[styles.secondaryButton, { marginRight: 9 }]}>
-                    <Eye size={18} color="#374151" />
-                    <Text style={styles.secondaryButtonText}>View</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.primaryButton}>
-                    <Download size={18} color="#FFFFFF" />
-                    <Text style={styles.primaryButtonText}>Download</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          }          ) : visitData.status.toLowerCase() === 'completed' ? (
-            <View style={styles.emptyStateCard}>
-              <FileText size={48} color="#9CA3AF" />
-              <Text style={styles.emptyStateTitle}>No Certificates</Text>
-              <Text style={styles.emptyStateDescription}>No certificates were issued for this visit.</Text>
-            </View>
-          ) : (
-            <View style={styles.emptyStateCard}>
-              <FileText size={48} color="#9CA3AF" />
-              <Text style={styles.emptyStateTitle}>Certificates unavailable</Text>
-              <Text style={styles.emptyStateDescription}>Certificates will be available after the appointment is completed.</Text>
-            </View>
-          )}
-        </View>
-
-        {/* --- CLINICAL SUMMARY --- */}
-        <View style={styles.sectionSpacing}>
+         {/* --- CLINICAL SUMMARY --- */}
+         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Clinical Summary</Text>
           {visitData.status.toLowerCase() !== 'completed' ? (
             <View style={styles.emptyStateCard}>
@@ -662,6 +556,114 @@ export default function VisitOverviewScreen() {
           </View>
           )}
         </View>
+
+        {/* --- PRESCRIPTIONS --- */}
+        <View style={styles.sectionSpacing}>
+          <Text style={styles.sectionTitle}>Prescriptions</Text>
+          {visitData.status.toLowerCase() === 'completed' && prescriptions.length ? prescriptions.map((p) => (
+            <View key={p.id} style={styles.cardBox}>
+              <View style={styles.prescriptionHeader}>
+                <View style={[styles.medicationIcon, { backgroundColor: `${p.color}15` }]}>
+                  <Pill size={20} color={p.color} />
+                </View>
+                <View style={styles.prescriptionDetails}>
+                  <Text style={styles.medicationName}>{p.medication || 'Unknown Medication'}</Text>
+                  <Text style={styles.medicationDosage}>
+                    {p.dosage || 'N/A'} • {formatFrequency(p.frequency, 'patient')}
+                    {p.route && ` • ${formatRoute(p.route, 'patient')}`}
+                    {p.formula && ` • ${formatFormula(p.formula, 'patient')}`}
+                    {p.take && ` • Take: ${p.take}`}
+                    {p.totalQuantity && ` • Total: ${p.totalQuantity}`}
+                  </Text>
+                  <Text style={styles.prescriptionDescription}>{p.description || 'No description provided'}</Text>
+                </View>
+                <View style={styles.prescriptionStatus}>
+                  <Text style={styles.remainingDays}>{p.remaining}</Text>
+                  <Text style={styles.remainingLabel}>remaining</Text>
+                </View>
+              </View>
+              <View style={styles.prescriptionMeta}>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Prescribed by:</Text>
+                  <Text style={styles.metaValue}>{p.prescribedBy || 'Unknown Doctor'}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Next refill:</Text>
+                  <Text style={styles.metaValue}>{p.nextRefill || 'Not specified'}</Text>
+                </View>
+              </View>
+            </View>
+          )) : visitData.status.toLowerCase() === 'completed' ? (
+            <View style={styles.emptyStateCard}>
+              <Pill size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>No Prescriptions</Text>
+              <Text style={styles.emptyStateDescription}>No prescriptions for this visit.</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyStateCard}>
+              <Pill size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>Prescriptions unavailable</Text>
+              <Text style={styles.emptyStateDescription}>Prescriptions will be available after the appointment is completed.</Text>
+            </View>
+          )}
+        </View>
+
+        {/* --- MEDICAL CERTIFICATES --- */}
+        <View style={styles.sectionSpacing}>
+          <Text style={styles.sectionTitle}>Medical Certificates</Text>
+          {visitData.status.toLowerCase() === 'completed' && certificates.length ? certificates.map((cert) => {
+            const statusStyle = getCertStatusStyles(cert.status);
+            return (
+              <View key={cert.id} style={styles.cardBox}>
+                <View style={styles.certificateIconTitleRow}>
+                  <View style={styles.uniformIconCircle}>
+                    <FileText size={20} color="#1E3A8A" />
+                  </View>
+                  <Text style={styles.certificateType}>{cert.type || 'Unknown Type'}</Text>
+                  <View style={[styles.certificateStatus, statusStyle.container]}>
+                    {statusStyle.icon}
+                    <Text style={[styles.certificateStatusText, statusStyle.text]}>
+                      {statusStyle.label}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.certificateDivider} />
+                <View style={styles.certificateInfoRow}>
+                  <Text style={styles.certificateLabel}>Issued by:</Text>
+                  <Text style={styles.certificateInfoValue}>{cert.doctor || 'Unknown Doctor'}</Text>
+                </View>
+                <View style={styles.certificateInfoRow}>
+                  <Text style={styles.certificateLabel}>Issued on:</Text>
+                  <Text style={styles.certificateInfoValue}>{cert.issuedDate || 'Date not specified'}</Text>
+                </View>
+                <View style={styles.certificateActions}>
+                  <TouchableOpacity style={[styles.secondaryButton, { marginRight: 9 }]}>
+                    <Eye size={18} color="#374151" />
+                    <Text style={styles.secondaryButtonText}>View</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.primaryButton}>
+                    <Download size={18} color="#FFFFFF" />
+                    <Text style={styles.primaryButtonText}>Download</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          }          ) : visitData.status.toLowerCase() === 'completed' ? (
+            <View style={styles.emptyStateCard}>
+              <FileText size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>No Certificates</Text>
+              <Text style={styles.emptyStateDescription}>No certificates were issued for this visit.</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyStateCard}>
+              <FileText size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateTitle}>Certificates unavailable</Text>
+              <Text style={styles.emptyStateDescription}>Certificates will be available after the appointment is completed.</Text>
+            </View>
+          )}
+        </View>
+
+       
       </ScrollView>
 
       {/* --- BOTTOM ACTION BAR (VERTICAL, OUTLINED SECONDARY) --- */}

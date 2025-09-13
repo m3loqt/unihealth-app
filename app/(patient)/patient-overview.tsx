@@ -52,6 +52,7 @@ interface PatientData extends Patient {
   allergies?: string[];
   phone?: string;
   email?: string;
+  emailAddress?: string;
   address?: string;
   emergencyContact?: {
     name: string;
@@ -125,6 +126,26 @@ export default function PatientOverviewScreen() {
       ]);
 
       if (patient) {
+        // Additional patient data fetching from users node for complete information
+        let usersNodeData = null;
+        try {
+          usersNodeData = await databaseService.getDocument(`users/${id}`);
+          console.log('🔍 USERS NODE DATA:', usersNodeData);
+        } catch (error) {
+          console.log('Could not fetch users node data:', error);
+        }
+
+        // Also try to find user data by patientId field in case the user ID doesn't match
+        let usersNodeDataByPatientId = null;
+        if (!usersNodeData && (patient as any)?.userId) {
+          try {
+            usersNodeDataByPatientId = await databaseService.getDocument(`users/${(patient as any).userId}`);
+            console.log('🔍 USERS NODE DATA BY PATIENT ID:', usersNodeDataByPatientId);
+          } catch (error) {
+            console.log('Could not fetch users node data by patientId:', error);
+          }
+        }
+
         // Patient objects from DB may not have a `uid`; accept as-is
         const validAppointments = dataValidation.validateArray(patientAppointments, dataValidation.isValidAppointment);
         const validPrescriptions = dataValidation.validateArray(patientPrescriptions, dataValidation.isValidPrescription);
@@ -149,10 +170,171 @@ export default function PatientOverviewScreen() {
           return hasMatchingAppointment || hasMatchingReferral;
         }) || [];
 
-        setPatientData(patient as any);
+        // Combine patient data with additional fetched data (similar to referral-details.tsx approach)
+        const combinedPatientData: PatientData = {
+          ...patient,
+          // Enhanced patient information - prioritize fetched users node data over patient node data
+          firstName: (() => {
+            // Try to get name from users node data first
+            const userData = usersNodeData || usersNodeDataByPatientId;
+            if (userData) {
+              const firstName = userData.firstName || userData.first_name || userData.givenName || '';
+              if (firstName) return firstName;
+            }
+            
+            // Fallback to patient node data
+            return (patient as any)?.firstName || (patient as any)?.first_name || (patient as any)?.givenName || '';
+          })(),
+          
+          lastName: (() => {
+            // Try to get name from users node data first
+            const userData = usersNodeData || usersNodeDataByPatientId;
+            if (userData) {
+              const lastName = userData.lastName || userData.last_name || userData.familyName || '';
+              if (lastName) return lastName;
+            }
+            
+            // Fallback to patient node data
+            return (patient as any)?.lastName || (patient as any)?.last_name || (patient as any)?.familyName || '';
+          })(),
+          
+          dateOfBirth: (() => {
+            // Try to get DOB from users node data first
+            const userData = usersNodeData || usersNodeDataByPatientId;
+            if (userData) {
+              const dob = userData.dateOfBirth || userData.dob || userData.birthDate || userData.birthday || 
+                         userData.profile?.dateOfBirth || userData.profile?.dob || '';
+              if (dob) return dob;
+            }
+            
+            // Fallback to patient node data
+            return (patient as any)?.dateOfBirth || (patient as any)?.dob || (patient as any)?.birthDate || (patient as any)?.birthday || '';
+          })(),
+          
+          gender: (() => {
+            // Try to get gender from users node data first
+            const userData = usersNodeData || usersNodeDataByPatientId;
+            if (userData) {
+              const gender = userData.gender || userData.sex || userData.profile?.gender || '';
+              if (gender) return gender;
+            }
+            
+            // Fallback to patient node data
+            return (patient as any)?.gender || (patient as any)?.sex || '';
+          })(),
+          
+          phone: (() => {
+            // Try to get phone from users node data first
+            const userData = usersNodeData || usersNodeDataByPatientId;
+            if (userData) {
+              const phone = userData.phone || userData.phoneNumber || userData.mobile || userData.contactNumber || '';
+              if (phone) return phone;
+            }
+            
+            // Fallback to patient node data
+            return (patient as any)?.phone || (patient as any)?.phoneNumber || (patient as any)?.mobile || (patient as any)?.contactNumber || '';
+          })(),
+          
+          email: (() => {
+            // Try to get email from users node data first
+            const userData = usersNodeData || usersNodeDataByPatientId;
+            if (userData) {
+              const email = userData.email || userData.emailAddress || '';
+              if (email) return email;
+            }
+            
+            // Fallback to patient node data
+            return (patient as any)?.email || (patient as any)?.emailAddress || '';
+          })(),
+          
+          address: (() => {
+            // Try to get address from users node data first
+            const userData = usersNodeData || usersNodeDataByPatientId;
+            if (userData) {
+              const address = userData.address || userData.homeAddress || userData.residentialAddress || 
+                            userData.profile?.address || userData.profile?.homeAddress || '';
+              if (address) return address;
+            }
+            
+            // Fallback to patient node data
+            return (patient as any)?.address || (patient as any)?.homeAddress || (patient as any)?.residentialAddress || '';
+          })(),
+          
+          bloodType: (() => {
+            // Try to get blood type from users node data first
+            const userData = usersNodeData || usersNodeDataByPatientId;
+            if (userData) {
+              const bloodType = userData.bloodType || userData.bloodGroup || userData.profile?.bloodType || '';
+              if (bloodType) return bloodType;
+            }
+            
+            // Fallback to patient node data
+            return (patient as any)?.bloodType || (patient as any)?.bloodGroup || '';
+          })(),
+          
+          allergies: (() => {
+            // Try to get allergies from users node data first
+            const userData = usersNodeData || usersNodeDataByPatientId;
+            if (userData) {
+              const allergies = userData.allergies || userData.allergyList || userData.profile?.allergies || [];
+              if (allergies && Array.isArray(allergies) && allergies.length > 0) return allergies;
+            }
+            
+            // Fallback to patient node data
+            return (patient as any)?.allergies || (patient as any)?.allergyList || [];
+          })(),
+          
+          medicalConditions: (() => {
+            // Try to get medical conditions from users node data first
+            const userData = usersNodeData || usersNodeDataByPatientId;
+            if (userData) {
+              const conditions = userData.medicalConditions || userData.conditions || userData.profile?.medicalConditions || [];
+              if (conditions && Array.isArray(conditions) && conditions.length > 0) return conditions;
+            }
+            
+            // Fallback to patient node data
+            return (patient as any)?.medicalConditions || (patient as any)?.conditions || [];
+          })(),
+          
+          emergencyContact: (() => {
+            // Try to get emergency contact from users node data first
+            const userData = usersNodeData || usersNodeDataByPatientId;
+            if (userData) {
+              const emergencyContact = userData.emergencyContact || userData.emergency || userData.profile?.emergencyContact || null;
+              if (emergencyContact) return emergencyContact;
+            }
+            
+            // Fallback to patient node data
+            return (patient as any)?.emergencyContact || (patient as any)?.emergency || null;
+          })(),
+        };
+
+        setPatientData(combinedPatientData);
         setAppointments(validAppointments);
         setMedicalHistory(filteredMedicalHistory);
         setPrescriptions(validPrescriptions);
+
+        // Debug logging for enhanced patient data retrieval
+        console.log('🔍 PATIENT DATA RETRIEVAL DEBUG:', {
+          patientId: id,
+          patientNodeData: patient,
+          usersNodeData: usersNodeData,
+          usersNodeDataByPatientId: usersNodeDataByPatientId,
+          finalUserDataUsed: usersNodeData || usersNodeDataByPatientId,
+          combinedPatientData: {
+            firstName: combinedPatientData.firstName,
+            lastName: combinedPatientData.lastName,
+            dateOfBirth: combinedPatientData.dateOfBirth,
+            gender: combinedPatientData.gender,
+            phone: combinedPatientData.phone,
+            email: combinedPatientData.email,
+            address: combinedPatientData.address,
+            bloodType: combinedPatientData.bloodType,
+            allergies: combinedPatientData.allergies,
+            medicalConditions: combinedPatientData.medicalConditions,
+            emergencyContact: combinedPatientData.emergencyContact
+          }
+        });
 
         // Debug logging for medical history
         console.log('🔍 MEDICAL HISTORY FILTERING DEBUG:', {
@@ -672,7 +854,7 @@ export default function PatientOverviewScreen() {
                 <View style={styles.detailsTable}>
                   <View style={styles.detailsRow}>
                     <Text style={styles.detailsLabel}>Date of Birth</Text>
-                    <Text style={styles.detailsValue}>{resolvedDOB || 'Not provided'}</Text>
+                    <Text style={styles.detailsValue}>{resolvedDOB || patientData?.dateOfBirth || 'Not provided'}</Text>
                   </View>
                   <View style={styles.detailsRow}>
                     <Text style={styles.detailsLabel}>Age</Text>
@@ -681,19 +863,20 @@ export default function PatientOverviewScreen() {
                   <View style={styles.detailsRow}>
                     <Text style={styles.detailsLabel}>Gender</Text>
                     <Text style={styles.detailsValue}>
-                      {safeDataAccess.getUserGender(patientData) === 'Not specified' 
-                        ? 'Not specified' 
-                        : safeDataAccess.getUserGender(patientData).charAt(0).toUpperCase() + safeDataAccess.getUserGender(patientData).slice(1).toLowerCase()
-                      }
+                      {(() => {
+                        const gender = patientData?.gender || safeDataAccess.getUserGender(patientData);
+                        if (gender === 'Not specified' || !gender) return 'Not specified';
+                        return gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase();
+                      })()}
                     </Text>
                   </View>
                   <View style={styles.detailsRow}>
                     <Text style={styles.detailsLabel}>Contact Number</Text>
-                    <Text style={styles.detailsValue}>{safeDataAccess.getUserPhone(patientData)}</Text>
+                    <Text style={styles.detailsValue}>{patientData?.phone || safeDataAccess.getUserPhone(patientData)}</Text>
                   </View>
                   <View style={styles.detailsRow}>
                     <Text style={styles.detailsLabel}>Blood Type</Text>
-                    <Text style={styles.detailsValue}>{safeDataAccess.getBloodType(patientData)}</Text>
+                    <Text style={styles.detailsValue}>{patientData?.bloodType || safeDataAccess.getBloodType(patientData)}</Text>
                   </View>
                   {patientData?.allergies && patientData.allergies.length > 0 && (
                     <View style={styles.detailsRow}>
@@ -707,15 +890,15 @@ export default function PatientOverviewScreen() {
                   )}
                   <View style={styles.detailsRowNoBorder}>
                     <Text style={styles.detailsLabel}>Address</Text>
-                    <Text style={styles.detailsValue}>{safeDataAccess.getUserAddress(patientData)}</Text>
+                    <Text style={styles.detailsValue}>{patientData?.address || safeDataAccess.getUserAddress(patientData)}</Text>
                   </View>
                 </View>
 
-                {patientData?.email && (
+                {(patientData?.email || patientData?.emailAddress) && (
                   <View style={styles.contactInfo}>
                     <View style={styles.contactItem}>
                       <Mail size={16} color="#6B7280" />
-                      <Text style={styles.contactText}>{patientData.email}</Text>
+                      <Text style={styles.contactText}>{patientData?.email || patientData?.emailAddress}</Text>
                     </View>
                   </View>
                 )}

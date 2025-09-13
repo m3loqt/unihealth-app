@@ -223,13 +223,7 @@ export default function VerifyEmailScreen() {
             }
           </Text>
 
-          {/* Email Address Display */}
-          {userEmail && (
-            <View style={styles.emailContainer}>
-              <Text style={styles.emailLabel}>Email Address:</Text>
-              <Text style={styles.emailText}>{userEmail}</Text>
-            </View>
-          )}
+         
 
           {/* Resend Section */}
           <View style={styles.resendSection}>
@@ -400,11 +394,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   description: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
+
+    marginLeft: 10,
+    marginRight: 10,
     marginBottom: 24,
   },
   emailContainer: {
@@ -538,6 +535,8 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
+    marginLeft: 10,
+    marginRight: 10,
     marginBottom: 32,
   },
   modalButton: {
