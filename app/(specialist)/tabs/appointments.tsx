@@ -67,7 +67,6 @@ export default function SpecialistAppointmentsScreen() {
   const markAllAsRead = realtimeNotificationData.markAllAsRead;
   const deleteNotification = realtimeNotificationData.deleteNotification;
   const refreshNotifications = realtimeNotificationData.refresh;
-  const handleNotificationPress = realtimeNotificationData.handleNotificationPress;
   
   // Debug log to check notification count
   console.log('🔔 Appointments page - unreadCount:', unreadCount);
@@ -410,6 +409,22 @@ export default function SpecialistAppointmentsScreen() {
     });
   };
 
+  const handleViewFollowUpDetails = async (appointment: Appointment) => {
+    console.log('🔍 NAVIGATING TO FOLLOW-UP DETAILS!');
+    console.log('Follow-up appointment:', appointment);
+    
+    // Navigate to referral details screen with follow-up flag
+    router.push({
+      pathname: '/referral-details',
+      params: {
+        id: appointment.id,
+        isFollowUp: 'true',
+        appointmentId: appointment.id,
+        patientId: appointment.patientId,
+      }
+    });
+  };
+
   // --- LOAD APPOINTMENT DETAILS AND MEDICAL HISTORY ---
   const loadAppointmentDetails = async (appointment: Appointment) => {
     if (!appointment.patientId) {
@@ -746,6 +761,20 @@ export default function SpecialistAppointmentsScreen() {
   const renderAppointmentCard = (appointment: Appointment) => {
     const isPending = appointment.status === 'pending';
     const isReferralAppointment = isReferral(appointment);
+    const isFollowUpAppointment = appointment.isReferralFollowUp === true || 
+      appointment.appointmentPurpose?.toLowerCase().includes('follow-up') ||
+      appointment.appointmentPurpose?.toLowerCase().includes('followup');
+    
+    // Debug logging for follow-up detection
+    console.log('🔍 Appointment follow-up detection:', {
+      appointmentId: appointment.id,
+      isReferralFollowUp: appointment.isReferralFollowUp,
+      isFollowUpAppointment,
+      appointmentPurpose: appointment.appointmentPurpose,
+      additionalNotes: appointment.additionalNotes,
+      type: appointment.type
+    });
+    
     const patientName = safeDataAccess.getAppointmentPatientName(appointment, 'Unknown Patient');
     const patientInitials = (() => {
       const firstName = appointment.patientFirstName || '';
@@ -759,6 +788,40 @@ export default function SpecialistAppointmentsScreen() {
       return 'U';
     })();
 
+    // Format date for display
+    const formatDisplayDate = (dateString: string) => {
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch (error) {
+        return 'Invalid date';
+      }
+    };
+
+    // Format time for display
+    const formatDisplayTime = (timeString: string) => {
+      try {
+        // Handle time strings that already have AM/PM
+        if (timeString.includes('AM') || timeString.includes('PM')) {
+          // Remove any duplicate AM/PM and return clean format
+          const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
+          return cleanTime.trim();
+        }
+        
+        const [hours, minutes] = timeString.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour % 12 || 12;
+        return `${displayHour}:${minutes} ${ampm}`;
+      } catch (error) {
+        return 'Invalid time';
+      }
+    };
+
     return (
       <TouchableOpacity 
         key={appointment.id} 
@@ -768,7 +831,11 @@ export default function SpecialistAppointmentsScreen() {
           if (appointment.status === 'completed') {
             loadAppointmentDetails(appointment);
           } else if (appointment.status === 'confirmed') {
+            if (isFollowUpAppointment) {
+              handleViewFollowUpDetails(appointment);
+            } else {
             handleDiagnosePatient(appointment);
+            }
           }
         }}
         activeOpacity={0.7}
@@ -781,15 +848,29 @@ export default function SpecialistAppointmentsScreen() {
               </Text>
             </View>
             <View style={styles.appointmentDetails}>
+              {isFollowUpAppointment ? (
+                <Text style={styles.patientName}>Follow-up Request</Text>
+              ) : (
               <Text style={styles.patientName}>{patientName}</Text>
-              <Text style={styles.appointmentType}>{appointment.type || 'General Consultation'}</Text>
+              )}
               {isReferralAppointment ? (
                 <View style={styles.referralBadge}>
                   <FileText size={12} color="#1E40AF" />
                   <Text style={styles.referralText}>Referral</Text>
                 </View>
+              ) : isFollowUpAppointment ? (
+                <Text style={styles.referredBy}>{patientName}</Text>
               ) : (
-                <Text style={styles.referredBy}>Referred by {appointment.specialty || 'General Medicine'}</Text>
+                <Text style={styles.referredBy}>Referred by Dr. {(() => {
+                  // For follow-up appointments, show the original referring generalist
+                  if (appointment.isReferralFollowUp && appointment.originalReferringGeneralistFirstName && appointment.originalReferringGeneralistLastName) {
+                    return `${appointment.originalReferringGeneralistFirstName} ${appointment.originalReferringGeneralistLastName}`.trim();
+                  }
+                  // For regular appointments, show the current doctor
+                  return appointment.doctorFirstName || appointment.doctorLastName 
+                    ? `${appointment.doctorFirstName || ''} ${appointment.doctorLastName || ''}`.trim()
+                    : 'Unknown Doctor';
+                })()}</Text>
               )}
             </View>
           </View>
@@ -801,21 +882,30 @@ export default function SpecialistAppointmentsScreen() {
           </View>
         </View>
 
+        {isFollowUpAppointment ? (
+          // Follow-up appointment layout (label on left, value on right) - match referral format
+          <View style={[styles.appointmentMeta, { marginBottom: 8 }]}>
+            <View style={styles.subtleDividerLight} />
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Date:</Text>
+              <Text style={styles.metaValue}>
+                {formatDisplayDate(appointment.appointmentDate || '')}
+              </Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Time:</Text>
+              <Text style={styles.metaValue}>
+                {formatDisplayTime(appointment.appointmentTime || '')}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          // Regular appointment layout (icon on left, text on right)
         <View style={styles.appointmentMeta}>
           <View style={styles.metaRow}>
             <Clock size={16} color="#6B7280" />
             <Text style={styles.metaText}>
-              {appointment.appointmentDate || 'Date not specified'} at {(() => {
-                const timeString = appointment.appointmentTime;
-                if (!timeString) return 'Time not specified';
-                // Handle time strings that already have AM/PM
-                if (timeString.includes('AM') || timeString.includes('PM')) {
-                  // Remove any duplicate AM/PM and return clean format
-                  const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
-                  return cleanTime.trim();
-                }
-                return timeString;
-              })()}
+                {formatDisplayDate(appointment.appointmentDate || '')} at {formatDisplayTime(appointment.appointmentTime || '')}
             </Text>
           </View>
           <View style={styles.metaRow}>
@@ -828,7 +918,21 @@ export default function SpecialistAppointmentsScreen() {
             </Text>
           </View>
         </View>
+        )}
 
+        {isFollowUpAppointment ? (
+          // For follow-up appointments, show additional notes exactly like Reason field
+          <View style={[styles.notesSection, { marginBottom: 10 }]}>
+            <Text style={styles.notesLabel}>Additional Notes:</Text>
+            <Text style={styles.notesText}>
+              {appointment.additionalNotes && appointment.additionalNotes.trim() !== '' 
+                ? appointment.additionalNotes 
+                : 'No additional notes'}
+            </Text>
+          </View>
+        ) : (
+          // For regular appointments, show purpose and notes as before
+          <>
         {appointment.appointmentPurpose && (
           <View style={styles.notesSection}>
             <Text style={styles.notesLabel}>Purpose:</Text>
@@ -841,6 +945,8 @@ export default function SpecialistAppointmentsScreen() {
             <Text style={styles.notesLabel}>Notes:</Text>
             <Text style={styles.notesText}>{appointment.additionalNotes}</Text>
           </View>
+            )}
+          </>
         )}
 
         {appointment.status === 'cancelled' && (
@@ -851,7 +957,7 @@ export default function SpecialistAppointmentsScreen() {
         )}
 
         {/* Action Buttons */}
-        <View style={styles.appointmentActions}>
+        <View style={[styles.appointmentActions, { marginTop: 12 }]}>
           {isPending && !isReferralAppointment ? (
             // Regular pending appointment - show accept/deny buttons
             <>
@@ -876,18 +982,6 @@ export default function SpecialistAppointmentsScreen() {
                 <Text style={styles.acceptButtonText}>Accept</Text>
               </TouchableOpacity>
             </>
-          ) : appointment.status === 'confirmed' && !isReferralAppointment ? (
-            // Confirmed regular appointment - show diagnose button
-            <TouchableOpacity
-              style={styles.diagnoseButton}
-              onPress={(e) => {
-                e.stopPropagation(); // Prevent card click
-                handleDiagnosePatient(appointment);
-              }}
-            >
-              <Stethoscope size={16} color="#FFFFFF" />
-              <Text style={styles.diagnoseButtonText}>Diagnose Patient</Text>
-            </TouchableOpacity>
                      ) : null}
         </View>
       </TouchableOpacity>
@@ -1450,6 +1544,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  metaRowNoBorder: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 7,
   },
   metaText: {
     fontSize: 14,

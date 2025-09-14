@@ -4,19 +4,14 @@ import { RealtimeNotification } from '../services/realtimeNotificationService';
  * Safely get notifications array, ensuring it's always an array
  */
 export const getSafeNotifications = (notifications: any): RealtimeNotification[] => {
-  console.log('🔍 getSafeNotifications input:', typeof notifications, notifications);
-  
   if (Array.isArray(notifications)) {
-    console.log('🔍 Returning array directly:', notifications.length);
     return notifications;
   }
   
   if (notifications && typeof notifications === 'object' && Array.isArray(notifications.notifications)) {
-    console.log('🔍 Returning nested notifications:', notifications.notifications.length);
     return notifications.notifications;
   }
   
-  console.log('🔍 Returning empty array');
   return [];
 };
 
