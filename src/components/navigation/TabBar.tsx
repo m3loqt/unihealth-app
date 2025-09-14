@@ -26,7 +26,7 @@ export default function TabBar({ activeTab }: TabBarProps) {
   const TABS = [
     { name: 'index', icon: Home, route: '/(patient)/tabs', label: 'Home' },
     { name: 'appointments', icon: Calendar, route: '/(patient)/tabs/appointments', label: 'Visits' },
-    { name: 'prescriptions', icon: Pill, route: '/(patient)/tabs/prescriptions', label: 'Medicines' },
+    { name: 'prescriptions', icon: Pill, route: '/(patient)/tabs/prescriptions?filter=active', label: 'Medicines' },
     { name: 'certificates', icon: FileText, route: '/(patient)/tabs/certificates', label: 'Records' },
     { name: 'profile', icon: User, route: '/(patient)/tabs/profile', label: 'Profile' },
   ] as const;
