@@ -59,8 +59,9 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
           }
         });
       } else {
+        // Specialists use the patient's visit-overview since there's no separate specialist version
         router.push({
-          pathname: '/(specialist)/visit-overview',
+          pathname: '/(patient)/visit-overview',
           params: { 
             id: notification.relatedId
           }

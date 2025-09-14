@@ -71,6 +71,7 @@ export interface UserProfile {
   highestEducationalAttainment?: string;
   bloodType?: string;
   allergies?: string[];
+  lastLogin?: string; // ISO timestamp of last login
   emergencyContact?: {
     name: string;
     phone: string;
@@ -221,6 +222,7 @@ export const authService = {
     const staticUser = this.isStaticUser(email, password);
     if (staticUser) {
       console.log('Static user found:', staticUser.name);
+      // For static users, we don't update lastLogin in database
       return { success: true, userProfile: staticUser };
     }
 
@@ -422,6 +424,15 @@ export const authService = {
           }
         }
         
+        // Update lastLogin timestamp for successful login
+        try {
+          const { databaseService } = await import('../database/firebase');
+          await databaseService.updateLastLogin(user.uid, completeProfile.role);
+        } catch (lastLoginError) {
+          console.warn('⚠️ Failed to update lastLogin timestamp:', lastLoginError);
+          // Don't fail the login if lastLogin update fails
+        }
+        
         return { success: true, userProfile: completeProfile };
       }
       
@@ -470,6 +481,16 @@ export const authService = {
          };
         
         console.log('Created user profile from email lookup:', `${userProfile.firstName} ${userProfile.lastName}`);
+        
+        // Update lastLogin timestamp for successful login
+        try {
+          const { databaseService } = await import('../database/firebase');
+          await databaseService.updateLastLogin(user.uid, userProfile.role);
+        } catch (lastLoginError) {
+          console.warn('⚠️ Failed to update lastLogin timestamp:', lastLoginError);
+          // Don't fail the login if lastLogin update fails
+        }
+        
         return { success: true, userProfile };
       }
       
