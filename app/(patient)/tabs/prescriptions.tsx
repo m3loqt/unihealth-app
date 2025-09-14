@@ -20,11 +20,12 @@ import {
   Check,
   X,
   Clock,
+  Hourglass,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { usePrescriptions } from '@/hooks/data/usePrescriptions';
-import { Prescription } from '@/services/database/firebase';
+import { Prescription, databaseService } from '@/services/database/firebase';
 import { safeDataAccess } from '@/utils/safeDataAccess';
 import { formatFrequency, formatRoute, formatPrescriptionDuration, formatFormula } from '@/utils/formatting';
 import { formatDate } from '@/utils/date';
@@ -163,7 +164,60 @@ const calculateRemainingDays = (prescription: Prescription): number | null => {
 export default function PrescriptionsScreen() {
   const { filter } = useLocalSearchParams();
   const { user } = useAuth();
-  const { prescriptions, loading, error, refresh } = usePrescriptions();
+  // Use both approaches to ensure we get all data
+  const { prescriptions: hookPrescriptions, loading: hookLoading, error: hookError, refresh: hookRefresh } = usePrescriptions();
+  
+  // Add direct database call for debugging
+  const [directPrescriptions, setDirectPrescriptions] = useState<Prescription[]>([]);
+  const [directLoading, setDirectLoading] = useState(false);
+  
+  useEffect(() => {
+    const loadDirectPrescriptions = async () => {
+      if (!user) return;
+      try {
+        setDirectLoading(true);
+        const directData = await databaseService.getPrescriptions(user.uid);
+        console.log('🔍 Direct prescriptions data:', directData.map(p => ({
+          id: p.id,
+          medication: p.medication,
+          dosage: p.dosage,
+          take: p.take,
+          formula: p.formula,
+          totalQuantity: p.totalQuantity,
+          route: p.route,
+          frequency: p.frequency,
+          duration: p.duration
+        })));
+        setDirectPrescriptions(directData);
+      } catch (err) {
+        console.error('Direct prescription load error:', err);
+      } finally {
+        setDirectLoading(false);
+      }
+    };
+    
+    loadDirectPrescriptions();
+  }, [user]);
+  
+  // Use the direct data if available, otherwise fall back to hook
+  const prescriptions = directPrescriptions.length > 0 ? directPrescriptions : hookPrescriptions;
+  const loading = directLoading || hookLoading;
+  const error = hookError;
+  const refresh = async () => {
+    await hookRefresh();
+    // Also reload direct data
+    if (user) {
+      try {
+        setDirectLoading(true);
+        const directData = await databaseService.getPrescriptions(user.uid);
+        setDirectPrescriptions(directData);
+      } catch (err) {
+        console.error('Direct prescription refresh error:', err);
+      } finally {
+        setDirectLoading(false);
+      }
+    }
+  };
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -429,40 +483,94 @@ export default function PrescriptionsScreen() {
           <Pill size={20} color="#1E3A8A" />
         </View>
         <View style={styles.prescriptionDetails}>
-          <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
-          <Text style={styles.medicationDosage}>
-            {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'patient')}
-            {prescription.formula && ` • ${formatFormula(prescription.formula, 'patient')}`}
-            {prescription.take && ` • Take: ${prescription.take}`}
-            {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
-          </Text>
-          {prescription.route && (
-            <Text style={styles.medicationRoute}>
-              {formatRoute(prescription.route, 'patient')}
+          {/* Medication name with dosage */}
+          <View style={styles.medicationNameRow}>
+            <Text style={styles.medicationName}>
+              {prescription.medication || 'Unknown Medication'}
             </Text>
-          )}
+            {prescription.dosage && (
+              <Text style={styles.medicationDosageText}>
+                {` (${prescription.dosage})`}
+              </Text>
+            )}
+          </View>
+          
+          {/* Structured description */}
           <Text style={styles.prescriptionDescription}>
-            {prescription.instructions || 'No additional instructions'}
+            {(() => {
+              // Build structured description with available data
+              let description = '';
+              
+              // Start with "Take" if we have any dosage info
+              let hasStarted = false;
+              
+              // Handle take amount and formula
+              if (prescription.take && prescription.formula) {
+                const formulaText = prescription.formula.toLowerCase().includes('tab') ? 
+                  (prescription.take === '1' ? 'tablet' : 'tablets') : 
+                  prescription.formula.split(',')[0].trim(); // Take first part before comma
+                description += `Take ${prescription.take} ${formulaText}`;
+                hasStarted = true;
+              } else if (prescription.take) {
+                description += `Take ${prescription.take}`;
+                hasStarted = true;
+              }
+              
+              // Add route
+              if (prescription.route) {
+                const routeText = prescription.route.toLowerCase().includes('po') ? 'by mouth' : prescription.route;
+                description = hasStarted ? `${description} ${routeText}` : routeText;
+                hasStarted = true;
+              }
+              
+              // Add frequency
+              if (prescription.frequency) {
+                const freqText = prescription.frequency === 'daily' ? 'daily' : formatFrequency(prescription.frequency, 'patient');
+                description = hasStarted ? `${description} ${freqText}` : freqText;
+                hasStarted = true;
+              }
+              
+              // Add duration
+              if (prescription.duration) {
+                description = hasStarted ? `${description} for ${prescription.duration}` : `for ${prescription.duration}`;
+                hasStarted = true;
+              }
+              
+              // Add period to make it a proper sentence
+              if (description && hasStarted) {
+                description += '.';
+              }
+              
+              // Add total quantity if available
+              if (prescription.totalQuantity) {
+                const totalText = ` Total: ${prescription.totalQuantity}${prescription.formula && prescription.formula.toLowerCase().includes('tab') ? (prescription.totalQuantity === '1' ? ' tablet' : ' tablets') : ''}.`;
+                description += totalText;
+              }
+              
+              return description || prescription.instructions || 'No dosage instructions available.';
+            })()}
           </Text>
         </View>
         <View style={styles.prescriptionStatus}>
-          <View style={styles.statusBadge}>
-            <CheckCircle size={16} color="#6B7280" style={styles.statusIcon} />
-            <Text style={styles.statusText}>Active</Text>
-          </View>
           {(() => {
             const remainingDays = calculateRemainingDays(prescription);
             if (remainingDays !== null) {
               return (
-                <Text style={styles.remainingDays}>
-                  {remainingDays} days left
-                </Text>
+                <View style={styles.remainingDaysPill}>
+                  <Hourglass size={10} color="#9CA3AF" />
+                  <Text style={styles.remainingDays}>
+                    {remainingDays} days left
+                  </Text>
+                </View>
               );
             } else {
               return (
-                <Text style={styles.remainingDays}>
-                  Ongoing
-                </Text>
+                <View style={styles.remainingDaysPill}>
+                  <Hourglass size={10} color="#9CA3AF" />
+                  <Text style={styles.remainingDays}>
+                    Ongoing
+                  </Text>
+                </View>
               );
             }
           })()}
@@ -473,12 +581,6 @@ export default function PrescriptionsScreen() {
           <Text style={styles.metaLabel}>Prescribed on:</Text>
           <Text style={styles.metaValue}>
             {prescription.prescribedDate ? formatDate(prescription.prescribedDate, 'prescription') : 'Date not available'}
-          </Text>
-        </View>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Duration:</Text>
-          <Text style={styles.metaValue}>
-            {formatPrescriptionDuration(prescription.duration)}
           </Text>
         </View>
       </View>
@@ -492,20 +594,72 @@ export default function PrescriptionsScreen() {
           <Pill size={20} color="#1E3A8A" />
         </View>
         <View style={styles.prescriptionDetails}>
-          <Text style={styles.medicationName}>{prescription.medication || 'Unknown Medication'}</Text>
-          <Text style={styles.medicationDosage}>
-            {prescription.dosage || 'N/A'} • {formatFrequency(prescription.frequency, 'patient')}
-            {prescription.formula && ` • ${formatFormula(prescription.formula, 'patient')}`}
-            {prescription.take && ` • Take: ${prescription.take}`}
-            {prescription.totalQuantity && ` • Total: ${prescription.totalQuantity}`}
-          </Text>
-          {prescription.route && (
-            <Text style={styles.medicationRoute}>
-              {formatRoute(prescription.route, 'patient')}
+          {/* Medication name with dosage */}
+          <View style={styles.medicationNameRow}>
+            <Text style={styles.medicationName}>
+              {prescription.medication || 'Unknown Medication'}
             </Text>
-          )}
+            {prescription.dosage && (
+              <Text style={styles.medicationDosageText}>
+                {` (${prescription.dosage})`}
+              </Text>
+            )}
+          </View>
+          
+          {/* Structured description */}
           <Text style={styles.prescriptionDescription}>
-            {prescription.instructions || 'No additional instructions'}
+            {(() => {
+              // Build structured description with available data
+              let description = '';
+              
+              // Start with "Take" if we have any dosage info
+              let hasStarted = false;
+              
+              // Handle take amount and formula
+              if (prescription.take && prescription.formula) {
+                const formulaText = prescription.formula.toLowerCase().includes('tab') ? 
+                  (prescription.take === '1' ? 'tablet' : 'tablets') : 
+                  prescription.formula.split(',')[0].trim(); // Take first part before comma
+                description += `Take ${prescription.take} ${formulaText}`;
+                hasStarted = true;
+              } else if (prescription.take) {
+                description += `Take ${prescription.take}`;
+                hasStarted = true;
+              }
+              
+              // Add route
+              if (prescription.route) {
+                const routeText = prescription.route.toLowerCase().includes('po') ? 'by mouth' : prescription.route;
+                description = hasStarted ? `${description} ${routeText}` : routeText;
+                hasStarted = true;
+              }
+              
+              // Add frequency
+              if (prescription.frequency) {
+                const freqText = prescription.frequency === 'daily' ? 'daily' : formatFrequency(prescription.frequency, 'patient');
+                description = hasStarted ? `${description} ${freqText}` : freqText;
+                hasStarted = true;
+              }
+              
+              // Add duration
+              if (prescription.duration) {
+                description = hasStarted ? `${description} for ${prescription.duration}` : `for ${prescription.duration}`;
+                hasStarted = true;
+              }
+              
+              // Add period to make it a proper sentence
+              if (description && hasStarted) {
+                description += '.';
+              }
+              
+              // Add total quantity if available
+              if (prescription.totalQuantity) {
+                const totalText = ` Total: ${prescription.totalQuantity}${prescription.formula && prescription.formula.toLowerCase().includes('tab') ? (prescription.totalQuantity === '1' ? ' tablet' : ' tablets') : ''}.`;
+                description += totalText;
+              }
+              
+              return description || prescription.instructions || 'No dosage instructions available.';
+            })()}
           </Text>
         </View>
         <View style={styles.prescriptionStatus}>
@@ -526,12 +680,6 @@ export default function PrescriptionsScreen() {
           <Text style={styles.metaLabel}>Prescribed on:</Text>
           <Text style={styles.metaValue}>
             {prescription.prescribedDate ? formatDate(prescription.prescribedDate, 'prescription') : 'Date not available'}
-          </Text>
-        </View>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Duration:</Text>
-          <Text style={styles.metaValue}>
-            {formatPrescriptionDuration(prescription.duration)}
           </Text>
         </View>
       </View>
@@ -825,7 +973,7 @@ const styles = StyleSheet.create({
   prescriptionCard: {
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     marginBottom: 4,
@@ -833,7 +981,7 @@ const styles = StyleSheet.create({
   prescriptionHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   medicationIcon: {
     width: 40,
@@ -846,10 +994,21 @@ const styles = StyleSheet.create({
   prescriptionDetails: {
     flex: 1,
   },
+  medicationNameRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
   medicationName: {
     fontSize: 16,
     color: '#1F2937',
-    marginBottom: 2,
+  },
+  medicationDosageText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    fontFamily: 'Inter-Regular',
   },
   medicationDosage: {
     fontSize: 14,
@@ -863,18 +1022,33 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   prescriptionDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    lineHeight: 18,
+    marginTop: 2,
   },
   prescriptionStatus: {
     alignItems: 'flex-end',
     gap: 8,
   },
-  remainingDays: {
-    fontSize: 14,
-    color: '#6B7280',
+  remainingDaysPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    gap: 4,
     marginTop: 4,
-    textAlign: 'right',
+  },
+  remainingDays: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    fontFamily: 'Inter-Regular',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -902,8 +1076,8 @@ const styles = StyleSheet.create({
   },
   prescriptionMeta: {
     gap: 4,
-    marginBottom: 16,
-    paddingTop: 12,
+    marginBottom: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
