@@ -10,6 +10,7 @@ export interface UserProfile {
   gender?: string;
   address?: string;
   highestEducationalAttainment?: string;
+  lastLogin?: string; // ISO timestamp of last login
   emergencyContact?: {
     name: string;
     phone: string;

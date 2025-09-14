@@ -9,7 +9,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { Bell, RefreshCw, Check, X, Clock, Calendar, User, FileText } from 'lucide-react-native';
+import { Bell, RefreshCw, Check, X, Clock, Calendar, User, FileText, DollarSign } from 'lucide-react-native';
 import { useRealtimeNotificationContext } from '../../contexts/RealtimeNotificationContext';
 import { RealtimeNotification } from '../../services/realtimeNotificationService';
 import { getSafeNotifications, getSafeUnreadCount } from '../../utils/notificationUtils';
@@ -79,6 +79,8 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
         return <Calendar size={20} color="#1E40AF" />;
       case 'referral':
         return <User size={20} color="#059669" />;
+      case 'professional_fee':
+        return <DollarSign size={20} color="#059669" />;
       case 'prescription':
         return <FileText size={20} color="#DC2626" />;
       case 'certificate':
