@@ -254,7 +254,7 @@ const formatDateTime = (dateString?: string, timeString?: string): string => {
 };
 
 export default function ReferralDetailsScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, isFollowUp, appointmentId, patientId } = useLocalSearchParams();
   const { user } = useAuth();
   const [referralData, setReferralData] = useState<ReferralData | null>(null);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
@@ -272,6 +272,9 @@ export default function ReferralDetailsScreen() {
     treatment: true,
   });
 
+  // Check if this is a follow-up appointment
+  const isFollowUpAppointment = isFollowUp === 'true';
+
   // Load referral data from Firebase
   useEffect(() => {
     if (id) {
@@ -285,8 +288,41 @@ export default function ReferralDetailsScreen() {
     try {
       setLoading(true);
       
-      // Load referral data
-      const referral = await databaseService.getReferralById(id as string);
+      let referral;
+      
+      if (isFollowUpAppointment) {
+        // For follow-up appointments, load appointment data instead of referral
+        const appointment = await databaseService.getDocument(`appointments/${id}`);
+        if (appointment) {
+          // Convert appointment to referral-like format for display
+          referral = {
+            id: appointment.id,
+            patientId: appointment.patientId,
+            patientFirstName: appointment.patientFirstName,
+            patientLastName: appointment.patientLastName,
+            appointmentDate: appointment.appointmentDate,
+            appointmentTime: appointment.appointmentTime,
+            initialReasonForReferral: appointment.appointmentPurpose || 'Follow-up visit',
+            generalistNotes: appointment.additionalNotes || '',
+            status: appointment.status,
+            referringGeneralistFirstName: appointment.originalReferringGeneralistFirstName,
+            referringGeneralistLastName: appointment.originalReferringGeneralistLastName,
+            referringGeneralistId: appointment.originalReferringGeneralistId,
+            referringClinicName: 'Follow-up Request',
+            // Add other necessary fields with defaults
+            referralTimestamp: appointment.createdAt,
+            lastUpdated: appointment.lastUpdated,
+            sourceSystem: appointment.sourceSystem || 'UniHealth_Patient_App',
+            practiceLocation: {
+              clinicId: appointment.clinicId,
+              roomOrUnit: ''
+            }
+          };
+        }
+      } else {
+        // Load referral data normally
+        referral = await databaseService.getReferralById(id as string);
+      }
       
       if (referral) {
         // Load clinic and doctor data for complete information
@@ -708,12 +744,16 @@ export default function ReferralDetailsScreen() {
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()}>
             <ChevronLeft size={24} color="#1E40AF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Referral Details</Text>
+          <Text style={styles.headerTitle}>
+            {isFollowUpAppointment ? 'Follow-up Details' : 'Referral Details'}
+          </Text>
         </View>
 
         {/* --- REFERRAL DETAILS --- */}
         <View style={styles.sectionSpacing}>
-          <Text style={styles.sectionTitle}>Referral Information</Text>
+          <Text style={styles.sectionTitle}>
+            {isFollowUpAppointment ? 'Follow-up Information' : 'Referral Information'}
+          </Text>
           <View style={styles.cardBox}>
             {/* Avatar initials (top-left) */}
             <View style={styles.avatarCircle}>
@@ -741,14 +781,18 @@ export default function ReferralDetailsScreen() {
                   <Text style={styles.referralValue}>{referralData.patientName || 'Unknown Patient'}</Text>
                 </View>
               )}
-              <View style={styles.referralDetailsRow}>
-                <Text style={styles.referralLabel}>Referring Generalist</Text>
-                <Text style={styles.referralValue}>{referralData.referringDoctorName || 'Unknown Doctor'}</Text>
-              </View>
-              <View style={styles.referralDetailsRowWrapped}>
-                <Text style={styles.referralLabel}>Generalist Clinic</Text>
-                <Text style={styles.referralValueWrapped}>{referralData.clinicAndAddress || 'Unknown Clinic'}</Text>
-              </View>
+              {!isFollowUpAppointment && (
+                <View style={styles.referralDetailsRow}>
+                  <Text style={styles.referralLabel}>Referring Generalist</Text>
+                  <Text style={styles.referralValue}>{referralData.referringDoctorName || 'Unknown Doctor'}</Text>
+                </View>
+              )}
+              {!isFollowUpAppointment && (
+                <View style={styles.referralDetailsRowWrapped}>
+                  <Text style={styles.referralLabel}>Generalist Clinic</Text>
+                  <Text style={styles.referralValueWrapped}>{referralData.clinicAndAddress || 'Unknown Clinic'}</Text>
+                </View>
+              )}
               <View style={styles.referralDetailsRow}>
                 <Text style={styles.referralLabel}>Date</Text>
                 <Text style={styles.referralValue}>
@@ -761,10 +805,12 @@ export default function ReferralDetailsScreen() {
                   {referralData.time ? formatTime(referralData.time) : 'Not specified'}
                 </Text>
               </View>
-              <View style={styles.referralDetailsRowWrapped}>
-                <Text style={styles.referralLabel}>Specialist Clinic</Text>
-                <Text style={styles.referralValueWrapped}>{referralData.specialistClinicAndAddress || 'Not assigned'}</Text>
-              </View>
+              {!isFollowUpAppointment && (
+                <View style={styles.referralDetailsRowWrapped}>
+                  <Text style={styles.referralLabel}>Specialist Clinic</Text>
+                  <Text style={styles.referralValueWrapped}>{referralData.specialistClinicAndAddress || 'Not assigned'}</Text>
+                </View>
+              )}
               {referralData.practiceLocation?.roomOrUnit && (
                 <View style={styles.referralDetailsRow}>
                   <Text style={styles.referralLabel}>Room/Unit</Text>
@@ -772,10 +818,17 @@ export default function ReferralDetailsScreen() {
                 </View>
               )}
               <View style={styles.referralDetailsRowNoBorder}>
-                <Text style={styles.referralLabel}>Reason for Referral</Text>
-                <Text style={styles.referralValue}>{referralData.initialReasonForReferral || 'Not specified'}</Text>
+                <Text style={styles.referralLabel}>
+                  {isFollowUpAppointment ? 'Additional Notes' : 'Reason for Referral'}
+                </Text>
+                <Text style={styles.referralValue}>
+                  {isFollowUpAppointment 
+                    ? (referralData.generalistNotes || 'No additional notes')
+                    : (referralData.initialReasonForReferral || 'Not specified')
+                  }
+                </Text>
               </View>
-              {referralData.generalistNotes && (
+              {!isFollowUpAppointment && referralData.generalistNotes && (
                 <View style={styles.referralDetailsRowNoBorder}>
                   <Text style={styles.referralLabel}>Generalist Notes</Text>
                   <Text style={styles.referralValueNotes}>{referralData.generalistNotes}</Text>
@@ -1121,6 +1174,7 @@ export default function ReferralDetailsScreen() {
                     params: {
                       patientId: referralData?.patientId || '',
                       referralId: String(id || referralData?.id || ''),
+                      appointmentId: isFollowUpAppointment ? String(appointmentId) : undefined,
                     },
                   });
                 }}

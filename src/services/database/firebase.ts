@@ -41,6 +41,14 @@ export interface Appointment {
   type: 'general_consultation' | 'walk-in' | string;
   consultationId?: string;
   appointmentConsultationId?: string;
+  // Follow-up tracking fields
+  isFollowUp?: boolean;
+  originalAppointmentId?: string;
+  isReferralFollowUp?: boolean;
+  // Original referring generalist information for follow-ups
+  originalReferringGeneralistFirstName?: string;
+  originalReferringGeneralistLastName?: string;
+  originalReferringGeneralistId?: string;
 }
 
 export interface MedicalHistory {

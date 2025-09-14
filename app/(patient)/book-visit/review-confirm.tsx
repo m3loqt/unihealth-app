@@ -36,7 +36,14 @@ export default function ReviewConfirmScreen() {
     selectedDate, 
     selectedTime, 
     selectedPurpose, 
-    notes 
+    notes,
+    // Follow-up parameters
+    isFollowUp,
+    originalAppointmentId,
+    isReferralFollowUp,
+    originalReferringGeneralistFirstName,
+    originalReferringGeneralistLastName,
+    originalReferringGeneralistId
   } = useLocalSearchParams();
   const { user } = useAuth();
   
@@ -133,7 +140,15 @@ export default function ReviewConfirmScreen() {
         patientId: user.uid,
         sourceSystem: 'UniHealth_Patient_App',
         status: 'pending' as const,
-        type: 'general_consultation'
+        type: 'general_consultation',
+        // Add follow-up tracking information
+        isFollowUp: isFollowUp === 'true',
+        originalAppointmentId: originalAppointmentId as string || undefined,
+        isReferralFollowUp: isReferralFollowUp === 'true',
+        // Add original referring generalist information for follow-ups
+        originalReferringGeneralistFirstName: originalReferringGeneralistFirstName as string || undefined,
+        originalReferringGeneralistLastName: originalReferringGeneralistLastName as string || undefined,
+        originalReferringGeneralistId: originalReferringGeneralistId as string || undefined,
       };
 
       // Save to database

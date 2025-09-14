@@ -300,6 +300,13 @@ export default function SelectDateTimeScreen() {
   const [selectedPurpose, setSelectedPurpose] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   
+  // State for original referring generalist (for follow-ups)
+  const [originalReferringGeneralist, setOriginalReferringGeneralist] = useState<{
+    firstName: string;
+    lastName: string;
+    id: string;
+  } | null>(null);
+  
   // Dynamic form state for appointment purpose specific inputs
   const [purposeFormData, setPurposeFormData] = useState<{
     primaryValue: string | string[];
@@ -481,6 +488,20 @@ export default function SelectDateTimeScreen() {
       }
       
       console.log('🔍 Referral data loaded:', referralData);
+      
+      // Store original referring generalist information for follow-ups
+      if (referralData.referringGeneralistFirstName && referralData.referringGeneralistLastName) {
+        setOriginalReferringGeneralist({
+          firstName: referralData.referringGeneralistFirstName,
+          lastName: referralData.referringGeneralistLastName,
+          id: referralData.referringGeneralistId
+        });
+        console.log('🔍 Original referring generalist stored:', {
+          firstName: referralData.referringGeneralistFirstName,
+          lastName: referralData.referringGeneralistLastName,
+          id: referralData.referringGeneralistId
+        });
+      }
       
       // Extract specialist information
       const specialistId = referralData.assignedSpecialistId;
@@ -1208,6 +1229,14 @@ export default function SelectDateTimeScreen() {
         selectedTime: String(selectedTime),
         selectedPurpose: String(selectedPurpose),
         notes: String(formattedNotes || ''), // Use formatted notes instead of raw notes
+        // Pass follow-up information
+        isFollowUp: isFollowUp || 'false',
+        originalAppointmentId: originalAppointmentId || '',
+        isReferralFollowUp: isReferralFollowUp || 'false',
+        // Pass original referring generalist information for follow-ups
+        originalReferringGeneralistFirstName: originalReferringGeneralist?.firstName || '',
+        originalReferringGeneralistLastName: originalReferringGeneralist?.lastName || '',
+        originalReferringGeneralistId: originalReferringGeneralist?.id || '',
       };
       
       console.log('Sanitized parameters with fetched data:', params);
