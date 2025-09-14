@@ -73,6 +73,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
   },
   title: {
     fontSize: 20,

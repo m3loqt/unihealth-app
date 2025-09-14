@@ -278,17 +278,48 @@ export default function VerifyEmailScreen() {
         <View style={styles.modalContainer}>
           <SafeAreaView style={styles.modalSafeArea}>
             <View style={styles.modalContent}>
-              <View style={styles.modalIconContainer}>
-                <CheckCircle size={48} color="#10B981" />
+              <View style={styles.modalHeader}>
+                <View style={styles.modalIconContainer}>
+                  <CheckCircle size={32} color="#1E40AF" />
+                </View>
+                <Text style={styles.modalTitle}>{modalData?.title}</Text>
               </View>
-              <Text style={styles.modalTitle}>{modalData?.title}</Text>
-              <Text style={styles.modalMessage}>{modalData?.message}</Text>
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={handleSuccessModalClose}
-              >
-                <Text style={styles.modalButtonText}>Continue</Text>
-              </TouchableOpacity>
+
+              <View style={styles.modalContentBody}>
+                <View style={styles.messageContainer}>
+                  <Mail size={20} color="#1E40AF" style={styles.mailIcon} />
+                  <Text style={styles.modalMessage}>
+                    {modalData?.message.includes('verification email') 
+                      ? `We've sent a verification link to `
+                      : modalData?.message
+                    }
+                    {modalData?.message.includes('verification email') && (
+                      <Text style={styles.emailText}>{userEmail}</Text>
+                    )}
+                  </Text>
+                </View>
+                
+                {modalData?.title === 'Email Verified!' && (
+                  <Text style={styles.instructionText}>
+                    Your email has been successfully verified. You can now access all features.
+                  </Text>
+                )}
+                
+                {modalData?.title === 'Email Already Sent' && (
+                  <Text style={styles.instructionText}>
+                    Please check your inbox and spam folder for the verification link.
+                  </Text>
+                )}
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={handleSuccessModalClose}
+                >
+                  <Text style={styles.modalButtonText}>Continue</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </SafeAreaView>
         </View>
@@ -513,31 +544,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: SCREEN_HEIGHT * 0.35,
   },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
   modalIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#F3F4F6',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
   modalTitle: {
     fontSize: 20,
     fontFamily: 'Inter-Bold',
     color: '#1F2937',
-    marginBottom: 12,
     textAlign: 'center',
   },
+  modalContentBody: {
+    marginBottom: 24,
+  },
+  messageContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#1E40AF',
+  },
+  mailIcon: {
+    marginRight: 12,
+    marginTop: 2,
+  },
   modalMessage: {
+    flex: 1,
     fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    lineHeight: 24,
+  },
+  instructionText: {
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 24,
-    marginLeft: 10,
-    marginRight: 10,
-    marginBottom: 32,
+    lineHeight: 20,
+  },
+  modalActions: {
+    width: '100%',
   },
   modalButton: {
     backgroundColor: '#1E40AF',
