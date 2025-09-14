@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -775,6 +775,9 @@ export default function SpecialistProfileScreen() {
 
   // Track if fee change result has been shown to prevent showing on every profile load
   const [feeChangeResultShown, setFeeChangeResultShown] = useState(false);
+  
+  // Ref to track if modal is currently being shown to prevent multiple executions
+  const isShowingModalRef = useRef(false);
 
   // Get storage key for fee change result shown status
   const getFeeChangeResultKey = useCallback(() => {
@@ -815,36 +818,55 @@ export default function SpecialistProfileScreen() {
   }, [loadFeeChangeResultShown]);
 
   // Handle fee change request result (approved/rejected)
-  const handleFeeChangeResult = async () => {
+  const handleFeeChangeResult = useCallback(async () => {
     const status = (profile as any)?.professionalFeeStatus;
-    if (status === 'approved') {
-      Alert.alert(
-        'Request Approved',
-        'Your fee change request has been approved by the admin. Your new professional fee is now active.',
-        [{ text: 'OK' }]
-      );
-    } else if (status === 'rejected') {
-      Alert.alert(
-        'Request Rejected',
-        'Your fee change request has been rejected by the admin. Please contact support for more information.',
-        [{ text: 'OK' }]
-      );
+    
+    // Double-check to prevent multiple executions
+    if (feeChangeResultShown || isShowingModalRef.current) {
+      return;
     }
-    // Mark as shown to prevent showing again
-    setFeeChangeResultShown(true);
-    await saveFeeChangeResultShown(true);
-  };
+    
+    // Set flag to prevent multiple executions
+    isShowingModalRef.current = true;
+    
+    try {
+      if (status === 'approved') {
+        Alert.alert(
+          'Request Approved',
+          'Your fee change request has been approved by the admin. Your new professional fee is now active.',
+          [{ text: 'OK' }]
+        );
+      } else if (status === 'rejected') {
+        Alert.alert(
+          'Request Rejected',
+          'Your fee change request has been rejected by the admin. Please contact support for more information.',
+          [{ text: 'OK' }]
+        );
+      }
+      
+      // Mark as shown to prevent showing again
+      setFeeChangeResultShown(true);
+      await saveFeeChangeResultShown(true);
+    } finally {
+      // Reset flag after modal is shown
+      isShowingModalRef.current = false;
+    }
+  }, [profile, feeChangeResultShown, saveFeeChangeResultShown]);
 
   // Handle fee change status changes
   useEffect(() => {
     const status = (profile as any)?.professionalFeeStatus;
-    if ((status === 'approved' || status === 'rejected') && !feeChangeResultShown) {
+    // Only proceed if profile is loaded, status is approved/rejected, and not already shown
+    if (profile && (status === 'approved' || status === 'rejected') && !feeChangeResultShown && !isShowingModalRef.current) {
       // Show result after a short delay to ensure UI is updated
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         handleFeeChangeResult();
       }, 500);
+      
+      // Cleanup timeout to prevent multiple executions
+      return () => clearTimeout(timeoutId);
     }
-  }, [(profile as any)?.professionalFeeStatus, feeChangeResultShown]);
+  }, [profile, (profile as any)?.professionalFeeStatus, feeChangeResultShown, handleFeeChangeResult]);
 
   // Reset fee change result shown flag when status changes to pending (new request)
   useEffect(() => {

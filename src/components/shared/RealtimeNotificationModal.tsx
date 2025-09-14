@@ -13,15 +13,18 @@ import { Bell, RefreshCw, Check, X, Clock, Calendar, User, FileText, DollarSign 
 import { useRealtimeNotificationContext } from '../../contexts/RealtimeNotificationContext';
 import { RealtimeNotification } from '../../services/realtimeNotificationService';
 import { getSafeNotifications, getSafeUnreadCount } from '../../utils/notificationUtils';
+import { router } from 'expo-router';
 
 interface RealtimeNotificationModalProps {
   visible: boolean;
   onClose: () => void;
+  userRole?: 'patient' | 'specialist';
 }
 
 const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
   visible,
   onClose,
+  userRole = 'patient',
 }) => {
   const { notifications: notificationData } = useRealtimeNotificationContext();
   
@@ -58,6 +61,56 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
         { text: 'Delete', style: 'destructive', onPress: () => deleteNotification(notificationId) },
       ]
     );
+  };
+
+  // Handle notification press - navigate to appropriate route
+  const handleNotificationPress = (notification: RealtimeNotification) => {
+    console.log('🔔 Realtime notification pressed:', notification);
+    console.log('🔔 Related ID:', notification.relatedId);
+    console.log('🔔 Notification type:', notification.type);
+    
+    // Mark as read first
+    handleMarkAsRead(notification.id);
+    
+    // Navigate based on notification type and user role
+    if (notification.type === 'appointment') {
+      console.log('🔔 Navigating to visit overview with ID:', notification.relatedId);
+      if (userRole === 'patient') {
+        router.push({
+          pathname: '/(patient)/visit-overview',
+          params: { 
+            id: notification.relatedId
+          }
+        });
+      } else {
+        // Specialists use the patient's visit-overview since there's no separate specialist version
+        router.push({
+          pathname: '/(patient)/visit-overview',
+          params: { 
+            id: notification.relatedId
+          }
+        });
+      }
+    } else if (notification.type === 'referral') {
+      console.log('🔔 Navigating to referral details with ID:', notification.relatedId);
+      if (userRole === 'patient') {
+        router.push({
+          pathname: '/(patient)/referral-details',
+          params: { 
+            id: notification.relatedId
+          }
+        });
+      } else {
+        router.push({
+          pathname: '/(specialist)/referral-details',
+          params: { 
+            id: notification.relatedId
+          }
+        });
+      }
+    }
+    
+    onClose();
   };
 
   const formatTimestamp = (timestamp: number): string => {
@@ -159,12 +212,14 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
                 </View>
               ) : (
                 notifications.map((notification) => (
-                  <View
+                  <TouchableOpacity
                     key={notification.id}
                     style={[
                       styles.notificationItem,
                       !notification.read && styles.unreadNotification,
                     ]}
+                    onPress={() => handleNotificationPress(notification)}
+                    activeOpacity={0.7}
                   >
                     <View style={styles.notificationHeader}>
                       <View style={styles.notificationIconContainer}>
@@ -214,7 +269,7 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
                         </View>
                       </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))
               )}
             </ScrollView>
