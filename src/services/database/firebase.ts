@@ -1280,6 +1280,9 @@ export const databaseService = {
                   prescribedDate: dedicatedPrescription?.prescribedDate || entry.consultationDate,
                   status: 'active',
                   route: prescription.route,
+                  formula: prescription.formula,
+                  take: prescription.take,
+                  totalQuantity: prescription.totalQuantity,
                 });
               });
             }
@@ -4083,3 +4086,4 @@ export const databaseService = {
     }
   },
 };  
+
