@@ -22,6 +22,7 @@ import {
 import { router, useNavigation } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { useSpecialistSchedules } from '../../src/hooks/data/useSpecialistSchedules';
+import { useSpecialistAppointments } from '../../src/hooks/data/useSpecialistAppointments';
 import { databaseService } from '../../src/services/database/firebase';
 import LoadingState from '../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../src/components/ui/ErrorBoundary';
@@ -34,12 +35,21 @@ export default function SpecialistScheduleScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<SpecialistSchedule | null>(null);
   const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
   const [clinicData, setClinicData] = useState<{[key: string]: any}>({});
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchedNames, setFetchedNames] = useState<{
+    patients: Record<string, { firstName: string; lastName: string }>;
+    doctors: Record<string, { firstName: string; lastName: string }>;
+    clinics: Record<string, string>;
+  }>({
+    patients: {},
+    doctors: {},
+    clinics: {}
+  });
 
   // Use the custom hook for schedule management
   const {
@@ -53,24 +63,13 @@ export default function SpecialistScheduleScreen() {
     deleteSchedule,
   } = useSpecialistSchedules(user?.uid || '');
 
-  // Load appointments for blocking check
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  // Use the specialist appointments hook for real-time appointment data
+  const {
+    appointments,
+    loading: appointmentsLoading,
+    error: appointmentsError,
+  } = useSpecialistAppointments();
 
-  // Load appointments for the specialist
-  const loadAppointments = useCallback(async () => {
-    if (!user?.uid) return;
-    
-    setAppointmentsLoading(true);
-    try {
-      const specialistAppointments = await databaseService.getAppointments(user.uid, 'specialist');
-      setAppointments(specialistAppointments);
-    } catch (error) {
-      console.error('Error loading appointments:', error);
-    } finally {
-      setAppointmentsLoading(false);
-    }
-  }, [user?.uid]);
 
   // Generate calendar data for the current month
   const calendarData = useMemo(() => {
@@ -92,7 +91,8 @@ export default function SpecialistScheduleScreen() {
 
       const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
       const dayNumber = date.getDate();
-      const dateString = date.toISOString().split('T')[0];
+      // Create date string in YYYY-MM-DD format without timezone conversion
+      const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const isToday = date.toDateString() === today.toDateString();
       const isPast = date < today;
 
@@ -186,15 +186,93 @@ export default function SpecialistScheduleScreen() {
     loadClinicData();
   }, [schedules]);
 
-  // Load appointments for blocking check
-  useEffect(() => {
-    loadAppointments();
-  }, [loadAppointments]);
-
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadSchedules(), loadAppointments()]);
+    await loadSchedules();
     setRefreshing(false);
+  };
+
+  // Auto-select today's date when component mounts or when current month changes
+  useEffect(() => {
+    const today = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const todayMonth = today.getMonth();
+    const todayYear = today.getFullYear();
+    
+    // If we're viewing the current month and today's date is not selected, select it
+    if (currentMonth === todayMonth && currentYear === todayYear) {
+      setSelectedDate(today);
+    }
+  }, [currentDate]);
+
+  // Function to fetch names for referrals
+  const fetchReferralNames = async (referrals: any[]) => {
+    const newFetchedNames = {
+      patients: { ...fetchedNames.patients },
+      doctors: { ...fetchedNames.doctors },
+      clinics: { ...fetchedNames.clinics }
+    };
+
+    const promises: Promise<void>[] = [];
+
+    referrals.forEach(referral => {
+      // Fetch patient name if not already cached
+      if (referral.patientId && !newFetchedNames.patients[referral.patientId]) {
+        promises.push(
+          databaseService.getDocument(`users/${referral.patientId}`)
+            .then(patientData => {
+              if (patientData) {
+                newFetchedNames.patients[referral.patientId] = {
+                  firstName: patientData.firstName || '',
+                  lastName: patientData.lastName || ''
+                };
+              }
+            })
+            .catch(error => {
+              console.error('Error fetching patient data:', error);
+            })
+        );
+      }
+
+      // Fetch referring doctor name if not already cached
+      if (referral.referringGeneralistId && !newFetchedNames.doctors[referral.referringGeneralistId]) {
+        promises.push(
+          databaseService.getDocument(`users/${referral.referringGeneralistId}`)
+            .then(doctorData => {
+              if (doctorData) {
+                newFetchedNames.doctors[referral.referringGeneralistId] = {
+                  firstName: doctorData.firstName || '',
+                  lastName: doctorData.lastName || ''
+                };
+              }
+            })
+            .catch(error => {
+              console.error('Error fetching doctor data:', error);
+            })
+        );
+      }
+
+      // Fetch clinic name if not already cached
+      if (referral.practiceLocation?.clinicId && !newFetchedNames.clinics[referral.practiceLocation.clinicId]) {
+        promises.push(
+          databaseService.getDocument(`clinics/${referral.practiceLocation.clinicId}`)
+            .then(clinicData => {
+              if (clinicData) {
+                newFetchedNames.clinics[referral.practiceLocation.clinicId] = clinicData.name || 'Clinic';
+              }
+            })
+            .catch(error => {
+              console.error('Error fetching clinic data:', error);
+            })
+        );
+      }
+    });
+
+    if (promises.length > 0) {
+      await Promise.all(promises);
+      setFetchedNames(newFetchedNames);
+    }
   };
 
   const handleRetry = () => {
@@ -282,7 +360,16 @@ export default function SpecialistScheduleScreen() {
 
   const handleDateSelect = (day: ScheduleDay) => {
     if (day.isPast) return;
+    // Parse the date string safely to avoid timezone issues
+    const parts = day.date.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+      const dayNum = parseInt(parts[2], 10);
+      setSelectedDate(new Date(year, month, dayNum));
+    } else {
     setSelectedDate(new Date(day.date));
+    }
   };
 
   const getClinicName = (clinicId: string) => {
@@ -362,15 +449,51 @@ export default function SpecialistScheduleScreen() {
   const renderSelectedDateDetails = () => {
     if (!selectedDate) return null;
 
-    const selectedDay = calendarData.find(day =>
-      new Date(day.date).toDateString() === selectedDate.toDateString()
-    );
+    // Create a date string from selectedDate to match the format used in calendar data
+    const selectedDateString = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+    
+    const selectedDay = calendarData.find(day => day.date === selectedDateString);
 
-    if (!selectedDay || !selectedDay.hasSchedule) {
+    if (!selectedDay) return null;
+    
+
+    // Get appointments for the selected date
+    const dayAppointments = appointments.filter(appointment => {
+      const matchesDate = appointment.appointmentDate === selectedDateString;
+      const notCancelled = appointment.status !== 'cancelled';
+      return matchesDate && notCancelled;
+    });
+
+    // Get referrals for the selected date
+    const dayReferrals = referrals.filter(referral => {
+      // Handle potential timezone issues by checking if dates are within 1 day of each other
+      const referralDate = new Date(referral.appointmentDate + 'T00:00:00');
+      const selectedDate = new Date(selectedDateString + 'T00:00:00');
+      const timeDiff = Math.abs(referralDate.getTime() - selectedDate.getTime());
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
+      
+      const matchesDate = referral.appointmentDate === selectedDateString || daysDiff <= 1;
+      const notCancelled = referral.status !== 'cancelled';
+      return matchesDate && notCancelled;
+    });
+
+
+    // Fetch names for referrals if we have any
+    if (dayReferrals.length > 0) {
+      fetchReferralNames(dayReferrals);
+    }
+
+    // Combine appointments and referrals
+    const allDayBookings = [
+      ...dayAppointments.map(apt => ({ ...apt, type: 'appointment' })),
+      ...dayReferrals.map(ref => ({ ...ref, type: 'referral' }))
+    ].sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime));
+
+    if (allDayBookings.length === 0) {
       return (
         <View style={styles.noScheduleContainer}>
           <CalendarIcon size={48} color="#9CA3AF" />
-          <Text style={styles.noScheduleTitle}>No Schedule</Text>
+          <Text style={styles.noScheduleTitle}>No Appointments</Text>
           <Text style={styles.noScheduleText}>
             You don't have any appointments scheduled for this day.
           </Text>
@@ -378,52 +501,118 @@ export default function SpecialistScheduleScreen() {
       );
     }
 
-    const activeSchedule = schedules.find(schedule => {
-      if (!schedule.isActive || new Date(schedule.validFrom) > selectedDate) return false;
-      const dayOfWeek = selectedDate.getDay();
-      return schedule.recurrence.dayOfWeek.includes(dayOfWeek);
-    });
-
-    if (!activeSchedule) return null;
-
-    const clinicName = getClinicName(activeSchedule.practiceLocation.clinicId);
-
     return (
       <View style={styles.scheduleDetails}>
         <View style={styles.scheduleHeader}>
           <Text style={styles.scheduleDate}>
-            {selectedDate.toLocaleDateString('en-US', {
+            {(() => {
+              // Parse the date string safely to avoid timezone issues
+              const parts = selectedDateString.split('-');
+              if (parts.length === 3) {
+                const year = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+                const day = parseInt(parts[2], 10);
+                const date = new Date(year, month, day);
+                return date.toLocaleDateString('en-US', {
               weekday: 'long',
               year: 'numeric',
               month: 'long',
               day: 'numeric'
-            })}
+                });
+              }
+              return selectedDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
+            })()}
           </Text>
-          <View style={styles.locationInfo}>
-            <MapPin size={16} color="#6B7280" />
-            <Text style={styles.locationText}>
-              {clinicName} - {activeSchedule.practiceLocation.roomOrUnit}
+          {/* <Text style={styles.appointmentsCount}>
+            {allDayBookings.length} appointment{allDayBookings.length !== 1 ? 's' : ''} scheduled
+          </Text> */}
+        </View>
+
+        <View style={styles.appointmentsContainer}>
+          <Text style={styles.appointmentsTitle}>Appointments</Text>
+          {allDayBookings.map((booking, index) => (
+            <View key={index} style={styles.appointmentCard}>
+              <View style={styles.appointmentHeader}>
+                <View style={styles.timeContainer}>
+                  <Clock size={16} color="#1E40AF" />
+                  <Text style={styles.appointmentTime}>{booking.appointmentTime}</Text>
+                </View>
+                <View style={[
+                  styles.statusBadge,
+                  booking.status === 'confirmed' ? styles.confirmedStatus :
+                  booking.status === 'pending' ? styles.pendingStatus :
+                  booking.status === 'completed' ? styles.completedStatus :
+                  styles.cancelledStatus
+                ]}>
+                  <Text style={[
+                    styles.statusText,
+                    booking.status === 'confirmed' ? styles.confirmedStatusText :
+                    booking.status === 'pending' ? styles.pendingStatusText :
+                    booking.status === 'completed' ? styles.completedStatusText :
+                    styles.cancelledStatusText
+                  ]}>
+                    {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
             </Text>
           </View>
         </View>
 
-        <View style={styles.timeSlotsContainer}>
-          <Text style={styles.timeSlotsTitle}>Time Slots</Text>
-          {selectedDay.slots.map((slot, index) => (
-            <View key={index} style={styles.timeSlot}>
-              <Clock size={16} color="#6B7280" />
-              <Text style={styles.timeSlotText}>
-                {slot.time} ({slot.durationMinutes} min)
-                {slot.isBooked && ' - Booked'}
+              <View style={styles.appointmentDetails}>
+                <Text style={styles.patientName}>
+                  {booking.type === 'appointment' 
+                    ? `${(booking as any).patientFirstName || ''} ${(booking as any).patientLastName || ''}`.trim()
+                    : (() => {
+                        const patientData = fetchedNames.patients[(booking as any).patientId];
+                        return patientData 
+                          ? `${patientData.firstName} ${patientData.lastName}`.trim()
+                          : 'Loading...';
+                      })()
+                  }
               </Text>
-              <View style={[
-                styles.statusIndicator,
-                slot.isBooked ? styles.bookedStatus : (
-                  slot.defaultStatus === 'available' ? styles.availableStatus :
-                  slot.defaultStatus === 'booked' ? styles.bookedStatus :
-                  slot.defaultStatus === 'unavailable' ? styles.unavailableStatus : null
-                )
-              ]} />
+                
+                {/* <Text style={styles.appointmentType}>
+                  {booking.type === 'appointment' 
+                    ? booking.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+                    : 'Referral'
+                  }
+                </Text> */}
+                
+                {booking.type === 'appointment' && (booking as any).appointmentPurpose && (
+                  <Text style={styles.appointmentPurpose}>
+                    {(booking as any).appointmentPurpose}
+                  </Text>
+                )}
+                
+                {booking.type === 'referral' && (
+                  <Text style={styles.appointmentPurpose}>
+                    {(() => {
+                      const doctorData = fetchedNames.doctors[(booking as any).referringGeneralistId];
+                      return doctorData 
+                        ? `Referral from Dr. ${doctorData.firstName} ${doctorData.lastName}`
+                        : 'Referral from Generalist';
+                    })()}
+                  </Text>
+                )}
+                
+                <View style={styles.locationInfo}>
+                  <MapPin size={14} color="#6B7280" />
+                  <Text style={styles.locationText}>
+                    {booking.type === 'appointment' 
+                      ? (booking as any).clinicName || 'Clinic'
+                      : (() => {
+                          const clinicId = (booking as any).practiceLocation?.clinicId;
+                          return clinicId && fetchedNames.clinics[clinicId] 
+                            ? fetchedNames.clinics[clinicId]
+                            : 'Clinic';
+                        })()
+                    }
+                  </Text>
+                </View>
+              </View>
             </View>
           ))}
         </View>
@@ -861,5 +1050,107 @@ const styles = StyleSheet.create({
   scheduleManagementContainer: {
     marginTop: 16,
     marginBottom: 24,
+  },
+
+  // New appointment display styles
+  appointmentsCount: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  appointmentsContainer: {
+    marginTop: 0,
+  },
+  appointmentsTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  appointmentCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  appointmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  appointmentTime: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1E40AF',
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+  },
+  confirmedStatus: {
+    backgroundColor: '#D1FAE5',
+  },
+  confirmedStatusText: {
+    color: '#059669',
+  },
+  pendingStatus: {
+    backgroundColor: '#FEF3C7',
+  },
+  pendingStatusText: {
+    color: '#D97706',
+  },
+  completedStatus: {
+    backgroundColor: '#DBEAFE',
+  },
+  completedStatusText: {
+    color: '#1E40AF',
+  },
+  cancelledStatus: {
+    backgroundColor: '#FEE2E2',
+  },
+  cancelledStatusText: {
+    color: '#DC2626',
+  },
+  appointmentDetails: {
+    gap: 8,
+  },
+  patientName: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+  },
+  appointmentType: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+    textTransform: 'capitalize',
+  },
+  appointmentPurpose: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#374151',
+    lineHeight: 20,
   },
 });
