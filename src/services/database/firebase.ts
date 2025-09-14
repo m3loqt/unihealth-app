@@ -1189,10 +1189,31 @@ export const databaseService = {
             
             if (!patients.has(patientKey)) {
               console.log(`👤 Fetching patient details for: ${patientKey}`);
-              // Fetch patient details from patients node
+              // Fetch patient details from both patients and users nodes
               const patientPromise = this.getPatientById(patientKey).then(async (patientData) => {
                 if (patientData) {
                   console.log(`✅ Patient data fetched for ${patientKey}:`, patientData);
+                  
+                  // Also fetch user data for complete information
+                  let usersNodeData = null;
+                  try {
+                    usersNodeData = await this.getDocument(`users/${patientKey}`);
+                    console.log(`🔍 USERS NODE DATA for ${patientKey}:`, usersNodeData);
+                  } catch (error) {
+                    console.log(`Could not fetch users node data for ${patientKey}:`, error);
+                  }
+
+                  // Also try to find user data by patientId field in case the user ID doesn't match
+                  let usersNodeDataByPatientId = null;
+                  if (!usersNodeData && (patientData as any)?.userId) {
+                    try {
+                      usersNodeDataByPatientId = await this.getDocument(`users/${(patientData as any).userId}`);
+                      console.log(`🔍 USERS NODE DATA BY PATIENT ID for ${patientKey}:`, usersNodeDataByPatientId);
+                    } catch (error) {
+                      console.log(`Could not fetch users node data by patientId for ${patientKey}:`, error);
+                    }
+                  }
+
                   // Get the most recent appointment for this patient
                   const recentAppointment = this.getMostRecentAppointmentForPatient(appointmentsSnapshot, patientKey, specialistId);
                   
@@ -1214,12 +1235,40 @@ export const databaseService = {
                     formattedLastVisit = 'No visits yet';
                   }
                   
+                  // Combine data from both sources (similar to patient-overview.tsx)
+                  const userData = usersNodeData || usersNodeDataByPatientId;
+                  
                   const patientInfo = {
                     id: patientKey,
-                    patientFirstName: patientData.firstName || patientData.patientFirstName || 'Unknown',
-                    patientLastName: patientData.lastName || patientData.patientLastName || 'Patient',
-                    address: patientData.address || patientData.homeAddress || 'Address not available',
-                    phoneNumber: patientData.phoneNumber || patientData.contactNumber || patientData.phone || 'Phone not available',
+                    patientFirstName: (() => {
+                      if (userData) {
+                        const firstName = userData.firstName || userData.first_name || userData.givenName || '';
+                        if (firstName) return firstName;
+                      }
+                      return patientData.firstName || patientData.patientFirstName || 'Unknown';
+                    })(),
+                    patientLastName: (() => {
+                      if (userData) {
+                        const lastName = userData.lastName || userData.last_name || userData.familyName || '';
+                        if (lastName) return lastName;
+                      }
+                      return patientData.lastName || patientData.patientLastName || 'Patient';
+                    })(),
+                    address: (() => {
+                      if (userData) {
+                        const address = userData.address || userData.homeAddress || userData.residentialAddress || 
+                                      userData.profile?.address || userData.profile?.homeAddress || '';
+                        if (address) return address;
+                      }
+                      return patientData.address || patientData.homeAddress || 'Address not available';
+                    })(),
+                    phoneNumber: (() => {
+                      if (userData) {
+                        const phone = userData.phone || userData.phoneNumber || userData.mobile || userData.contactNumber || '';
+                        if (phone) return phone;
+                      }
+                      return patientData.phoneNumber || patientData.contactNumber || patientData.phone || 'Phone not available';
+                    })(),
                     status: recentAppointment?.status || 'confirmed',
                     lastVisit: formattedLastVisit,
                     createdAt: patientData.createdAt || recentAppointment?.createdAt,
@@ -1231,8 +1280,18 @@ export const databaseService = {
                 } else {
                   console.log(`❌ No patient data found for ${patientKey}`);
                 }
-              }).catch(error => {
+              }).catch(async error => {
                 console.error(`❌ Error fetching patient ${patientKey}:`, error);
+                
+                // Try to fetch user data even if patient data failed
+                let usersNodeData = null;
+                try {
+                  usersNodeData = await this.getDocument(`users/${patientKey}`);
+                  console.log(`🔍 FALLBACK USERS NODE DATA for ${patientKey}:`, usersNodeData);
+                } catch (userError) {
+                  console.log(`Could not fetch fallback users node data for ${patientKey}:`, userError);
+                }
+                
                 // Fallback to appointment data if patient fetch fails
                 const recentAppointment = this.getMostRecentAppointmentForPatient(appointmentsSnapshot, patientKey, specialistId);
                 
@@ -1243,10 +1302,35 @@ export const databaseService = {
                 
                 const fallbackPatientInfo = {
                   id: patientKey,
-                  patientFirstName: appointment.patientFirstName || 'Unknown',
-                  patientLastName: appointment.patientLastName || 'Patient',
-                  address: 'Address not available',
-                  phoneNumber: 'Phone not available',
+                  patientFirstName: (() => {
+                    if (usersNodeData) {
+                      const firstName = usersNodeData.firstName || usersNodeData.first_name || usersNodeData.givenName || '';
+                      if (firstName) return firstName;
+                    }
+                    return appointment.patientFirstName || 'Unknown';
+                  })(),
+                  patientLastName: (() => {
+                    if (usersNodeData) {
+                      const lastName = usersNodeData.lastName || usersNodeData.last_name || usersNodeData.familyName || '';
+                      if (lastName) return lastName;
+                    }
+                    return appointment.patientLastName || 'Patient';
+                  })(),
+                  address: (() => {
+                    if (usersNodeData) {
+                      const address = usersNodeData.address || usersNodeData.homeAddress || usersNodeData.residentialAddress || 
+                                    usersNodeData.profile?.address || usersNodeData.profile?.homeAddress || '';
+                      if (address) return address;
+                    }
+                    return 'Address not available';
+                  })(),
+                  phoneNumber: (() => {
+                    if (usersNodeData) {
+                      const phone = usersNodeData.phone || usersNodeData.phoneNumber || usersNodeData.mobile || usersNodeData.contactNumber || '';
+                      if (phone) return phone;
+                    }
+                    return 'Phone not available';
+                  })(),
                   status: recentAppointment?.status || 'confirmed',
                   lastVisit: formattedFallbackLastVisit,
                   createdAt: recentAppointment?.createdAt,

@@ -112,6 +112,8 @@ export default function PatientOverviewScreen() {
   const loadPatientData = async () => {
     if (!id) return;
     
+    console.log('🔍 PATIENT OVERVIEW - Loading data for patient ID:', id);
+    
     try {
       setLoading(true);
       setError(null);
