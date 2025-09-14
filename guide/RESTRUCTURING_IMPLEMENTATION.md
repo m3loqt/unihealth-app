@@ -19,7 +19,7 @@ mkdir -p tests/{components,hooks,services,utils}
 #### Move Configuration Files
 ```bash
 # Move Firebase config
-mv config/firebase.ts src/config/firebase.ts
+mv config/ src/config/firebase.ts
 
 # Create environment config
 touch src/config/environment.ts
