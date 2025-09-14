@@ -17,6 +17,7 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { CameraView, Camera } from 'expo-camera';
 import { BlurView } from 'expo-blur';
 import {
@@ -141,6 +142,9 @@ export default function SpecialistHomeScreen() {
   // Notification Modal State
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   
+  // Ref to track if data has been loaded on focus to prevent infinite loops
+  const hasLoadedOnFocus = React.useRef(false);
+  
   // Notification Modal Actions
   const handleOpenNotifications = () => setShowNotificationModal(true);
   const handleCloseNotificationModal = () => setShowNotificationModal(false);
@@ -166,6 +170,21 @@ export default function SpecialistHomeScreen() {
       loadDashboardData();
     }
   }, [user]);
+
+  // Reload data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user && user.uid && !hasLoadedOnFocus.current) {
+        hasLoadedOnFocus.current = true;
+        loadDashboardData();
+      }
+      
+      // Reset the flag when screen loses focus
+      return () => {
+        hasLoadedOnFocus.current = false;
+      };
+    }, [user])
+  );
 
   // Regenerate chart data when chart range changes
   useEffect(() => {
@@ -1181,25 +1200,27 @@ export default function SpecialistHomeScreen() {
                   return 'U';
                 })();
                 
-                // Format appointment date
+                // Format appointment type to camel case
+                const formatAppointmentType = (type: string) => {
+                  if (!type) return 'General Consultation';
+                  return type
+                    .split('_')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                    .join(' ');
+                };
+
+                // Format appointment date (full format like patient's version)
                 const formatAppointmentDate = (dateString: string) => {
                   try {
                     if (!dateString) return 'Date not specified';
-                    const date = new Date(dateString);
-                    const today = new Date();
-                    const tomorrow = new Date(today);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    
-                    if (date.toDateString() === today.toDateString()) {
-                      return 'Today';
-                    } else if (date.toDateString() === tomorrow.toDateString()) {
-                      return 'Tomorrow';
-                    } else {
-                      return date.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric'
-                      });
-                    }
+                    // Parse the date string as local date to avoid timezone issues
+                    const [year, month, day] = dateString.split('-').map(Number);
+                    const date = new Date(year, month - 1, day); // month is 0-indexed
+                    return date.toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric'
+                    });
                   } catch (error) {
                     return 'Invalid date';
                   }
@@ -1217,6 +1238,7 @@ export default function SpecialistHomeScreen() {
                         router.push(`/visit-overview?id=${appointment.id}`);
                       }
                     }}
+                    activeOpacity={0.7}
                   >
                     <View style={styles.appointmentHeader}>
                       <View style={styles.patientAvatar}>
@@ -1227,29 +1249,35 @@ export default function SpecialistHomeScreen() {
                       <View style={styles.appointmentDetails}>
                         <Text style={styles.patientName}>{patientName}</Text>
                         <Text style={styles.appointmentType}>
-                          {appointment.specialty || appointment.type || 'General Consultation'}
+                          {formatAppointmentType(appointment.specialty || appointment.type || 'general_consultation')}
                         </Text>
                       </View>
-                      <View style={styles.appointmentTime}>
+                    </View>
+                    <View style={styles.appointmentFooter}>
+                      <View style={styles.appointmentTimePill}>
+                        <Calendar size={10} color="#9CA3AF" />
                         <Text style={styles.appointmentDate}>
                           {formatAppointmentDate(appointment.appointmentDate)}
                         </Text>
-                        <View style={styles.timeContainer}>
-                          <Clock size={14} color="#6B7280" />
-                          <Text style={styles.timeText}>
-                            {(() => {
-                              const timeString = appointment.appointmentTime;
-                              if (!timeString) return 'Time not specified';
-                              // Handle time strings that already have AM/PM
-                              if (timeString.includes('AM') || timeString.includes('PM')) {
-                                // Remove any duplicate AM/PM and return clean format
-                                const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
-                                return cleanTime.trim();
-                              }
-                              return timeString;
-                            })()}
-                          </Text>
-                        </View>
+                      </View>
+                      <View style={styles.appointmentTimePill}>
+                        <Clock size={10} color="#9CA3AF" />
+                        <Text style={styles.appointmentDate}>
+                          {(() => {
+                            const timeString = appointment.appointmentTime;
+                            if (!timeString) return 'Time not specified';
+                            // Handle time strings that already have AM/PM
+                            if (timeString.includes('AM') || timeString.includes('PM')) {
+                              // Remove any duplicate AM/PM and return clean format
+                              const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
+                              return cleanTime.trim();
+                            }
+                            return timeString;
+                          })()}
+                        </Text>
+                      </View>
+                      <View style={styles.joinButton}>
+                        <Text style={styles.joinButtonText}>View details</Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -1819,10 +1847,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  appointmentTimePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 4,
+  },
   appointmentDate: {
     fontSize: 11,
     fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
+    color: '#6B7280',
+  },
+  appointmentFooter: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 8,
   },
   timeContainer: {
     flexDirection: 'row',
@@ -1830,9 +1876,19 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   timeText: {
-    fontSize: 11,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+  },
+  joinButton: { 
+    paddingHorizontal: 16, 
+    paddingVertical: 8, 
+    backgroundColor: '#1E40AF', 
+    borderRadius: 8 
+  },
+  joinButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 14 
   },
   patientsContainer: {
     gap: 12,

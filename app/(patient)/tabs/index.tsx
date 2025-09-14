@@ -694,32 +694,32 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.userName}>{user?.firstName || ''}</Text>
           </View>
-          <View style={styles.headerIcons}>
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={() => router.push('/(patient)/tabs/chats')}
-            >
-              <MessageCircle size={24} color="#6B7280" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={handleOpenNotifications}
-            >
-              <Bell size={24} color="#6B7280" />
-              {realtimeUnreadCount > 0 && (
-                <View style={styles.notifDot}>
-                  <Text style={styles.notifDotText}>
-                    {realtimeUnreadCount > 9 ? '9+' : realtimeUnreadCount.toString()}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/(patient)/tabs/profile')}>
-              <View style={styles.profileInitialsCircle}>
-                <Text style={styles.profileInitialsText}>{userInitials}</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
+           <View style={styles.headerIcons}>
+             {/* <TouchableOpacity 
+               style={styles.iconButton}
+               onPress={() => router.push('/(patient)/tabs/chats')}
+             >
+               <MessageCircle size={24} color="#6B7280" />
+             </TouchableOpacity> */}
+             <TouchableOpacity 
+               style={styles.iconButton}
+               onPress={handleOpenNotifications}
+             >
+               <Bell size={24} color="#6B7280" />
+               {realtimeUnreadCount > 0 && (
+                 <View style={styles.notifDot}>
+                   <Text style={styles.notifDotText}>
+                     {realtimeUnreadCount > 9 ? '9+' : realtimeUnreadCount.toString()}
+                   </Text>
+                 </View>
+               )}
+             </TouchableOpacity>
+             <TouchableOpacity onPress={() => router.push('/(patient)/tabs/profile')}>
+               <View style={styles.profileInitialsCircle}>
+                 <Text style={styles.profileInitialsText}>{userInitials}</Text>
+               </View>
+             </TouchableOpacity>
+           </View>
         </View>
 
         {/* Health Tip Carousel */}

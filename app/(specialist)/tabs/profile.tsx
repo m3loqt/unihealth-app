@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  ChevronLeft,
   ChevronRight,
   User,
   Mail,
@@ -890,12 +891,86 @@ export default function SpecialistProfileScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Header */}
-        <SpecialistHeader 
-          title="Profile" 
-          onNotificationPress={handleOpenNotifications}
-          notificationCount={unreadCount}
-        />
+        {/* Custom Profile Header */}
+        <View style={styles.customHeader}>
+          <View style={styles.customHeaderBackground} />
+          <View style={styles.headerTop}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <ChevronLeft size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>My Profile</Text>
+            <TouchableOpacity 
+              style={styles.editProfileHeaderButton}
+              onPress={handleEditProfile}
+            >
+              <Edit size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Profile Header Section */}
+          <View style={styles.profileHeaderSection}>
+            <View style={styles.profileImageContainer}>
+              {profileImage ? (
+                <Image 
+                  source={{ uri: profileImage }} 
+                  style={styles.profileImage}
+                />
+              ) : (
+                <View style={styles.profileImagePlaceholder}>
+                  <Text style={styles.profileImageText}>
+                    {name ? safeDataAccess.getUserInitials({ name }, 'DR') : 'DR'}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.profileName}>Dr. {name || 'Unknown Doctor'}</Text>
+            <View style={styles.profileInfoRow}>
+              <Text style={styles.profileSpecialty}>{specialization || 'General Medicine'}</Text>
+              {memoizedClinicNames.length > 0 && (
+                <Text style={styles.profileClinic}>
+                  @ {memoizedClinicNames.slice(0, 2).join(', ')}
+                  {memoizedClinicNames.length > 2 ? ` +${memoizedClinicNames.length - 2} more` : ''}
+                </Text>
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Earnings Section */}
+        <View style={styles.earningsCard}>
+          <Text style={styles.earningsTitle}>Earnings</Text>
+          <Text style={styles.earningsSubtitle}>This month</Text>
+          
+          {/* Earnings Amount */}
+          <View style={styles.earningsAmountContainer}>
+            <Text style={styles.earningsAmount}>
+              ₱{earnings.totalEarnings.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+            </Text>
+          </View>
+          
+          {/* Earnings Breakdown */}
+          <View style={styles.earningsBreakdownContainer}>
+            <View style={styles.earningsBreakdownItem}>
+              <View style={styles.earningsIcon}>
+                <Users size={16} color="#1E40AF" />
+              </View>
+              <Text style={styles.earningsBreakdownText}>
+                {earnings.totalAppointments} appointments
+              </Text>
+            </View>
+            <View style={styles.earningsBreakdownItem}>
+              <View style={styles.earningsIcon}>
+                <TrendingUp size={16} color="#1E40AF" />
+              </View>
+              <Text style={styles.earningsBreakdownText}>
+                {earnings.totalReferrals} referrals
+              </Text>
+            </View>
+          </View>
+        </View>
 
         {/* Loading and Error States */}
         {profileLoading ? (
@@ -913,95 +988,6 @@ export default function SpecialistProfileScreen() {
           </View>
         ) : (
           <>
-            {/* Profile Card */}
-        <View style={styles.profileCard}>
-          {/* Profile Header with Image and Basic Info */}
-          <View style={styles.profileHeader}>
-            <View style={styles.profileImageContainer}>
-              {profileImage ? (
-                <Image 
-                  source={{ uri: profileImage }} 
-                  style={styles.profileImage}
-                  // defaultSource={require('../../../assets/default-avatar.png')}
-                />
-              ) : (
-                <View style={styles.profileImagePlaceholder}>
-                  <Text style={styles.profileImageText}>
-                    {name ? safeDataAccess.getUserInitials({ name }, 'DR') : 'DR'}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.userName}>Dr. {name || 'Unknown Doctor'}</Text>
-              <Text style={styles.userSpecialty}>{specialization || 'General Medicine'}</Text>
-              {memoizedClinicNames.length > 0 && (
-                <Text style={styles.clinicAffiliation}>
-                  @ {memoizedClinicNames.slice(0, 2).join(', ')}
-                  {memoizedClinicNames.length > 2 ? ` +${memoizedClinicNames.length - 2} more` : ''}
-                </Text>
-              )}
-              {experience && <Text style={styles.experience}>{experience} experience</Text>}
-            </View>
-          </View>
-
-          {/* Personal Information Section */}
-          <View style={styles.personalInfo}>
-            <Text style={styles.contactInfoTitle}>Personal Details</Text>
-            <View style={styles.personalInfoRow}>
-              {gender && (
-                <View style={styles.personalInfoItem}>
-                  <User size={16} color="#6B7280" />
-                  <Text style={styles.personalInfoText}>
-                    {gender.charAt(0).toUpperCase() + gender.slice(1)}
-                  </Text>
-                </View>
-              )}
-              {dateOfBirth && (
-                <View style={styles.personalInfoItem}>
-                  <Calendar size={16} color="#6B7280" />
-                  <Text style={styles.personalInfoText}>
-                    {formatDateSafely(dateOfBirth)}
-                  </Text>
-                </View>
-              )}
-              {civilStatus && (
-                <View style={styles.personalInfoItem}>
-                  <User size={16} color="#6B7280" />
-                  <Text style={styles.personalInfoText}>
-                    {civilStatus.charAt(0).toUpperCase() + civilStatus.slice(1)}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-
-          {/* Contact Information Section */}
-          <View style={styles.contactInfo}>
-            <Text style={styles.contactInfoTitle}>Contact Information</Text>
-            <View style={styles.contactItems}>
-              <View style={styles.contactItem}>
-                <Mail size={16} color="#6B7280" />
-                <Text style={styles.contactText}>{email || 'Email not provided'}</Text>
-              </View>
-              {phone && (
-                <View style={styles.contactItem}>
-                  <Phone size={16} color="#6B7280" />
-                  <Text style={styles.contactText}>{phone}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-
-          {/* Edit Profile Button */}
-          <TouchableOpacity
-            style={styles.editProfileButton}
-            onPress={handleEditProfile}
-          >
-            <Edit size={18} color="#FFFFFF" />
-            <Text style={styles.editProfileButtonText}>Edit Profile</Text>
-          </TouchableOpacity>
-        </View>
 
 
 
@@ -1044,123 +1030,9 @@ export default function SpecialistProfileScreen() {
 
         </View>
 
-        {/* Earnings Overview */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Earnings</Text>
-          {earnings.loading ? (
-            <View style={styles.earningsLoadingContainer}>
-              <RefreshCw size={16} color="#1E40AF" />
-              <Text style={styles.earningsLoadingText}>Calculating...</Text>
-            </View>
-          ) : earnings.error ? (
-            <View style={styles.earningsErrorContainer}>
-              <Text style={styles.earningsErrorText}>{earnings.error}</Text>
-              <TouchableOpacity 
-                style={styles.earningsRetryButton}
-                onPress={refreshEarnings}
-              >
-                <Text style={styles.earningsRetryButtonText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.earningsContainer}>
-              {/* Total Earnings */}
-              <View style={styles.totalEarningsCard}>
-                {/* <DollarSign size={20} color="#10B981" /> */}
-                <Text style={styles.totalEarningsAmount}>
-                  ₱{earnings.totalEarnings.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                </Text>
-                <Text style={styles.totalEarningsSubtext}>
-                  {earnings.totalAppointments + earnings.totalReferrals} consultations
-                </Text>
-              </View>
-
-              {/* Breakdown */}
-              <View style={styles.earningsBreakdown}>
-                <View style={styles.earningsBreakdownItem}>
-                  <Users size={16} color="#1E40AF" />
-                  <Text style={styles.earningsBreakdownText}>
-                    {earnings.totalAppointments} appointments
-                  </Text>
-                </View>
-                <View style={styles.earningsBreakdownItem}>
-                  <TrendingUp size={16} color="#1E40AF" />
-                  <Text style={styles.earningsBreakdownText}>
-                    {earnings.totalReferrals} referrals
-                  </Text>
-                </View>
-              </View>
-
-              {/* Fee Period Information */}
-              <View style={styles.feeInfoContainer}>
-                {earnings.previousPeriod && earnings.currentPeriod ? (
-                  <View style={styles.feeComparisonContainer}>
-                    {/* Previous Period */}
-                    <View style={styles.feePeriodItem}>
-                      <Text style={styles.feePeriodLabel}>Previous</Text>
-                      <Text style={styles.feePeriodAmount}>₱{earnings.previousPeriod.fee.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
-                      <View style={styles.consultationCounts}>
-                        <View style={styles.consultationItem}>
-                          <Users size={12} color="#6B7280" />
-                          <Text style={styles.consultationText}>{earnings.previousPeriod.appointments}</Text>
-                        </View>
-                        <View style={styles.consultationItem}>
-                          <TrendingUp size={12} color="#6B7280" />
-                          <Text style={styles.consultationText}>{earnings.previousPeriod.referrals}</Text>
-                        </View>
-                      </View>
-                    </View>
-                    
-                    {/* Arrow Separator */}
-                    <View style={styles.feeSeparator}>
-                      <Text style={styles.feeSeparatorText}>→</Text>
-                    </View>
-                    
-                    {/* Current Period */}
-                    <View style={styles.feePeriodItem}>
-                      <Text style={styles.feePeriodLabel}>Current</Text>
-                      <Text style={styles.feePeriodAmountCurrent}>₱{earnings.currentPeriod.fee.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</Text>
-                      <View style={styles.consultationCounts}>
-                        <View style={styles.consultationItem}>
-                          <Users size={12} color="#059669" />
-                          <Text style={styles.consultationTextCurrent}>{earnings.currentPeriod.appointments}</Text>
-                        </View>
-                        <View style={styles.consultationItem}>
-                          <TrendingUp size={12} color="#059669" />
-                          <Text style={styles.consultationTextCurrent}>{earnings.currentPeriod.referrals}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                ) : earnings.currentPeriod ? (
-                  <View style={styles.singleFeePeriodContainer}>
-                    <Text style={styles.singleFeeLabel}>Current fee</Text>
-                    <Text style={styles.singleFeeAmount}>₱{earnings.currentPeriod.fee.toLocaleString('en-PH', { minimumFractionDigits: 2 })} per consultation</Text>
-                    <View style={styles.singleConsultationCounts}>
-                      <View style={styles.consultationItem}>
-                        <Users size={12} color="#059669" />
-                        <Text style={styles.consultationTextCurrent}>{earnings.currentPeriod.appointments} appointments</Text>
-                      </View>
-                      <View style={styles.consultationItem}>
-                        <TrendingUp size={12} color="#059669" />
-                        <Text style={styles.consultationTextCurrent}>{earnings.currentPeriod.referrals} referrals</Text>
-                      </View>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.singleFeeContainer}>
-                    <Text style={styles.singleFeeLabel}>Current fee</Text>
-                    <Text style={styles.singleFeeAmount}>₱{earnings.currentFee.toLocaleString('en-PH', { minimumFractionDigits: 2 })} per consultation</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
-        </View>
 
         {/* Professional Fee Change */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Professional Fee Change</Text>
+        <View style={styles.feeChangeSection}>
           <View style={styles.feeChangeContainer}>
             <View style={styles.feeChangeInfo}>
               <Text style={styles.feeChangeLabel}>Current Professional Fee</Text>
@@ -1711,7 +1583,7 @@ export default function SpecialistProfileScreen() {
                     onChangeText={setRequestedFee}
                     placeholder="Enter new fee amount"
                     keyboardType="numeric"
-                    style={styles.feeChangeModalInput}
+                    style={styles.feeChangeModalInputSimple}
                     inputStyle={styles.feeChangeModalInputText}
                   />
                 </View>
@@ -1820,177 +1692,168 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   scrollView: { flex: 1 },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 8,
-    backgroundColor: '#FFF',
-  },
-  headerTitle: {
-    fontSize: 24,
-    color: '#1F2937',
-    fontFamily: 'Inter-SemiBold',
-  },
-  profileCard: {
-    backgroundColor: '#F9FAFB',
-    marginHorizontal: 24,
-    marginTop: 2,
-    marginBottom: 15,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  profileHeader: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  profileImageContainer: {
-    marginRight: 16,
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  profileImagePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  // Custom Header Styles
+  customHeader: {
     backgroundColor: '#1E40AF',
+    paddingTop: Platform.OS === 'ios' ? 70 : 50,
+    paddingBottom: 30,
+    paddingHorizontal: 24,
+    position: 'relative',
+  },
+  customHeaderBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: -20,
+    backgroundColor: '#1E40AF',
+    zIndex: -1,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  profileImageText: {
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
-    fontSize: 24,
-    fontFamily: 'Inter-Bold',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
   },
-  profileInfo: { flex: 1, justifyContent: 'center' },
-  userName: {
-    fontSize: 22,
-    fontFamily: 'Inter-Bold',
-    color: '#1F2937',
-    marginBottom: 3,
-  },
-  specialtyRow: {
-    flexDirection: 'row',
+  editProfileHeaderButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 2,
   },
-  clinicAffiliation: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 4,
+  profileHeaderSection: {
+    alignItems: 'center',
+    paddingBottom: 20,
   },
-  userSpecialty: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#6B7280',
-    marginBottom: 4,
+  profileImageContainer: {
+    marginBottom: 16,
+    position: 'relative',
   },
-  licenseNumber: {
-    fontSize: 13,
-    fontFamily: 'Inter-Medium',
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 4,
+    borderColor: '#1E40AF',
+  },
+  profileImagePlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#1E40AF',
+  },
+  profileImageText: {
     color: '#1E40AF',
-    marginBottom: 2,
+    fontSize: 32,
+    fontFamily: 'Inter-Bold',
   },
-     experience: {
-     fontSize: 14,
-     fontFamily: 'Inter-Regular',
-     color: '#6B7280',
-   },
-   clinicAffiliationsContainer: {
-     marginTop: 8,
-   },
-   clinicAffiliationsLabel: {
-     fontSize: 12,
-     fontFamily: 'Inter-Medium',
-     color: '#6B7280',
-     marginBottom: 2,
-   },
-   clinicAffiliationsText: {
-     fontSize: 13,
-     fontFamily: 'Inter-Regular',
-     color: '#374151',
-     lineHeight: 16,
-   },
-  personalInfoSection: {
-    marginBottom: 20,
+  profileName: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+    textAlign: 'center',
   },
-  personalInfoTitle: {
-    fontSize: 16,
+  profileInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  profileSpecialty: {
+    fontSize: 14,
     fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  profileClinic: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    opacity: 0.9,
+  },
+  // Earnings Card Styles
+  earningsCard: {
+    backgroundColor: '#F9FAFB',
+    marginHorizontal: 24,
+    marginTop: -30,
+    marginBottom: 16,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    zIndex: 10,
+  },
+  earningsTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
     color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  earningsSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
     marginBottom: 12,
   },
-  personalInfoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
+  earningsAmountContainer: {
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  personalInfoItem: {
+  earningsAmount: {
+    fontSize: 32,
+    fontFamily: 'Inter-Bold',
+    color: '#1E40AF',
+    textAlign: 'center',
+  },
+  earningsBreakdownContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  earningsBreakdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    minWidth: 'auto',
   },
-  personalInfoLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  personalInfoValue: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-  },
-  contactInfo: { 
-    marginTop: 16,
-  },
-  contactInfoTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  contactItems: {
-    gap: 12,
-  },
-  contactItem: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 12 
-  },
-  contactText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-  },
-  personalInfo: { 
-    marginTop: 8,
-  },
-  personalInfoItems: {
-    gap: 12,
-  },
-  personalInfoRow: {
-    flexDirection: 'row',
+  earningsIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingBottom: 8,
-    gap: 24,
   },
-
-  personalInfoText: {
+  earningsBreakdownText: {
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
+    fontFamily: 'Inter-Medium',
+    color: '#1F2937',
   },
   editProfileButton: {
     backgroundColor: '#1E40AF',
@@ -2006,6 +1869,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
+  },
+  feeChangeSection: {
+    marginHorizontal: 24,
+    marginBottom: 16,
   },
   infoSection: {
     marginTop: 20,
@@ -2234,6 +2101,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 16,
+    marginHorizontal: 24,
   },
   closeButton: {
     width: 32,
@@ -2866,6 +2734,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
+  feeChangeModalInputSimple: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 8,
+  },
   feeChangeModalInputText: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
@@ -2933,22 +2808,6 @@ const styles = StyleSheet.create({
   earningsBreakdown: {
     flexDirection: 'row',
     gap: 12,
-  },
-  earningsBreakdownItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    padding: 12,
-    gap: 8,
-  },
-  earningsBreakdownText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
   },
   currentFeeInfo: {
     backgroundColor: '#F3F4F6',

@@ -43,12 +43,12 @@ export default function SpecialistHeader({
       </View>
       
       <View style={styles.headerIcons}>
-        <TouchableOpacity 
+        {/* <TouchableOpacity 
           style={styles.iconButton}
           onPress={() => router.push('/(specialist)/tabs/chats')}
         >
           <MessageCircle size={24} color="#6B7280" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         
         <TouchableOpacity 
           style={styles.iconButton}
