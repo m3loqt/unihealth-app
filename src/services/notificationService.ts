@@ -370,7 +370,7 @@ class NotificationService {
       relatedId: consultationId,
       priority: 'medium',
       expiresAt: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 days from now
-      route: '/(patient)/tabs/prescriptions',
+      route: '/(patient)/tabs/prescriptions?filter=active',
       routeParams: {}
     });
   }

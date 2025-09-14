@@ -21,7 +21,7 @@ import {
   X,
   Clock,
 } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { usePrescriptions } from '@/hooks/data/usePrescriptions';
 import { Prescription } from '@/services/database/firebase';
@@ -161,6 +161,7 @@ const calculateRemainingDays = (prescription: Prescription): number | null => {
 };
 
 export default function PrescriptionsScreen() {
+  const { filter } = useLocalSearchParams();
   const { user } = useAuth();
   const { prescriptions, loading, error, refresh } = usePrescriptions();
   const [activeTab, setActiveTab] = useState('All');
@@ -179,6 +180,13 @@ export default function PrescriptionsScreen() {
     { key: 'duration-short', label: 'Duration: Short to Long' },
     { key: 'duration-long', label: 'Duration: Long to Short' },
   ], []);
+
+  // Handle URL parameter for filtering
+  useEffect(() => {
+    if (filter === 'active') {
+      setActiveTab('Active');
+    }
+  }, [filter]);
 
   // Header initials for logged in user
   const userInitials = (() => {
@@ -284,7 +292,7 @@ export default function PrescriptionsScreen() {
   
   // Debug logging
   console.log('Total prescriptions:', validPrescriptions.length);
-  console.log('Prescription statuses:', validPrescriptions.map(p => ({ id: p.id, status: p.status, originalStatus: p.status })));
+  console.log('Prescription statuses:', validPrescriptions.map(p => ({ id: p.id, status: p.status, prescribedDate: p.prescribedDate, duration: p.duration })));
   console.log('Active prescriptions:', activePrescriptions.length);
   console.log('Past prescriptions:', pastPrescriptions.length);
   console.log('Available statuses:', Array.from(new Set(validPrescriptions.map(p => p.status))));
@@ -671,12 +679,8 @@ export default function PrescriptionsScreen() {
                   ? renderEmptyState('All')
                   : (
                     <>
-                      {filteredActive.length === 0
-                        ? renderEmptyState('Active')
-                        : filteredActive.map(renderActivePrescription)}
-                      {filteredPast.length === 0
-                        ? renderEmptyState('Past')
-                        : filteredPast.map(renderPastPrescription)}
+                      {filteredActive.map(renderActivePrescription)}
+                      {filteredPast.map(renderPastPrescription)}
                     </>
                   )
                 }
