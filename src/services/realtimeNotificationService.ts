@@ -270,8 +270,9 @@ class RealtimeNotificationService {
       const cachedNotifications = await this.loadCachedNotifications(userId);
       const existingNotificationIds = new Set(cachedNotifications.map(n => n.relatedId));
       
-      Object.values(referrals).forEach((referral: any) => {
-        if (!referral) return;
+      // Process referrals in parallel
+      const notificationPromises = Object.values(referrals).map(async (referral: any) => {
+        if (!referral) return null;
         
         // Check if referral was created or updated after lastLogin
         const createdAt = new Date(referral.createdAt || referral.referralTimestamp).getTime();
@@ -292,7 +293,7 @@ class RealtimeNotificationService {
         // Skip if both creation and last update are before lastLogin
         if (createdAt < fromTime && lastUpdatedTime < fromTime) {
           console.log('🔔 Skipping old referral:', referral.id, 'created:', new Date(createdAt).toISOString(), 'updated:', new Date(lastUpdatedTime).toISOString(), 'before lastLogin:', new Date(fromTime).toISOString());
-          return;
+          return null;
         }
         
         recentReferrals++;
@@ -315,7 +316,7 @@ class RealtimeNotificationService {
           
         if (!isRelevant) {
           console.log('🔔 Referral not relevant to user:', referral.id, 'patientId:', referral.patientId, 'assignedSpecialistId:', referral.assignedSpecialistId);
-          return;
+          return null;
         }
         
         relevantReferrals++;
@@ -324,22 +325,27 @@ class RealtimeNotificationService {
         // Check if we already have a notification for this referral
         if (existingNotificationIds.has(referral.id)) {
           console.log('🔔 Notification already exists for referral:', referral.id);
-          return;
+          return null;
         }
         
         // Check if we should create a notification for this status
         const shouldNotify = this.shouldCreateReferralNotification(referral, userRole);
         console.log('🔔 Should notify for referral:', referral.id, 'status:', referral.status, 'shouldNotify:', shouldNotify);
         
-        if (!shouldNotify) return;
+        if (!shouldNotify) return null;
         
         // Create notification
-        const notification = this.createReferralNotification(userId, userRole, referral);
+        const notification = await this.createReferralNotification(userId, userRole, referral);
         if (notification) {
           console.log('🔔 Created notification for referral:', referral.id);
-          newNotifications.push(notification);
+          return notification;
         }
+        return null;
       });
+      
+      // Wait for all notifications to be created
+      const notifications = await Promise.all(notificationPromises);
+      newNotifications.push(...notifications.filter(n => n !== null));
       
       console.log('🔔 Referral check summary:');
       console.log('  - Total referrals:', Object.keys(referrals).length);
@@ -547,7 +553,7 @@ class RealtimeNotificationService {
         console.log(`🔔 Found ${userReferrals.length} referrals for user ${userId}`);
         
         // Check for changes and create notifications only for changes
-        const newNotifications = this.checkForReferralChanges(userId, userRole, userReferrals);
+        const newNotifications = await this.checkForReferralChanges(userId, userRole, userReferrals);
         
         // If there are new notifications, add them to cache and notify
         if (newNotifications.length > 0) {
@@ -776,7 +782,7 @@ class RealtimeNotificationService {
   /**
    * Check for referral changes and create notifications only for changes
    */
-  private checkForReferralChanges(userId: string, userRole: 'patient' | 'specialist', referrals: Referral[]): RealtimeNotification[] {
+  private async checkForReferralChanges(userId: string, userRole: 'patient' | 'specialist', referrals: Referral[]): Promise<RealtimeNotification[]> {
     const newNotifications: RealtimeNotification[] = [];
     const previousStates = this.previousReferralStates.get(userId) || new Map();
     const currentStates = new Map();
@@ -784,7 +790,8 @@ class RealtimeNotificationService {
     // Check if this is the first time we're loading data for this user
     const isFirstLoad = previousStates.size === 0;
     
-    referrals.forEach(referral => {
+    // Process referrals in parallel
+    const notificationPromises = referrals.map(async (referral) => {
       const referralId = referral.id;
       const currentState = {
         status: referral.status,
@@ -811,17 +818,13 @@ class RealtimeNotificationService {
       if (!previousState && !isFirstLoad) {
         // New referral - create notification (but not on first load)
         console.log('🔔 New referral detected:', referralId);
-        const notification = this.createReferralNotification(userId, userRole, referral);
-        if (notification) {
-          newNotifications.push(notification);
-        }
+        const notification = await this.createReferralNotification(userId, userRole, referral);
+        return notification;
       } else if (previousState && previousState.status !== currentState.status) {
         // Status changed - create notification
         console.log('🔔 Referral status changed:', referralId, previousState.status, '->', currentState.status);
-        const notification = this.createReferralNotification(userId, userRole, referral);
-        if (notification) {
-          newNotifications.push(notification);
-        }
+        const notification = await this.createReferralNotification(userId, userRole, referral);
+        return notification;
       } else if (previousState && previousState.lastUpdated !== currentState.lastUpdated) {
         // LastUpdated changed but status is the same - check if it's a meaningful change
         console.log('🔔 Referral updated (lastUpdated changed but status same):', referralId);
@@ -830,7 +833,12 @@ class RealtimeNotificationService {
         // For now, we'll skip notifications for non-status changes to avoid spam
         console.log('🔔 Skipping notification for non-status referral update to avoid spam');
       }
+      return null;
     });
+    
+    // Wait for all notifications to be created
+    const notifications = await Promise.all(notificationPromises);
+    newNotifications.push(...notifications.filter(n => n !== null));
     
     // Update previous states
     this.previousReferralStates.set(userId, currentStates);
@@ -845,17 +853,14 @@ class RealtimeNotificationService {
   /**
    * Convert referrals to notifications for display (legacy method - not used)
    */
-  private convertReferralsToNotifications(userId: string, userRole: 'patient' | 'specialist', referrals: Referral[]): RealtimeNotification[] {
-    const notifications: RealtimeNotification[] = [];
-    
-    referrals.forEach(referral => {
-      const notification = this.createReferralNotification(userId, userRole, referral);
-      if (notification) {
-        notifications.push(notification);
-      }
+  private async convertReferralsToNotifications(userId: string, userRole: 'patient' | 'specialist', referrals: Referral[]): Promise<RealtimeNotification[]> {
+    const notificationPromises = referrals.map(async (referral) => {
+      const notification = await this.createReferralNotification(userId, userRole, referral);
+      return notification;
     });
 
-    return notifications;
+    const notifications = await Promise.all(notificationPromises);
+    return notifications.filter(n => n !== null);
   }
 
   /**
@@ -976,9 +981,87 @@ class RealtimeNotificationService {
   /**
    * Create notification from referral data
    */
-  private createReferralNotification(userId: string, userRole: 'patient' | 'specialist', referral: Referral): RealtimeNotification | null {
-    const { status, patientFirstName, patientLastName, assignedSpecialistFirstName, assignedSpecialistLastName, appointmentDate, appointmentTime } = referral;
+  private async createReferralNotification(userId: string, userRole: 'patient' | 'specialist', referral: Referral): Promise<RealtimeNotification | null> {
+    const { status, appointmentDate, appointmentTime } = referral;
     const formattedDate = this.formatDate(appointmentDate);
+    
+    // Resolve names from users node if not already present
+    let patientFirstName = referral.patientFirstName;
+    let patientLastName = referral.patientLastName;
+    let assignedSpecialistFirstName = referral.assignedSpecialistFirstName;
+    let assignedSpecialistLastName = referral.assignedSpecialistLastName;
+    let referringGeneralistFirstName = referral.referringGeneralistFirstName;
+    let referringGeneralistLastName = referral.referringGeneralistLastName;
+    let referringSpecialistFirstName = referral.referringSpecialistFirstName;
+    let referringSpecialistLastName = referral.referringSpecialistLastName;
+    
+    // If names are missing or undefined, fetch from users node
+    if ((!patientFirstName || !patientLastName) && referral.patientId) {
+      try {
+        const patientData = await databaseService.getUserById(referral.patientId);
+        if (patientData) {
+          patientFirstName = patientData.firstName || patientData.first_name;
+          patientLastName = patientData.lastName || patientData.last_name;
+          console.log(`🔔 Resolved patient name from users node: ${patientFirstName} ${patientLastName}`);
+        }
+      } catch (error) {
+        console.error('🔔 Error fetching patient name:', error);
+      }
+    }
+    
+    if ((!assignedSpecialistFirstName || !assignedSpecialistLastName) && referral.assignedSpecialistId) {
+      try {
+        const specialistData = await databaseService.getUserById(referral.assignedSpecialistId);
+        if (specialistData) {
+          assignedSpecialistFirstName = specialistData.firstName || specialistData.first_name;
+          assignedSpecialistLastName = specialistData.lastName || specialistData.last_name;
+          console.log(`🔔 Resolved specialist name from users node: ${assignedSpecialistFirstName} ${assignedSpecialistLastName}`);
+        }
+      } catch (error) {
+        console.error('🔔 Error fetching specialist name:', error);
+      }
+    }
+    
+    // Resolve referring generalist names from users node
+    if ((!referringGeneralistFirstName || !referringGeneralistLastName) && referral.referringGeneralistId) {
+      try {
+        const referringGeneralistData = await databaseService.getUserById(referral.referringGeneralistId);
+        if (referringGeneralistData) {
+          referringGeneralistFirstName = referringGeneralistData.firstName || referringGeneralistData.first_name;
+          referringGeneralistLastName = referringGeneralistData.lastName || referringGeneralistData.last_name;
+          console.log(`🔔 Resolved referring generalist name from users node: ${referringGeneralistFirstName} ${referringGeneralistLastName}`);
+        }
+      } catch (error) {
+        console.error('🔔 Error fetching referring generalist name:', error);
+      }
+    }
+    
+    // Resolve referring specialist names from users node
+    if ((!referringSpecialistFirstName || !referringSpecialistLastName) && referral.referringSpecialistId) {
+      try {
+        const referringSpecialistData = await databaseService.getUserById(referral.referringSpecialistId);
+        if (referringSpecialistData) {
+          referringSpecialistFirstName = referringSpecialistData.firstName || referringSpecialistData.first_name;
+          referringSpecialistLastName = referringSpecialistData.lastName || referringSpecialistData.last_name;
+          console.log(`🔔 Resolved referring specialist name from users node: ${referringSpecialistFirstName} ${referringSpecialistLastName}`);
+        }
+      } catch (error) {
+        console.error('🔔 Error fetching referring specialist name:', error);
+      }
+    }
+    
+    // Fallback to "Unknown" if names are still missing
+    const specialistName = `${assignedSpecialistFirstName || 'Unknown'} ${assignedSpecialistLastName || 'Specialist'}`.trim();
+    const patientName = `${patientFirstName || 'Unknown'} ${patientLastName || 'Patient'}`.trim();
+    const referringDoctorName = (() => {
+      if (referringSpecialistFirstName && referringSpecialistLastName) {
+        return `${referringSpecialistFirstName} ${referringSpecialistLastName}`.trim();
+      } else if (referringGeneralistFirstName && referringGeneralistLastName) {
+        return `${referringGeneralistFirstName} ${referringGeneralistLastName}`.trim();
+      } else {
+        return 'Unknown Doctor';
+      }
+    })();
     
     let title = '';
     let message = '';
@@ -989,22 +1072,22 @@ class RealtimeNotificationService {
       switch (status) {
         case 'pending':
           title = 'Referral Received';
-          message = `You have been referred to ${assignedSpecialistFirstName} ${assignedSpecialistLastName} for your appointment on ${formattedDate} at ${appointmentTime}.`;
+          message = `You have been referred to ${specialistName} for your appointment on ${formattedDate} at ${appointmentTime}.`;
           priority = 'high';
           break;
         case 'confirmed':
           title = 'Referral Confirmed';
-          message = `Your referral to ${assignedSpecialistFirstName} ${assignedSpecialistLastName} on ${formattedDate} at ${appointmentTime} has been confirmed.`;
+          message = `Your referral to ${specialistName} on ${formattedDate} at ${appointmentTime} has been confirmed.`;
           priority = 'high';
           break;
         case 'cancelled':
           title = 'Referral Declined';
-          message = `Your referral to ${assignedSpecialistFirstName} ${assignedSpecialistLastName} on ${formattedDate} has been declined.`;
+          message = `Your referral to ${specialistName} on ${formattedDate} has been declined.`;
           priority = 'high';
           break;
         case 'completed':
           title = 'Referral Completed';
-          message = `Your referral to ${assignedSpecialistFirstName} ${assignedSpecialistLastName} on ${formattedDate} has been completed. Medical history has been updated with consultation details.`;
+          message = `Your referral to ${specialistName} on ${formattedDate} has been completed. Medical history has been updated with consultation details.`;
           priority = 'medium';
           break;
         default:
@@ -1015,22 +1098,22 @@ class RealtimeNotificationService {
       switch (status) {
         case 'pending':
           title = 'New Referral Received';
-          message = `You have received a new referral for ${patientFirstName} ${patientLastName} on ${formattedDate} at ${appointmentTime}.`;
+          message = `You have received a new referral for ${patientName} on ${formattedDate} at ${appointmentTime}.`;
           priority = 'high';
           break;
         case 'confirmed':
           title = 'Referral Confirmed';
-          message = `Referral for ${patientFirstName} ${patientLastName} on ${formattedDate} at ${appointmentTime} has been confirmed.`;
+          message = `Referral for ${patientName} on ${formattedDate} at ${appointmentTime} has been confirmed.`;
           priority = 'high';
           break;
         case 'cancelled':
           title = 'Referral Declined';
-          message = `Referral for ${patientFirstName} ${patientLastName} on ${formattedDate} has been declined.`;
+          message = `Referral for ${patientName} on ${formattedDate} has been declined.`;
           priority = 'medium';
           break;
         case 'completed':
           title = 'Referral Completed';
-          message = `Referral for ${patientFirstName} ${patientLastName} on ${formattedDate} has been completed. Medical history has been updated with consultation details.`;
+          message = `Referral for ${patientName} on ${formattedDate} has been completed. Medical history has been updated with consultation details.`;
           priority = 'low';
           break;
         default:

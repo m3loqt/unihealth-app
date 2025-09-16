@@ -235,7 +235,7 @@ export default function SpecialistScheduleScreen() {
         );
       }
 
-      // Fetch referring doctor name if not already cached
+      // Fetch referring generalist name if not already cached
       if (referral.referringGeneralistId && !newFetchedNames.doctors[referral.referringGeneralistId]) {
         promises.push(
           databaseService.getDocument(`users/${referral.referringGeneralistId}`)
@@ -248,7 +248,25 @@ export default function SpecialistScheduleScreen() {
               }
             })
             .catch(error => {
-              console.error('Error fetching doctor data:', error);
+              console.error('Error fetching generalist data:', error);
+            })
+        );
+      }
+
+      // Fetch referring specialist name if not already cached
+      if (referral.referringSpecialistId && !newFetchedNames.doctors[referral.referringSpecialistId]) {
+        promises.push(
+          databaseService.getDocument(`users/${referral.referringSpecialistId}`)
+            .then(doctorData => {
+              if (doctorData) {
+                newFetchedNames.doctors[referral.referringSpecialistId] = {
+                  firstName: doctorData.firstName || '',
+                  lastName: doctorData.lastName || ''
+                };
+              }
+            })
+            .catch(error => {
+              console.error('Error fetching specialist data:', error);
             })
         );
       }
@@ -590,10 +608,20 @@ export default function SpecialistScheduleScreen() {
                 {booking.type === 'referral' && (
                   <Text style={styles.appointmentPurpose}>
                     {(() => {
-                      const doctorData = fetchedNames.doctors[(booking as any).referringGeneralistId];
-                      return doctorData 
-                        ? `Referral from Dr. ${doctorData.firstName} ${doctorData.lastName}`
-                        : 'Referral from Generalist';
+                      // Handle both generalist and specialist referrals
+                      if ((booking as any).referringSpecialistId) {
+                        const doctorData = fetchedNames.doctors[(booking as any).referringSpecialistId];
+                        return doctorData 
+                          ? `Referral from Dr. ${doctorData.firstName} ${doctorData.lastName}`
+                          : 'Referral from Specialist';
+                      } else if ((booking as any).referringGeneralistId) {
+                        const doctorData = fetchedNames.doctors[(booking as any).referringGeneralistId];
+                        return doctorData 
+                          ? `Referral from Dr. ${doctorData.firstName} ${doctorData.lastName}`
+                          : 'Referral from Generalist';
+                      } else {
+                        return 'Referral from Unknown Doctor';
+                      }
                     })()}
                   </Text>
                 )}

@@ -44,6 +44,8 @@ interface ReferralData extends Referral {
   clinicAndAddress?: string;
   dateTime?: string;
   specialistClinic?: string;
+  specialistClinicAndAddress?: string;
+  additionalNotes?: string;
 
   // Clinical fields
   presentIllnessHistory?: string;
@@ -182,6 +184,8 @@ const formatDateTime = (dateString?: string, timeString?: string): string => {
 export default function PatientReferralDetailsScreen() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
+  
+  console.log('🔍 Referral details page loaded with ID:', id);
   const [referralData, setReferralData] = useState<ReferralData | null>(null);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [certificates, setCertificates] = useState<any[]>([]);
@@ -208,46 +212,60 @@ export default function PatientReferralDetailsScreen() {
     try {
       setLoading(true);
       
+      console.log('🔍 Fetching referral data for ID:', id);
       const referral = await databaseService.getReferralById(id as string);
+      console.log('🔍 Retrieved referral data:', referral);
       
       if (referral) {
+        // Enrich referral data with specialist information (similar to appointment conversion)
+        const enrichedReferral = await databaseService.enrichSpecialistReferralData(referral);
+        console.log('🔍 Enriched referral data:', enrichedReferral);
         let clinicData: any = null;
         let referringDoctorData: any = null;
         let specialistClinicData: any = null;
         let patientData: any = null;
         
         try {
+          // Handle both generalist and specialist referrals
+          const referringDoctorId = enrichedReferral.referringGeneralistId || enrichedReferral.referringSpecialistId;
+          const referringDoctorNode = enrichedReferral.referringGeneralistId ? 'specialists' : 'users';
+          
           [clinicData, referringDoctorData, patientData] = await Promise.all([
-            databaseService.getDocument(`clinics/${referral.referringClinicId}`),
-            databaseService.getDocument(`specialists/${referral.referringGeneralistId}`),
-            databaseService.getDocument(`users/${referral.patientId}`),
+            databaseService.getDocument(`clinics/${enrichedReferral.referringClinicId}`),
+            referringDoctorId ? databaseService.getDocument(`${referringDoctorNode}/${referringDoctorId}`) : null,
+            databaseService.getDocument(`users/${enrichedReferral.patientId}`),
           ]);
         } catch (error) {
           console.log('Could not fetch clinic, doctor, or specialist data:', error);
         }
         
-        // Fetch specialist clinic from schedule if available (patient view uses assignedSpecialistId)
+        // Fetch specialist clinic from practiceLocation.clinicId
         try {
-          if (referral.assignedSpecialistId && referral.specialistScheduleId) {
-            const specialistSchedules = await databaseService.getDocument(`specialistSchedules/${referral.assignedSpecialistId}`);
-            const matchingSchedule = specialistSchedules?.[referral.specialistScheduleId];
+          if (enrichedReferral.practiceLocation?.clinicId) {
+            console.log('🔍 Fetching specialist clinic from practiceLocation.clinicId:', enrichedReferral.practiceLocation.clinicId);
+            specialistClinicData = await databaseService.getDocument(`clinics/${enrichedReferral.practiceLocation.clinicId}`);
+            console.log('🔍 Specialist clinic data:', specialistClinicData);
+          } else if (enrichedReferral.assignedSpecialistId && enrichedReferral.specialistScheduleId) {
+            // Fallback to specialist schedules for older referrals
+            const specialistSchedules = await databaseService.getDocument(`specialistSchedules/${enrichedReferral.assignedSpecialistId}`);
+            const matchingSchedule = specialistSchedules?.[enrichedReferral.specialistScheduleId];
             const practiceLocation = matchingSchedule?.practiceLocation;
             if (practiceLocation?.clinicId) {
               specialistClinicData = await databaseService.getDocument(`clinics/${practiceLocation.clinicId}`);
             }
           }
         } catch (error) {
-          console.log('Could not fetch specialist schedule or clinic data:', error);
+          console.log('Could not fetch specialist clinic data:', error);
         }
         
         // Load medical history if completed
         let medicalHistory = null;
-        if (referral.status.toLowerCase() === 'completed' && referral.referralConsultationId) {
+        if (enrichedReferral.status.toLowerCase() === 'completed' && enrichedReferral.referralConsultationId) {
           try {
-            medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${referral.patientId}/entries/${referral.referralConsultationId}`);
+            medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${enrichedReferral.patientId}/entries/${enrichedReferral.referralConsultationId}`);
           } catch (error) {
             try {
-              medicalHistory = await databaseService.getMedicalHistoryByAppointment(referral.clinicAppointmentId, referral.patientId);
+              medicalHistory = await databaseService.getMedicalHistoryByAppointment(enrichedReferral.clinicAppointmentId, enrichedReferral.patientId);
             } catch (fallbackError) {
               console.log('Medical history not available');
             }
@@ -255,7 +273,7 @@ export default function PatientReferralDetailsScreen() {
         }
         
         const combinedReferralData: ReferralData = {
-          ...referral,
+          ...enrichedReferral,
           // Patient information (prefer fetched patient data if available)
           patientName: (() => {
             if (patientData) {
@@ -273,7 +291,14 @@ export default function PatientReferralDetailsScreen() {
           referringDoctorName:
             referringDoctorData?.firstName && referringDoctorData?.lastName
               ? `${referringDoctorData.firstName} ${referringDoctorData.lastName}`
-              : `${referral.referringGeneralistFirstName || ''} ${referral.referringGeneralistLastName || ''}`.trim(),
+              : (() => {
+                  // Handle both generalist and specialist referrals
+                  if (referral.referringSpecialistId) {
+                    return `${referral.referringSpecialistFirstName || ''} ${referral.referringSpecialistLastName || ''}`.trim();
+                  } else {
+                    return `${referral.referringGeneralistFirstName || ''} ${referral.referringGeneralistLastName || ''}`.trim();
+                  }
+                })(),
 
           clinic: clinicData?.name || referral.referringClinicName || 'Unknown Clinic',
           date: referral.appointmentDate,
@@ -282,6 +307,7 @@ export default function PatientReferralDetailsScreen() {
           clinicAndAddress: formatClinicAndAddress(clinicData, clinicData?.name || referral.referringClinicName),
           dateTime: formatDateTime(referral.appointmentDate, referral.appointmentTime),
           specialistClinic: specialistClinicData?.name || 'Not assigned',
+          specialistClinicAndAddress: formatClinicAndAddress(specialistClinicData, specialistClinicData?.name || 'Not assigned'),
 
           // Clinical fields
           presentIllnessHistory: (medicalHistory as any)?.presentIllnessHistory || '',
@@ -654,11 +680,15 @@ export default function PatientReferralDetailsScreen() {
                 </Text>
               </View>
               <View style={styles.referralDetailsRow}>
-                <Text style={styles.referralLabel}>Referring Generalist</Text>
+                <Text style={styles.referralLabel}>
+                  {(referralData as any)?.referringSpecialistId ? 'Referring Specialist' : 'Referring Generalist'}
+                </Text>
                 <Text style={styles.referralValue}>{formatDoctorName(referralData.referringDoctorName)}</Text>
               </View>
               <View style={styles.referralDetailsRowWrapped}>
-                <Text style={styles.referralLabel}>Generalist Clinic</Text>
+                <Text style={styles.referralLabel}>
+                  {(referralData as any)?.referringSpecialistId ? 'Referring Specialist Clinic' : 'Generalist Clinic'}
+                </Text>
                 <Text style={styles.referralValueWrapped}>{referralData.clinicAndAddress || 'Unknown Clinic'}</Text>
               </View>
               <View style={styles.referralDetailsRow}>
@@ -673,9 +703,9 @@ export default function PatientReferralDetailsScreen() {
                   {referralData.time ? formatTime(referralData.time) : 'Not specified'}
                 </Text>
               </View>
-              <View style={styles.referralDetailsRow}>
+              <View style={styles.referralDetailsRowWrapped}>
                 <Text style={styles.referralLabel}>Specialist Clinic</Text>
-                <Text style={styles.referralValue}>{referralData.specialistClinic || 'Not assigned'}</Text>
+                <Text style={styles.referralValueWrapped}>{referralData.specialistClinicAndAddress || 'Not assigned'}</Text>
               </View>
               {referralData.practiceLocation?.roomOrUnit && (
                 <View style={styles.referralDetailsRow}>
@@ -685,7 +715,12 @@ export default function PatientReferralDetailsScreen() {
               )}
               <View style={styles.referralDetailsRowNoBorder}>
                 <Text style={styles.referralLabel}>Reason for Referral</Text>
-                <Text style={styles.referralValue}>{referralData.initialReasonForReferral || 'Not specified'}</Text>
+                <Text style={styles.referralValue}>
+                  {(referralData as any)?.referringSpecialistId 
+                    ? (referralData.additionalNotes || 'Not specified')
+                    : (referralData.initialReasonForReferral || 'Not specified')
+                  }
+                </Text>
               </View>
               {referralData.generalistNotes && (
                 <View style={styles.referralDetailsRowNoBorder}>
