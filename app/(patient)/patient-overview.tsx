@@ -153,8 +153,14 @@ export default function PatientOverviewScreen() {
         const validPrescriptions = dataValidation.validateArray(patientPrescriptions, dataValidation.isValidPrescription);
 
         // Filter medical history to only show entries that have a corresponding appointment with appointmentConsultationId
-        // or referral with referralConsultationId
+        // or referral with referralConsultationId, and exclude hidden records
         const filteredMedicalHistory = patientMedicalHistory?.filter(historyItem => {
+          // First check if the record is hidden - if so, exclude it
+          // Only exclude if isHidden is explicitly true (null or undefined means it should be shown)
+          if ((historyItem as any)?.isHidden === true) {
+            return false;
+          }
+          
           // Check if there's an appointment with appointmentConsultationId matching this medical history entry ID
           const hasMatchingAppointment = validAppointments.some(appointment => 
             appointment.appointmentConsultationId === historyItem.id
@@ -343,11 +349,13 @@ export default function PatientOverviewScreen() {
           originalCount: patientMedicalHistory?.length || 0,
           filteredCount: filteredMedicalHistory.length,
           filteredOutCount: (patientMedicalHistory?.length || 0) - filteredMedicalHistory.length,
+          hiddenRecordsCount: patientMedicalHistory?.filter(item => (item as any)?.isHidden === true).length || 0,
           filteredItems: filteredMedicalHistory.map(item => ({
             id: item.id,
             type: item.type,
             consultationDate: item.consultationDate,
             provider: item.provider,
+            isHidden: (item as any)?.isHidden || false,
             hasMatchingAppointment: validAppointments.some(appointment => 
               appointment.appointmentConsultationId === item.id
             ),
@@ -368,6 +376,14 @@ export default function PatientOverviewScreen() {
             appointmentConsultationId: item.appointmentConsultationId,
             consultationId: item.consultationId
           }))
+        });
+
+        // Debug logging for prescriptions filtering
+        console.log('🔍 PRESCRIPTIONS FILTERING DEBUG:', {
+          totalPrescriptions: validPrescriptions?.length || 0,
+          activePrescriptions: validPrescriptions?.filter(p => p.status === 'active').length || 0,
+          hiddenHistoryEntries: filteredMedicalHistory.filter(item => (item as any)?.isHidden === true).length,
+          prescriptionsWithConsultationIds: validPrescriptions?.filter(p => p.consultationId || p.appointmentConsultationId).length || 0
         });
 
         // Debug logging for user role
@@ -709,8 +725,23 @@ export default function PatientOverviewScreen() {
   }, [appointments]);
 
   const activePrescriptions = performanceUtils.useDeepMemo(() => {
-    return prescriptions.filter(pres => pres.status === 'active');
-  }, [prescriptions]);
+    return prescriptions.filter(pres => {
+      // First check if prescription is active
+      if (pres.status !== 'active') return false;
+      
+      // Check if this prescription belongs to a hidden medical history entry
+      // We need to check if the prescription's consultation ID matches a hidden medical history entry
+      const prescriptionConsultationId = pres.consultationId || pres.appointmentConsultationId;
+      if (prescriptionConsultationId) {
+        const isFromHiddenHistory = medicalHistory.some(historyItem => 
+          historyItem.id === prescriptionConsultationId && (historyItem as any)?.isHidden === true
+        );
+        if (isFromHiddenHistory) return false;
+      }
+      
+      return true;
+    });
+  }, [prescriptions, medicalHistory]);
 
   const getActiveAppointments = () => activeAppointments;
   const getCompletedAppointments = () => completedAppointments;
@@ -896,14 +927,6 @@ export default function PatientOverviewScreen() {
                   </View>
                 </View>
 
-                {(patientData?.email || patientData?.emailAddress) && (
-                  <View style={styles.contactInfo}>
-                    <View style={styles.contactItem}>
-                      <Mail size={16} color="#6B7280" />
-                      <Text style={styles.contactText}>{patientData?.email || patientData?.emailAddress}</Text>
-                    </View>
-                  </View>
-                )}
                 
                 {patientData?.medicalConditions && patientData.medicalConditions.length > 0 && (
                   <>
@@ -1075,9 +1098,6 @@ export default function PatientOverviewScreen() {
                           <Text style={styles.prescriptionDate}>
                             Prescribed: {prescription?.prescribedDate ? formatDate(prescription.prescribedDate) : 'Date not specified'}
                           </Text>
-                        </View>
-                        <View style={styles.prescriptionStatus}>
-                          <CheckCircle size={16} color="#10B981" />
                         </View>
                       </View>
                     </View>
@@ -1253,6 +1273,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    zIndex: 1,
   },
   headerTitle: {
     fontSize: 20,
@@ -1260,7 +1281,10 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     textAlign: 'center',
     flex: 1,
-    paddingLeft: -10,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 0,
   },
   newConsultationButton: {
     width: 40,

@@ -194,6 +194,7 @@ export default function PatientReferralDetailsScreen() {
     treatment: true,
   });
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [isReferralHidden, setIsReferralHidden] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -299,6 +300,11 @@ export default function PatientReferralDetailsScreen() {
         };
         
         setReferralData(combinedReferralData);
+
+        // Check if this referral is currently hidden
+        if (referral.referralConsultationId && medicalHistory) {
+          setIsReferralHidden((medicalHistory as any)?.isHidden === true);
+        }
 
         // Load related prescriptions and certificates (with enrichment/fallbacks)
         let referralPrescriptions: any[] = [];
@@ -444,6 +450,116 @@ export default function PatientReferralDetailsScreen() {
       pathname: '/(patient)/book-visit/select-datetime',
       params
     });
+  };
+
+  const handleHideReferralDetails = async () => {
+    if (!referralData || !user) return;
+    
+    try {
+      // Check if this is a completed referral with consultation data
+      if (referralData.status.toLowerCase() !== 'completed' || !referralData.referralConsultationId) {
+        Alert.alert('Error', 'Cannot hide referral details. Referral must be completed first.');
+        return;
+      }
+
+      // Show confirmation dialog
+      Alert.alert(
+        'Hide Referral Details',
+        'Are you sure you want to hide this referral from your medical history? You can show it again anytime.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          },
+          {
+            text: 'Hide',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                // Update the medical history entry to mark it as hidden
+                await databaseService.updateDocument(
+                  `patientMedicalHistory/${user.uid}/entries/${referralData.referralConsultationId}`,
+                  { isHidden: true }
+                );
+                
+                setIsReferralHidden(true);
+                
+                Alert.alert(
+                  'Success',
+                  'Referral details have been hidden from your medical history.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => router.back()
+                    }
+                  ]
+                );
+              } catch (error) {
+                console.error('Error hiding referral details:', error);
+                Alert.alert('Error', 'Failed to hide referral details. Please try again.');
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error in handleHideReferralDetails:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    }
+  };
+
+  const handleShowReferralDetails = async () => {
+    if (!referralData || !user) return;
+    
+    try {
+      // Check if this is a completed referral with consultation data
+      if (referralData.status.toLowerCase() !== 'completed' || !referralData.referralConsultationId) {
+        Alert.alert('Error', 'Cannot show referral details. Referral must be completed first.');
+        return;
+      }
+
+      // Show confirmation dialog
+      Alert.alert(
+        'Show Referral Details',
+        'Are you sure you want to show this referral in your medical history again?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          },
+          {
+            text: 'Show',
+            onPress: async () => {
+              try {
+                // Remove the isHidden property from the medical history entry
+                await databaseService.updateDocument(
+                  `patientMedicalHistory/${user.uid}/entries/${referralData.referralConsultationId}`,
+                  { isHidden: null }
+                );
+                
+                setIsReferralHidden(false);
+                
+                Alert.alert(
+                  'Success',
+                  'Referral details have been shown in your medical history again.',
+                  [
+                    {
+                      text: 'OK'
+                    }
+                  ]
+                );
+              } catch (error) {
+                console.error('Error showing referral details:', error);
+                Alert.alert('Error', 'Failed to show referral details. Please try again.');
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error in handleShowReferralDetails:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    }
   };
 
   if (loading) {
@@ -865,12 +981,18 @@ export default function PatientReferralDetailsScreen() {
                style={styles.moreMenuItem}
                onPress={() => {
                  setShowMoreMenu(false);
-                 Alert.alert('Hidden', 'Referral details hidden');
+                 if (isReferralHidden) {
+                   handleShowReferralDetails();
+                 } else {
+                   handleHideReferralDetails();
+                 }
                }}
                activeOpacity={0.8}
              >
                <Eye size={18} color="#1E40AF" style={{ marginRight: 12 }} />
-               <Text style={styles.moreMenuItemText}>Hide Referral Details</Text>
+               <Text style={styles.moreMenuItemText}>
+                 {isReferralHidden ? 'Show Referral Details' : 'Hide Referral Details'}
+               </Text>
              </TouchableOpacity>
            </View>
         </View>

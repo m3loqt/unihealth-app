@@ -1,6 +1,8 @@
 # dependencies
 node_modules/
 
+
+odyssey-test-db-default-rtdb-export (9).json
 # expo
 .expo/
 dist/
