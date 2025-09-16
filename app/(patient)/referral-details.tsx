@@ -27,6 +27,7 @@ import {
   Eye,
   Download,
   Stethoscope,
+  MoreHorizontal,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
@@ -192,6 +193,7 @@ export default function PatientReferralDetailsScreen() {
     soapNotes: true,
     treatment: true,
   });
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -753,7 +755,7 @@ export default function PatientReferralDetailsScreen() {
           {referralData.status.toLowerCase() === 'completed' && certificates.length ? certificates.map((cert) => {
             const statusStyle = getCertStatusStyles(cert.status);
             return (
-              <View key={cert.id} style={styles.cardBox}>
+              <View key={cert.id} style={styles.cardBoxCertificate}>
                 <View style={styles.certificateIconTitleRow}>
                   <View style={styles.uniformIconCircle}>
                     <FileText size={20} color="#1E3A8A" />
@@ -807,41 +809,70 @@ export default function PatientReferralDetailsScreen() {
 
       {/* Bottom action bar (shown when completed) */}
       {referralData.status.toLowerCase() === 'completed' && (
-        <View style={styles.buttonBarVertical}>
+        <View style={styles.compactButtonBar}>
           <TouchableOpacity
-            style={styles.primaryBottomButton}
+            style={[styles.primaryActionButton, user?.role !== 'patient' && styles.primaryActionButtonFullWidth]}
             onPress={() => router.push({ pathname: '/consultation-report', params: { id: String(id) } })}
             activeOpacity={0.8}
           >
             <Download size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.primaryBottomButtonText}>Generate Visit Report</Text>
+            <Text style={styles.primaryActionButtonText}>Generate Visit Report</Text>
           </TouchableOpacity>
+          {user?.role === 'patient' && (
+            <TouchableOpacity
+              style={styles.moreButton}
+              onPress={() => setShowMoreMenu(!showMoreMenu)}
+              activeOpacity={0.8}
+            >
+              <MoreHorizontal size={20} color="#1E40AF" />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* More Menu Dropdown */}
+      {showMoreMenu && user?.role === 'patient' && (
+        <View style={styles.moreMenuOverlay}>
           <TouchableOpacity
-            style={[styles.secondaryBottomButtonOutline, { marginTop: 0 }]}
-            onPress={() => router.push({ pathname: '/e-prescription', params: { id: String(id) } })}
-            activeOpacity={0.8}
-          >
-            <FileText size={18} color="#1E40AF" style={{ marginRight: 8 }} />
-            <Text style={styles.secondaryBottomButtonOutlineText}>Generate E‑Prescription</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.secondaryBottomButtonOutline, { marginTop: 10 }]}
-            onPress={handleReferralFollowUp}
-            activeOpacity={0.8}
-          >
-            <Stethoscope size={18} color="#1E40AF" style={{ marginRight: 8 }} />
-            <Text style={styles.secondaryBottomButtonOutlineText}>Book Follow-up</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.secondaryBottomButtonOutline, { marginTop: 10 }]}
-            onPress={() => {
-              Alert.alert('Hidden', 'Referral details hidden');
-            }}
-            activeOpacity={0.8}
-          >
-            <Eye size={18} color="#1E40AF" style={{ marginRight: 8 }} />
-            <Text style={styles.secondaryBottomButtonOutlineText}>Hide Referral Details</Text>
-          </TouchableOpacity>
+            style={styles.moreMenuBackdrop}
+            onPress={() => setShowMoreMenu(false)}
+            activeOpacity={1}
+          />
+           <View style={styles.moreMenuContainer}>
+             <TouchableOpacity
+               style={styles.moreMenuItem}
+               onPress={() => {
+                 setShowMoreMenu(false);
+                 router.push({ pathname: '/e-prescription', params: { id: String(id) } });
+               }}
+               activeOpacity={0.8}
+             >
+               <FileText size={18} color="#1E40AF" style={{ marginRight: 12 }} />
+               <Text style={styles.moreMenuItemText}>Generate E‑Prescription</Text>
+             </TouchableOpacity>
+             <TouchableOpacity
+               style={styles.moreMenuItem}
+               onPress={() => {
+                 setShowMoreMenu(false);
+                 handleReferralFollowUp();
+               }}
+               activeOpacity={0.8}
+             >
+               <Stethoscope size={18} color="#1E40AF" style={{ marginRight: 12 }} />
+               <Text style={styles.moreMenuItemText}>Book Follow-up</Text>
+             </TouchableOpacity>
+             <TouchableOpacity
+               style={styles.moreMenuItem}
+               onPress={() => {
+                 setShowMoreMenu(false);
+                 Alert.alert('Hidden', 'Referral details hidden');
+               }}
+               activeOpacity={0.8}
+             >
+               <Eye size={18} color="#1E40AF" style={{ marginRight: 12 }} />
+               <Text style={styles.moreMenuItemText}>Hide Referral Details</Text>
+             </TouchableOpacity>
+           </View>
         </View>
       )}
     </SafeAreaView>
@@ -991,6 +1022,14 @@ const styles = StyleSheet.create({
   cardBoxPrescription: {
     paddingTop: 16,
   },
+  cardBoxCertificate: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 14,
+  },
   referralDetailsTable: {
     marginTop: 2,
   },
@@ -1106,8 +1145,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
   },
 
-  // Bottom bar buttons
-  buttonBarVertical: {
+  // Compact bottom bar buttons
+  compactButtonBar: {
     position: 'absolute',
     left: 0,
     right: 0,
@@ -1118,39 +1157,74 @@ const styles = StyleSheet.create({
     paddingHorizontal: HORIZONTAL_MARGIN,
     paddingBottom: Platform.OS === 'ios' ? 26 : 18,
     paddingTop: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  primaryBottomButton: {
-    width: '100%',
+  primaryActionButton: {
+    flex: 1,
     backgroundColor: '#1E40AF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 11,
     paddingVertical: 15,
-    marginBottom: 11,
   },
-  primaryBottomButtonText: {
+  primaryActionButtonText: {
     color: '#fff',
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
     letterSpacing: 0.2,
   },
-  secondaryBottomButtonOutline: {
-    width: '100%',
-    backgroundColor: '#fff',
-    flexDirection: 'row',
+  primaryActionButtonFullWidth: {
+    flex: 1,
+    marginRight: 0,
+  },
+  moreButton: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 11,
-    paddingVertical: 15,
-    borderWidth: 1.5,
-    borderColor: '#1E40AF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  secondaryBottomButtonOutlineText: {
-    color: '#1E40AF',
+  // More menu styles
+  moreMenuOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  moreMenuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  moreMenuContainer: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 90 : 82,
+    right: HORIZONTAL_MARGIN,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minWidth: 200,
+  },
+  moreMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  moreMenuItemText: {
+    color: '#1F2937',
     fontSize: 15,
-    fontFamily: 'Inter-SemiBold',
-    letterSpacing: 0.2,
+    fontFamily: 'Inter-Medium',
   },
 
   // Prescription styles

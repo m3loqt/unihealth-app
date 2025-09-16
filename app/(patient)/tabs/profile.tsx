@@ -29,6 +29,8 @@ import {
   Check,
   RefreshCw,
   DoorOpen,
+  ChevronLeft,
+  Edit,
 } from 'lucide-react-native';
 import {
   checkBiometricSupport,
@@ -435,84 +437,44 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
       >
-        {/* Header Row */}
-        <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity
-            style={styles.bellButton}
-            onPress={handleOpenNotifications}
-          >
-            <Bell size={24} color="#6B7280" />
-            {notifications.filter(n => !n.read).length > 0 && (
-              <View style={styles.notifDot}>
-                <Text style={styles.notifDotText}>
-                  {notifications.filter(n => !n.read).length > 9 ? '9+' : notifications.filter(n => !n.read).length.toString()}
+        {/* Custom Profile Header */}
+        <View style={styles.customHeader}>
+          <View style={styles.customHeaderBackground} />
+          <View style={styles.headerTop}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <ChevronLeft size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>My Profile</Text>
+            <TouchableOpacity 
+              style={styles.editProfileHeaderButton}
+              onPress={() => router.push('/(patient)/edit-profile')}
+            >
+              <Edit size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Profile Header Section */}
+          <View style={styles.profileHeaderSection}>
+            <View style={styles.profileImageContainer}>
+              <View style={styles.profileImagePlaceholder}>
+                <Text style={styles.profileImageText}>
+                  {userInitials}
                 </Text>
               </View>
-            )}
-          </TouchableOpacity>
+            </View>
+            <Text style={styles.profileName}>{fullName}</Text>
+            <Text style={styles.profileEmail}>{email}</Text>
+          </View>
         </View>
 
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          {profileLoading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading profile...</Text>
-            </View>
-          ) : profileError ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>Error loading profile: {profileError}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={() => window.location.reload()}>
-                <Text style={styles.retryButtonText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <>
-              <View style={styles.profileHeader}>
-                <View style={styles.profileAvatarCircle}>
-                  <Text style={styles.profileAvatarText}>{userInitials}</Text>
-                </View>
-                <View style={styles.profileInfo}>
-                  <Text style={styles.userName}>{fullName}</Text>
-                  {calcAge(dob) && <Text style={styles.userAge}>{calcAge(dob)}</Text>}
-                  {/* <Text style={styles.memberSince}>Member since {memberSince}</Text> */}
-                </View>
-              </View>
-              <View style={styles.contactInfo}>
-                <View style={styles.contactItem}>
-                  <Phone size={16} color="#6B7280" />
-                  <Text style={styles.contactText}>{contact}</Text>
-                </View>
-                <View style={styles.contactItem}>
-                  <Mail size={16} color="#6B7280" />
-                  <Text style={styles.contactText}>{email}</Text>
-                </View>
-                <View style={styles.contactItem}>
-                  <MapPin size={16} color="#6B7280" />
-                  <Text style={styles.contactText}>{address}</Text>
-                </View>
 
-              </View>
-              
-              {/* Edit Profile Button */}
-              <TouchableOpacity
-                style={styles.editProfileButton}
-                onPress={() => router.push('/(patient)/edit-profile')}
-              >
-                <Text style={styles.editProfileButtonText}>Edit Profile</Text>
-              </TouchableOpacity>
-              
-              {/* Info Text */}
-              <Text style={styles.infoText}>
-                Tap "Edit Profile" to update your contact information and emergency contact details.
-              </Text>
-            </>
-          )}
-        </View>
 
         {/* Emergency Contact */}
         {!profileLoading && !profileError && (
-          <View style={styles.card}>
+          <View style={[styles.card, styles.emergencyContactCard]}>
             <View style={styles.emergencyHeaderRow}>
               <Text style={styles.sectionTitle}>Emergency Contact</Text>
               <View style={styles.relationshipTagFixed}>
@@ -542,6 +504,35 @@ export default function ProfileScreen() {
           </View>
         )}
 
+        {/* Personal Information */}
+        {/* {!profileLoading && !profileError && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Personal Information</Text>
+            <View style={styles.infoGrid}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Date of Birth:</Text>
+                <Text style={styles.infoValue}>{dob}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Age:</Text>
+                <Text style={styles.infoValue}>{calcAge(dob) || 'Not provided'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Phone:</Text>
+                <Text style={styles.infoValue}>{contact}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Address:</Text>
+                <Text style={styles.infoValue}>{address}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Member Since:</Text>
+                <Text style={styles.infoValue}>{memberSince}</Text>
+              </View>
+            </View>
+          </View>
+        )} */}
+
         {/* Settings */}
         {!profileLoading && !profileError && (
           <View style={styles.card}>
@@ -570,9 +561,6 @@ export default function ProfileScreen() {
           </View>
         )}
       </ScrollView>
-
-      {/* Notification Preferences Modal */}
-      {/* This section is removed as per the edit hint */}
     </SafeAreaView>
   );
 }
@@ -583,89 +571,125 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  scrollView: { flex: 1 },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 8,
-    backgroundColor: '#FFF',
-  },
-  headerTitle: {
-    fontSize: 24,
-    color: '#1F2937',
-  
-  },
-  bellButton: {
-    padding: 7,
-    borderRadius: 18,
-    position: 'relative',
-  },
-  profileCard: {
+  scrollView: { 
+    flex: 1,
     backgroundColor: '#F9FAFB',
-    margin: 24,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
-  profileHeader: {
+  // Custom Header Styles
+  customHeader: {
+    backgroundColor: '#1E40AF',
+    paddingTop: Platform.OS === 'ios' ? 20 : 20,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    marginBottom: 10,
+  },
+  customHeaderBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: -20,
+    backgroundColor: '#1E40AF',
+    zIndex: -1,
+  },
+  headerTop: {
     flexDirection: 'row',
-    marginBottom: 18,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: 16,
-  },
-  profileAvatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginRight: 16,
-    backgroundColor: BLUE,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  profileAvatarText: {
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
-    fontSize: 24,
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
+  },
+  editProfileHeaderButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileHeaderSection: {
+    alignItems: 'center',
+    paddingBottom: 20,
+  },
+  profileImageContainer: {
+    marginBottom: 20,
+    position: 'relative',
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 4,
+    borderColor: '#1E40AF',
+  },
+  profileImagePlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#1E40AF',
+  },
+  profileImageText: {
+    color: '#1E40AF',
+    fontSize: 32,
     fontFamily: 'Inter-Bold',
   },
-  profileInfo: { flex: 1, justifyContent: 'center' },
-  userName: {
-    fontSize: 22,
+  profileName: {
+    fontSize: 20,
     fontFamily: 'Inter-Bold',
-    color: '#1F2937',
-    marginBottom: 4,
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textAlign: 'center',
   },
-  userAge: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  memberSince: {
+  profileEmail: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
-  contactInfo: { gap: 12 },
-  contactItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  contactText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-  },
-  editIndicator: {
-    color: BLUE,
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    marginLeft: 8,
-  },
+  // Personal Information Styles
+  // infoGrid: {
+  //   marginTop: 8,
+  // },
+  // infoRow: {
+  //   flexDirection: 'row',
+  //   justifyContent: 'space-between',
+  //   alignItems: 'center',
+  //   paddingVertical: 12,
+  //   borderBottomWidth: 1,
+  //   borderBottomColor: '#F3F4F6',
+  // },
+  // infoLabel: {
+  //   fontSize: 14,
+  //   fontFamily: 'Inter-Medium',
+  //   color: '#374151',
+  //   flex: 1,
+  // },
+  // infoValue: {
+  //   fontSize: 14,
+  //   fontFamily: 'Inter-Regular',
+  //   color: '#1F2937',
+  //   flex: 1,
+  //   textAlign: 'right',
+  // },
   card: {
     backgroundColor: '#F9FAFB',
     marginHorizontal: 24,
@@ -675,31 +699,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  emergencyContactCard: {
+    marginTop: -30,
+    zIndex: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 0,
+  },
   // Emergency Header Row: for header + right-aligned relationship
   emergencyHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 4,
     position: 'relative',
-  },
-  editIconButton: {
-    position: 'absolute',
-    right: 80,
-    top: 0,
-    backgroundColor: '#EFF6FF',
-    borderColor: LIGHT_BLUE,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignSelf: 'flex-end',
-    minWidth: 32,
-    alignItems: 'center',
-  },
-  editIconText: {
-    color: BLUE,
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
   },
   relationshipTagFixed: {
     position: 'absolute',
@@ -732,7 +747,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     gap: 6,
-
   },
   emergencyAvatar: {
     width: 48,
@@ -777,12 +791,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
-    marginBottom: 0,
-  },
   menuContainer: { gap: 2, marginTop: 8 },
   menuItem: {
     flexDirection: 'row',
@@ -812,25 +820,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderRadius: 8,
     marginTop: 2,
-  },
-  editProfileButton: {
-    backgroundColor: BLUE,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  editProfileButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-  },
-  infoText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#6B7280',
-    marginTop: 10,
-    textAlign: 'center',
   },
   // Modal Styles
   modalBackdrop: {
