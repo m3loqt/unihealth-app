@@ -1152,16 +1152,18 @@ export default function ReferralDetailsScreen() {
                 <Download size={18} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={styles.primaryBottomButtonText}>Generate Visit Report</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.secondaryBottomButtonOutline}
-                onPress={() => {
-                  alert('Referral details hidden');
-                }}
-                activeOpacity={0.8}
-              >
-                <Eye size={18} color="#1E40AF" style={{ marginRight: 8 }} />
-                <Text style={styles.secondaryBottomButtonOutlineText}>Hide Referral Details</Text>
-              </TouchableOpacity>
+              {user?.role !== 'specialist' && (
+                <TouchableOpacity
+                  style={styles.secondaryBottomButtonOutline}
+                  onPress={() => {
+                    alert('Referral details hidden');
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Eye size={18} color="#1E40AF" style={{ marginRight: 8 }} />
+                  <Text style={styles.secondaryBottomButtonOutlineText}>Hide Referral Details</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : isConfirmed ? (
             <View>
