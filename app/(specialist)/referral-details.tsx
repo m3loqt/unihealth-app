@@ -332,17 +332,32 @@ export default function ReferralDetailsScreen() {
         let specialistClinicData = null;
         
         try {
+          // Handle both generalist and specialist referrals
+          const referringDoctorId = referral.referringGeneralistId || referral.referringSpecialistId;
+          const referringDoctorNode = referral.referringGeneralistId ? 'specialists' : 'users';
+          
           [clinicData, referringDoctorData, patientData] = await Promise.all([
             databaseService.getDocument(`clinics/${referral.referringClinicId}`),
-            databaseService.getDocument(`specialists/${referral.referringGeneralistId}`),
+            referringDoctorId ? databaseService.getDocument(`${referringDoctorNode}/${referringDoctorId}`) : null,
             databaseService.getDocument(`users/${referral.patientId}`)
           ]);
         } catch (error) {
           console.log('Could not fetch clinic, doctor, or patient data:', error);
         }
          
-                 // Additional: Fetch specialist's assigned clinic
-         if (user?.uid && user?.role === 'specialist') {
+                 // Fetch specialist clinic from practiceLocation.clinicId first
+         try {
+           if (referral.practiceLocation?.clinicId) {
+             console.log('🔍 Fetching specialist clinic from practiceLocation.clinicId:', referral.practiceLocation.clinicId);
+             specialistClinicData = await databaseService.getDocument(`clinics/${referral.practiceLocation.clinicId}`);
+             console.log('🔍 Specialist clinic data:', specialistClinicData);
+           }
+         } catch (error) {
+           console.log('Could not fetch specialist clinic from practiceLocation:', error);
+         }
+
+         // Additional: Fetch specialist's assigned clinic (fallback for older referrals)
+         if (!specialistClinicData && user?.uid && user?.role === 'specialist') {
            try {
              console.log('🔍 Fetching specialist schedules for logged-in user:', user.uid);
              const specialistSchedules = await databaseService.getDocument(`specialistSchedules/${user.uid}`);
@@ -452,11 +467,22 @@ export default function ReferralDetailsScreen() {
           })(),
           
           // Referring doctor information
-          referringDoctorName: referral.referringGeneralistFirstName && referral.referringGeneralistLastName 
-            ? `${referral.referringGeneralistFirstName} ${referral.referringGeneralistLastName}` 
-            : referringDoctorData 
-              ? `${referringDoctorData.firstName} ${referringDoctorData.lastName}`
-              : 'Unknown Doctor',
+          referringDoctorName: (() => {
+            // Handle both generalist and specialist referrals
+            if (referral.referringSpecialistId) {
+              return referral.referringSpecialistFirstName && referral.referringSpecialistLastName 
+                ? `${referral.referringSpecialistFirstName} ${referral.referringSpecialistLastName}` 
+                : referringDoctorData 
+                  ? `${referringDoctorData.firstName} ${referringDoctorData.lastName}`
+                  : 'Unknown Specialist';
+            } else {
+              return referral.referringGeneralistFirstName && referral.referringGeneralistLastName 
+                ? `${referral.referringGeneralistFirstName} ${referral.referringGeneralistLastName}` 
+                : referringDoctorData 
+                  ? `${referringDoctorData.firstName} ${referringDoctorData.lastName}`
+                  : 'Unknown Doctor';
+            }
+          })(),
           
           // Clinic information
           clinic: clinicData?.name || referral.referringClinicName || 'Unknown Clinic',
@@ -783,13 +809,17 @@ export default function ReferralDetailsScreen() {
               )}
               {!isFollowUpAppointment && (
                 <View style={styles.referralDetailsRow}>
-                  <Text style={styles.referralLabel}>Referring Generalist</Text>
+                  <Text style={styles.referralLabel}>
+                    {(referralData as any)?.referringSpecialistId ? 'Referring Specialist' : 'Referring Generalist'}
+                  </Text>
                   <Text style={styles.referralValue}>{referralData.referringDoctorName || 'Unknown Doctor'}</Text>
                 </View>
               )}
               {!isFollowUpAppointment && (
                 <View style={styles.referralDetailsRowWrapped}>
-                  <Text style={styles.referralLabel}>Generalist Clinic</Text>
+                  <Text style={styles.referralLabel}>
+                    {(referralData as any)?.referringSpecialistId ? 'Referring Specialist Clinic' : 'Generalist Clinic'}
+                  </Text>
                   <Text style={styles.referralValueWrapped}>{referralData.clinicAndAddress || 'Unknown Clinic'}</Text>
                 </View>
               )}
@@ -824,7 +854,10 @@ export default function ReferralDetailsScreen() {
                 <Text style={styles.referralValue}>
                   {isFollowUpAppointment 
                     ? (referralData.generalistNotes || 'No additional notes')
-                    : (referralData.initialReasonForReferral || 'Not specified')
+                    : ((referralData as any)?.referringSpecialistId 
+                        ? (referralData.additionalNotes || 'Not specified')
+                        : (referralData.initialReasonForReferral || 'Not specified')
+                      )
                   }
                 </Text>
               </View>

@@ -130,8 +130,15 @@ export default function SpecialistAppointmentsScreen() {
     } as Appointment));
   }, [hookReferrals]);
   
-  // Combine appointments from hook with referral appointments
-  const appointments = [...hookAppointments, ...referralAppointments];
+  // Combine appointments from hook with referral appointments, removing duplicates
+  const appointments = useDeepMemo(() => {
+    const combined = [...hookAppointments, ...referralAppointments];
+    // Remove duplicates based on ID to prevent duplicate keys
+    const uniqueAppointments = combined.filter((appointment, index, self) => 
+      index === self.findIndex(a => a.id === appointment.id)
+    );
+    return uniqueAppointments;
+  }, [hookAppointments, referralAppointments]);
   const loading = hookLoading || referralsLoading;
   const error = hookError || referralsError;
   
@@ -425,6 +432,23 @@ export default function SpecialistAppointmentsScreen() {
     });
   };
 
+  const handleReferPatient = (appointmentOrReferral: any) => {
+    console.log('🔍 HANDLING REFER PATIENT:', appointmentOrReferral);
+    
+    // Navigate to clinic selection for specialists
+    router.push({
+      pathname: '/(specialist)/book-visit',
+      params: {
+        patientId: appointmentOrReferral.patientId,
+        patientFirstName: appointmentOrReferral.patientFirstName,
+        patientLastName: appointmentOrReferral.patientLastName,
+        originalAppointmentId: appointmentOrReferral.id,
+        isReferral: 'true',
+        reasonForReferral: appointmentOrReferral.initialReasonForReferral || appointmentOrReferral.appointmentPurpose || 'Specialist referral',
+      }
+    });
+  };
+
   // --- LOAD APPOINTMENT DETAILS AND MEDICAL HISTORY ---
   const loadAppointmentDetails = async (appointment: Appointment) => {
     if (!appointment.patientId) {
@@ -595,7 +619,7 @@ export default function SpecialistAppointmentsScreen() {
           const isLoading = referralId ? loadingReferrals[referralId] : false;
         
         referralCards.push({
-            id: appointment.id || referralId, // Use appointment.id as unique key, fallback to referral ID (Firebase push key)
+            id: `referral-${appointment.id || referralId}`, // Prefix with 'referral-' to ensure unique keys
           type: 'referral',
           appointment,
           referral,
@@ -738,9 +762,18 @@ export default function SpecialistAppointmentsScreen() {
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Referred by:</Text>
             <Text style={styles.metaValue}>
-              {referral?.referringGeneralistFirstName || referral?.referringGeneralistLastName
-                ? `Dr. ${`${referral?.referringGeneralistFirstName || ''} ${referral?.referringGeneralistLastName || ''}`.trim()}`
-                : 'Unknown'}
+              {(() => {
+                // Handle both generalist and specialist referrals
+                if (referral?.referringSpecialistId) {
+                  const name = `${referral?.referringSpecialistFirstName || ''} ${referral?.referringSpecialistLastName || ''}`.trim();
+                  return name ? `Dr. ${name}` : 'Unknown Specialist';
+                } else if (referral?.referringGeneralistId) {
+                  const name = `${referral?.referringGeneralistFirstName || ''} ${referral?.referringGeneralistLastName || ''}`.trim();
+                  return name ? `Dr. ${name}` : 'Unknown Generalist';
+                } else {
+                  return 'Unknown Doctor';
+                }
+              })()}
             </Text>
           </View>
         </View>
@@ -752,7 +785,21 @@ export default function SpecialistAppointmentsScreen() {
           </View>
         )}
 
-        {/* Actions moved to referral details screen */}
+        {/* Refer Button for Completed Referrals */}
+        {appointment.status === 'completed' && (
+          <View style={styles.appointmentActions}>
+            <TouchableOpacity
+              style={styles.referButton}
+              onPress={(e) => {
+                e.stopPropagation(); // Prevent card click
+                handleReferPatient(referral);
+              }}
+            >
+              <Stethoscope size={16} color="#FFFFFF" />
+              <Text style={styles.referButtonText}>Refer</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -982,7 +1029,19 @@ export default function SpecialistAppointmentsScreen() {
                 <Text style={styles.acceptButtonText}>Accept</Text>
               </TouchableOpacity>
             </>
-                     ) : null}
+          ) : appointment.status === 'completed' && !isReferralAppointment ? (
+            // Completed regular appointment - show refer button
+            <TouchableOpacity
+              style={styles.referButton}
+              onPress={(e) => {
+                e.stopPropagation(); // Prevent card click
+                handleReferPatient(appointment);
+              }}
+            >
+              <Stethoscope size={16} color="#FFFFFF" />
+              <Text style={styles.referButtonText}>Refer</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </TouchableOpacity>
     );
@@ -1636,6 +1695,21 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   acceptButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+  },
+  referButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E40AF',
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  referButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',

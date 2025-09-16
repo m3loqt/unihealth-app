@@ -12,15 +12,29 @@ export interface Appointment {
   patientId: string;
   patientFirstName?: string; // Added back for UI display
   patientLastName?: string; // Added back for UI display
+  patientMiddleName?: string; // Added for specialist referrals
   doctorFirstName?: string; // Added back for UI display
   doctorLastName?: string; // Added back for UI display
+  doctorMiddleName?: string; // Added for specialist referrals
+  doctorSpecialty?: string; // Added for specialist referrals
   relatedReferralId?: string; // Added back for referral appointments
   sourceSystem?: string; // Optional for walk-ins
   specialty?: string; // Added back for UI display
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  type: 'general_consultation' | 'walk-in' | string;
+  type: 'general_consultation' | 'walk-in' | 'specialist_referral' | string;
   consultationId?: string;
   appointmentConsultationId?: string;
+  // Specialist referral specific fields
+  referringSpecialistId?: string;
+  referringSpecialistFirstName?: string;
+  referringSpecialistLastName?: string;
+  referringSpecialistMiddleName?: string;
+  referringClinicId?: string;
+  referringClinicName?: string;
+  practiceLocation?: {
+    clinicId: string;
+    roomOrUnit: string;
+  };
 }
 
 export interface CreateAppointmentData {
@@ -68,6 +82,7 @@ export interface Referral {
   referralConsultationId?: string;
   generalistNotes?: string;
   initialReasonForReferral: string;
+  additionalNotes?: string;
   lastUpdated: string;
   patientArrivalConfirmed: boolean;
   patientFirstName: string;
@@ -83,6 +98,11 @@ export interface Referral {
   referringGeneralistFirstName: string;
   referringGeneralistId: string;
   referringGeneralistLastName: string;
+  // Specialist referral fields
+  referringSpecialistId?: string;
+  referringSpecialistFirstName?: string;
+  referringSpecialistLastName?: string;
+  referringSpecialistMiddleName?: string;
   scheduleSlotPath: string;
   sourceSystem: string;
   specialistScheduleId: string;

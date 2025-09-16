@@ -109,6 +109,48 @@ export default function AppointmentsScreen() {
   const error = hookError;
   const [refreshing, setRefreshing] = useState(false);
 
+  // Debug function to test specialist referrals
+  const testSpecialistReferrals = async () => {
+    if (user) {
+      console.log('🧪 Testing specialist referrals from patient appointments screen...');
+      await databaseService.testSpecialistReferralsForPatient(user.uid);
+    }
+  };
+
+  // Call test function when component mounts (temporary for debugging)
+  useEffect(() => {
+    if (user && !loading) {
+      testSpecialistReferrals();
+    }
+  }, [user, loading]);
+
+  // Debug appointments data
+  useEffect(() => {
+    if (appointments.length > 0) {
+      console.log('🔍 Patient appointments data:', appointments.map(apt => ({
+        id: apt.id,
+        type: apt.type,
+        doctorFirstName: apt.doctorFirstName,
+        doctorLastName: apt.doctorLastName,
+        doctorSpecialty: apt.doctorSpecialty,
+        referringSpecialistId: apt.referringSpecialistId,
+        referringSpecialistFirstName: apt.referringSpecialistFirstName,
+        referringSpecialistLastName: apt.referringSpecialistLastName
+      })));
+      
+      // Check if specialist referrals are being included
+      const specialistReferrals = appointments.filter(apt => apt.type === 'specialist_referral');
+      console.log('🔍 Specialist referrals in appointments:', specialistReferrals.length);
+      specialistReferrals.forEach(ref => {
+        console.log('🔍 Specialist referral details:', {
+          id: ref.id,
+          doctorName: `${ref.doctorFirstName} ${ref.doctorLastName}`,
+          referringDoctor: `${ref.referringSpecialistFirstName} ${ref.referringSpecialistLastName}`
+        });
+      });
+    }
+  }, [appointments]);
+
   // --- Feedback modal state ---
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackAppointment, setFeedbackAppointment] = useState<Appointment | null>(null);
@@ -302,7 +344,7 @@ export default function AppointmentsScreen() {
         appointmentDate = feedbackAppointment.appointmentDate;
       } else if (feedbackReferral) {
         // Handle referral feedback
-        doctorData = await databaseService.getDoctorById(feedbackReferral.assignedSpecialistId);
+        doctorData = await databaseService.getDoctorById(feedbackReferral.assignedSpecialistId, false);
         doctorName = doctorData ? `${doctorData.firstName || ''} ${doctorData.lastName || ''}`.trim() : 'Unknown Doctor';
         clinicData = await databaseService.getClinicByIdForDisplay(feedbackReferral.referringClinicId);
         clinicName = clinicData?.name || feedbackReferral.referringClinicName || 'Unknown Clinic';
@@ -529,7 +571,7 @@ export default function AppointmentsScreen() {
       const specialistPromises = hookReferrals.map(async (referral) => {
         if (referral.assignedSpecialistId && !specialistData[referral.assignedSpecialistId]) {
           try {
-            const specialist = await databaseService.getDoctorById(referral.assignedSpecialistId);
+            const specialist = await databaseService.getDoctorById(referral.assignedSpecialistId, false);
             setSpecialistData(prev => ({ ...prev, [referral.assignedSpecialistId]: specialist }));
           } catch (error) {
             console.error('Error loading specialist data:', error);
@@ -676,7 +718,7 @@ export default function AppointmentsScreen() {
     };
 
     let referralItems = appointments
-      .filter(appointment => appointment.relatedReferralId)
+      .filter(appointment => appointment.relatedReferralId && appointment.type !== 'specialist_referral') // Exclude specialist referrals
       .map(appointment => ({
         id: appointment.id || appointment.relatedReferralId,
         type: 'referral',
@@ -685,6 +727,9 @@ export default function AppointmentsScreen() {
         loading: loadingReferrals[appointment.relatedReferralId],
       }))
       .filter(item => item.referral && matchesFilter(item.referral.status));
+
+    console.log('🔍 Referral cards being displayed:', referralItems.length);
+    console.log('🔍 Specialist referrals excluded from referral cards:', appointments.filter(apt => apt.type === 'specialist_referral').length);
 
     // Apply search filter to referrals
     if (searchQuery.trim()) {
@@ -697,7 +742,14 @@ export default function AppointmentsScreen() {
         
         // Get all searchable text fields for referrals
         const specialistName = `${referral.assignedSpecialistFirstName || ''} ${referral.assignedSpecialistLastName || ''}`.toLowerCase();
-        const referringDoctorName = `${referral.referringGeneralistFirstName || ''} ${referral.referringGeneralistLastName || ''}`.toLowerCase();
+        const referringDoctorName = (() => {
+          // Handle both generalist and specialist referrals
+          if (referral.referringSpecialistId) {
+            return `${referral.referringSpecialistFirstName || ''} ${referral.referringSpecialistLastName || ''}`.toLowerCase();
+          } else {
+            return `${referral.referringGeneralistFirstName || ''} ${referral.referringGeneralistLastName || ''}`.toLowerCase();
+          }
+        })();
         const clinicName = (referral.referringClinicName || '').toLowerCase();
         const specialty = (referral.specialty || '').toLowerCase();
         const reason = (referral.initialReasonForReferral || '').toLowerCase();
@@ -850,7 +902,18 @@ export default function AppointmentsScreen() {
 
     const specialistName = `${referral?.assignedSpecialistFirstName || ''} ${referral?.assignedSpecialistLastName || ''}`.trim();
     const specialistInitials = `${referral?.assignedSpecialistFirstName?.[0] || 'S'}${referral?.assignedSpecialistLastName?.[0] || 'P'}`;
-    const referringDoctorName = `${referral?.referringGeneralistFirstName || ''} ${referral?.referringGeneralistLastName || ''}`.trim();
+    const referringDoctorName = (() => {
+      // Handle both generalist and specialist referrals
+      if (referral?.referringSpecialistId) {
+        const name = `${referral?.referringSpecialistFirstName || ''} ${referral?.referringSpecialistLastName || ''}`.trim();
+        return name || 'Unknown Specialist';
+      } else if (referral?.referringGeneralistId) {
+        const name = `${referral?.referringGeneralistFirstName || ''} ${referral?.referringGeneralistLastName || ''}`.trim();
+        return name || 'Unknown Generalist';
+      } else {
+        return 'Unknown Doctor';
+      }
+    })();
     const resolvedSpecialty = (() => {
       if (referral?.assignedSpecialistId && specialistData[referral.assignedSpecialistId]) {
         const doc = specialistData[referral.assignedSpecialistId];
@@ -906,7 +969,9 @@ export default function AppointmentsScreen() {
           </View>
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Referred by:</Text>
-            <Text style={styles.metaValue}>{referringDoctorName ? `Dr. ${referringDoctorName}` : 'Unknown'}</Text>
+            <Text style={styles.metaValue}>
+              {referringDoctorName.includes('Unknown') ? referringDoctorName : `Dr. ${referringDoctorName}`}
+            </Text>
           </View>
         </View>
 
@@ -1119,7 +1184,17 @@ export default function AppointmentsScreen() {
         key={appointment.id}
         style={styles.appointmentCard}
         activeOpacity={0.8}
-        onPress={() => router.push(`/(patient)/visit-overview?id=${appointment.id}`)}
+        onPress={() => {
+          if (appointment.type === 'specialist_referral') {
+            // For specialist referrals, navigate to referral details
+            console.log('🔍 Navigating to referral details for specialist referral:', appointment.id);
+            router.push(`/(patient)/referral-details?id=${appointment.id}`);
+          } else {
+            // For regular appointments, navigate to visit overview
+            console.log('🔍 Navigating to visit overview for regular appointment:', appointment.id);
+            router.push(`/(patient)/visit-overview?id=${appointment.id}`);
+          }
+        }}
       >
         <View style={styles.appointmentHeader}>
           <View style={styles.doctorInfo}>

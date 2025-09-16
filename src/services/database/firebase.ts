@@ -337,6 +337,7 @@ export interface Clinic {
   createdAt: number;
   updatedAt: number;
   hasGeneralistDoctors?: boolean; // Added to indicate if clinic has generalist doctors
+  hasSpecialistDoctors?: boolean; // Added to indicate if clinic has specialist doctors
 }
 
 export interface Doctor {
@@ -401,6 +402,11 @@ export interface Referral {
   referringGeneralistFirstName: string;
   referringGeneralistId: string;
   referringGeneralistLastName: string;
+  // Specialist referral fields
+  referringSpecialistId?: string;
+  referringSpecialistFirstName?: string;
+  referringSpecialistLastName?: string;
+  referringSpecialistMiddleName?: string;
   scheduleSlotPath: string;
   sourceSystem: string;
   specialistScheduleId: string;
@@ -428,6 +434,7 @@ export const databaseService = {
   // Appointments
   async getAppointments(userId: string, role: 'patient' | 'specialist'): Promise<Appointment[]> {
     try {
+      console.log(`🔍 getAppointments called for user: ${userId}, role: ${role}`);
       const appointmentsRef = ref(database, 'appointments');
       const snapshot = await get(appointmentsRef);
       
@@ -452,9 +459,16 @@ export const databaseService = {
         
         const resolvedAppointments = await Promise.all(promises);
         appointments.push(...resolvedAppointments);
+        console.log(`🔍 Found ${resolvedAppointments.length} regular appointments`);
+        
+        // Also fetch specialist-to-specialist referrals for both patients and specialists
+        const specialistReferrals = await this.getSpecialistReferralsForUser(userId, role);
+        appointments.push(...specialistReferrals);
+        console.log(`🔍 Total appointments (including referrals): ${appointments.length}`);
         
         return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
       }
+      console.log('🔍 No appointments found in database');
       return [];
     } catch (error) {
       // Suppress Firebase indexing errors
@@ -464,6 +478,294 @@ export const databaseService = {
         console.error('Get appointments error:', error);
       }
       return [];
+    }
+  },
+
+  // Helper method to get specialist-to-specialist referrals for a user
+  async getSpecialistReferralsForUser(userId: string, role: 'patient' | 'specialist'): Promise<Appointment[]> {
+    try {
+      console.log(`🔍 Fetching specialist referrals for user: ${userId}, role: ${role}`);
+      const referralsRef = ref(database, 'referrals');
+      const snapshot = await get(referralsRef);
+      
+      if (!snapshot.exists()) {
+        console.log('🔍 No referrals found in database');
+        return [];
+      }
+
+      const specialistReferrals: Appointment[] = [];
+      const promises = [];
+      let totalReferrals = 0;
+      let relevantReferrals = 0;
+
+      snapshot.forEach((childSnapshot) => {
+        const referralData = childSnapshot.val();
+        totalReferrals++;
+        
+        // Check if this is a specialist-to-specialist referral relevant to the user
+        const isRelevantToUser = role === 'patient' 
+          ? referralData.patientId === userId
+          : referralData.assignedSpecialistId === userId;
+
+        console.log(`🔍 Referral ${childSnapshot.key}: patientId=${referralData.patientId}, assignedSpecialistId=${referralData.assignedSpecialistId}, isRelevant=${isRelevantToUser}`);
+
+        if (isRelevantToUser) {
+          relevantReferrals++;
+          const promise = this.convertSpecialistReferralToAppointment(referralData, childSnapshot.key).then(appointment => {
+            if (appointment) {
+              specialistReferrals.push(appointment);
+              console.log(`✅ Converted specialist referral to appointment: ${appointment.id}`);
+            } else {
+              console.log(`❌ Failed to convert specialist referral to appointment: ${childSnapshot.key}`);
+            }
+          });
+          promises.push(promise);
+        }
+      });
+
+      console.log(`🔍 Found ${totalReferrals} total referrals, ${relevantReferrals} relevant to user`);
+      await Promise.all(promises);
+      console.log(`🔍 Returning ${specialistReferrals.length} specialist referrals`);
+      return specialistReferrals;
+    } catch (error) {
+      console.error('Get specialist referrals for user error:', error);
+      return [];
+    }
+  },
+
+  // Helper method to convert specialist referral data to appointment format
+  async convertSpecialistReferralToAppointment(referralData: any, referralId: string): Promise<Appointment | null> {
+    try {
+      console.log(`🔍 Converting specialist referral ${referralId} to appointment format`);
+      console.log(`🔍 Referral data:`, referralData);
+      
+      // Enrich referral data with information from users, patients, doctors, and clinics nodes
+      const enrichedData = await this.enrichSpecialistReferralData(referralData);
+      
+      if (!enrichedData) {
+        console.log(`❌ Failed to enrich referral data for ${referralId}`);
+        return null;
+      }
+
+      const appointment = {
+        id: referralId,
+        appointmentDate: referralData.appointmentDate,
+        appointmentTime: referralData.appointmentTime,
+        patientId: referralData.patientId,
+        patientFirstName: enrichedData.patientFirstName,
+        patientLastName: enrichedData.patientLastName,
+        patientMiddleName: enrichedData.patientMiddleName,
+        doctorId: referralData.assignedSpecialistId,
+        doctorFirstName: enrichedData.assignedSpecialistFirstName,
+        doctorLastName: enrichedData.assignedSpecialistLastName,
+        doctorMiddleName: enrichedData.assignedSpecialistMiddleName,
+        doctorSpecialty: enrichedData.assignedSpecialistSpecialty,
+        clinicId: referralData.practiceLocation?.clinicId,
+        clinicName: enrichedData.clinicName,
+        status: referralData.status,
+        type: 'specialist_referral',
+        notes: referralData.additionalNotes,
+        appointmentPurpose: referralData.additionalNotes || 'Specialist Referral',
+        relatedReferralId: referralId,
+        sourceSystem: referralData.sourceSystem,
+        lastUpdated: referralData.lastUpdated,
+        createdAt: referralData.referralTimestamp,
+        referringSpecialistId: referralData.referringSpecialistId,
+        referringSpecialistFirstName: enrichedData.referringSpecialistFirstName,
+        referringSpecialistLastName: enrichedData.referringSpecialistLastName,
+        referringSpecialistMiddleName: enrichedData.referringSpecialistMiddleName,
+        referringClinicId: referralData.referringClinicId,
+        referringClinicName: enrichedData.referringClinicName,
+        practiceLocation: referralData.practiceLocation
+      } as Appointment;
+      
+      console.log(`✅ Successfully converted referral ${referralId} to appointment:`, appointment);
+      return appointment;
+    } catch (error) {
+      console.error('Error converting specialist referral to appointment:', error);
+      return null;
+    }
+  },
+
+  // Helper method to enrich specialist referral data with information from other nodes
+  async enrichSpecialistReferralData(referralData: any): Promise<any> {
+    try {
+      console.log(`🔍 Enriching referral data for patient: ${referralData.patientId}, specialist: ${referralData.assignedSpecialistId}`);
+      const enriched = { ...referralData };
+
+      // Fetch patient data from users node
+      if (referralData.patientId) {
+        const userData = await this.getDocument(`users/${referralData.patientId}`);
+        if (userData) {
+          enriched.patientFirstName = userData.firstName || userData.first_name;
+          enriched.patientLastName = userData.lastName || userData.last_name;
+          enriched.patientMiddleName = userData.middleName || userData.middle_name;
+          console.log(`✅ Enriched patient data from users node: ${userData.firstName} ${userData.lastName}`);
+        } else {
+          console.log(`❌ No patient data found for ID: ${referralData.patientId}`);
+        }
+      }
+
+      // Fetch assigned specialist data from users and doctors nodes
+      if (referralData.assignedSpecialistId) {
+        console.log(`🔍 Fetching specialist data for ID: ${referralData.assignedSpecialistId}`);
+        const [userData, doctorData] = await Promise.all([
+          this.getDocument(`users/${referralData.assignedSpecialistId}`),
+          this.getDocument(`doctors/${referralData.assignedSpecialistId}`)
+        ]);
+        
+        console.log(`🔍 User data for specialist ${referralData.assignedSpecialistId}:`, userData);
+        console.log(`🔍 Doctor data for specialist ${referralData.assignedSpecialistId}:`, doctorData);
+        
+        if (userData) {
+          enriched.assignedSpecialistFirstName = userData.firstName || userData.first_name;
+          enriched.assignedSpecialistLastName = userData.lastName || userData.last_name;
+          enriched.assignedSpecialistMiddleName = userData.middleName || userData.middle_name;
+          console.log(`✅ Enriched specialist name from users node: ${userData.firstName} ${userData.lastName}`);
+        } else {
+          console.log(`❌ No user data found for specialist ID: ${referralData.assignedSpecialistId}`);
+        }
+        
+        if (doctorData) {
+          enriched.assignedSpecialistSpecialty = doctorData.specialty;
+          console.log(`✅ Enriched specialist specialty from doctors node: ${doctorData.specialty}`);
+        } else {
+          console.log(`❌ No doctor data found for specialist ID: ${referralData.assignedSpecialistId}`);
+        }
+        
+        if (!userData && !doctorData) {
+          console.log(`❌ No specialist data found for ID: ${referralData.assignedSpecialistId}`);
+        }
+      }
+
+      // Fetch referring generalist data from users node (for generalist-to-specialist referrals)
+      if (referralData.referringGeneralistId) {
+        const referringGeneralistData = await this.getDocument(`users/${referralData.referringGeneralistId}`);
+        if (referringGeneralistData) {
+          enriched.referringGeneralistFirstName = referringGeneralistData.firstName || referringGeneralistData.first_name;
+          enriched.referringGeneralistLastName = referringGeneralistData.lastName || referringGeneralistData.last_name;
+          enriched.referringGeneralistMiddleName = referringGeneralistData.middleName || referringGeneralistData.middle_name;
+          console.log(`✅ Enriched referring generalist data from users node: ${referringGeneralistData.firstName} ${referringGeneralistData.lastName}`);
+        } else {
+          console.log(`❌ No referring generalist data found for ID: ${referralData.referringGeneralistId}`);
+        }
+      }
+
+      // Fetch referring specialist data from users node (for specialist-to-specialist referrals)
+      if (referralData.referringSpecialistId) {
+        const referringUserData = await this.getDocument(`users/${referralData.referringSpecialistId}`);
+        if (referringUserData) {
+          enriched.referringSpecialistFirstName = referringUserData.firstName || referringUserData.first_name;
+          enriched.referringSpecialistLastName = referringUserData.lastName || referringUserData.last_name;
+          enriched.referringSpecialistMiddleName = referringUserData.middleName || referringUserData.middle_name;
+          console.log(`✅ Enriched referring specialist data from users node: ${referringUserData.firstName} ${referringUserData.lastName}`);
+        } else {
+          console.log(`❌ No referring specialist data found for ID: ${referralData.referringSpecialistId}`);
+        }
+      }
+
+      // Fetch clinic data from clinics node
+      if (referralData.practiceLocation?.clinicId) {
+        const clinicData = await this.getClinicById(referralData.practiceLocation.clinicId);
+        if (clinicData) {
+          enriched.clinicName = clinicData.name;
+          console.log(`✅ Enriched clinic data: ${clinicData.name}`);
+        } else {
+          console.log(`❌ No clinic data found for ID: ${referralData.practiceLocation.clinicId}`);
+        }
+      }
+
+      // Fetch referring clinic data from clinics node
+      if (referralData.referringClinicId) {
+        const referringClinicData = await this.getClinicById(referralData.referringClinicId);
+        if (referringClinicData) {
+          enriched.referringClinicName = referringClinicData.name;
+          console.log(`✅ Enriched referring clinic data: ${referringClinicData.name}`);
+        } else {
+          console.log(`❌ No referring clinic data found for ID: ${referralData.referringClinicId}`);
+        }
+      }
+
+      return enriched;
+    } catch (error) {
+      console.error('Error enriching specialist referral data:', error);
+      return referralData;
+    }
+  },
+
+  // Test function to debug specialist referrals
+  async testSpecialistReferralsForPatient(patientId: string): Promise<void> {
+    console.log(`🧪 Testing specialist referrals for patient: ${patientId}`);
+    
+    try {
+      // Test direct referrals query first to see raw data
+      const referralsRef = ref(database, 'referrals');
+      const snapshot = await get(referralsRef);
+      console.log(`🧪 Direct referrals query found ${snapshot.size} total referrals`);
+      
+      if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot) => {
+          const referralData = childSnapshot.val();
+          if (referralData.patientId === patientId) {
+            console.log(`🧪 FOUND REFERRAL FOR PATIENT ${patientId}:`, {
+              id: childSnapshot.key,
+              patientId: referralData.patientId,
+              assignedSpecialistId: referralData.assignedSpecialistId,
+              referringSpecialistId: referralData.referringSpecialistId,
+              referringGeneralistId: referralData.referringGeneralistId,
+              status: referralData.status,
+              appointmentDate: referralData.appointmentDate,
+              additionalNotes: referralData.additionalNotes,
+              practiceLocation: referralData.practiceLocation,
+              referringClinicId: referralData.referringClinicId
+            });
+          }
+        });
+      }
+
+      // Test the specialist referrals function directly
+      const specialistReferrals = await this.getSpecialistReferralsForUser(patientId, 'patient');
+      console.log(`🧪 getSpecialistReferralsForUser returned ${specialistReferrals.length} specialist referrals`);
+      specialistReferrals.forEach((ref, index) => {
+        console.log(`🧪 Specialist Referral ${index + 1}:`, {
+          id: ref.id,
+          type: ref.type,
+          patientId: ref.patientId,
+          doctorId: ref.doctorId,
+          doctorFirstName: ref.doctorFirstName,
+          doctorLastName: ref.doctorLastName,
+          doctorSpecialty: ref.doctorSpecialty,
+          referringSpecialistId: ref.referringSpecialistId,
+          referringSpecialistFirstName: ref.referringSpecialistFirstName,
+          referringSpecialistLastName: ref.referringSpecialistLastName,
+          status: ref.status,
+          appointmentDate: ref.appointmentDate
+        });
+      });
+
+      // Test the main getAppointments function
+      const appointments = await this.getAppointments(patientId, 'patient');
+      console.log(`🧪 getAppointments returned ${appointments.length} appointments`);
+      appointments.forEach((apt, index) => {
+        if (apt.type === 'specialist_referral') {
+          console.log(`🧪 Specialist Referral Appointment ${index + 1}:`, {
+            id: apt.id,
+            type: apt.type,
+            patientId: apt.patientId,
+            doctorId: apt.doctorId,
+            doctorFirstName: apt.doctorFirstName,
+            doctorLastName: apt.doctorLastName,
+            doctorSpecialty: apt.doctorSpecialty,
+            referringSpecialistId: apt.referringSpecialistId,
+            referringSpecialistFirstName: apt.referringSpecialistFirstName,
+            referringSpecialistLastName: apt.referringSpecialistLastName,
+            status: apt.status,
+            appointmentDate: apt.appointmentDate
+          });
+        }
+      });
+    } catch (error) {
+      console.error('🧪 Test failed:', error);
     }
   },
 
@@ -583,6 +885,37 @@ export const databaseService = {
     }
   },
 
+  // Helper method to check if clinic has specialist doctors
+  async hasSpecialistDoctors(clinicId: string): Promise<boolean> {
+    try {
+      const doctorsRef = ref(database, 'doctors');
+      const snapshot = await get(doctorsRef);
+      
+      if (snapshot.exists()) {
+        let hasSpecialist = false;
+        snapshot.forEach((childSnapshot) => {
+          const doctorData = childSnapshot.val();
+          // Check if doctor is affiliated with the clinic and is a specialist
+          // Check both clinic ID and clinic name for affiliation
+          if (doctorData.clinicAffiliations && 
+              (doctorData.clinicAffiliations.includes(clinicId) ||
+               doctorData.clinicAffiliations.some((affiliation: string) => 
+                 affiliation.toLowerCase().includes(clinicId.toLowerCase()) ||
+                 clinicId.toLowerCase().includes(affiliation.toLowerCase())
+               )) &&
+              doctorData.isSpecialist === true) {
+            hasSpecialist = true;
+          }
+        });
+        return hasSpecialist;
+      }
+      return false;
+    } catch (error) {
+      console.error('Check specialist doctors error:', error);
+      return false;
+    }
+  },
+
   async getClinics(): Promise<Clinic[]> {
     try {
       const clinicsRef = ref(database, 'clinics');
@@ -605,14 +938,18 @@ export const databaseService = {
           }
         });
 
-        // Check each valid clinic for generalist doctors
+        // Check each valid clinic for generalist and specialist doctors
         for (const clinic of validClinics) {
-          const hasGeneralist = await this.hasGeneralistDoctors(clinic.id);
-          // Show all clinics with valid addresses, but mark which ones have generalist doctors
+          const [hasGeneralist, hasSpecialist] = await Promise.all([
+            this.hasGeneralistDoctors(clinic.id),
+            this.hasSpecialistDoctors(clinic.id)
+          ]);
+          // Show all clinics with valid addresses, but mark which ones have doctors
           clinics.push({
             id: clinic.id,
             ...clinic.data,
-            hasGeneralistDoctors: hasGeneralist // Add this flag for UI purposes
+            hasGeneralistDoctors: hasGeneralist, // Add this flag for UI purposes
+            hasSpecialistDoctors: hasSpecialist // Add this flag for specialist referrals
           });
         }
         
@@ -767,6 +1104,46 @@ export const databaseService = {
     }
   },
 
+  async getSpecialistDoctorsByClinic(clinicId: string): Promise<Doctor[]> {
+    try {
+      const doctorsRef = ref(database, 'doctors');
+      const snapshot = await get(doctorsRef);
+      
+      if (snapshot.exists()) {
+        const doctors: Doctor[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const doctorData = childSnapshot.val();
+          // Check if doctor is affiliated with the selected clinic and is a specialist
+          // Check both clinic ID and clinic name for affiliation
+          if (doctorData.clinicAffiliations && 
+              (doctorData.clinicAffiliations.includes(clinicId) ||
+               doctorData.clinicAffiliations.some((affiliation: string) => 
+                 affiliation.toLowerCase().includes(clinicId.toLowerCase()) ||
+                 clinicId.toLowerCase().includes(affiliation.toLowerCase())
+               )) &&
+              doctorData.isSpecialist === true) {
+            // Ensure doctor has proper availability data
+            const doctorWithDefaults = {
+              id: childSnapshot.key!,
+              ...doctorData,
+              availability: doctorData.availability || {
+                lastUpdated: new Date().toISOString(),
+                weeklySchedule: {},
+                specificDates: {}
+              }
+            };
+            doctors.push(doctorWithDefaults);
+          }
+        });
+        return doctors;
+      }
+      return [];
+    } catch (error) {
+      console.error('Get specialist doctors by clinic error:', error);
+      throw new Error('Failed to load specialist doctors from database');
+    }
+  },
+
   async getAllDoctors(): Promise<Doctor[]> {
     try {
       const doctorsRef = ref(database, 'doctors');
@@ -800,27 +1177,30 @@ export const databaseService = {
     }
   },
 
-  async getDoctorById(doctorId: string): Promise<Doctor | null> {
+  async getDoctorById(doctorId: string, requireAvailability: boolean = true): Promise<Doctor | null> {
     try {
       const doctorRef = ref(database, `doctors/${doctorId}`);
       const snapshot = await get(doctorRef);
       
       if (snapshot.exists()) {
         const doctorData = snapshot.val();
-        // Only return doctor if they have valid availability data
-        if (this.hasValidAvailability(doctorData)) {
-          // Ensure doctor has proper availability data
-          const doctorWithDefaults = {
-            id: snapshot.key!,
-            ...doctorData,
-            availability: doctorData.availability || {
-              lastUpdated: new Date().toISOString(),
-              weeklySchedule: {},
-              specificDates: {}
-            }
-          };
-          return doctorWithDefaults;
+        
+        // If availability is required, check if doctor has valid availability data
+        if (requireAvailability && !this.hasValidAvailability(doctorData)) {
+          return null;
         }
+        
+        // Ensure doctor has proper availability data
+        const doctorWithDefaults = {
+          id: snapshot.key!,
+          ...doctorData,
+          availability: doctorData.availability || {
+            lastUpdated: new Date().toISOString(),
+            weeklySchedule: {},
+            specificDates: {}
+          }
+        };
+        return doctorWithDefaults;
       }
       return null;
     } catch (error) {
@@ -1584,6 +1964,10 @@ export const databaseService = {
         const resolvedAppointments = await Promise.all(promises);
         appointments.push(...resolvedAppointments);
         
+        // Also fetch specialist-to-specialist referrals for this specialist
+        const specialistReferrals = await this.getSpecialistReferralsForUser(specialistId, 'specialist');
+        appointments.push(...specialistReferrals);
+        
         return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
       }
       return [];
@@ -1616,6 +2000,11 @@ export const databaseService = {
         
         const resolvedAppointments = await Promise.all(promises);
         appointments.push(...resolvedAppointments);
+        
+        // Also fetch specialist-to-specialist referrals for this specialist with matching status
+        const specialistReferrals = await this.getSpecialistReferralsForUser(specialistId, 'specialist');
+        const filteredReferrals = specialistReferrals.filter(referral => referral.status === status);
+        appointments.push(...filteredReferrals);
         
         return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
       }
@@ -2265,6 +2654,10 @@ export const databaseService = {
         const resolvedAppointments = await Promise.all(promises);
         appointments.push(...resolvedAppointments);
         
+        // Also fetch specialist-to-specialist referrals for this patient
+        const specialistReferrals = await this.getSpecialistReferralsForUser(patientId, 'patient');
+        appointments.push(...specialistReferrals);
+        
         return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
       }
       return [];
@@ -2591,16 +2984,38 @@ export const databaseService = {
       
       if (snapshot.exists()) {
         const referrals: Referral[] = [];
+        const enrichmentPromises: Promise<void>[] = [];
+        
         snapshot.forEach((childSnapshot) => {
           const referral = childSnapshot.val();
           // Filter referrals assigned to this specialist
           if (referral.assignedSpecialistId === specialistId) {
-            referrals.push({
+            const referralWithId = {
               id: childSnapshot.key,
               ...referral
-            });
+            };
+            referrals.push(referralWithId);
+            
+            // Enrich referral data with names from users node
+            enrichmentPromises.push(
+              this.enrichSpecialistReferralData(referralWithId).then(enrichedData => {
+                if (enrichedData) {
+                  // Update the referral in the array with enriched data
+                  const index = referrals.findIndex(r => r.id === referralWithId.id);
+                  if (index !== -1) {
+                    referrals[index] = { ...referrals[index], ...enrichedData };
+                  }
+                }
+              }).catch(error => {
+                console.error('Error enriching referral data:', error);
+              })
+            );
           }
         });
+        
+        // Wait for all enrichment to complete
+        await Promise.all(enrichmentPromises);
+        
         return referrals.sort((a, b) => new Date(b.referralTimestamp).getTime() - new Date(a.referralTimestamp).getTime());
       }
       return [];
@@ -2617,16 +3032,38 @@ export const databaseService = {
       
       if (snapshot.exists()) {
         const referrals: Referral[] = [];
+        const enrichmentPromises: Promise<void>[] = [];
+        
         snapshot.forEach((childSnapshot) => {
           const referral = childSnapshot.val();
           // Filter referrals assigned to this specialist with specific status
           if (referral.assignedSpecialistId === specialistId && referral.status === status) {
-            referrals.push({
+            const referralWithId = {
               id: childSnapshot.key,
               ...referral
-            });
+            };
+            referrals.push(referralWithId);
+            
+            // Enrich referral data with names from users node
+            enrichmentPromises.push(
+              this.enrichSpecialistReferralData(referralWithId).then(enrichedData => {
+                if (enrichedData) {
+                  // Update the referral in the array with enriched data
+                  const index = referrals.findIndex(r => r.id === referralWithId.id);
+                  if (index !== -1) {
+                    referrals[index] = { ...referrals[index], ...enrichedData };
+                  }
+                }
+              }).catch(error => {
+                console.error('Error enriching referral data:', error);
+              })
+            );
           }
         });
+        
+        // Wait for all enrichment to complete
+        await Promise.all(enrichmentPromises);
+        
         return referrals.sort((a, b) => new Date(b.referralTimestamp).getTime() - new Date(a.referralTimestamp).getTime());
       }
       return [];
@@ -2643,16 +3080,38 @@ export const databaseService = {
       
       if (snapshot.exists()) {
         const referrals: Referral[] = [];
+        const enrichmentPromises: Promise<void>[] = [];
+        
         snapshot.forEach((childSnapshot) => {
           const referral = childSnapshot.val();
           // Filter referrals for this patient
           if (referral.patientId === patientId) {
-            referrals.push({
+            const referralWithId = {
               id: childSnapshot.key,
               ...referral
-            });
+            };
+            referrals.push(referralWithId);
+            
+            // Enrich referral data with names from users node
+            enrichmentPromises.push(
+              this.enrichSpecialistReferralData(referralWithId).then(enrichedData => {
+                if (enrichedData) {
+                  // Update the referral in the array with enriched data
+                  const index = referrals.findIndex(r => r.id === referralWithId.id);
+                  if (index !== -1) {
+                    referrals[index] = { ...referrals[index], ...enrichedData };
+                  }
+                }
+              }).catch(error => {
+                console.error('Error enriching referral data:', error);
+              })
+            );
           }
         });
+        
+        // Wait for all enrichment to complete
+        await Promise.all(enrichmentPromises);
+        
         return referrals.sort((a, b) => new Date(b.referralTimestamp).getTime() - new Date(a.referralTimestamp).getTime());
       }
       return [];
@@ -2754,10 +3213,18 @@ export const databaseService = {
       const snapshot = await get(referralRef);
       
       if (snapshot.exists()) {
-        return {
+        const referralData = {
           id: snapshot.key,
           ...snapshot.val()
         };
+        
+        // Enrich referral data with names from users node
+        const enrichedData = await this.enrichSpecialistReferralData(referralData);
+        if (enrichedData) {
+          return { ...referralData, ...enrichedData };
+        }
+        
+        return referralData;
       }
       return null;
     } catch (error) {
@@ -2821,13 +3288,25 @@ export const databaseService = {
         try {
           const resolvedAppointments = await Promise.all(promises);
           appointments.push(...resolvedAppointments);
+          
+          // Also fetch specialist-to-specialist referrals for both patients and specialists
+          const specialistReferrals = await this.getSpecialistReferralsForUser(userId, role);
+          appointments.push(...specialistReferrals);
+          
           callback(appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()));
         } catch (error) {
           console.error('Error processing appointments in real-time listener:', error);
           callback([]);
         }
       } else {
-        callback([]);
+        // Even if no appointments exist, we should still check for specialist referrals
+        try {
+          const specialistReferrals = await this.getSpecialistReferralsForUser(userId, role);
+          callback(specialistReferrals.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()));
+        } catch (error) {
+          console.error('Error fetching specialist referrals in real-time listener:', error);
+          callback([]);
+        }
       }
     });
     
@@ -2837,20 +3316,40 @@ export const databaseService = {
   onReferralsChange(userId: string, callback: (referrals: Referral[]) => void) {
     const referralsRef = ref(database, 'referrals');
     
-    const unsubscribe = onValue(referralsRef, (snapshot) => {
+    const unsubscribe = onValue(referralsRef, async (snapshot) => {
       if (snapshot.exists()) {
         const referrals: Referral[] = [];
+        const enrichmentPromises: Promise<void>[] = [];
         
         snapshot.forEach((childSnapshot) => {
           const referralData = childSnapshot.val();
           // Filter referrals for this user (either as specialist or patient)
           if (referralData.assignedSpecialistId === userId || referralData.patientId === userId) {
-            referrals.push({
+            const referralWithId = {
               id: childSnapshot.key,
               ...referralData
-            });
+            };
+            referrals.push(referralWithId);
+            
+            // Enrich referral data with names from users node
+            enrichmentPromises.push(
+              this.enrichSpecialistReferralData(referralWithId).then(enrichedData => {
+                if (enrichedData) {
+                  // Update the referral in the array with enriched data
+                  const index = referrals.findIndex(r => r.id === referralWithId.id);
+                  if (index !== -1) {
+                    referrals[index] = { ...referrals[index], ...enrichedData };
+                  }
+                }
+              }).catch(error => {
+                console.error('Error enriching referral data in real-time listener:', error);
+              })
+            );
           }
         });
+        
+        // Wait for all enrichment to complete before calling callback
+        await Promise.all(enrichmentPromises);
         
         callback(referrals.sort((a, b) => new Date(b.referralTimestamp).getTime() - new Date(a.referralTimestamp).getTime()));
       } else {

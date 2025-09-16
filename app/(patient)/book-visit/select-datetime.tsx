@@ -513,7 +513,7 @@ export default function SelectDateTimeScreen() {
       }
       
       // Try to fetch specialist details from multiple nodes
-      let specialistDetails = await databaseService.getDoctorById(specialistId);
+      let specialistDetails = await databaseService.getDoctorById(specialistId, false);
       console.log('🔍 Specialist details from doctors node:', specialistDetails);
       
       // If not found in doctors node, try direct document fetch
