@@ -1,0 +1,5395 @@
+{
+  "activity-logs": {
+    "-OZAJ8wn9gNSi2IesENf": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1756831456864,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZAJ8wn9gNSi2IesENf",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756831456864,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZAPX5pQkXO8BcUNYFF": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1756833128772,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZAPX5pQkXO8BcUNYFF",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756833128772,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZAPsdmmtzkx_sO3f3Q": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1756833221121,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZAPsdmmtzkx_sO3f3Q",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756833221121,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZAQOfDDH0jYKDukOMx": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1756833356380,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZAQOfDDH0jYKDukOMx",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756833356380,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZAS8zhlIbhNp4c8CZv": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1756833816244,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZAS8zhlIbhNp4c8CZv",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756833816244,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZATOnHXokm5ML7wuZQ": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1756834143128,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZATOnHXokm5ML7wuZQ",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756834143128,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZATQ66BCQUH51TyAyO": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1756834148493,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZATQ66BCQUH51TyAyO",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756834148493,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZATk2E9ac9Ag9yAIcE": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1756834234261,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZATk2E9ac9Ag9yAIcE",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756834234261,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZAWRDcHvyU4gPTh-zQ": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1756834939504,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZAWRDcHvyU4gPTh-zQ",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756834939504,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZAWT3qik4jiMpvoMfU": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1756834947069,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZAWT3qik4jiMpvoMfU",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756834947069,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZAZW-gfOi0hUplPXG-": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1756835745513,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZAZW-gfOi0hUplPXG-",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756835745513,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZAZdg0MGkX44YYvSig": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1756835781053,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZAZdg0MGkX44YYvSig",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756835781053,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZAak54yiTweCC60V7z": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1756836337331,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZAak54yiTweCC60V7z",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756836337331,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZAapRKuYYl3XfKs2zQ": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1756836359234,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZAapRKuYYl3XfKs2zQ",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756836359234,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZAdRsGvR1fA0RmHDwc": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1756837045055,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZAdRsGvR1fA0RmHDwc",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756837045055,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZMbpNhdQcVnIHatCfU": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1756971412200,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZMbpNhdQcVnIHatCfU",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756971412200,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZMbqeL_ipzjso15yYp": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1756971417425,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZMbqeL_ipzjso15yYp",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756971417425,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZMdPICivWODA-h67DA": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1756971825545,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZMdPICivWODA-h67DA",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756971825545,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZMdpFsptseBqrBunfd": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1756971935975,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZMdpFsptseBqrBunfd",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756971935975,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZMkBlpALtSfoSCqoAT": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1756973605092,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZMkBlpALtSfoSCqoAT",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756973605092,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZMkCzqo9fIHo9SzzdB": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1756973610085,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZMkCzqo9fIHo9SzzdB",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756973610085,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZMllChmKDolyX7L_TU": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1756974016719,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZMllChmKDolyX7L_TU",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756974016719,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZMlm8qGiZw79fAxOYR": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1756974020568,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZMlm8qGiZw79fAxOYR",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1756974020568,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNMnfVZm_G9xWLBLdV": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1757050517393,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZNMnfVZm_G9xWLBLdV",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757050517393,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNND_EDMKXZ0bVHVJe": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757050627213,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZNND_EDMKXZ0bVHVJe",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757050627213,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNOx2kAwsuQQ662e1a": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1757051079907,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZNOx2kAwsuQQ662e1a",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757051079907,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNPmnYJiQey7nbUQk8": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757051300054,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZNPmnYJiQey7nbUQk8",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757051300054,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNQ_KqVH-KTyhLtovF": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1757051507048,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZNQ_KqVH-KTyhLtovF",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757051507048,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNQiYtQbBUwp3tMO6C": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757051544641,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZNQiYtQbBUwp3tMO6C",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757051544641,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNR7qAho99ZshMuwWD": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1757051652308,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZNR7qAho99ZshMuwWD",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757051652308,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNS-ojC8NDknPxRFVw": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757051881592,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZNS-ojC8NDknPxRFVw",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757051881592,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNSK689YxjDAGxu5ak": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1757051964690,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZNSK689YxjDAGxu5ak",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757051964690,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNTZgk3Hny4rjE6aX0": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757052290630,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZNTZgk3Hny4rjE6aX0",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757052290630,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNUPYutqRykjiyF3aJ": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1757052511249,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZNUPYutqRykjiyF3aJ",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757052511249,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNYJNwnK5oDNmCvWH3": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757053534546,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZNYJNwnK5oDNmCvWH3",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757053534546,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNYwRdTqtBPYbYMLDT": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1757053700348,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZNYwRdTqtBPYbYMLDT",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757053700348,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNZcLrPWeHeN3ILnlY": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757053880202,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZNZcLrPWeHeN3ILnlY",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757053880202,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZNg0M02YG1LFc8E69f": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757055815819,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZNg0M02YG1LFc8E69f",
+      "targetId": "RuFS0R9iJYPn9MNihjuOkp0Y4fo1",
+      "targetType": "doctor",
+      "updatedAt": 1757055815819,
+      "userEmail": "mariescloset05@gmail.com",
+      "userId": "mariescloset05@gmail.com"
+    },
+    "-OZNiC8t3Q1pqyX1Rjv8": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1757056388419,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZNiC8t3Q1pqyX1Rjv8",
+      "targetId": "RuFS0R9iJYPn9MNihjuOkp0Y4fo1",
+      "targetType": "doctor",
+      "updatedAt": 1757056388419,
+      "userEmail": "mariescloset05@gmail.com",
+      "userId": "mariescloset05@gmail.com"
+    },
+    "-OZNiMFn0edUpee4FLN8": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757056429821,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZNiMFn0edUpee4FLN8",
+      "targetId": "RuFS0R9iJYPn9MNihjuOkp0Y4fo1",
+      "targetType": "doctor",
+      "updatedAt": 1757056429821,
+      "userEmail": "mariescloset05@gmail.com",
+      "userId": "mariescloset05@gmail.com"
+    },
+    "-OZNjL4pjdVkabqqqba3": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1757056687168,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZNjL4pjdVkabqqqba3",
+      "targetId": "RuFS0R9iJYPn9MNihjuOkp0Y4fo1",
+      "targetType": "doctor",
+      "updatedAt": 1757056687168,
+      "userEmail": "mariescloset05@gmail.com",
+      "userId": "mariescloset05@gmail.com"
+    },
+    "-OZNjRk5XFJq32Cpc92-": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757056714449,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZNjRk5XFJq32Cpc92-",
+      "targetId": "RuFS0R9iJYPn9MNihjuOkp0Y4fo1",
+      "targetType": "doctor",
+      "updatedAt": 1757056714449,
+      "userEmail": "mariescloset05@gmail.com",
+      "userId": "mariescloset05@gmail.com"
+    },
+    "-OZNji0cgI7MtkZCc-84": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1757056785202,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZNji0cgI7MtkZCc-84",
+      "targetId": "RuFS0R9iJYPn9MNihjuOkp0Y4fo1",
+      "targetType": "doctor",
+      "updatedAt": 1757056785202,
+      "userEmail": "mariescloset05@gmail.com",
+      "userId": "mariescloset05@gmail.com"
+    },
+    "-OZNjtNVibFbJIqfM2K-": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757056831722,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZNjtNVibFbJIqfM2K-",
+      "targetId": "RuFS0R9iJYPn9MNihjuOkp0Y4fo1",
+      "targetType": "doctor",
+      "updatedAt": 1757056831722,
+      "userEmail": "mariescloset05@gmail.com",
+      "userId": "mariescloset05@gmail.com"
+    },
+    "-OZNk8PglhrF9fuqLSJU": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1757056897398,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZNk8PglhrF9fuqLSJU",
+      "targetId": "RuFS0R9iJYPn9MNihjuOkp0Y4fo1",
+      "targetType": "doctor",
+      "updatedAt": 1757056897398,
+      "userEmail": "mariescloset05@gmail.com",
+      "userId": "mariescloset05@gmail.com"
+    },
+    "-OZNkA67-LgIdWfrif-L": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757056904338,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZNkA67-LgIdWfrif-L",
+      "targetId": "RuFS0R9iJYPn9MNihjuOkp0Y4fo1",
+      "targetType": "doctor",
+      "updatedAt": 1757056904338,
+      "userEmail": "mariescloset05@gmail.com",
+      "userId": "mariescloset05@gmail.com"
+    },
+    "-OZP7j4f_SIWPJr0xk0d": {
+      "action": "Fee change request approved",
+      "category": "fee_management",
+      "createdAt": 1757080121857,
+      "details": {
+        "newFee": 700,
+        "newStatus": "approved",
+        "previousFee": 700,
+        "reviewNotes": "",
+        "reviewedBy": "superadmin@unihealth.ph"
+      },
+      "id": "-OZP7j4f_SIWPJr0xk0d",
+      "targetId": "J0zVFWQlgQcyqkPNBvtVAGOu6U62",
+      "targetType": "doctor",
+      "updatedAt": 1757080121857,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZP7j5ru0omb4gtX5gu": {
+      "action": "Bulk approved fee change requests",
+      "category": "fee_management",
+      "createdAt": 1757080121933,
+      "details": {
+        "requestCount": 1,
+        "requestIds": [
+          "J0zVFWQlgQcyqkPNBvtVAGOu6U62"
+        ],
+        "reviewNotes": ""
+      },
+      "id": "-OZP7j5ru0omb4gtX5gu",
+      "targetId": "bulk",
+      "targetType": "fee_request",
+      "updatedAt": 1757080121933,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZPA5F-Rw0fTq84sglH": {
+      "action": "Fee change request approved",
+      "category": "fee_management",
+      "createdAt": 1757080740742,
+      "details": {
+        "newFee": 700,
+        "newStatus": "approved",
+        "previousFee": 700,
+        "reviewNotes": "",
+        "reviewedBy": "superadmin@unihealth.ph"
+      },
+      "id": "-OZPA5F-Rw0fTq84sglH",
+      "targetId": "J0zVFWQlgQcyqkPNBvtVAGOu6U62",
+      "targetType": "doctor",
+      "updatedAt": 1757080740742,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZPAlgDughHgYKJsps5": {
+      "action": "Fee change request approved",
+      "category": "fee_management",
+      "createdAt": 1757080918922,
+      "details": {
+        "newFee": 700,
+        "newStatus": "approved",
+        "previousFee": 700,
+        "reviewNotes": "",
+        "reviewedBy": "superadmin@unihealth.ph"
+      },
+      "id": "-OZPAlgDughHgYKJsps5",
+      "targetId": "J0zVFWQlgQcyqkPNBvtVAGOu6U62",
+      "targetType": "doctor",
+      "updatedAt": 1757080918922,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZPAlhI34A5Ux_AtLGU": {
+      "action": "Bulk approved fee change requests",
+      "category": "fee_management",
+      "createdAt": 1757080918991,
+      "details": {
+        "requestCount": 1,
+        "requestIds": [
+          "J0zVFWQlgQcyqkPNBvtVAGOu6U62"
+        ],
+        "reviewNotes": ""
+      },
+      "id": "-OZPAlhI34A5Ux_AtLGU",
+      "targetId": "bulk",
+      "targetType": "fee_request",
+      "updatedAt": 1757080918991,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZPB2X80Wwa-_nERnWI": {
+      "action": "Fee change request rejected",
+      "category": "fee_management",
+      "createdAt": 1757080992005,
+      "details": {
+        "newFee": 700,
+        "newStatus": "rejected",
+        "previousFee": 700,
+        "reviewNotes": "Rejected by admin",
+        "reviewedBy": "superadmin@unihealth.ph"
+      },
+      "id": "-OZPB2X80Wwa-_nERnWI",
+      "targetId": "J0zVFWQlgQcyqkPNBvtVAGOu6U62",
+      "targetType": "doctor",
+      "updatedAt": 1757080992005,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZPOATZMlAcKu5M4Hh0": {
+      "action": "Fee change request approved",
+      "category": "fee_management",
+      "createdAt": 1757084432097,
+      "details": {
+        "newFee": 800,
+        "newStatus": "approved",
+        "previousFee": 800,
+        "reviewNotes": "",
+        "reviewedBy": "superadmin@unihealth.ph"
+      },
+      "id": "-OZPOATZMlAcKu5M4Hh0",
+      "targetId": "J0zVFWQlgQcyqkPNBvtVAGOu6U62",
+      "targetType": "doctor",
+      "updatedAt": 1757084432097,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZPQPYFbcwEj436H9tN": {
+      "action": "Fee change request rejected",
+      "category": "fee_management",
+      "createdAt": 1757085018125,
+      "details": {
+        "newFee": 900,
+        "newStatus": "rejected",
+        "previousFee": 900,
+        "reviewNotes": "Rejected by admin",
+        "reviewedBy": "superadmin@unihealth.ph"
+      },
+      "id": "-OZPQPYFbcwEj436H9tN",
+      "targetId": "J0zVFWQlgQcyqkPNBvtVAGOu6U62",
+      "targetType": "doctor",
+      "updatedAt": 1757085018125,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZPTA5li0HHPPxTliTw": {
+      "action": "Fee change request approved",
+      "category": "fee_management",
+      "createdAt": 1757085741294,
+      "details": {
+        "newFee": 900,
+        "newStatus": "approved",
+        "previousFee": 900,
+        "reviewNotes": "",
+        "reviewedBy": "superadmin@unihealth.ph"
+      },
+      "id": "-OZPTA5li0HHPPxTliTw",
+      "targetId": "J0zVFWQlgQcyqkPNBvtVAGOu6U62",
+      "targetType": "doctor",
+      "updatedAt": 1757085741294,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZbkWaOf1Rw3eaWnaBZ": {
+      "action": "Doctor status changed to pending",
+      "category": "verification",
+      "createdAt": 1757308654266,
+      "details": {
+        "newStatus": "pending",
+        "notes": ""
+      },
+      "id": "-OZbkWaOf1Rw3eaWnaBZ",
+      "targetId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+      "targetType": "doctor",
+      "updatedAt": 1757308654266,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZbr5CJAqnHhj3KvB3c": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757310377066,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZbr5CJAqnHhj3KvB3c",
+      "targetId": "8lsVM5QsQwXAwbrwTB4wIB8X0LB2",
+      "targetType": "doctor",
+      "updatedAt": 1757310377066,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZbr933WGcqqlC73KX8": {
+      "action": "Doctor status changed to verified",
+      "category": "verification",
+      "createdAt": 1757310392858,
+      "details": {
+        "newStatus": "verified",
+        "notes": ""
+      },
+      "id": "-OZbr933WGcqqlC73KX8",
+      "targetId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+      "targetType": "doctor",
+      "updatedAt": 1757310392858,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZw9NWNt2mPZWyqlCd9": {
+      "action": "Fee change request approved",
+      "category": "fee_management",
+      "createdAt": 1757650979044,
+      "details": {
+        "newFee": 1000,
+        "newStatus": "approved",
+        "previousFee": 1000,
+        "reviewNotes": "",
+        "reviewedBy": "superadmin@unihealth.ph"
+      },
+      "id": "-OZw9NWNt2mPZWyqlCd9",
+      "targetId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+      "targetType": "doctor",
+      "updatedAt": 1757650979044,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    },
+    "-OZwAKqmik0sEg7fFD-s": {
+      "action": "Fee change request approved",
+      "category": "fee_management",
+      "createdAt": 1757651230271,
+      "details": {
+        "newFee": 900,
+        "newStatus": "approved",
+        "previousFee": 900,
+        "reviewNotes": "",
+        "reviewedBy": "superadmin@unihealth.ph"
+      },
+      "id": "-OZwAKqmik0sEg7fFD-s",
+      "targetId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+      "targetType": "doctor",
+      "updatedAt": 1757651230271,
+      "userEmail": "superadmin@unihealth.ph",
+      "userId": "superadmin@unihealth.ph"
+    }
+  },
+  "adminActivityLogs": {
+    "-OY7LuQTb8NuyzuqyjrN": {
+      "action": "settings_changed",
+      "adminEmail": "X6TEqRNDUKSud1T10B8fZyfywKG3",
+      "adminUserId": "X6TEqRNDUKSud1T10B8fZyfywKG3",
+      "details": {
+        "changeDate": "2025-08-20T16:41:46.219Z",
+        "newValue": 20,
+        "oldValue": 30,
+        "settingName": "defaultAppointmentDuration"
+      },
+      "targetId": "settings",
+      "targetName": "defaultAppointmentDuration",
+      "targetType": "system",
+      "timestamp": "2025-08-20T16:41:46.219Z"
+    },
+    "-OY7LuRsy1IQwWBzBrJ8": {
+      "action": "settings_changed",
+      "adminEmail": "X6TEqRNDUKSud1T10B8fZyfywKG3",
+      "adminUserId": "X6TEqRNDUKSud1T10B8fZyfywKG3",
+      "details": {
+        "changeDate": "2025-08-20T16:41:46.309Z",
+        "newValue": "minutes",
+        "oldValue": "minutes",
+        "settingName": "appointmentDurationUnit"
+      },
+      "targetId": "settings",
+      "targetName": "appointmentDurationUnit",
+      "targetType": "system",
+      "timestamp": "2025-08-20T16:41:46.309Z"
+    }
+  },
+  "agreement": {
+    "doctors": {
+      "content": "Effective Date: 09/08/2025\nLast Updated: 09/08/2025\n\nThese Terms of Use outline the rules and responsibilities for doctors who create an account and use the Odyssey Clinic System (“the System”) across any affiliated, partner, or participating clinics. By creating an account, you agree to comply with these terms, regardless of which clinic location you are accessing the system from.\n\n1. Purpose of the System\n\nThe Odyssey Clinic System is designed to improve healthcare operations and patient care by enabling doctors to:\n\nAccess and update patient medical records securely.\n\nRecord consultations, diagnoses, treatments, and prescriptions.\n\nView available medicines, supplies, and services.\n\nAccess and update patient billing and service usage details.\n\n2. Responsibilities of Account Holders\n\nAs a registered doctor in the Odyssey Clinic System, you agree to:\n\nMaintain Patient Confidentiality\n\nProtect all patient information in compliance with the Data Privacy Act of 2012 (RA 10173).\n\nNever share patient records or information with unauthorized individuals.\n\nSecure Your Login Credentials\n\nKeep your username and password private.\n\nLog out after each session, especially when using shared devices.\n\nEnsure Data Accuracy\n\nInput complete, correct, and up-to-date information for all patient records.\n\nDouble-check entries for diagnoses, prescriptions, and billing before saving.\n\nUse the System Properly\n\nUse the Odyssey System only for authorized clinic-related work.\n\nAvoid making unauthorized changes, deletions, or manipulations of records.\n\nReport Issues Promptly\n\nNotify the designated IT or admin team immediately if you encounter technical errors, missing data, or potential security breaches.\n\n3. Ownership and Restrictions\n\nThe Odyssey Clinic System is owned and managed collectively for use by participating clinics.\n\nYou may not copy, modify, distribute, or use the system for purposes outside your authorized duties.\n\n4. Violations and Consequences\n\nAny misuse of the Odyssey Clinic System — whether intentional or accidental — may result in:\n\nSuspension or termination of your account.\n\nDisciplinary action under clinic policies.\n\nPossible legal action for serious breaches of data privacy or system misuse.\n\n5. Changes to the Terms\n\nThese Terms of Use may be updated from time to time. Continued use of the Odyssey System after updates indicates your acceptance of the revised terms.\n\nBy creating an account, you confirm that you have read, understood, and agreed to these Terms of Use.",
+      "lastUpdated": "2025-09-08T08:44:44.297Z",
+      "title": "Terms and Condition"
+    }
+  },
+  "appointments": {
+    "-OZboOfY9tSsZWw4cLY4": {
+      "additionalNotes": "",
+      "appointmentConsultationId": "-OZbr3DGy_f3v8VLEHWd",
+      "appointmentDate": "2025-09-08",
+      "appointmentPurpose": "General Consultation",
+      "appointmentTime": "1:40 PM",
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "clinicName": "Cebu Doctors",
+      "completedAt": "2025-09-08T05:46:12.329Z",
+      "completedBy": "1igBgC367EcGjL2yQRoR6kyv9s03",
+      "completedByName": "Rene Catan",
+      "consultationDate": "2025-09-08T05:46:12.329Z",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-09-08T05:34:35.470Z",
+      "doctorId": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "lastUpdated": "2025-09-08T05:46:12.329Z",
+      "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "relatedReferralId": "-lppa69510",
+      "sourceSystem": "OdySystem_Web",
+      "status": "completed",
+      "type": "general_consultation"
+    },
+    "-OZbxQIhzMZkK0320gAH": {
+      "additionalNotes": "",
+      "appointmentDate": "2025-09-12",
+      "appointmentPurpose": "Follow-up Visit",
+      "appointmentTime": "01:30 PM",
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "clinicName": "Cebu Doctors",
+      "createdAt": "2025-09-08T06:13:57.791Z",
+      "doctorFirstName": "April",
+      "doctorId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+      "doctorLastName": "Marie Rosales",
+      "doctorSpecialty": "Cardiology",
+      "lastUpdated": "2025-09-14T06:13:57.791Z",
+      "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "sourceSystem": "UniHealth_Patient_App",
+      "status": "confirmed",
+      "type": "general_consultation"
+    },
+    "-OZdKcq-IM_uUDPNC6na": {
+      "additionalNotes": "",
+      "appointmentDate": "2025-09-08",
+      "appointmentPurpose": "General Consultation",
+      "appointmentTime": "9:00 AM",
+      "chiefComplaint": [
+        "Gi ubo"
+      ],
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "clinicName": "Cebu Doctors",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-09-08T12:39:23.789Z",
+      "doctorId": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "lastUpdated": "2025-09-08T12:39:23.789Z",
+      "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "sourceSystem": "OdySystem_Web",
+      "status": "pending",
+      "type": "general_consultation"
+    },
+    "-OZoPvQX56xYY9jYnQgO": {
+      "additionalNotes": "Chief Complaint: Secret",
+      "appointmentConsultationId": "-OZu4sJA4zjCMv7_zdRh",
+      "appointmentDate": "2025-09-15",
+      "appointmentPurpose": "General Consultation",
+      "appointmentTime": "9:00 AM",
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "clinicName": "Cebu Doctors",
+      "createdAt": "2025-09-10T16:18:18.598Z",
+      "doctorFirstName": "Rene",
+      "doctorId": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "doctorLastName": "Catan",
+      "doctorSpecialty": "Generalist",
+      "lastUpdated": "2025-09-11T16:18:18.598Z",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "relatedReferralId": "-lppa69511",
+      "sourceSystem": "UniHealth_Patient_App",
+      "status": "confirmed",
+      "type": "general_consultation"
+    },
+    "-OZzJIzTMU7FqVMIUsZQ": {
+      "appointmentDate": "2025-09-13",
+      "appointmentTime": "3:05 AM",
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-12T19:05:12.942Z",
+      "department": "doctor",
+      "doctorId": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "lastUpdated": "2025-09-12T19:05:12.942Z",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "sourceSystem": "OdysSys_Clinic_Management_Mobile",
+      "status": "confirmed",
+      "type": "walk-in"
+    },
+    "-O_HrujkMMdXi5LXBHnE": {
+      "appointmentDate": "2025-09-16",
+      "appointmentTime": "10:13 PM",
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-16T14:13:34.635Z",
+      "department": "doctor",
+      "doctorId": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "lastUpdated": "2025-09-16T14:13:34.635Z",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "sourceSystem": "OdysSys_Clinic_Management_Mobile",
+      "status": "confirmed",
+      "type": "walk-in"
+    }
+  },
+  "attendance": {
+    "oiqQMe8cJ4afIS8BWjN1WkvkYJb2": {
+      "2025-08-29": {
+        "dailySummary": {
+          "overtimeHours": 0,
+          "status": "Present",
+          "totalHours": 0.26
+        },
+        "logs": {
+          "-OYqq7L1N_XmhvW0zEt-": {
+            "action": "timeIn",
+            "location": "SWU Clinic",
+            "shiftType": "Day Shift",
+            "timestamp": "2025-08-29T17:20:41.826Z"
+          },
+          "-OYqtevFpCdpGIux_6t4": {
+            "action": "timeOut",
+            "timestamp": "2025-08-29T17:36:10.001Z"
+          }
+        }
+      },
+      "2025-09-02": {
+        "dailySummary": {
+          "overtimeHours": 8.59,
+          "status": "Present",
+          "totalHours": 16.59
+        },
+        "logs": {
+          "-OZ7hoKOuQUVkzhfXmUt": {
+            "action": "timeIn",
+            "location": "SWU Clinic",
+            "shiftType": "Day Shift",
+            "timestamp": "2025-09-02T04:37:32.743Z"
+          },
+          "-OZBGdx-AZ-maBboq5fe": {
+            "action": "timeOut",
+            "timestamp": "2025-09-02T21:12:58.902Z"
+          }
+        }
+      }
+    }
+  },
+  "chatThreads": {
+    "7nzocOzTumVC8SBwbQ2LN70nQbn1_Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2": {
+      "createdAt": 1757875443882,
+      "id": "7nzocOzTumVC8SBwbQ2LN70nQbn1_Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "linked": {
+        "referralId": "-lppa69511"
+      },
+      "participants": {
+        "7nzocOzTumVC8SBwbQ2LN70nQbn1": true,
+        "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2": true
+      },
+      "type": "referral",
+      "unread": {
+        "7nzocOzTumVC8SBwbQ2LN70nQbn1": 0,
+        "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2": 0
+      }
+    },
+    "7nzocOzTumVC8SBwbQ2LN70nQbn1_k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1": {
+      "createdAt": 1757311819124,
+      "id": "7nzocOzTumVC8SBwbQ2LN70nQbn1_k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "lastMessage": {
+        "at": 1757312272632,
+        "senderId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+        "text": "🎤 Voice message"
+      },
+      "linked": {
+        "referralId": "-lppa69510"
+      },
+      "participants": {
+        "7nzocOzTumVC8SBwbQ2LN70nQbn1": true,
+        "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1": true
+      },
+      "type": "referral",
+      "unread": {
+        "7nzocOzTumVC8SBwbQ2LN70nQbn1": 0,
+        "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1": 0
+      }
+    },
+    "XK1ebbjoQXgRU4Eri954ztIA27G2_k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1": {
+      "createdAt": 1757315364509,
+      "id": "XK1ebbjoQXgRU4Eri954ztIA27G2_k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "linked": {
+        "appointmentId": "-OZboOfY9tSsZWw4cLY4"
+      },
+      "participants": {
+        "XK1ebbjoQXgRU4Eri954ztIA27G2": true,
+        "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1": true
+      },
+      "type": "direct",
+      "unread": {
+        "XK1ebbjoQXgRU4Eri954ztIA27G2": 0,
+        "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1": 0
+      }
+    }
+  },
+  "clinicBilling": {
+    "-OY7XhorqmIAdi2LIC38": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "category": "laboratoryTests",
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "timestamp": "2025-08-20T17:33:20.568Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-08-20T17:33:20.568Z",
+      "paidDate": "2025-08-20T17:33:20.568Z",
+      "patientFullName": "Lillian Winthrop",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-20T17:33:20.568Z"
+    },
+    "-OY7ZoJdBfdBe9Pzjrl0": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "category": "laboratoryTests",
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "timestamp": "2025-08-20T17:42:31.378Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-08-20T17:42:31.378Z",
+      "paidDate": "2025-08-20T17:42:31.378Z",
+      "patientFullName": "Lillian Winthrop",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-20T17:42:31.378Z"
+    },
+    "-OY7__IkUYD7HBD9MGi0": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "category": "laboratoryTests",
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "timestamp": "2025-08-20T17:45:52.025Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-08-20T17:45:52.025Z",
+      "paidDate": "2025-08-20T17:45:52.025Z",
+      "patientFullName": "Lillian Winthrop",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-20T17:45:52.025Z"
+    },
+    "-OY7bOcfESqKYM9eyCxw": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "category": "laboratoryTests",
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "timestamp": "2025-08-20T17:53:48.504Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-08-20T17:53:48.504Z",
+      "paidDate": "2025-08-20T17:53:48.504Z",
+      "patientFullName": "Lillian Winthrop",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-20T17:53:48.504Z"
+    },
+    "-OY7di4gV8rzowhQZ3RH": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "category": "laboratoryTests",
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "timestamp": "2025-08-20T18:03:56.565Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-20T18:03:56.565Z",
+      "paidDate": "2025-08-20T18:03:56.565Z",
+      "patientFullName": "Lillian Winthrop",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "oiqQMe8cJ4afIS8BWjN1WkvkYJb2"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-20T18:03:56.565Z"
+    },
+    "-OY7iRGLFfsOeO-jKCW1": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "serviceCategory": "laboratoryTests",
+          "timestamp": "2025-08-20T18:24:34.308Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-20T18:24:34.308Z",
+      "paidDate": "2025-08-20T18:24:34.308Z",
+      "patientFullName": "Lillian Winthrop",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "oiqQMe8cJ4afIS8BWjN1WkvkYJb2"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-20T18:24:34.308Z"
+    },
+    "-OY7nhsHuNttBGSwcEzs": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "serviceCategory": "laboratoryTests",
+          "timestamp": "2025-08-20T18:47:37.205Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-20T18:47:37.205Z",
+      "paidDate": "2025-08-20T18:47:37.205Z",
+      "patientFullName": "Lillian Winthrop",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "oiqQMe8cJ4afIS8BWjN1WkvkYJb2"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-20T18:47:37.205Z"
+    },
+    "-OY7oaq8p-sdXncqgsUy": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "serviceCategory": "laboratoryTests",
+          "timestamp": "2025-08-20T18:51:30.557Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-20T18:51:30.557Z",
+      "paidDate": "2025-08-20T18:51:30.557Z",
+      "patientFullName": "Lillian Winthrop",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "oiqQMe8cJ4afIS8BWjN1WkvkYJb2"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-20T18:51:30.557Z"
+    },
+    "-OY7pG_oT8Wbu2YsOX1y": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "quantity": 1,
+          "serviceCategory": "laboratoryTests",
+          "timestamp": "2025-08-20T18:54:25.639Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-20T18:54:25.639Z",
+      "paidDate": "2025-08-20T18:54:25.639Z",
+      "patientFullName": "Lillian Winthrop",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "oiqQMe8cJ4afIS8BWjN1WkvkYJb2"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-20T18:54:25.639Z"
+    },
+    "-OY7qdLovHb07ND7Hpsl": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "serviceCategory": "laboratoryTests",
+          "timestamp": "2025-08-20T19:00:25.128Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-20T19:00:25.128Z",
+      "paidDate": "2025-08-20T19:00:25.128Z",
+      "patientFullName": "Lillian Winthrop",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "oiqQMe8cJ4afIS8BWjN1WkvkYJb2"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-20T19:00:25.128Z"
+    },
+    "-OYqB9KB6siMF9DaMNDW": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "serviceCategory": "laboratoryTests",
+          "timestamp": "2025-08-29T14:17:15.908Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-29T14:17:15.908Z",
+      "paidDate": "2025-08-29T14:17:15.908Z",
+      "patientFullName": "Henrietta Winthrop",
+      "patientId": "DbIPUoIPN4cVpzF43ORuGZWiDh73",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "0Y0HnuNZX5ZOpwaZmxK3R7j5Yru2"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-29T14:17:15.908Z"
+    },
+    "-OYqBFHiqlRKPUZtjz9e": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "serviceCategory": "laboratoryTests",
+          "timestamp": "2025-08-29T14:17:40.327Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-29T14:17:40.327Z",
+      "paidDate": "2025-08-29T14:17:40.327Z",
+      "patientFullName": "Juan Dela Cruz",
+      "patientId": "Mp0E9eLbDOOHPw4NCcrjjrqbHoy1",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "0Y0HnuNZX5ZOpwaZmxK3R7j5Yru2"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-29T14:17:40.327Z"
+    },
+    "-OYqB_GN_xifGn7EU4RC": {
+      "amount": 3500,
+      "billedItems": [
+        {
+          "itemId": "BAdxLw4hpjdOCPsChodZ",
+          "itemName": "Paracetamol",
+          "itemType": "medicine",
+          "pricePerUnit": 5,
+          "quantity": 400,
+          "timestamp": "2025-08-20T19:11:56.587Z",
+          "totalPrice": 2000
+        },
+        {
+          "itemId": "BAdxLw4hpjdOCPsChodZ",
+          "itemName": "Paracetamol",
+          "itemType": "medicine",
+          "pricePerUnit": 5,
+          "quantity": 50,
+          "timestamp": "2025-08-27T17:52:26.114Z",
+          "totalPrice": 250
+        },
+        {
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "timestamp": "2025-08-20T18:49:40.265Z",
+          "totalPrice": 500
+        },
+        {
+          "consultationType": "General Consultation",
+          "itemId": "-OY7D_X76y5yLjvAPoAS",
+          "itemName": "General Consultation",
+          "itemType": "consultation",
+          "pricePerUnit": 250,
+          "quantity": 1,
+          "requestedBy": "Rene Catan",
+          "timestamp": "2025-08-20T19:15:08.600Z",
+          "totalPrice": 250
+        },
+        {
+          "consultationType": "General Consultation",
+          "itemId": "-OY7D_X76y5yLjvAPoAS",
+          "itemName": "General Consultation",
+          "itemType": "consultation",
+          "pricePerUnit": 250,
+          "quantity": 1,
+          "requestedBy": "Rene Catan",
+          "timestamp": "2025-08-27T17:59:53.886Z",
+          "totalPrice": 250
+        },
+        {
+          "consultationType": "General Consultation",
+          "itemId": "-OY7D_X76y5yLjvAPoAS",
+          "itemName": "General Consultation",
+          "itemType": "consultation",
+          "pricePerUnit": 250,
+          "quantity": 1,
+          "requestedBy": "Rene Catan",
+          "timestamp": "2025-08-29T13:32:30.242Z",
+          "totalPrice": 250
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-08-29T14:19:06.257Z",
+      "paidDate": "2025-08-29T14:54:39.046Z",
+      "patientFullName": "Lillian Winthrop",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "paid",
+      "transactionDate": "2025-08-29T14:19:06.257Z"
+    },
+    "-OZ3Rma5ZbMTWc9cwPqI": {
+      "amount": 1100,
+      "billedItems": [
+        {
+          "consultationType": "General Consultation",
+          "itemId": "-OY7D_X76y5yLjvAPoAS",
+          "itemName": "General Consultation",
+          "itemType": "consultation",
+          "pricePerUnit": 600,
+          "quantity": 1,
+          "requestedBy": "Jetch Madaya",
+          "timestamp": "2025-09-01T08:40:38.283Z",
+          "totalPrice": 600
+        },
+        {
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "timestamp": "2025-09-01T08:41:16.684Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-09-01T08:44:41.965Z",
+      "paidDate": "2025-09-01T08:45:28.127Z",
+      "patientFullName": "Test Test",
+      "patientId": "uXIClv7k1UTb2JZYLtpwuSC8HhF3",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "paid",
+      "transactionDate": "2025-09-01T08:44:41.965Z"
+    },
+    "-OZ3SGjC9xTcFV0cgITM": {
+      "amount": 600,
+      "billedItems": [
+        {
+          "consultationType": "General Consultation",
+          "itemId": "-OY7D_X76y5yLjvAPoAS",
+          "itemName": "General Consultation",
+          "itemType": "consultation",
+          "pricePerUnit": 600,
+          "quantity": 1,
+          "requestedBy": "Jetch Madaya",
+          "timestamp": "2025-09-01T08:40:38.283Z",
+          "totalPrice": 600
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-09-01T08:46:49.525Z",
+      "paidDate": "2025-09-01T08:47:03.142Z",
+      "patientFullName": "Test Test",
+      "patientId": "uXIClv7k1UTb2JZYLtpwuSC8HhF3",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "paid",
+      "transactionDate": "2025-09-01T08:46:49.525Z"
+    },
+    "-OZ3VYAuDr2QTKXM0A_u": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "serviceCategory": "laboratoryTests",
+          "timestamp": "2025-09-01T09:01:05.901Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-09-01T09:01:05.901Z",
+      "paidDate": "2025-09-01T09:01:05.901Z",
+      "patientFullName": "Test Test",
+      "patientId": "uXIClv7k1UTb2JZYLtpwuSC8HhF3",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "0Y0HnuNZX5ZOpwaZmxK3R7j5Yru2"
+      },
+      "status": "paid",
+      "transactionDate": "2025-09-01T09:01:05.901Z"
+    },
+    "-OZ3_eNW2IyzUZJkzGbM": {
+      "amount": 2550,
+      "billedItems": [
+        {
+          "itemId": "ZJI5PcmHQEdFQ3gNs40I",
+          "itemName": "Sample",
+          "itemType": "medicine",
+          "pricePerUnit": 6.5,
+          "quantity": 300,
+          "timestamp": "2025-09-01T09:11:16.024Z",
+          "totalPrice": 1950
+        },
+        {
+          "consultationType": "General Consultation",
+          "itemId": "-OY7D_X76y5yLjvAPoAS",
+          "itemName": "General Consultation",
+          "itemType": "consultation",
+          "pricePerUnit": 600,
+          "quantity": 1,
+          "requestedBy": "Jetch Madaya",
+          "timestamp": "2025-09-01T08:40:38.283Z",
+          "totalPrice": 600
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-09-01T09:23:25.804Z",
+      "paidDate": "2025-09-01T09:23:29.371Z",
+      "patientFullName": "Test Test",
+      "patientId": "uXIClv7k1UTb2JZYLtpwuSC8HhF3",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "paid",
+      "transactionDate": "2025-09-01T09:23:25.804Z"
+    },
+    "-OZbxDdwGmCQ-F9A8e5I": {
+      "amount": 2350,
+      "billedItems": [
+        {
+          "itemId": "ANNfXJJL8UdLefLjN2D5",
+          "itemName": "Planax",
+          "itemType": "medicine",
+          "pricePerUnit": 7,
+          "quantity": 10,
+          "timestamp": "2025-09-08T06:07:48.926Z",
+          "totalPrice": 70
+        },
+        {
+          "itemId": "ANNfXJJL8UdLefLjN2D5",
+          "itemName": "Planax",
+          "itemType": "medicine",
+          "pricePerUnit": 7,
+          "quantity": 40,
+          "timestamp": "2025-09-08T06:11:16.691Z",
+          "totalPrice": 280
+        },
+        {
+          "consultationType": "General Consultation",
+          "itemId": "-OY7D_X76y5yLjvAPoAS",
+          "itemName": "General Consultation",
+          "itemType": "consultation",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "requestedBy": "Rene Catan",
+          "timestamp": "2025-09-08T05:22:43.672Z",
+          "totalPrice": 500
+        },
+        {
+          "consultationType": "General Consultation",
+          "itemId": "-OY7D_X76y5yLjvAPoAS",
+          "itemName": "General Consultation",
+          "itemType": "consultation",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "requestedBy": "Rene Catan",
+          "timestamp": "2025-09-08T05:24:37.853Z",
+          "totalPrice": 500
+        },
+        {
+          "consultationType": "General Consultation",
+          "itemId": "-OY7D_X76y5yLjvAPoAS",
+          "itemName": "General Consultation",
+          "itemType": "consultation",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "requestedBy": "Rene Catan",
+          "timestamp": "2025-09-08T05:38:15.040Z",
+          "totalPrice": 500
+        },
+        {
+          "consultationType": "General Consultation",
+          "itemId": "-OY7D_X76y5yLjvAPoAS",
+          "itemName": "General Consultation",
+          "itemType": "consultation",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "requestedBy": "Rene Catan",
+          "timestamp": "2025-09-08T05:46:12.329Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "clin_cebu_doctors_id",
+      "clinicName": "Cebu Doctors' University Hospital",
+      "createdAt": "2025-09-08T06:13:06.162Z",
+      "paidDate": "2025-09-08T06:20:12.281Z",
+      "patientFullName": "Mira Bonghanoy",
+      "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "current_user_id"
+      },
+      "status": "paid",
+      "transactionDate": "2025-09-08T06:13:06.162Z"
+    },
+    "-OZc--_pVhymTd-hUvUu": {
+      "amount": 500,
+      "billedItems": [
+        {
+          "description": "Blood Test",
+          "itemId": "-OY7DhZNL6TFEim1mi-G",
+          "itemName": "CBC",
+          "itemType": "prepaid_service",
+          "pricePerUnit": 500,
+          "quantity": 1,
+          "serviceCategory": "laboratoryTests",
+          "timestamp": "2025-09-08T06:25:14.986Z",
+          "totalPrice": 500
+        }
+      ],
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "clinicName": "Cebu Doctors",
+      "createdAt": "2025-09-08T06:25:14.986Z",
+      "paidDate": "2025-09-08T06:25:14.986Z",
+      "patientFullName": "Mira Bonghanoy",
+      "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "paymentType": "service_prepayment",
+      "processedBy": {
+        "firstName": "System",
+        "lastName": "Generated",
+        "userId": "xgByzv3CB0fPhdFLPEDteFDnbum2"
+      },
+      "status": "paid",
+      "transactionDate": "2025-09-08T06:25:14.986Z"
+    }
+  },
+  "clinicLabRequests": {
+    "-OY7hBjqHtyY41IDJ2aw": {
+      "addressLine": "Urgello Cebu City",
+      "bloodType": "A+",
+      "clinic": "SWU Clinic",
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "contactNumber": "09159452600",
+      "createdAt": {
+        "date": "2025-08-21",
+        "time": "02:15 AM"
+      },
+      "dateOfBirth": "2002-04-06",
+      "description": "Blood Test",
+      "email": "lillian.everwinthrop@icloud.com",
+      "emergencyContact": {
+        "name": "Lukes Evergreen",
+        "phone": "09159452600",
+        "relationship": "sibling"
+      },
+      "estimatedTime": "8:00AM - 9:00AM",
+      "firstName": "Lillian",
+      "labTestId": "-OY7DhZNL6TFEim1mi-G",
+      "labTestName": "CBC",
+      "lastName": "Winthrop",
+      "notes": "",
+      "patientName": "Lillian Winthrop",
+      "referDoctor": "",
+      "serviceFee": "500",
+      "slotNumber": "1",
+      "status": "Pending",
+      "type": "Primary Clinic",
+      "userId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73"
+    },
+    "-OYC9pqSOgA7SZeWVsFM": {
+      "addressLine": "Urgello Cebu City",
+      "bloodType": "AB+",
+      "clinic": "SWU Clinic",
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "contactNumber": "09213212313",
+      "createdAt": {
+        "date": "2025-08-21",
+        "time": "11:06 PM"
+      },
+      "dateOfBirth": "0001-08-20",
+      "description": "Blood Test",
+      "email": "anthonyoporto11@gmail.com",
+      "emergencyContact": {
+        "name": "Kinly Magale",
+        "phone": "09121321322",
+        "relationship": "Spouse/Partner"
+      },
+      "estimatedTime": "8:00AM - 9:00AM",
+      "firstName": "Anthony Carl",
+      "labTestId": "-OY7DhZNL6TFEim1mi-G",
+      "labTestName": "CBC",
+      "lastName": "Oporto",
+      "notes": "mura gi HIV",
+      "patientName": "Anthony Carl Oporto",
+      "referDoctor": "",
+      "serviceFee": "500",
+      "slotNumber": "5",
+      "status": "Pending",
+      "type": "Primary Clinic",
+      "userId": "jnIb2qpfgSTd9IZxnhZcVbFECWA2"
+    }
+  },
+  "clinics": {
+    "-OZbKbNjweIdcYnQiqil": {
+      "addressLine": "Lahug Talisay city",
+      "contactNumber": "09991591653",
+      "isActive": true,
+      "name": "Cebu Doctors",
+      "type": "Primary Clinic"
+    },
+    "-OZbKqcYB1SxscYCZQKn": {
+      "addressLine": "Urgello Street",
+      "contactNumber": "09099855322",
+      "isActive": true,
+      "name": "SWU Clinic",
+      "type": "Primary Clinic"
+    },
+    "-OZbKvRcgeq7ddOrij4C": {
+      "addressLine": "Colon street",
+      "contactNumber": "09930050664",
+      "isActive": true,
+      "name": "UC Med Clinic",
+      "type": "Primary Clinic"
+    }
+  },
+  "departments": {
+    "Admin": {
+      "permissions": {
+        "accessAdminScreen": true,
+        "accessAnalytics": true,
+        "accessBilling": true,
+        "accessClinicStaffScreen": true,
+        "accessDoctorScreen": true,
+        "accessInventory": true,
+        "accessInventoryHistory": true,
+        "accessInventoryTransactions": true,
+        "accessLabScreen": true,
+        "accessLaboratory": true,
+        "accessMedicalCertificate": true,
+        "accessNurseScreen": true,
+        "accessOverallInventory": true,
+        "accessPatients": true,
+        "accessSettings": true,
+        "accessTransferStocks": true
+      }
+    },
+    "Laboratory": {
+      "permissions": {
+        "accessAdminScreen": false,
+        "accessAnalytics": false,
+        "accessBilling": false,
+        "accessClinicStaffScreen": false,
+        "accessDoctorScreen": false,
+        "accessInventory": true,
+        "accessInventoryHistory": false,
+        "accessInventoryTransactions": false,
+        "accessLabScreen": true,
+        "accessLaboratory": true,
+        "accessMedicalCertificate": false,
+        "accessNurseScreen": false,
+        "accessOverallInventory": false,
+        "accessPatients": true,
+        "accessSettings": false,
+        "accessTransferStocks": true
+      }
+    },
+    "SuperAdmin": {
+      "permissions": {
+        "accessAdminScreen": true,
+        "accessAnalytics": true,
+        "accessBilling": true,
+        "accessClinicManagement": true,
+        "accessClinicStaffScreen": true,
+        "accessDoctorScreen": true,
+        "accessInventory": true,
+        "accessInventoryHistory": true,
+        "accessInventoryTransactions": true,
+        "accessLabScreen": true,
+        "accessLaboratory": true,
+        "accessMedicalCertificate": true,
+        "accessNurseScreen": true,
+        "accessOverallInventory": true,
+        "accessPatients": true,
+        "accessSettings": true,
+        "accessTransferStocks": true
+      }
+    },
+    "doctor": {
+      "permissions": {
+        "accessAdminScreen": false,
+        "accessAnalytics": true,
+        "accessBilling": false,
+        "accessClinicStaffScreen": false,
+        "accessDoctorScreen": true,
+        "accessInventory": true,
+        "accessInventoryHistory": false,
+        "accessInventoryTransactions": false,
+        "accessLabScreen": false,
+        "accessLaboratory": true,
+        "accessMedicalCertificate": true,
+        "accessNurseScreen": false,
+        "accessOverallInventory": false,
+        "accessPatients": true,
+        "accessSettings": false,
+        "accessTransferStocks": false
+      }
+    }
+  },
+  "doctors": {
+    "7nzocOzTumVC8SBwbQ2LN70nQbn1": {
+      "address": "Consolacion, Cebu City",
+      "civilStatus": "married",
+      "clinicAffiliations": [
+        "-OZbKbNjweIdcYnQiqil"
+      ],
+      "contactNumber": "9159452600",
+      "createdAt": "2025-09-08T05:42:40.198Z",
+      "dateOfBirth": "2002-04-06",
+      "feeChangeRequest": {
+        "previousFee": 1000,
+        "requestDate": "2025-09-12T04:27:03.915Z",
+        "requestedFee": 900,
+        "reviewNotes": "",
+        "reviewedAt": "2025-09-12T04:27:10.213Z",
+        "reviewedBy": "superadmin@unihealth.ph"
+      },
+      "feeHistory": [
+        {
+          "effectiveDate": "2025-09-12T04:22:58.989Z",
+          "fee": 1000,
+          "status": "inactive"
+        },
+        {
+          "effectiveDate": "2025-09-12T04:27:10.213Z",
+          "fee": 900,
+          "status": "active"
+        }
+      ],
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-09-16T18:38:34.358Z",
+      "lastUpdated": "2025-09-12T04:27:10.213Z",
+      "medicalLicenseNumber": "MD123456",
+      "prcExpiryDate": "2030-04-06",
+      "prcId": "PRC123456",
+      "professionalFee": 900,
+      "professionalFeeStatus": "approved",
+      "profileImageUrl": "",
+      "specialty": "Cardiology",
+      "status": "verified",
+      "updatedAt": 1757310392761,
+      "userId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+      "verificationDate": 1757310392718,
+      "verifiedBy": "superadmin@unihealth.ph"
+    },
+    "8lsVM5QsQwXAwbrwTB4wIB8X0LB2": {
+      "address": "Consolacion, Cebu City",
+      "civilStatus": "married",
+      "clinicAffiliations": [
+        "-OZbKvRcgeq7ddOrij4C"
+      ],
+      "contactNumber": "9159452600",
+      "createdAt": "2025-09-08T05:45:36.301Z",
+      "dateOfBirth": "2002-04-06",
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-09-16T18:41:51.142Z",
+      "medicalLicenseNumber": "MD123456",
+      "prcExpiryDate": "2030-04-06",
+      "prcId": "PRC123456",
+      "professionalFee": 900,
+      "profileImageUrl": "",
+      "specialty": "Internal Medicine",
+      "status": "verified",
+      "updatedAt": 1757310376958,
+      "userId": "8lsVM5QsQwXAwbrwTB4wIB8X0LB2",
+      "verificationDate": 1757310376915,
+      "verifiedBy": "superadmin@unihealth.ph"
+    },
+    "XK1ebbjoQXgRU4Eri954ztIA27G2": {
+      "availability": {
+        "lastUpdated": "2025-09-08T05:33:50.043Z",
+        "weeklySchedule": {
+          "friday": {
+            "enabled": false
+          },
+          "monday": {
+            "enabled": true,
+            "timeSlots": [
+              {
+                "endTime": "17:00",
+                "startTime": "09:00"
+              }
+            ]
+          },
+          "saturday": {
+            "enabled": false
+          },
+          "sunday": {
+            "enabled": false
+          },
+          "thursday": {
+            "enabled": false
+          },
+          "tuesday": {
+            "enabled": true,
+            "timeSlots": [
+              {
+                "endTime": "17:00",
+                "startTime": "09:00"
+              }
+            ]
+          },
+          "wednesday": {
+            "enabled": false
+          }
+        }
+      },
+      "birNumber": "23423423",
+      "clinicAffiliations": [
+        "-OZbKbNjweIdcYnQiqil"
+      ],
+      "contactNumber": "09991591653",
+      "createdAt": "2025-09-08T05:33:26.413Z",
+      "department": "doctor",
+      "firstName": "Rene",
+      "fullName": "Rene Catan",
+      "isGeneralist": true,
+      "lastName": "Catan",
+      "prcExpiry": "2003-06-03",
+      "prcId": "32525",
+      "professionalFees": {
+        "consultationFee": 5000,
+        "followUpFee": 500,
+        "patronageFee": 500,
+        "referralFee": 500
+      },
+      "specialty": "Generalist"
+    },
+    "YgjpLBADEph3RauWarsKNHrzIl32": {
+      "address": "St. Bart, Lukes Evergreen, Australia",
+      "civilStatus": "married",
+      "clinicAffiliations": [
+        "-OZbKvRcgeq7ddOrij4C"
+      ],
+      "contactNumber": "9159452600",
+      "createdAt": "2025-09-09T09:58:53.106Z",
+      "dateOfBirth": "2002-04-06",
+      "gender": "female",
+      "isGeneralist": false,
+      "isSpecialist": true,
+      "lastLogin": "2025-09-09T09:58:53.106Z",
+      "medicalLicenseNumber": "MD123456",
+      "prcExpiryDate": "2030-12-31",
+      "prcId": "PRC123456",
+      "professionalFee": "900",
+      "profileImageUrl": "",
+      "specialty": "Cardiology",
+      "status": "pending",
+      "userId": "YgjpLBADEph3RauWarsKNHrzIl32"
+    }
+  },
+  "feedback": {
+    "-OY7TtE1hyQugwN-ZvuO": {
+      "appointmentDate": "2025-08-25",
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "comment": "test",
+      "createdAt": 1755710197352,
+      "doctorId": "DowULEezynQ95WH0uhZIMVjL7np1",
+      "doctorName": "Liam Winthrop",
+      "id": "-OY7TtE1hyQugwN-ZvuO",
+      "isAnonymous": false,
+      "patientEmail": "lillian.everwinthrop@icloud.com",
+      "patientName": "Lillian Winthrop",
+      "rating": 5,
+      "referralId": "-OY7Rkebyn1Bse8aENFA",
+      "serviceType": "referral",
+      "status": "reviewed",
+      "tags": [
+        "professional",
+        "excellent",
+        "knowledgeable",
+        "referral"
+      ],
+      "treatmentType": "Specialist Referral - Family Medicine Consultation",
+      "updatedAt": 1755710564499
+    },
+    "-OYWZyMrXQzO2hN3FiSX": {
+      "appointmentDate": "2025-08-21",
+      "appointmentId": "-OY7K5R0dCZa8suLvbt8",
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "comment": "",
+      "createdAt": "2025-08-25T14:13:42.628Z",
+      "doctorId": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "doctorName": "Rene Catan",
+      "isAnonymous": false,
+      "patientEmail": "lillian.everwinthrop@icloud.com",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "patientName": "Lillian Winthrop",
+      "rating": 4,
+      "serviceType": "referral",
+      "status": "reviewed",
+      "tags": [
+        "professional",
+        "knowledgeable",
+        "friendly"
+      ],
+      "treatmentType": "General Consultation",
+      "updatedAt": 1756308374130
+    },
+    "-OZ8vSdWSrIiqZckvhRo": {
+      "appointmentDate": "2025-08-28",
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "comment": "",
+      "createdAt": "2025-09-02T10:16:46.922Z",
+      "doctorId": "J0zVFWQlgQcyqkPNBvtVAGOu6U62",
+      "doctorName": "Quainne Winthrop",
+      "isAnonymous": false,
+      "patientEmail": "lillian.everwinthrop@icloud.com",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "patientName": "Lillian Winthrop",
+      "rating": 4,
+      "referralId": "-v61c7bwr6",
+      "serviceType": "referral",
+      "status": "",
+      "tags": [
+        "good"
+      ],
+      "treatmentType": "The case requires specialized knowledge or skills",
+      "updatedAt": "2025-09-02T10:16:46.922Z"
+    }
+  },
+  "inventoryItems": {
+    "R4yl3ii1qfThl5tjd0C5": {
+      "brand": "Biogesic",
+      "createdAt": "2025-09-16T11:05:26.958Z",
+      "defaultCostPrice": 2.5,
+      "defaultDosage": "500mg",
+      "defaultRetailPrice": 5,
+      "genericName": "Paracetamol",
+      "itemCategory": "Tablets and Capsules",
+      "itemGroup": "Medicine",
+      "itemName": "Paracetamol",
+      "specifications": "Used for fever and pain",
+      "supplierName": "Health Supplies Inc.",
+      "unitOfMeasure": {
+        "bigUnit": "Box",
+        "conversionFactor": 10,
+        "smallUnit": "Tablet"
+      }
+    },
+    "YiZiVjpdeE5rXTdIVd0i": {
+      "createdAt": "2025-09-16T10:50:38.947Z",
+      "defaultCostPrice": 3.5,
+      "defaultRetailPrice": 5,
+      "itemCategory": "Syringes",
+      "itemGroup": "Supply",
+      "itemName": "Syringe 5ml",
+      "specifications": "Sterile",
+      "supplierName": ""
+    }
+  },
+  "inventoryTransactions": {
+    "-OY7tHCr-_GtGnK7e2tk": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "itemId": "BAdxLw4hpjdOCPsChodZ",
+      "itemName": "Paracetamol",
+      "processedByUserFirstName": "Rene",
+      "processedByUserId": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "processedByUserLastName": "Catan",
+      "quantityChanged": -400,
+      "reason": "Patient care (Lillian Winthrop)",
+      "relatedPatientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-08-20T19:11:56.587Z",
+      "transactionType": "usage"
+    },
+    "-OY7u55PFxtX4wRR5pC3": {
+      "destinationDepartment": "Laboratory",
+      "itemId": "BAdxLw4hpjdOCPsChodZ",
+      "itemName": "Paracetamol",
+      "processedByUserFirstName": "Pharmacy",
+      "processedByUserId": "uWmpogyCDQTJHCgSysb5FwUiDI42",
+      "processedByUserLastName": "Operator",
+      "quantityChanged": -50,
+      "reason": "Transfer to Laboratory: test",
+      "timestamp": "8/21/2025, 3:15:01 AM",
+      "transactionType": "transfer_stock"
+    },
+    "-OY7uBvGmeAqwQLr3vdP": {
+      "adminProcessed": true,
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "destinationDepartment": "Pharmacy",
+      "itemId": "BAdxLw4hpjdOCPsChodZ",
+      "itemName": "Paracetamol",
+      "processedByUserDepartment": "Admin",
+      "processedByUserFirstName": "admin",
+      "processedByUserId": "EDjKJWlRgoQ72upWsxhs6qZ3G5w1",
+      "processedByUserLastName": "admin",
+      "quantityAfter": 550,
+      "quantityBefore": 50,
+      "quantityChanged": 500,
+      "reason": "Stock replenishment",
+      "statusAfter": "Good",
+      "statusBefore": "Low",
+      "thresholdBaseAfter": 550,
+      "thresholdBaseBefore": 500,
+      "timestamp": "2025-08-20T19:15:57.225Z",
+      "transactionType": "stock_in"
+    },
+    "-OY7uNzFtFFiJI3l1KsP": {
+      "destinationDepartment": "Laboratory",
+      "itemId": "BAdxLw4hpjdOCPsChodZ",
+      "itemName": "Paracetamol",
+      "processedByUserFirstName": "Pharmacy",
+      "processedByUserId": "uWmpogyCDQTJHCgSysb5FwUiDI42",
+      "processedByUserLastName": "Operator",
+      "quantityChanged": -300,
+      "reason": "Transfer to Laboratory: test",
+      "timestamp": "8/21/2025, 3:16:32 AM",
+      "transactionType": "transfer_stock"
+    },
+    "-OYgeCklv11INZjByGAa": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "itemId": "BAdxLw4hpjdOCPsChodZ",
+      "itemName": "Paracetamol",
+      "processedByUserFirstName": "Rene",
+      "processedByUserId": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "processedByUserLastName": "Catan",
+      "quantityChanged": -50,
+      "reason": "Patient care (Lillian Winthrop)",
+      "relatedPatientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-08-27T17:52:26.114Z",
+      "transactionType": "usage"
+    },
+    "-OYqK9yjSur28a1y1SL5": {
+      "adminProcessed": true,
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "destinationDepartment": "Pharmacy",
+      "itemId": "BAdxLw4hpjdOCPsChodZ",
+      "itemName": "Paracetamol",
+      "processedByUserDepartment": "Admin",
+      "processedByUserFirstName": "Admin",
+      "processedByUserId": "0Y0HnuNZX5ZOpwaZmxK3R7j5Yru2",
+      "processedByUserLastName": "SWU",
+      "quantityAfter": 500,
+      "quantityBefore": 200,
+      "quantityChanged": 300,
+      "reason": "Stock replenishment",
+      "statusAfter": "Good",
+      "statusBefore": "Low",
+      "thresholdBaseAfter": 500,
+      "thresholdBaseBefore": 550,
+      "timestamp": "2025-08-29T14:56:37.864Z",
+      "transactionType": "stock_in"
+    },
+    "-OZ3UlarkbdLKWgQSXAk": {
+      "destinationDepartment": "Nurse",
+      "itemId": "BAdxLw4hpjdOCPsChodZ",
+      "itemName": "Paracetamol",
+      "processedByUserFirstName": "Pharmacy",
+      "processedByUserId": "uWmpogyCDQTJHCgSysb5FwUiDI42",
+      "processedByUserLastName": "Operator",
+      "quantityChanged": -50,
+      "reason": "Transfer to Nurse: test",
+      "timestamp": "9/1/2025, 4:57:22 PM",
+      "transactionType": "transfer_stock"
+    },
+    "-OZ3X0q7oQjJo01KBeJL": {
+      "destinationDepartment": "Nurse",
+      "itemId": "ZJI5PcmHQEdFQ3gNs40I",
+      "itemName": "Sample",
+      "processedByUserFirstName": "Pharmacy",
+      "processedByUserId": "uWmpogyCDQTJHCgSysb5FwUiDI42",
+      "processedByUserLastName": "Operator",
+      "quantityChanged": -50,
+      "reason": "Transfer to Nurse: transfer",
+      "timestamp": "9/1/2025, 5:06:52 PM",
+      "transactionType": "transfer_stock"
+    },
+    "-OZ3Xs2oLDjgJZQLOW1N": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "itemId": "ZJI5PcmHQEdFQ3gNs40I",
+      "itemName": "Sample",
+      "processedByUserFirstName": "Rene",
+      "processedByUserId": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "processedByUserLastName": "Catan",
+      "quantityChanged": -300,
+      "reason": "Patient care (Test Test)",
+      "relatedPatientId": "uXIClv7k1UTb2JZYLtpwuSC8HhF3",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-09-01T09:11:16.024Z",
+      "transactionType": "usage"
+    },
+    "-OZbUKonkfkVEBQ6Il7K": {
+      "destinationDepartment": "Laboratory",
+      "itemId": "ANNfXJJL8UdLefLjN2D5",
+      "itemName": "Planax",
+      "processedByUserFirstName": "Joshua",
+      "processedByUserId": "xgByzv3CB0fPhdFLPEDteFDnbum2",
+      "processedByUserLastName": "Bongs",
+      "quantityChanged": -50,
+      "reason": "Transfer to Laboratory: Restock for their department",
+      "timestamp": "9/8/2025, 12:01:56 PM",
+      "transactionType": "transfer_stock"
+    },
+    "-OZbVZhD-L1EIAM-105Z": {
+      "destinationDepartment": "Laboratory",
+      "itemId": "ANNfXJJL8UdLefLjN2D5",
+      "itemName": "Planax",
+      "processedByUserFirstName": "Joshua",
+      "processedByUserId": "xgByzv3CB0fPhdFLPEDteFDnbum2",
+      "processedByUserLastName": "Bongs",
+      "quantityChanged": -10,
+      "reason": "Transfer to Laboratory: test",
+      "timestamp": "9/8/2025, 12:07:36 PM",
+      "transactionType": "transfer_stock"
+    },
+    "-OZbbO0be5osgF4vkXRN": {
+      "destinationDepartment": "Laboratory",
+      "itemId": "ANNfXJJL8UdLefLjN2D5",
+      "itemName": "Planax",
+      "processedByUserFirstName": "Joshua",
+      "processedByUserId": "xgByzv3CB0fPhdFLPEDteFDnbum2",
+      "processedByUserLastName": "Bongs",
+      "quantityChanged": -40,
+      "reason": "Transfer to Laboratory: stockin",
+      "timestamp": "9/8/2025, 12:35:49 PM",
+      "transactionType": "transfer_stock"
+    },
+    "-OZbw-rVybFBvrIDFJmT": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "itemId": "ANNfXJJL8UdLefLjN2D5",
+      "itemName": "Planax",
+      "processedByUserFirstName": "Rene",
+      "processedByUserId": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "processedByUserLastName": "Catan",
+      "quantityChanged": -10,
+      "reason": "Patient care (Mira Bonghanoy)",
+      "relatedPatientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-09-08T06:07:48.926Z",
+      "transactionType": "usage"
+    },
+    "-OZbwn_jAFDG5MZhPOXv": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "itemId": "ANNfXJJL8UdLefLjN2D5",
+      "itemName": "Planax",
+      "processedByUserFirstName": "Rene",
+      "processedByUserId": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "processedByUserLastName": "Catan",
+      "quantityChanged": -40,
+      "reason": "Patient care (Mira Bonghanoy)",
+      "relatedPatientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-09-08T06:11:16.691Z",
+      "transactionType": "usage"
+    },
+    "-OZbzl7QAHSHTqqHWp-R": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "itemId": "ANNfXJJL8UdLefLjN2D5",
+      "itemName": "Planax",
+      "processedByUserFirstName": "Rene",
+      "processedByUserId": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "processedByUserLastName": "Catan",
+      "quantityChanged": -50,
+      "reason": "Patient care (Mira Bonghanoy)",
+      "relatedPatientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "sourceDepartment": "doctor",
+      "timestamp": "2025-09-08T06:24:13.055Z",
+      "transactionType": "usage"
+    }
+  },
+  "labResults": {
+    "-OZJ75LOIkhBJrDY0OMf": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "completedAt": "2025-09-04T09:48:13.268Z",
+      "completedBy": "lab tech",
+      "completedById": "ogbIZavb4ah77Hi26GSW4Ujsaxv2",
+      "createdAt": "2025-09-04T09:48:13.268Z",
+      "department": "Laboratory",
+      "lastUpdated": "2025-09-04T09:48:13.268Z",
+      "notes": "PC TEST CONFIRMED",
+      "patientId": "WDhOrse7NLVd6GhQz0RUW3Bedc02",
+      "patientName": "April Rosales",
+      "result": "PC TEST CONFIRMED",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "serviceName": "Laboratory Test",
+      "status": "completed",
+      "transactionId": "-OZIyt6k2OYZgMYALyKo"
+    },
+    "-OZyNsWOxI59D2M_1H-M": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "completedAt": "2025-09-12T14:45:33.849Z",
+      "completedBy": "Dan Penera",
+      "completedById": "9W1HP5rT0HW2A6RfeWnzCohfoqu1",
+      "createdAt": "2025-09-12T14:45:33.849Z",
+      "department": "Laboratory",
+      "lastUpdated": "2025-09-12T14:45:33.849Z",
+      "notes": "PC TEST COMPLETE",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "patientName": "Marielle Dalimocon",
+      "result": "PC TEST COMPLETE",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "serviceName": "CBC",
+      "status": "completed",
+      "transactionId": "-OZu55AVbyPU1vIYLt5p"
+    }
+  },
+  "medicalServices": {
+    "consultationTypes": {
+      "-OY7D_X76y5yLjvAPoAS": {
+        "description": "test",
+        "name": "General Consultation"
+      },
+      "-OY7DnMitUoy8wt5z6T7": {
+        "description": "Test",
+        "name": "Follow Up"
+      }
+    },
+    "laboratoryTests": {
+      "-OY7DhZNL6TFEim1mi-G": {
+        "description": "Blood Test",
+        "name": "CBC",
+        "serviceFee": "500"
+      }
+    }
+  },
+  "medicalServicesTransactions": {
+    "-OY7oAxqI4iROCCoAGA_": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-08-20T18:49:40.265Z",
+      "department": "Laboratory",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "patientName": "Lillian Winthrop",
+      "patientNotes": "DOC REQUEST TEST",
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultImages": [
+        {
+          "id": "1755715843219",
+          "uri": "file:///data/user/0/host.exp.exponent/cache/ExperienceData/%2540danken%252FOdysSys/ImagePicker/6d4fe948-b432-44c6-a95e-c6e0bb5a4097.jpeg"
+        }
+      ],
+      "resultNotes": "Laboratory request received ",
+      "resultStatus": "complete",
+      "sampleStatus": "collected",
+      "serviceCategory": "laboratoryTests",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-08-20T18:50:51.373Z",
+      "urgentFlag": false
+    },
+    "-OY7oarSbrKfAv7VzSbF": {
+      "billId": "-OY7oaq8p-sdXncqgsUy",
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-20T18:51:30.557Z",
+      "labTestSched": {
+        "date": "2025-08-29",
+        "time": "8:00 AM"
+      },
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "patientName": "Lillian Winthrop",
+      "patientNotes": "",
+      "resultStatus": "pending",
+      "sampleStatus": "collected",
+      "serviceCategory": "laboratoryTests",
+      "serviceDescription": "Blood Test",
+      "serviceFee": 500,
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "in-progress",
+      "transactionType": "SERVICE_PREPAYMENT",
+      "updatedAt": "2025-08-20T19:08:00.918Z",
+      "urgentFlag": false
+    },
+    "-OY7pGakx7jbIrUzzhSs": {
+      "billId": "-OY7pG_oT8Wbu2YsOX1y",
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-20T18:54:25.639Z",
+      "labTestSched": {
+        "date": "2025-09-07",
+        "time": "8:00 AM"
+      },
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "patientName": "Lillian Winthrop",
+      "patientNotes": "",
+      "resultStatus": "pending",
+      "sampleStatus": "pending",
+      "serviceCategory": "laboratoryTests",
+      "serviceDescription": "Blood Test",
+      "serviceFee": 500,
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "pending",
+      "transactionType": "SERVICE_PREPAYMENT",
+      "updatedAt": "2025-08-20T18:54:25.639Z",
+      "urgentFlag": false
+    },
+    "-OY7qdMr9WS1MvD4WSIO": {
+      "billId": "-OY7qdLovHb07ND7Hpsl",
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-20T19:00:25.128Z",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "patientName": "Lillian Winthrop",
+      "patientNotes": "",
+      "resultStatus": "complete",
+      "sampleStatus": "analyzed",
+      "serviceCategory": "laboratoryTests",
+      "serviceDescription": "Blood Test",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "completed",
+      "transactionType": "SERVICE_PREPAYMENT",
+      "updatedAt": "2025-08-20T19:06:50.525Z",
+      "urgentFlag": false
+    },
+    "-OY7u09azOWdqBdKbkDf": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-08-20T19:15:08.600Z",
+      "department": "doctor",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "patientName": "Lillian Winthrop",
+      "patientNotes": "REFERRAL TEST",
+      "professionalFee": 250,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-08-20T19:15:08.600Z",
+      "urgentFlag": false
+    },
+    "-OYgfv6G1pOsMD1EPZkL": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-08-27T17:59:53.886Z",
+      "department": "doctor",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "patientName": "Lillian Winthrop",
+      "patientNotes": "Wew",
+      "professionalFee": 250,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-08-27T17:59:53.886Z",
+      "urgentFlag": false
+    },
+    "-OYq0tiXvDh-8OMWWVMq": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-08-29T13:32:30.242Z",
+      "department": "doctor",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "patientName": "Lillian Winthrop",
+      "patientNotes": "Test",
+      "professionalFee": 250,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-08-29T13:32:30.242Z",
+      "urgentFlag": false
+    },
+    "-OYqB9L2BWXex_yxM5dZ": {
+      "billId": "-OYqB9KB6siMF9DaMNDW",
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-29T14:17:15.908Z",
+      "patientId": "DbIPUoIPN4cVpzF43ORuGZWiDh73",
+      "patientName": "Henrietta Winthrop",
+      "patientNotes": "",
+      "resultStatus": "pending",
+      "sampleStatus": "pending",
+      "serviceCategory": "laboratoryTests",
+      "serviceDescription": "Blood Test",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "pending",
+      "transactionType": "SERVICE_PREPAYMENT",
+      "updatedAt": "2025-08-29T14:17:15.908Z",
+      "urgentFlag": false
+    },
+    "-OYqBFI_5qqqdaWb6JRD": {
+      "billId": "-OYqBFHiqlRKPUZtjz9e",
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-08-29T14:17:40.327Z",
+      "patientId": "Mp0E9eLbDOOHPw4NCcrjjrqbHoy1",
+      "patientName": "Juan Dela Cruz",
+      "patientNotes": "",
+      "resultStatus": "pending",
+      "sampleStatus": "pending",
+      "serviceCategory": "laboratoryTests",
+      "serviceDescription": "Blood Test",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "pending",
+      "transactionType": "SERVICE_PREPAYMENT",
+      "updatedAt": "2025-08-29T14:17:40.327Z",
+      "urgentFlag": false
+    },
+    "-OZ26CoE070OODPc3FJw": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-09-01T02:30:47.692Z",
+      "department": "doctor",
+      "patientId": "DbIPUoIPN4cVpzF43ORuGZWiDh73",
+      "patientName": "Henrietta Winthrop",
+      "patientNotes": "Test",
+      "professionalFee": 250,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-01T02:30:47.692Z",
+      "urgentFlag": false
+    },
+    "-OZ2G3jKFPqqZ-PUkK8S": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-09-01T03:13:52.034Z",
+      "department": "doctor",
+      "patientId": "wUpuGs4PTAYaJJXyYVIlnAzeOz62",
+      "patientName": "Jimuel Desture",
+      "patientNotes": "Test",
+      "professionalFee": 250,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-01T03:13:52.034Z",
+      "urgentFlag": false
+    },
+    "-OZ2H9OgKGPOnX2PCtF0": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-09-01T03:18:37.236Z",
+      "department": "doctor",
+      "patientId": "wUpuGs4PTAYaJJXyYVIlnAzeOz62",
+      "patientName": "Jimuel Desture",
+      "patientNotes": "Hello",
+      "professionalFee": 250,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-01T03:18:37.236Z",
+      "urgentFlag": false
+    },
+    "-OZ3FV_tSx4IJYML5_zV": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-09-01T07:51:01.230Z",
+      "department": "Laboratory",
+      "patientId": "jnIb2qpfgSTd9IZxnhZcVbFECWA2",
+      "patientName": "Anthony Carl Oporto",
+      "patientNotes": "Hotdog",
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "pending",
+      "sampleStatus": "pending",
+      "serviceCategory": "laboratoryTests",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "pending",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-01T07:51:01.230Z",
+      "urgentFlag": false
+    },
+    "-OZ3GywZ98cSSryGqQzG": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-09-01T07:57:27.266Z",
+      "department": "doctor",
+      "patientId": "N3d2xCSq55gON2DgryxVvK2L0vr2",
+      "patientName": "April Marie Rosales",
+      "patientNotes": "Ubo",
+      "professionalFee": 250,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-01T07:57:27.266Z",
+      "urgentFlag": false
+    },
+    "-OZ3QrYBUiWEaZzj7fFR": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-09-01T08:40:38.283Z",
+      "department": "doctor",
+      "patientId": "uXIClv7k1UTb2JZYLtpwuSC8HhF3",
+      "patientName": "Test Test",
+      "patientNotes": "Gonorhea",
+      "professionalFee": 600,
+      "requestedBy": "mi2QulY6JMhAbg6GJ1ndqmxkBWA2",
+      "requestedByName": "Jetch Madaya",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-01T08:40:38.283Z",
+      "urgentFlag": false
+    },
+    "-OZ3R-l6TFGT4FSQsXfy": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-09-01T08:41:16.684Z",
+      "department": "Laboratory",
+      "patientId": "uXIClv7k1UTb2JZYLtpwuSC8HhF3",
+      "patientName": "Test Test",
+      "patientNotes": "Sra la",
+      "requestedBy": "mi2QulY6JMhAbg6GJ1ndqmxkBWA2",
+      "requestedByName": "Jetch Madaya",
+      "resultImages": [
+        {
+          "id": "1756716198507",
+          "uri": "file:///data/user/0/host.exp.exponent/cache/ExperienceData/%2540danken%252FOdysSys/ImagePicker/6cdf49ff-3508-4c77-93e2-2de3c6adba83.jpeg"
+        }
+      ],
+      "resultNotes": "Done",
+      "resultStatus": "complete",
+      "sampleStatus": "collected",
+      "serviceCategory": "laboratoryTests",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-01T08:43:24.049Z",
+      "urgentFlag": false
+    },
+    "-OZ3VYCb4LT-_Vgtx5VM": {
+      "billId": "-OZ3VYAuDr2QTKXM0A_u",
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "clinicName": "SWU Clinic",
+      "createdAt": "2025-09-01T09:01:05.901Z",
+      "patientId": "uXIClv7k1UTb2JZYLtpwuSC8HhF3",
+      "patientName": "Test Test",
+      "patientNotes": "",
+      "resultStatus": "pending",
+      "sampleStatus": "pending",
+      "serviceCategory": "laboratoryTests",
+      "serviceDescription": "Blood Test",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "pending",
+      "transactionType": "SERVICE_PREPAYMENT",
+      "updatedAt": "2025-09-01T09:01:05.901Z",
+      "urgentFlag": false
+    },
+    "-OZ8NnDLCYsPPayZGGjC": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-09-02T07:45:21.052Z",
+      "department": "doctor",
+      "patientId": "wUpuGs4PTAYaJJXyYVIlnAzeOz62",
+      "patientName": "Jimuel Desture",
+      "patientNotes": "Test",
+      "professionalFee": 250,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-02T07:45:21.052Z",
+      "urgentFlag": false
+    },
+    "-OZEd14z9V9zXgx7WsiK": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-09-03T12:53:59.085Z",
+      "department": "doctor",
+      "patientId": "4yZJNNPSeXaPa9hFOAOxD1z1NjC3",
+      "patientName": "Laine Winthrop",
+      "patientNotes": "ADSA",
+      "professionalFee": 250,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-03T12:53:59.085Z",
+      "urgentFlag": false
+    },
+    "-OZIyt6k2OYZgMYALyKo": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "completedAt": "2025-09-04T09:48:13.268Z",
+      "completedBy": "lab tech",
+      "completedById": "ogbIZavb4ah77Hi26GSW4Ujsaxv2",
+      "createdAt": "2025-09-04T09:07:59.837Z",
+      "department": "Laboratory",
+      "labResultId": "-OZJ75LOIkhBJrDY0OMf",
+      "lastUpdated": "2025-09-04T09:48:13.268Z",
+      "patientId": "WDhOrse7NLVd6GhQz0RUW3Bedc02",
+      "patientName": "April Rosales",
+      "patientNotes": "PC TEST",
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "processed",
+      "serviceCategory": "laboratoryTests",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-04T09:07:59.837Z",
+      "urgentFlag": false
+    },
+    "-OZQh8pVyb9s6u8Flyq4": {
+      "clinicId": "default_clinic",
+      "createdAt": "2025-09-05T21:07:25.404Z",
+      "department": "Medical Consultation",
+      "patientId": "4yZJNNPSeXaPa9hFOAOxD1z1NjC3",
+      "patientName": "Laine Winthrop",
+      "patientNotes": "PC CONSULTATION TEST 7",
+      "professionalFee": 200,
+      "requestedBy": "unknown",
+      "requestedByName": "Unknown Doctor",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-05T21:07:25.404Z",
+      "urgentFlag": false
+    },
+    "-OZQj-KpMvnjeaag6KBB": {
+      "clinicId": "default_clinic",
+      "createdAt": "2025-09-05T21:15:30.839Z",
+      "department": "doctor",
+      "patientId": "4yZJNNPSeXaPa9hFOAOxD1z1NjC3",
+      "patientName": "Laine Winthrop",
+      "patientNotes": "PC CONSULTATION TEST 8",
+      "professionalFee": 200,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7DnMitUoy8wt5z6T7",
+      "serviceName": "Follow Up",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-05T21:15:30.839Z",
+      "urgentFlag": false
+    },
+    "-OZQkOBNG8KMoqB-zMMN": {
+      "clinicId": "default_clinic",
+      "createdAt": "2025-09-05T21:21:34.722Z",
+      "department": "Department of Doctors",
+      "patientId": "4yZJNNPSeXaPa9hFOAOxD1z1NjC3",
+      "patientName": "Laine Winthrop",
+      "patientNotes": "PC CONSULTATION TEST 9",
+      "professionalFee": 250,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-05T21:21:34.722Z",
+      "urgentFlag": false
+    },
+    "-OZQlXWLCsyXvDFmM4lZ": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-09-05T21:26:35.009Z",
+      "department": "Department of Doctors",
+      "patientId": "4yZJNNPSeXaPa9hFOAOxD1z1NjC3",
+      "patientName": "Laine Winthrop",
+      "patientNotes": "PC CONSULTATION TEST 11",
+      "professionalFee": 200,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7DnMitUoy8wt5z6T7",
+      "serviceName": "Follow Up",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-05T21:26:35.009Z",
+      "urgentFlag": false
+    },
+    "-OZZzwqmCwkluaA0McaR": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-09-07T16:26:08.357Z",
+      "department": "Department of Doctors",
+      "patientId": "4yZJNNPSeXaPa9hFOAOxD1z1NjC3",
+      "patientName": "Laine Winthrop",
+      "patientNotes": "pc test 12",
+      "professionalFee": 200,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7DnMitUoy8wt5z6T7",
+      "serviceName": "Follow Up",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-07T16:26:08.357Z",
+      "urgentFlag": false
+    },
+    "-OZ_6VRyFq3ExCl9MK0M": {
+      "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+      "createdAt": "2025-09-07T16:59:08.726Z",
+      "department": "Department of Doctors",
+      "patientId": "4yZJNNPSeXaPa9hFOAOxD1z1NjC3",
+      "patientName": "Laine Winthrop",
+      "patientNotes": "Test",
+      "professionalFee": 250,
+      "requestedBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-07T16:59:08.726Z",
+      "urgentFlag": false
+    },
+    "-OZblgQqMq1WOePzZsSo": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-08T05:22:43.672Z",
+      "department": "Doctors",
+      "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "patientName": "Mira Bonghanoy",
+      "patientNotes": "Resolved",
+      "professionalFee": 500,
+      "requestedBy": "1igBgC367EcGjL2yQRoR6kyv9s03",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-08T05:22:43.672Z",
+      "urgentFlag": false
+    },
+    "-OZbm7JLTH8p8CHTv_wI": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-08T05:24:37.853Z",
+      "department": "Doctors",
+      "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "patientName": "Mira Bonghanoy",
+      "patientNotes": "Test2",
+      "professionalFee": 500,
+      "requestedBy": "1igBgC367EcGjL2yQRoR6kyv9s03",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-08T05:24:37.853Z",
+      "urgentFlag": false
+    },
+    "-OZbpEoXp1AMI9b32s38": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-08T05:38:15.040Z",
+      "department": "doctors",
+      "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "patientName": "Mira Bonghanoy",
+      "patientNotes": "Be back on Sept 15",
+      "professionalFee": 500,
+      "requestedBy": "1igBgC367EcGjL2yQRoR6kyv9s03",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-08T05:38:15.040Z",
+      "urgentFlag": false
+    },
+    "-OZbr3Nfq_bgzCbKy-ZR": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-08T05:46:12.329Z",
+      "department": "doctors",
+      "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "patientName": "Mira Bonghanoy",
+      "patientNotes": "Test",
+      "professionalFee": 500,
+      "requestedBy": "1igBgC367EcGjL2yQRoR6kyv9s03",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-08T05:46:12.329Z",
+      "urgentFlag": false
+    },
+    "-OZc--c19-IV9esXWqDh": {
+      "billId": "-OZc--_pVhymTd-hUvUu",
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "clinicName": "Cebu Doctors",
+      "createdAt": "2025-09-08T06:25:14.986Z",
+      "labTestSched": {
+        "date": "2025-09-07",
+        "time": "8:10 AM"
+      },
+      "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "patientName": "Mira Bonghanoy",
+      "patientNotes": "Good results",
+      "resultImages": [
+        {
+          "id": "1757312913532",
+          "uri": "file:///data/user/0/host.exp.exponent/cache/ExperienceData/%2540danken%252FOdysSys/ImagePicker/01633209-ed8d-413e-b197-5e7a2440ed9a.jpeg"
+        }
+      ],
+      "resultNotes": "Good results",
+      "resultStatus": "complete",
+      "sampleStatus": "pending",
+      "serviceCategory": "laboratoryTests",
+      "serviceDescription": "Blood Test",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "completed",
+      "transactionType": "SERVICE_PREPAYMENT",
+      "updatedAt": "2025-09-08T06:29:19.134Z",
+      "urgentFlag": false
+    },
+    "-OZu4sOE7oYN2DfqDHlP": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-11T18:44:03.857Z",
+      "department": "doctor",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "patientName": "Marielle Dalimocon",
+      "patientNotes": "TEST",
+      "professionalFee": 5000,
+      "requestedBy": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-11T18:44:03.857Z",
+      "urgentFlag": false
+    },
+    "-OZu55AVbyPU1vIYLt5p": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "completedAt": "2025-09-12T14:45:33.849Z",
+      "completedBy": "Dan Penera",
+      "completedById": "9W1HP5rT0HW2A6RfeWnzCohfoqu1",
+      "createdAt": "2025-09-11T18:45:00.646Z",
+      "department": "Laboratory",
+      "labResultId": "-OZyNsWOxI59D2M_1H-M",
+      "lastUpdated": "2025-09-12T14:45:33.849Z",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "patientName": "Marielle Dalimocon",
+      "patientNotes": "TEST",
+      "requestedBy": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "processed",
+      "serviceCategory": "laboratoryTests",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-11T18:45:00.646Z",
+      "urgentFlag": false
+    },
+    "-OZzJTlA7lys37qXGz5B": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-12T19:05:57.196Z",
+      "department": "Laboratory",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "patientName": "Marielle Dalimocon",
+      "patientNotes": "Hotdog!",
+      "requestedBy": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "pending",
+      "sampleStatus": "pending",
+      "serviceCategory": "laboratoryTests",
+      "serviceId": "-OY7DhZNL6TFEim1mi-G",
+      "status": "pending",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-12T19:05:57.196Z",
+      "urgentFlag": false
+    },
+    "-O_O2b1FD09icfNl0N5N": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-17T19:02:23.047Z",
+      "department": "doctor",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "patientName": "Marielle Dalimocon",
+      "patientNotes": "test",
+      "professionalFee": 5000,
+      "requestedBy": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-17T19:02:23.047Z",
+      "urgentFlag": false
+    },
+    "-O_O3xIy9waBfWQA0wnB": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-17T19:08:16.441Z",
+      "department": "doctor",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "patientName": "Marielle Dalimocon",
+      "patientNotes": "www",
+      "professionalFee": 5000,
+      "requestedBy": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-17T19:08:16.441Z",
+      "urgentFlag": false
+    },
+    "-O_O5sd6kuTm2Yo2SDYK": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-17T19:16:41.608Z",
+      "department": "doctor",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "patientName": "Marielle Dalimocon",
+      "patientNotes": "ewq",
+      "professionalFee": 5000,
+      "requestedBy": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-17T19:16:41.608Z",
+      "urgentFlag": false
+    },
+    "-O_O6IDaFNqeEUU_krfJ": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-17T19:18:30.502Z",
+      "department": "doctor",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "patientName": "Marielle Dalimocon",
+      "patientNotes": "wasd",
+      "professionalFee": 5000,
+      "requestedBy": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-17T19:18:30.502Z",
+      "urgentFlag": false
+    },
+    "-O_OD0FzWOfapQjHufkA": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-17T19:47:51.937Z",
+      "department": "doctor",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "patientName": "Marielle Dalimocon",
+      "patientNotes": "5421",
+      "professionalFee": 5000,
+      "requestedBy": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-17T19:47:51.937Z",
+      "urgentFlag": false
+    },
+    "-O_OEXHSXS1kntbF2YxK": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-17T19:54:29.378Z",
+      "department": "doctor",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "patientName": "Marielle Dalimocon",
+      "patientNotes": "123",
+      "professionalFee": 5000,
+      "requestedBy": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-17T19:54:29.378Z",
+      "urgentFlag": false
+    },
+    "-O_OEva72T328yCdkYpB": {
+      "clinicId": "-OZbKbNjweIdcYnQiqil",
+      "createdAt": "2025-09-17T19:56:12.868Z",
+      "department": "doctor",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "patientName": "Marielle Dalimocon",
+      "patientNotes": "ghf",
+      "professionalFee": 5000,
+      "requestedBy": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "requestedByName": "Rene Catan",
+      "resultStatus": "completed",
+      "sampleStatus": "completed",
+      "serviceCategory": "consultationTypes",
+      "serviceId": "-OY7D_X76y5yLjvAPoAS",
+      "serviceName": "General Consultation",
+      "status": "completed",
+      "transactionType": "service_request",
+      "updatedAt": "2025-09-17T19:56:12.868Z",
+      "urgentFlag": false
+    }
+  },
+  "messages": {
+    "7nzocOzTumVC8SBwbQ2LN70nQbn1_k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1": {
+      "-OZbyJd5obLkMkCPwXuj": {
+        "at": 1757312272632,
+        "id": "-OZbyJd5obLkMkCPwXuj",
+        "seenBy": {
+          "7nzocOzTumVC8SBwbQ2LN70nQbn1": true
+        },
+        "senderId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+        "text": "🎤 Voice message",
+        "voiceMessage": {
+          "audioUrl": "file:///data/user/0/host.exp.exponent/cache/ExperienceData/%2540anonymous%252Funihealth-app-2601f6f1-5ccb-4b5c-b276-43e8a86f290f/Audio/recording-4ed8eb83-cf6d-4ae4-b47b-8b68f859714f.m4a",
+          "duration": 2.474,
+          "waveform": [
+            0.3372765168517728,
+            0.5426162438364028,
+            0.5643561380087021,
+            0.8225546979838593,
+            0.8529955532197453,
+            0.5273442217491864,
+            0.4899750933802862,
+            0.7055389789327282,
+            0.6204404947807278,
+            0.3227971521696154
+          ]
+        }
+      }
+    }
+  },
+  "patientMedicalHistory": {
+    "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2": {
+      "entries": {
+        "-OZu4sJA4zjCMv7_zdRh": {
+          "allergies": "None",
+          "clinicalSummary": "TEST",
+          "consultationDate": "2025-09-11T18:44:03.857Z",
+          "consultationTime": "02:44:03",
+          "createdAt": "2025-09-11T18:44:03.857Z",
+          "diagnosis": [
+            {
+              "code": "TEST",
+              "description": "TEST",
+              "timestamp": "2025-09-11T18:43:53.040Z"
+            }
+          ],
+          "differentialDiagnosis": "TEST",
+          "labResults": "TEST",
+          "lastUpdated": "2025-09-11T18:44:03.857Z",
+          "medications": "TEST - TEST ",
+          "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+          "prescriptions": [
+            {
+              "description": "",
+              "dosage": "600 mg",
+              "duration": "7 days",
+              "formula": "tab, tabs",
+              "frequency": "daily",
+              "id": 1757311656124,
+              "medication": "Fluimucil",
+              "prescribedDate": "08/09/2025",
+              "route": "po or PO",
+              "take": "3",
+              "totalQuantity": "15"
+            }
+          ],
+          "presentIllnessHistory": "TEST",
+          "provider": {
+            "firstName": "Rene",
+            "id": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+            "lastName": "Catan",
+            "providerType": "specialist",
+            "sourceSystem": "OdysSys_Clinic_Management_Mobile"
+          },
+          "relatedAppointment": {
+            "id": "new_1757616242750",
+            "type": "General Consultation"
+          },
+          "reviewOfSymptoms": "TEST",
+          "soapNotes": {
+            "assessment": "",
+            "objective": "",
+            "plan": "",
+            "subjective": ""
+          },
+          "treatmentPlan": "TEST",
+          "type": "General Consultation",
+          "updatedAt": "2025-09-11T18:44:03.857Z",
+          "vitals": "TEST"
+        },
+        "-O_GFCwOHIt5lTEXSrO-": {
+          "certificates": [
+            {
+              "description": "Good",
+              "destination": "",
+              "fitnessStatement": "",
+              "followUpDate": "",
+              "id": 1758004823860,
+              "issuedDate": "16/09/2025",
+              "issuedTime": "14:40",
+              "medicalAdvice": "Redt",
+              "nextReviewDate": "",
+              "reasonForUnfitness": "Kalibanga",
+              "specialConditions": "",
+              "status": "Valid",
+              "travelDate": "",
+              "travelFitnessStatement": "",
+              "travelMode": "",
+              "type": "Medical/Sickness Certificate",
+              "unfitPeriodEnd": "August 30, 2025",
+              "unfitPeriodStart": "August 20, 2025",
+              "validityPeriod": "",
+              "workRestrictions": ""
+            }
+          ],
+          "clinicalSummary": "Good",
+          "consultationDate": "2025-09-16T06:40:29.562Z",
+          "consultationTime": "14:40:29",
+          "createdAt": "2025-09-16T06:40:29.639Z",
+          "diagnosis": [
+            {
+              "code": "D10",
+              "description": "Nausea"
+            }
+          ],
+          "differentialDiagnosis": "Vomit",
+          "isHidden": true,
+          "labResults": "Negative",
+          "lastUpdated": 1758004829563,
+          "medications": "Cetirizine ",
+          "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+          "prescriptions": [
+            {
+              "description": "Goods lang",
+              "dosage": "10mg",
+              "duration": "7 days",
+              "formula": "El, elix",
+              "frequency": "pc",
+              "id": 1758004787825,
+              "medication": "Alpha",
+              "prescribedDate": "16/09/2025",
+              "route": "right ear",
+              "take": "5",
+              "totalQuantity": "5"
+            }
+          ],
+          "presentIllnessHistory": "Cough",
+          "provider": {
+            "firstName": "April Marie",
+            "id": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+            "lastName": "Rosales",
+            "providerType": "specialist",
+            "sourceSystem": "UniHealth_Patient_App"
+          },
+          "relatedReferral": {
+            "id": "-lppa69511",
+            "type": "Referral Consultation"
+          },
+          "reviewOfSymptoms": "Colds",
+          "soapNotes": {
+            "assessment": "Mang Inasal",
+            "objective": "Jollibee ",
+            "plan": "Chowking",
+            "subjective": "Mcdo"
+          },
+          "treatmentPlan": "Rest",
+          "type": "Referral Consultation",
+          "updatedAt": "2025-09-16T13:00:08.766Z"
+        },
+        "-O_O2b-HjjWg9vD1m-pw": {
+          "allergies": "None",
+          "clinicalSummary": "test",
+          "consultationDate": "2025-09-17T19:02:23.047Z",
+          "consultationTime": "03:02:23",
+          "createdAt": "2025-09-17T19:02:23.047Z",
+          "diagnosis": [
+            {
+              "code": "",
+              "description": "ew"
+            }
+          ],
+          "differentialDiagnosis": "",
+          "labResults": "TEst",
+          "lastUpdated": "2025-09-17T19:02:23.047Z",
+          "medicalCertificates": "123",
+          "medications": "",
+          "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+          "prescriptions": [
+            {
+              "description": "8",
+              "dosage": "1",
+              "duration": "3",
+              "frequency": "2",
+              "id": 1758135732904,
+              "medication": "Med name",
+              "prescribedBy": "Provider",
+              "prescribedDate": "9/18/2025"
+            }
+          ],
+          "presentIllnessHistory": "TEST",
+          "provider": {
+            "firstName": "Rene",
+            "id": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+            "lastName": "Catan",
+            "providerType": "specialist",
+            "sourceSystem": "OdysSys_Clinic_Management_Mobile"
+          },
+          "relatedAppointment": {
+            "id": "1758135743047",
+            "type": "General Consultation"
+          },
+          "reviewOfSymptoms": "",
+          "soapNotes": {
+            "assessment": "",
+            "objective": "",
+            "plan": "",
+            "subjective": "TES"
+          },
+          "treatmentPlan": "",
+          "type": "General Consultation",
+          "updatedAt": "2025-09-17T19:02:23.047Z",
+          "vitals": ""
+        },
+        "-O_O3xH-AguhCtySV5dp": {
+          "allergies": "None",
+          "clinicalSummary": "www",
+          "consultationDate": "2025-09-17T19:08:16.441Z",
+          "consultationTime": "03:08:16",
+          "createdAt": "2025-09-17T19:08:16.441Z",
+          "diagnosis": [
+            {
+              "code": "",
+              "description": "ewq"
+            }
+          ],
+          "differentialDiagnosis": "",
+          "labResults": "qwe",
+          "lastUpdated": "2025-09-17T19:08:16.441Z",
+          "medicalCertificates": "",
+          "medications": "",
+          "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+          "prescriptions": [
+            {
+              "description": "9",
+              "dosage": "2",
+              "duration": "4",
+              "formula": "8",
+              "frequency": "3",
+              "id": 1758136083172,
+              "medication": "1",
+              "prescribedBy": "Provider",
+              "prescribedDate": "9/18/2025",
+              "route": "5",
+              "take": "6",
+              "totalQuantity": "7"
+            }
+          ],
+          "presentIllnessHistory": "qwert",
+          "provider": {
+            "firstName": "Rene",
+            "id": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+            "lastName": "Catan",
+            "providerType": "specialist",
+            "sourceSystem": "OdysSys_Clinic_Management_Mobile"
+          },
+          "relatedAppointment": {
+            "id": "1758136096441",
+            "type": "General Consultation"
+          },
+          "reviewOfSymptoms": "",
+          "soapNotes": {
+            "assessment": "",
+            "objective": "",
+            "plan": "",
+            "subjective": ""
+          },
+          "treatmentPlan": "",
+          "type": "General Consultation",
+          "updatedAt": "2025-09-17T19:08:16.441Z",
+          "vitals": ""
+        },
+        "-O_O6IBiV2bnL-jPn9V0": {
+          "allergies": "None",
+          "clinicalSummary": "wasd",
+          "consultationDate": "2025-09-17T19:18:30.502Z",
+          "consultationTime": "03:18:30",
+          "createdAt": "2025-09-17T19:18:30.502Z",
+          "diagnosis": [
+            {
+              "code": "",
+              "description": "weq"
+            }
+          ],
+          "differentialDiagnosis": "",
+          "labResults": "qweqwqq",
+          "lastUpdated": "2025-09-17T19:18:30.502Z",
+          "medicalCertificates": "",
+          "medications": "",
+          "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+          "prescriptions": [
+            {
+              "description": "Instructions",
+              "dosage": "325mg",
+              "duration": "7 days",
+              "formula": "formula",
+              "frequency": "Q4H",
+              "id": 1758136700478,
+              "medication": "Iron Sulfate",
+              "prescribedBy": "Provider",
+              "prescribedDate": "9/18/2025",
+              "route": "PO",
+              "take": "take",
+              "totalQuantity": "qty"
+            }
+          ],
+          "presentIllnessHistory": "TESEEETTT",
+          "provider": {
+            "firstName": "Rene",
+            "id": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+            "lastName": "Catan",
+            "providerType": "specialist",
+            "sourceSystem": "OdysSys_Clinic_Management_Mobile"
+          },
+          "relatedAppointment": {
+            "id": "1758136710502",
+            "type": "General Consultation"
+          },
+          "reviewOfSymptoms": "",
+          "soapNotes": {
+            "assessment": "",
+            "objective": "",
+            "plan": "",
+            "subjective": ""
+          },
+          "treatmentPlan": "",
+          "type": "General Consultation",
+          "updatedAt": "2025-09-17T19:18:30.502Z",
+          "vitals": ""
+        },
+        "-O_OD0DipSz1KztHpVZk": {
+          "allergies": "None",
+          "clinicalSummary": "5421",
+          "consultationDate": "2025-09-17T19:47:51.937Z",
+          "consultationTime": "03:47:51",
+          "createdAt": "2025-09-17T19:47:51.937Z",
+          "diagnosis": [
+            {
+              "code": "",
+              "description": "4321"
+            }
+          ],
+          "differentialDiagnosis": "",
+          "labResults": "321",
+          "lastUpdated": "2025-09-17T19:47:51.937Z",
+          "medicalCertificates": "",
+          "medications": "",
+          "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+          "prescriptions": [
+            {
+              "description": "Take with food to reduce stomach upset. Complete full course even if feeling better.",
+              "dosage": "500mg",
+              "duration": "7 days",
+              "formula": "",
+              "frequency": "TID",
+              "id": 1758138465972,
+              "medication": "Amoxicillin",
+              "prescribedBy": "Provider",
+              "prescribedDate": "9/18/2025",
+              "route": "PO",
+              "take": "",
+              "totalQuantity": ""
+            }
+          ],
+          "presentIllnessHistory": "123",
+          "provider": {
+            "firstName": "Rene",
+            "id": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+            "lastName": "Catan",
+            "providerType": "specialist",
+            "sourceSystem": "OdysSys_Clinic_Management_Mobile"
+          },
+          "relatedAppointment": {
+            "id": "1758138471937",
+            "type": "General Consultation"
+          },
+          "reviewOfSymptoms": "",
+          "soapNotes": {
+            "assessment": "",
+            "objective": "",
+            "plan": "",
+            "subjective": ""
+          },
+          "treatmentPlan": "",
+          "type": "General Consultation",
+          "updatedAt": "2025-09-17T19:47:51.937Z",
+          "vitals": ""
+        },
+        "-O_OEXFPVzHms3zN6lgI": {
+          "allergies": "None",
+          "clinicalSummary": "123",
+          "consultationDate": "2025-09-17T19:54:29.378Z",
+          "consultationTime": "03:54:29",
+          "createdAt": "2025-09-17T19:54:29.378Z",
+          "diagnosis": [
+            {
+              "code": "",
+              "description": "123"
+            }
+          ],
+          "differentialDiagnosis": "",
+          "labResults": "123",
+          "lastUpdated": "2025-09-17T19:54:29.378Z",
+          "medicalCertificates": "",
+          "medications": "",
+          "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+          "presentIllnessHistory": "123",
+          "provider": {
+            "firstName": "Rene",
+            "id": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+            "lastName": "Catan",
+            "providerType": "specialist",
+            "sourceSystem": "OdysSys_Clinic_Management_Mobile"
+          },
+          "relatedAppointment": {
+            "id": "1758138869378",
+            "type": "General Consultation"
+          },
+          "reviewOfSymptoms": "",
+          "soapNotes": {
+            "assessment": "",
+            "objective": "",
+            "plan": "",
+            "subjective": "1"
+          },
+          "treatmentPlan": "",
+          "type": "General Consultation",
+          "updatedAt": "2025-09-17T19:54:29.378Z",
+          "vitals": ""
+        },
+        "-O_OEvWNyzve0r3PW4l9": {
+          "allergies": "None",
+          "clinicalSummary": "ghf",
+          "consultationDate": "2025-09-17T19:56:12.868Z",
+          "consultationTime": "03:56:12",
+          "createdAt": "2025-09-17T19:56:12.868Z",
+          "diagnosis": [
+            {
+              "code": "",
+              "description": "ggg"
+            }
+          ],
+          "differentialDiagnosis": "",
+          "labResults": "ytr",
+          "lastUpdated": "2025-09-17T19:56:12.868Z",
+          "medicalCertificates": "",
+          "medications": "",
+          "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+          "prescriptions": [
+            {
+              "description": "Dose based on weight: 10-15mg/kg/dose. Give every 4-6 hours.",
+              "dosage": "120mg/5ml",
+              "duration": "3 days",
+              "formula": "",
+              "frequency": "QID",
+              "id": 1758138962375,
+              "medication": "Paracetamol Suspension",
+              "prescribedBy": "Provider",
+              "prescribedDate": "9/18/2025",
+              "route": "PO",
+              "take": "",
+              "totalQuantity": ""
+            }
+          ],
+          "presentIllnessHistory": "rty",
+          "provider": {
+            "firstName": "Rene",
+            "id": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+            "lastName": "Catan",
+            "providerType": "specialist",
+            "sourceSystem": "OdysSys_Clinic_Management_Mobile"
+          },
+          "relatedAppointment": {
+            "id": "1758138972868",
+            "type": "General Consultation"
+          },
+          "reviewOfSymptoms": "",
+          "soapNotes": {
+            "assessment": "",
+            "objective": "",
+            "plan": "",
+            "subjective": ""
+          },
+          "treatmentPlan": "",
+          "type": "General Consultation",
+          "updatedAt": "2025-09-17T19:56:12.868Z",
+          "vitals": ""
+        }
+      },
+      "labResults": {
+        "-OZyNs_usxCKfnJAh3kl": {
+          "date": "2025-09-12T14:45:33.849Z",
+          "labResultId": "-OZyNsWOxI59D2M_1H-M",
+          "notes": "PC TEST COMPLETE",
+          "performedBy": "Dan Penera",
+          "result": "PC TEST COMPLETE",
+          "serviceId": "-OY7DhZNL6TFEim1mi-G",
+          "serviceName": "CBC",
+          "transactionId": "-OZu55AVbyPU1vIYLt5p"
+        }
+      }
+    },
+    "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1": {
+      "entries": {
+        "-OZbpEgdfJz6lhlu63Xn": {
+          "allergies": "None",
+          "clinicalSummary": "Be back on Sept 15",
+          "consultationDate": "2025-09-08T05:38:15.040Z",
+          "consultationTime": "13:38:15",
+          "createdAt": "2025-09-08T05:38:15.040Z",
+          "diagnosis": [
+            {
+              "code": "",
+              "description": "Cough"
+            }
+          ],
+          "differentialDiagnosis": "",
+          "labResults": "",
+          "lastUpdated": "2025-09-08T05:38:15.040Z",
+          "medications": "",
+          "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+          "presentIllnessHistory": "Cough",
+          "provider": {
+            "firstName": "Rene",
+            "id": "1igBgC367EcGjL2yQRoR6kyv9s03",
+            "lastName": "Catan",
+            "providerType": "clinic_staff",
+            "sourceSystem": "OdysSys_Clinic_Management_Mobile"
+          },
+          "relatedAppointment": {
+            "id": "-OZboOfY9tSsZWw4cLY4",
+            "type": "General Consultation"
+          },
+          "reviewOfSymptoms": "",
+          "soapNotes": {
+            "assessment": "",
+            "objective": "",
+            "plan": "",
+            "subjective": ""
+          },
+          "treatmentPlan": "",
+          "type": "General Consultation",
+          "updatedAt": "2025-09-08T05:38:15.040Z",
+          "vitals": "65 kgs"
+        },
+        "-OZbr3DGy_f3v8VLEHWd": {
+          "allergies": "None",
+          "clinicalSummary": "Test",
+          "consultationDate": "2025-09-08T05:46:12.329Z",
+          "consultationTime": "13:46:12",
+          "createdAt": "2025-09-08T05:46:12.329Z",
+          "diagnosis": [
+            {
+              "code": "",
+              "description": "Tes"
+            }
+          ],
+          "differentialDiagnosis": "",
+          "labResults": "Te",
+          "lastUpdated": "2025-09-08T05:46:12.329Z",
+          "medications": "",
+          "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+          "presentIllnessHistory": "Test",
+          "provider": {
+            "firstName": "Rene",
+            "id": "1igBgC367EcGjL2yQRoR6kyv9s03",
+            "lastName": "Catan",
+            "providerType": "clinic_staff",
+            "sourceSystem": "OdysSys_Clinic_Management_Mobile"
+          },
+          "relatedAppointment": {
+            "id": "-OZboOfY9tSsZWw4cLY4",
+            "type": "General Consultation"
+          },
+          "reviewOfSymptoms": "",
+          "soapNotes": {
+            "assessment": "",
+            "objective": "",
+            "plan": "",
+            "subjective": ""
+          },
+          "treatmentPlan": "",
+          "type": "General Consultation",
+          "updatedAt": "2025-09-08T05:46:12.329Z",
+          "vitals": ""
+        },
+        "-OZbw-nFL_CQh2Ifj7nn": {
+          "clinicalSummary": "Recovered",
+          "consultationDate": "2025-09-08T06:07:47.072Z",
+          "consultationTime": "14:07:47",
+          "createdAt": "2025-09-08T06:07:47.074Z",
+          "diagnosis": [
+            {
+              "code": "D10",
+              "description": "Cough"
+            }
+          ],
+          "differentialDiagnosis": "Difficulty in breathing",
+          "labResults": "CBC",
+          "lastUpdated": 1757311667072,
+          "medications": "Fluimucil",
+          "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+          "prescriptions": [
+            {
+              "description": "",
+              "dosage": "600 mg",
+              "duration": "7 days",
+              "formula": "tab, tabs",
+              "frequency": "daily",
+              "id": 1757311656124,
+              "medication": "Fluimucil",
+              "prescribedDate": "08/09/2025",
+              "route": "po or PO",
+              "take": "3",
+              "totalQuantity": "15"
+            }
+          ],
+          "presentIllnessHistory": "Cough",
+          "provider": {
+            "firstName": "April Marie",
+            "id": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+            "lastName": "Rosales",
+            "providerType": "specialist",
+            "sourceSystem": "UniHealth_Patient_App"
+          },
+          "relatedReferral": {
+            "id": "-lppa69510",
+            "type": "Referral Consultation"
+          },
+          "reviewOfSymptoms": "Persistent cough\n",
+          "soapNotes": {
+            "assessment": "Test",
+            "objective": "Test",
+            "plan": "Test",
+            "subjective": "Test"
+          },
+          "treatmentPlan": "Fluimucil",
+          "type": "Referral Consultation",
+          "updatedAt": "2025-09-08T06:07:47.074Z"
+        }
+      }
+    }
+  },
+  "patients": {
+    "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2": {
+      "address": "ARC Towers",
+      "allergies": [
+        "Peanuts"
+      ],
+      "bloodType": "AB+",
+      "clinicsVisited": {
+        "-OZbKbNjweIdcYnQiqil": {
+          "lastVisit": "2025-09-17T17:36:55.964Z",
+          "totalVisits": 4,
+          "visits": {
+            "visit_1757616128064": {
+              "scanDate": "2025-09-11T18:42:08.064Z",
+              "status": "completed",
+              "visitNumber": 1,
+              "visitTimestamp": "2025-09-11T18:42:08.064Z"
+            },
+            "visit_1757703910988": {
+              "scanDate": "2025-09-12T19:05:10.988Z",
+              "status": "completed",
+              "visitNumber": 2,
+              "visitTimestamp": "2025-09-12T19:05:10.988Z"
+            },
+            "visit_1758032010054": {
+              "scanDate": "2025-09-16T14:13:30.054Z",
+              "status": "completed",
+              "visitNumber": 3,
+              "visitTimestamp": "2025-09-16T14:13:30.054Z"
+            },
+            "visit_1758130615964": {
+              "scanDate": "2025-09-17T17:36:55.964Z",
+              "status": "completed",
+              "visitNumber": 4,
+              "visitTimestamp": "2025-09-17T17:36:55.964Z"
+            }
+          }
+        }
+      },
+      "contactNumber": "09213000317",
+      "createdAt": "2025-09-10T09:30:04.611Z",
+      "dateOfBirth": "01/05/2004",
+      "emergencyContact": {
+        "name": "Melo Meow",
+        "phone": "09475711827",
+        "relationship": "Spouse"
+      },
+      "firstName": "Marielle",
+      "gender": "Female",
+      "highestEducationalAttainment": "Bachelor's Degree",
+      "lastLogin": "2025-09-18T06:20:39.581Z",
+      "lastName": "Dalimocon",
+      "lastUpdated": "2025-09-17T17:36:55.964Z",
+      "middleName": "Kipte",
+      "userId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2"
+    },
+    "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1": {
+      "address": "Mandaue",
+      "allergies": [
+        "shrimp"
+      ],
+      "bloodType": "AB+",
+      "clinicsVisited": {
+        "-OZbKbNjweIdcYnQiqil": {
+          "lastVisit": "2025-09-08T05:16:13.037Z",
+          "totalVisits": 1,
+          "visits": {
+            "visit_1757308573037": {
+              "scanDate": "2025-09-08T05:16:13.037Z",
+              "status": "completed",
+              "visitNumber": 1,
+              "visitTimestamp": "2025-09-08T05:16:13.037Z"
+            }
+          }
+        }
+      },
+      "contactNumber": "09991591653",
+      "createdAt": "2025-09-08T05:00:29.143Z",
+      "dateOfBirth": "2003-06-03",
+      "emergencyContact": {
+        "name": "Joshua",
+        "phone": "09991591653",
+        "relationship": "Bonghanoy"
+      },
+      "firstName": "Mira",
+      "gender": "Female",
+      "lastName": "Bonghanoy",
+      "lastUpdated": "2025-09-08T05:16:13.037Z",
+      "medicalConditions": [
+        "asthma"
+      ]
+    },
+    "nOayOm2B6tWRBUyfUUKiiNSqiXJ2": {
+      "address": "Balay ra",
+      "allergies": [
+        "Eggs"
+      ],
+      "bloodType": "B-",
+      "contactNumber": "09475711827",
+      "createdAt": "2025-09-10T04:33:40.779Z",
+      "dateOfBirth": "10/06/2003",
+      "emergencyContact": {
+        "name": "Marielle Mae Dalimocon",
+        "phone": "09991061169",
+        "relationship": "Spouse"
+      },
+      "firstName": "Melo",
+      "gender": "Male",
+      "highestEducationalAttainment": "Associate Degree",
+      "lastName": "Cortez",
+      "lastUpdated": "2025-09-10T04:33:40.779Z",
+      "middleName": "Escorel",
+      "userId": "nOayOm2B6tWRBUyfUUKiiNSqiXJ2"
+    },
+    "yfAZM9tmKLQqqslCdLbZ9fTlMzm2": {
+      "address": "ad",
+      "bloodType": "A+",
+      "contactNumber": "1414211",
+      "createdAt": "2025-09-09T04:48:50.127Z",
+      "dateOfBirth": "2003-06-03",
+      "email": "daw@gmail.com",
+      "emergencyContact": {
+        "name": "adas",
+        "phone": "2131321",
+        "relationship": "dadad"
+      },
+      "firstName": "test",
+      "gender": "Male",
+      "lastName": "daw",
+      "lastUpdated": "2025-09-09T04:48:50.127Z"
+    }
+  },
+  "referrals": {
+    "-O_IBAzblQODjQLoIrYf": {
+      "additionalNotes": "Has unforeseen illness",
+      "appointmentDate": "2025-10-01",
+      "appointmentTime": "9:30 AM",
+      "assignedSpecialistId": "8lsVM5QsQwXAwbrwTB4wIB8X0LB2",
+      "clinicAppointmentId": "-lppa69511",
+      "createdAt": "2025-09-16T15:42:08.760Z",
+      "lastUpdated": "2025-09-16T15:42:08.759Z",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "practiceLocation": {
+        "clinicId": "-OZbKvRcgeq7ddOrij4C",
+        "roomOrUnit": "Room 117"
+      },
+      "referralTimestamp": "2025-09-16T15:42:08.759Z",
+      "referringClinicId": "-OZbKvRcgeq7ddOrij4C",
+      "referringSpecialistId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+      "sourceSystem": "UniHealth_Specialist_App",
+      "status": "pending",
+      "updatedAt": "2025-09-16T15:42:08.760Z"
+    },
+    "-O_IUCLeFJMluaNLD3pw": {
+      "additionalNotes": "Please work",
+      "appointmentDate": "2025-09-19",
+      "appointmentTime": "10:30 AM",
+      "assignedSpecialistId": "8lsVM5QsQwXAwbrwTB4wIB8X0LB2",
+      "clinicAppointmentId": "-lppa69511",
+      "createdAt": "2025-09-16T17:05:14.835Z",
+      "lastUpdated": "2025-09-16T17:05:14.834Z",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "practiceLocation": {
+        "clinicId": "-OZbKvRcgeq7ddOrij4C",
+        "roomOrUnit": "Room 116"
+      },
+      "referralTimestamp": "2025-09-16T17:05:14.834Z",
+      "referringClinicId": "-OZbKbNjweIdcYnQiqil",
+      "referringClinicName": "Cebu Doctors",
+      "referringSpecialistId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+      "sourceSystem": "UniHealth_Specialist_App",
+      "specialistScheduleId": "sched_8lsVM5QsQwXAwbrwTB4wIB8X0LB2_1",
+      "status": "confirmed",
+      "updatedAt": "2025-09-16T17:05:14.835Z"
+    },
+    "-O_IYPNpg3wi1FfB0YIQ": {
+      "additionalNotes": "Hello",
+      "appointmentDate": "2025-09-17",
+      "appointmentTime": "10:00 AM",
+      "assignedSpecialistId": "8lsVM5QsQwXAwbrwTB4wIB8X0LB2",
+      "clinicAppointmentId": "-lppa69511",
+      "createdAt": "2025-09-16T17:23:36.507Z",
+      "lastUpdated": "2025-09-16T17:23:36.506Z",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "practiceLocation": {
+        "clinicId": "-OZbKbNjweIdcYnQiqil",
+        "roomOrUnit": "Room 116"
+      },
+      "referralTimestamp": "2025-09-16T17:23:36.506Z",
+      "referringClinicId": "-OZbKvRcgeq7ddOrij4C",
+      "referringClinicName": "Cebu Doctors",
+      "referringSpecialistId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+      "sourceSystem": "UniHealth_Specialist_App",
+      "specialistScheduleId": "sched_8lsVM5QsQwXAwbrwTB4wIB8X0LB2_1",
+      "status": "pending",
+      "updatedAt": "2025-09-16T17:23:36.507Z"
+    },
+    "-O_Iog_zuzYZRSSoslPR": {
+      "additionalNotes": "Work",
+      "appointmentDate": "2025-09-17",
+      "appointmentTime": "11:00 AM",
+      "assignedSpecialistId": "8lsVM5QsQwXAwbrwTB4wIB8X0LB2",
+      "clinicAppointmentId": "-lppa69511",
+      "createdAt": "2025-09-16T18:39:07.748Z",
+      "lastUpdated": "2025-09-16T18:39:07.747Z",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "practiceLocation": {
+        "clinicId": "-OZbKbNjweIdcYnQiqil",
+        "roomOrUnit": "Room 116"
+      },
+      "referralTimestamp": "2025-09-16T18:39:07.747Z",
+      "referringClinicId": "-OZbKvRcgeq7ddOrij4C",
+      "referringClinicName": "Cebu Doctors",
+      "referringSpecialistFirstName": "April Marie",
+      "referringSpecialistId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+      "referringSpecialistLastName": "Rosales",
+      "sourceSystem": "UniHealth_Specialist_App",
+      "specialistScheduleId": "sched_8lsVM5QsQwXAwbrwTB4wIB8X0LB2_1",
+      "status": "pending",
+      "updatedAt": "2025-09-16T18:39:07.748Z"
+    },
+    "-lppa69510": {
+      "appointmentDate": "2025-09-10",
+      "appointmentTime": "09:00 AM",
+      "assignedSpecialistFirstName": "April Marie",
+      "assignedSpecialistId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+      "assignedSpecialistLastName": "Rosales",
+      "assignedSpecialistMiddleName": "",
+      "clinicAppointmentId": "-OZboOfY9tSsZWw4cLY4",
+      "generalistNotes": "Need to see the specialist",
+      "initialReasonForReferral": "The case requires specialized knowledge or skills",
+      "lastUpdated": "2025-09-08T06:07:47.235Z",
+      "patientArrivalConfirmed": false,
+      "patientFirstName": "Mira",
+      "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "patientLastName": "Bonghanoy",
+      "patientMiddleName": "",
+      "practiceLocation": {
+        "clinicId": "-OZbKbNjweIdcYnQiqil",
+        "roomOrUnit": "Room 117"
+      },
+      "referralConsultationId": "-OZbw-nFL_CQh2Ifj7nn",
+      "referralTimestamp": "2025-09-08T05:47:01.531Z",
+      "referringClinicId": "-OZbKbNjweIdcYnQiqil",
+      "referringClinicName": "-OZbKbNjweIdcYnQiqil",
+      "referringGeneralistFirstName": "Rene",
+      "referringGeneralistId": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "referringGeneralistLastName": "Catan",
+      "scheduleSlotPath": "7nzocOzTumVC8SBwbQ2LN70nQbn1/sched_7nzocOzTumVC8SBwbQ2LN70nQbn1_1/2025-09-10/09:00 AM",
+      "sourceSystem": "OdysSys_Clinic_Management_Mobile",
+      "specialistScheduleId": "sched_7nzocOzTumVC8SBwbQ2LN70nQbn1_1",
+      "status": "completed"
+    },
+    "-lppa69511": {
+      "appointmentDate": "2025-09-14",
+      "appointmentTime": "09:00 AM",
+      "assignedSpecialistFirstName": "April Marie",
+      "assignedSpecialistId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+      "assignedSpecialistLastName": "Rosales",
+      "assignedSpecialistMiddleName": "",
+      "clinicAppointmentId": "-OZboOfY9tSsZWw4cLY4",
+      "generalistNotes": "Need to see the specialist",
+      "initialReasonForReferral": "The case requires specialized knowledge or skills",
+      "lastUpdated": "2025-09-16T06:40:29.774Z",
+      "patientArrivalConfirmed": false,
+      "patientFirstName": "Marielle Mae",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "patientLastName": "Dalimocon",
+      "patientMiddleName": "K.",
+      "practiceLocation": {
+        "clinicId": "-OZbKbNjweIdcYnQiqil",
+        "roomOrUnit": "Room 117"
+      },
+      "referralConsultationId": "-O_GFCwOHIt5lTEXSrO-",
+      "referralTimestamp": "2025-09-13T05:47:01.531Z",
+      "referringClinicId": "-OZbKbNjweIdcYnQiqil",
+      "referringClinicName": "-OZbKbNjweIdcYnQiqil",
+      "referringGeneralistFirstName": "Rene",
+      "referringGeneralistId": "XK1ebbjoQXgRU4Eri954ztIA27G2",
+      "referringGeneralistLastName": "Catan",
+      "scheduleSlotPath": "7nzocOzTumVC8SBwbQ2LN70nQbn1/sched_7nzocOzTumVC8SBwbQ2LN70nQbn1_1/2025-09-10/09:00 AM",
+      "sourceSystem": "OdysSys_Clinic_Management_Mobile",
+      "specialistScheduleId": "sched_7nzocOzTumVC8SBwbQ2LN70nQbn1_1",
+      "status": "completed"
+    }
+  },
+  "roles": {
+    "admin": {
+      "name": "admin",
+      "permissions": {
+        "canAdd": true,
+        "canDelete": true,
+        "canEdit": true,
+        "canView": true
+      }
+    },
+    "doctor": {
+      "name": "doctor",
+      "permissions": {
+        "canAdd": true,
+        "canDelete": true,
+        "canEdit": true,
+        "canView": true
+      }
+    },
+    "laboratory staff": {
+      "name": "laboratory staff",
+      "permissions": {
+        "canAdd": true,
+        "canDelete": true,
+        "canEdit": true,
+        "canView": true
+      }
+    },
+    "patient": {
+      "name": "patient",
+      "permissions": {
+        "canAdd": false,
+        "canDelete": false,
+        "canEdit": false,
+        "canView": true
+      }
+    },
+    "superadmin": {
+      "name": "Superadmin",
+      "permissions": {
+        "canAdd": true,
+        "canDelete": true,
+        "canEdit": true,
+        "canView": true
+      }
+    }
+  },
+  "settings": {
+    "general": {
+      "appointmentDurationUnit": "minutes",
+      "defaultAppointmentDuration": 20,
+      "lastUpdated": "2025-08-20T16:41:46.121Z",
+      "updatedBy": "X6TEqRNDUKSud1T10B8fZyfywKG3"
+    }
+  },
+  "specialistAppointments": {
+    "7nzocOzTumVC8SBwbQ2LN70nQbn1": {
+      "sched_7nzocOzTumVC8SBwbQ2LN70nQbn1_1": {
+        "2025-09-10": {
+          "09:00 AM": {
+            "bookedAt": "2025-09-08T05:47:01.531Z",
+            "isBooked": true,
+            "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+            "referralId": "-lppa69510",
+            "status": "confirmed"
+          }
+        }
+      }
+    },
+    "J0zVFWQlgQcyqkPNBvtVAGOu6U62": {
+      "sched_J0zVFWQlgQcyqkPNBvtVAGOu6U62_1": {
+        "2025-08-28": {
+          "02:00 PM": {
+            "bookedAt": "2025-08-20T19:15:40.222Z",
+            "isBooked": true,
+            "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+            "referralId": "-v61c7bwr6",
+            "status": "confirmed"
+          }
+        },
+        "2025-09-03": {
+          "02:00 PM": {
+            "bookedAt": "2025-09-01T07:58:10.116Z",
+            "isBooked": true,
+            "patientId": "N3d2xCSq55gON2DgryxVvK2L0vr2",
+            "referralId": "-0bzo9pf73",
+            "status": "confirmed"
+          }
+        },
+        "2025-09-10": {
+          "02:00 PM": {
+            "bookedAt": "2025-09-08T05:25:42.573Z",
+            "isBooked": true,
+            "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+            "referralId": "-4hxbfbra4",
+            "status": "confirmed"
+          }
+        }
+      }
+    }
+  },
+  "specialistDailyAvailability": {
+    "DowULEezynQ95WH0uhZIMVjL7np1": {
+      "sched_DowULEezynQ95WH0uhZIMVjL7np1_1": {
+        "2025-08-25": {
+          "09:00 AM": {
+            "bookedAt": "2025-08-20T17:07:17.965Z",
+            "isBooked": true,
+            "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+            "referralId": "-OY7Rkebyn1Bse8aENFA",
+            "status": "pending"
+          }
+        }
+      }
+    },
+    "J0zVFWQlgQcyqkPNBvtVAGOu6U62": {
+      "sched_J0zVFWQlgQcyqkPNBvtVAGOu6U62_1": {
+        "2025-08-21": {
+          "02:00 PM": {
+            "bookedAt": "2025-08-20T19:14:45.048Z",
+            "isBooked": true,
+            "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+            "referralId": "-OY7tvHSueci_vy6NK_y",
+            "status": "pending"
+          }
+        },
+        "2025-08-29": {
+          "02:00 PM": {
+            "bookedAt": "2025-08-29T14:24:59.488Z",
+            "isBooked": true,
+            "patientId": "GRvQVtnfAuMLVp74irn0Z1byBLQ2",
+            "referralId": "-OYqCtvCMYLaAAokQTI5",
+            "status": "pending"
+          }
+        },
+        "2025-09-03": {
+          "02:00 PM": {
+            "bookedAt": "2025-09-01T03:19:59.148Z",
+            "isBooked": true,
+            "patientId": "wUpuGs4PTAYaJJXyYVIlnAzeOz62",
+            "referralId": "-OZ2HTDzcCv24UWRm9Zz",
+            "status": "pending"
+          }
+        }
+      }
+    }
+  },
+  "specialistSchedules": {
+    "0rc1e5falTeejJcWsKUd8MfwNwh1": {
+      "sched_0rc1e5falTeejJcWsKUd8MfwNwh1_1": {
+        "createdAt": "2025-09-09T06:53:20.711Z",
+        "isActive": true,
+        "lastUpdated": "2025-09-09T06:53:20.711Z",
+        "practiceLocation": {
+          "clinicId": "-OZbKqcYB1SxscYCZQKn",
+          "roomOrUnit": "IM Rm 103"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            2,
+            4
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "09:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "09:20 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "09:40 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "10:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "10:20 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "10:40 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "11:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "11:20 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "11:40 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          }
+        },
+        "specialistId": "0rc1e5falTeejJcWsKUd8MfwNwh1",
+        "validFrom": "2025-09-09"
+      }
+    },
+    "1VYnvW9I0XYO2ITDZLCDLIPNz2o1": {
+      "sched_1VYnvW9I0XYO2ITDZLCDLIPNz2o1_1": {
+        "createdAt": "2025-09-02T16:43:31.306Z",
+        "isActive": true,
+        "lastUpdated": "2025-09-02T16:43:31.306Z",
+        "practiceLocation": {
+          "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+          "roomOrUnit": "IM, Rm 301"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "01:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "01:20 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "01:40 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "02:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "02:20 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "02:40 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          }
+        },
+        "specialistId": "1VYnvW9I0XYO2ITDZLCDLIPNz2o1",
+        "validFrom": "2025-09-02"
+      }
+    },
+    "7nzocOzTumVC8SBwbQ2LN70nQbn1": {
+      "sched_7nzocOzTumVC8SBwbQ2LN70nQbn1_1": {
+        "createdAt": "2025-09-08T05:42:40.198Z",
+        "id": "sched_7nzocOzTumVC8SBwbQ2LN70nQbn1_1",
+        "isActive": true,
+        "lastUpdated": "2025-09-08T06:24:40.550Z",
+        "practiceLocation": {
+          "clinicId": "-OZbKbNjweIdcYnQiqil",
+          "roomOrUnit": "Room 117"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            3,
+            5
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "01:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "01:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "02:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "02:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "03:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "03:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "04:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "12:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "12:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+        "validFrom": "2025-08-09"
+      }
+    },
+    "8lsVM5QsQwXAwbrwTB4wIB8X0LB2": {
+      "sched_8lsVM5QsQwXAwbrwTB4wIB8X0LB2_1": {
+        "createdAt": "2025-09-08T05:45:36.301Z",
+        "isActive": true,
+        "lastUpdated": "2025-09-10T14:26:40.204Z",
+        "practiceLocation": {
+          "clinicId": "-OZbKvRcgeq7ddOrij4C",
+          "roomOrUnit": "Room 116"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            3,
+            5
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "10:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "9:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "9:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "8lsVM5QsQwXAwbrwTB4wIB8X0LB2",
+        "validFrom": "2025-09-10"
+      }
+    },
+    "DowULEezynQ95WH0uhZIMVjL7np1": {
+      "sched_DowULEezynQ95WH0uhZIMVjL7np1_1": {
+        "createdAt": "2025-08-20T16:11:50.353Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-20T16:11:50.353Z",
+        "practiceLocation": {
+          "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+          "roomOrUnit": "IM, Rm 300"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            3
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "09:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "12:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "12:30 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "DowULEezynQ95WH0uhZIMVjL7np1",
+        "validFrom": "2025-08-20"
+      }
+    },
+    "J0zVFWQlgQcyqkPNBvtVAGOu6U62": {
+      "sched_J0zVFWQlgQcyqkPNBvtVAGOu6U62_1": {
+        "createdAt": "2025-08-20T16:50:11.741Z",
+        "isActive": true,
+        "lastUpdated": "2025-08-20T16:50:11.741Z",
+        "practiceLocation": {
+          "clinicId": "-OY7AZ7GcLok0yV2u9D9",
+          "roomOrUnit": "Rm 51"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            3,
+            4,
+            5
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "02:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "02:20 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "02:40 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "03:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "03:20 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "03:40 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "04:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "04:20 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "04:40 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          }
+        },
+        "specialistId": "J0zVFWQlgQcyqkPNBvtVAGOu6U62",
+        "validFrom": "2025-08-20"
+      }
+    },
+    "O5hXolcTLlanxlWaEKsr0X5c4Gk2": {
+      "sched_O5hXolcTLlanxlWaEKsr0X5c4Gk2_1": {
+        "createdAt": "2025-09-09T07:25:31.048Z",
+        "isActive": true,
+        "lastUpdated": "2025-09-09T07:25:31.048Z",
+        "practiceLocation": {
+          "clinicId": "-OZbKbNjweIdcYnQiqil",
+          "roomOrUnit": "IM Rm 117"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            2,
+            4
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "01:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "01:20 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "01:40 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "02:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "02:20 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "02:40 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "12:00 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "12:20 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          },
+          "12:40 PM": {
+            "defaultStatus": "available",
+            "durationMinutes": 20
+          }
+        },
+        "specialistId": "O5hXolcTLlanxlWaEKsr0X5c4Gk2",
+        "validFrom": "2025-09-09"
+      }
+    },
+    "RuFS0R9iJYPn9MNihjuOkp0Y4fo1": {
+      "sched_RuFS0R9iJYPn9MNihjuOkp0Y4fo1_1": {
+        "createdAt": "2025-09-05T07:02:02.114Z",
+        "isActive": true,
+        "lastUpdated": "2025-09-05T07:02:02.114Z",
+        "practiceLocation": {
+          "clinicId": "-OZ3KXZCZexml7EF18B2",
+          "roomOrUnit": "Room 201"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            3,
+            5
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "Weekly",
+        "slotTemplate": {
+          "09:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:00 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:30 AM": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "RuFS0R9iJYPn9MNihjuOkp0Y4fo1",
+        "validFrom": "2025-04-09"
+      }
+    },
+    "YgjpLBADEph3RauWarsKNHrzIl32": {
+      "sched_YgjpLBADEph3RauWarsKNHrzIl32_1": {
+        "createdAt": "2025-09-09T09:58:53.106Z",
+        "isActive": true,
+        "lastUpdated": "2025-09-09T09:58:53.106Z",
+        "practiceLocation": {
+          "clinicId": "-OZbKvRcgeq7ddOrij4C",
+          "roomOrUnit": "Room 201"
+        },
+        "recurrence": {
+          "dayOfWeek": [
+            1,
+            3,
+            5
+          ],
+          "type": "weekly"
+        },
+        "scheduleType": "recurring",
+        "slotTemplate": {
+          "09:00": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "09:30": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:00": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "10:30": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:00": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          },
+          "11:30": {
+            "defaultStatus": "available",
+            "durationMinutes": 30
+          }
+        },
+        "specialistId": "YgjpLBADEph3RauWarsKNHrzIl32",
+        "validFrom": "2025-04-09"
+      }
+    }
+  },
+  "suppliers": {
+    "-OYqKJLNJhxRI9ciSJMS": {
+      "address": "Lagtang",
+      "contactPerson": "Jetch",
+      "createdAt": "2025-08-29T14:57:16.241Z",
+      "email": "madayajetch@gmail.com",
+      "name": "SWU Clinic",
+      "phone": "09991591653"
+    },
+    "-OZcWS0AEcjsOjKx18rd": {
+      "address": "Lagtang Talisay",
+      "contactPerson": "Tester",
+      "createdAt": "2025-09-08T08:51:22.054Z",
+      "email": "madayajetch@gmail.com",
+      "name": "Test",
+      "phone": "09991591643"
+    },
+    "-OZcXIZU3yFIpAYObdGt": {
+      "address": "tadadasda",
+      "contactPerson": "woers",
+      "createdAt": "2025-09-08T08:55:05.489Z",
+      "email": "catan@gmail.com",
+      "name": "Woers",
+      "phone": "123123123123"
+    },
+    "-OZcYCecQTMZQoRRD8FF": {
+      "address": "modal",
+      "contactPerson": "modal",
+      "createdAt": "2025-09-08T08:59:03.450Z",
+      "email": "modal@gmail.com",
+      "name": "modal",
+      "phone": "13123213213"
+    }
+  },
+  "teleconsultations": {
+    "-OYubsOUw9p-QISXvHuz": {
+      "createdAt": "2025-08-30T10:56:55.403Z",
+      "createdBy": "0Y0HnuNZX5ZOpwaZmxK3R7j5Yru2",
+      "description": "QuickChow",
+      "doctorId": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "doctorName": "Rene Catan",
+      "meetingRoomId": "consultation-1756551415403-yk63f4f1h",
+      "patientId": "GRvQVtnfAuMLVp74irn0Z1byBLQ2",
+      "patientName": "Mathyong Gutang",
+      "scheduledDate": "2025-08-30",
+      "scheduledTime": "18:57",
+      "status": "completed",
+      "title": "Test"
+    },
+    "-OYucAy06wdum7BRQShR": {
+      "createdAt": "2025-08-30T10:58:15.567Z",
+      "createdBy": "0Y0HnuNZX5ZOpwaZmxK3R7j5Yru2",
+      "description": "Quicky",
+      "doctorId": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "doctorName": "Rene Catan",
+      "meetingRoomId": "consultation-1756551495567-dg9wxqcr9",
+      "patientId": "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73",
+      "patientName": "Lillian Winthrop",
+      "scheduledDate": "2025-08-30",
+      "scheduledTime": "18:59",
+      "status": "scheduled",
+      "title": "Test"
+    },
+    "-OZ23r2BFGXOe-Jnl3h7": {
+      "createdAt": "2025-09-01T02:20:29.958Z",
+      "createdBy": "EDjKJWlRgoQ72upWsxhs6qZ3G5w1",
+      "description": "Quickchow",
+      "doctorId": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "doctorName": "Rene Catan",
+      "meetingRoomId": "consultation-1756693229958-bsw3rpz3n",
+      "patientId": "GRvQVtnfAuMLVp74irn0Z1byBLQ2",
+      "patientName": "Mathyong Gutang",
+      "scheduledDate": "2025-09-02",
+      "scheduledTime": "22:15",
+      "status": "scheduled",
+      "title": "Quicky"
+    },
+    "-OZ3V-ElGYlY7um_I_0r": {
+      "createdAt": "2025-09-01T08:58:42.789Z",
+      "createdBy": "EDjKJWlRgoQ72upWsxhs6qZ3G5w1",
+      "description": "QuickChow",
+      "doctorId": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "doctorName": "Rene Catan",
+      "meetingRoomId": "consultation-1756717122788-da5jwgllh",
+      "patientId": "uXIClv7k1UTb2JZYLtpwuSC8HhF3",
+      "patientName": "Test Test",
+      "scheduledDate": "2025-09-01",
+      "scheduledTime": "16:59",
+      "status": "scheduled",
+      "title": "Quicky"
+    },
+    "-OZEkHr-0UN5StA41nXB": {
+      "createdAt": "2025-09-03T13:25:38.588Z",
+      "createdBy": "EDjKJWlRgoQ72upWsxhs6qZ3G5w1",
+      "description": "Joshua and test",
+      "doctorId": "mi2QulY6JMhAbg6GJ1ndqmxkBWA2",
+      "doctorName": "Jetch Madaya",
+      "meetingRoomId": "consultation-1756905938588-a9k61qd6o",
+      "patientId": "6cTDon9PRQTWjjsM6za6LJhpIVr2",
+      "patientName": "Mira Bonghanoy",
+      "scheduledDate": "2025-09-03",
+      "scheduledTime": "21:27",
+      "status": "scheduled",
+      "title": "Test"
+    },
+    "-OZEktNq91utWbowDjCY": {
+      "createdAt": "2025-09-03T13:28:16.403Z",
+      "createdBy": "EDjKJWlRgoQ72upWsxhs6qZ3G5w1",
+      "description": "testt",
+      "doctorId": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "doctorName": "Rene Catan",
+      "meetingRoomId": "consultation-1756906096403-4r52mt56j",
+      "patientId": "GRvQVtnfAuMLVp74irn0Z1byBLQ2",
+      "patientName": "Mathyong Gutang",
+      "scheduledDate": "2025-09-03",
+      "scheduledTime": "21:28",
+      "status": "scheduled",
+      "title": "test"
+    },
+    "-OZEl-wViW5F9lFt5tu6": {
+      "createdAt": "2025-09-03T13:28:47.253Z",
+      "createdBy": "EDjKJWlRgoQ72upWsxhs6qZ3G5w1",
+      "description": "Kani daw gaw",
+      "doctorId": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "doctorName": "Rene Catan",
+      "meetingRoomId": "consultation-1756906127253-uy9y3ol7x",
+      "patientId": "GRvQVtnfAuMLVp74irn0Z1byBLQ2",
+      "patientName": "Mathyong Gutang",
+      "scheduledDate": "2025-09-03",
+      "scheduledTime": "21:35",
+      "status": "scheduled",
+      "title": "Kani gaw"
+    },
+    "-OZEogfophkYGZgflZYc": {
+      "createdAt": "2025-09-03T13:44:52.887Z",
+      "createdBy": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "description": "22",
+      "doctorId": "CSWATqKLOedAV958E0f4AITbtAw2",
+      "doctorName": "Rene Catan",
+      "meetingRoomId": "consultation-1756907092887-40at3i5qy",
+      "patientId": "GRvQVtnfAuMLVp74irn0Z1byBLQ2",
+      "patientName": "Mathyong Gutang",
+      "scheduledDate": "2025-09-03",
+      "scheduledTime": "21:49",
+      "status": "completed",
+      "title": "Test",
+      "updatedAt": "2025-09-03T13:55:51.612Z"
+    }
+  },
+  "typing": {
+    "CSWATqKLOedAV958E0f4AITbtAw2_UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73": {
+      "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73": false
+    },
+    "J0zVFWQlgQcyqkPNBvtVAGOu6U62_UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73": {
+      "UUjr1Sz8n2Qs8Yq2FTYEE2XW5W73": false
+    }
+  },
+  "users": {
+    "1igBgC367EcGjL2yQRoR6kyv9s03": {
+      "clinicAffiliation": "-OZbKbNjweIdcYnQiqil",
+      "contactNumber": "09099855322",
+      "createdAt": "2025-09-08T03:29:40.700Z",
+      "department": "doctors",
+      "email": "renecatan@gmail.com",
+      "firstName": "Rene",
+      "lastName": "Catan",
+      "role": "Doctor"
+    },
+    "4JQMCeTbeEPi0x2Du6DcyV0Dr1l1": {
+      "contactNumber": "09099855322",
+      "createdAt": "2025-09-09T04:37:52.242Z",
+      "email": "bago@gmail.com",
+      "firstName": "bago",
+      "lastName": "patient",
+      "role": "patient"
+    },
+    "7nzocOzTumVC8SBwbQ2LN70nQbn1": {
+      "createdAt": "2025-09-08T05:42:40.198Z",
+      "doctorId": "7nzocOzTumVC8SBwbQ2LN70nQbn1",
+      "email": "melzapier@gmail.com",
+      "firstName": "April Marie",
+      "lastName": "Rosales",
+      "middleName": "Urot",
+      "role": "specialist"
+    },
+    "7sl4RRk2iSdlu5G3cV3IwRBGnyd2": {
+      "contactNumber": "09099855322",
+      "createdAt": "2025-09-09T04:40:59.968Z",
+      "email": "patientss@gmail.com",
+      "firstName": "Delete ",
+      "lastName": "This ",
+      "role": "patient"
+    },
+    "8lsVM5QsQwXAwbrwTB4wIB8X0LB2": {
+      "createdAt": "2025-09-08T05:45:36.301Z",
+      "doctorId": "8lsVM5QsQwXAwbrwTB4wIB8X0LB2",
+      "email": "apur.rosales.swu@phinmaed.com",
+      "firstName": "Lenn",
+      "lastName": "Winthrop",
+      "middleName": "Evergreen",
+      "role": "specialist"
+    },
+    "9W1HP5rT0HW2A6RfeWnzCohfoqu1": {
+      "clinicAffiliation": "-OZbKbNjweIdcYnQiqil",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-09-08T04:00:22.238Z",
+      "department": "Laboratory",
+      "email": "dk@gmail.com",
+      "firstName": "Dan",
+      "lastName": "Penera",
+      "role": "laboratory staff"
+    },
+    "CbxNi4TIcnf5y9bnkWvEg0sLSdq1": {
+      "contactNumber": "09099855322",
+      "createdAt": "2025-09-09T04:18:14.618Z",
+      "email": "sino@gmail.com",
+      "firstName": "Sino",
+      "lastName": "Sil",
+      "role": "patient"
+    },
+    "EDjKJWlRgoQ72upWsxhs6qZ3G5w1": {
+      "clinicAffiliation": "",
+      "contactNumber": "12345667899",
+      "createdAt": "2025-07-30T19:51:19.178Z",
+      "department": "SuperAdmin",
+      "email": "admin3@gmail.com",
+      "firstName": "admin",
+      "lastName": "admin",
+      "role": "superadmin"
+    },
+    "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2": {
+      "createdAt": "2025-09-10T09:30:04.611Z",
+      "email": "mmkd9890@gmail.com",
+      "firstName": "Marielle",
+      "lastName": "Dalimocon",
+      "middleName": "Kipte",
+      "patientId": "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2",
+      "role": "patient"
+    },
+    "WsSrILlmqBa39jrvEyOy5QittRs2": {
+      "contactNumber": "09099855322",
+      "createdAt": "2025-09-09T04:14:34.313Z",
+      "email": "chri.ighot.swu@phinmaed.com",
+      "firstName": "Mercy",
+      "lastName": "Mercy",
+      "role": "patient"
+    },
+    "X6TEqRNDUKSud1T10B8fZyfywKG3": {
+      "createdAt": "2025-08-01T13:38:43.615Z",
+      "createdBy": "system",
+      "email": "superadmin@unihealth.ph",
+      "firstName": "",
+      "isActive": "true",
+      "lastLoginAt": 1757408823509,
+      "lastName": "Rosales",
+      "role": "superadmin"
+    },
+    "XCAbRf80DvSXoUCxiMNalo1OEaT2": {
+      "contactNumber": "09099855322",
+      "createdAt": "2025-09-09T04:20:26.145Z",
+      "email": "bos@gmail.com",
+      "firstName": "Bos",
+      "lastName": "Coffee",
+      "role": "patient"
+    },
+    "XK1ebbjoQXgRU4Eri954ztIA27G2": {
+      "clinicAffiliation": "-OZbKbNjweIdcYnQiqil",
+      "contactNumber": "09991591653",
+      "createdAt": "2025-09-08T05:33:26.288Z",
+      "department": "doctor",
+      "email": "renecatan@gmail.com",
+      "firstName": "Rene",
+      "lastName": "Catan",
+      "role": "doctor"
+    },
+    "YgjpLBADEph3RauWarsKNHrzIl32": {
+      "createdAt": "2025-09-09T09:58:53.106Z",
+      "doctorId": "YgjpLBADEph3RauWarsKNHrzIl32",
+      "email": "april.github05@gmail.com",
+      "firstName": "Marie",
+      "lastName": "Winthrop",
+      "middleName": "",
+      "role": "specialist"
+    },
+    "aJAUszpfZsQNeUgVznCxjQj2HDJ2": {
+      "contactNumber": "09099855322",
+      "createdAt": "2025-09-09T04:07:33.759Z",
+      "email": "cjj@gmail.com",
+      "firstName": "Christine",
+      "lastName": "Ighot",
+      "role": "patient"
+    },
+    "czKYa96Kg0erzvmj3hR1CLYpdHi1": {
+      "contactNumber": "09099855322",
+      "createdAt": "2025-09-09T04:22:33.234Z",
+      "email": "patient@gmail.com",
+      "firstName": "Patient",
+      "lastName": "New",
+      "role": "patient"
+    },
+    "f3HlxQf6mIW696Zf0SctZSWveEH3": {
+      "contactNumber": "09364343016",
+      "createdAt": "2025-09-08T04:44:27.366Z",
+      "email": "joshuabongz7@gmail.com",
+      "firstName": "Mira",
+      "lastName": "Bonghanoy",
+      "middleName": "Lapiña",
+      "patientId": "f3HlxQf6mIW696Zf0SctZSWveEH3",
+      "role": "patient"
+    },
+    "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1": {
+      "contactNumber": "09991591653",
+      "createdAt": "2025-09-08T05:00:29.032Z",
+      "email": "mb@gmail.com",
+      "firstName": "Mira",
+      "lastName": "Bonghanoy",
+      "patientId": "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1",
+      "role": "patient"
+    },
+    "nOayOm2B6tWRBUyfUUKiiNSqiXJ2": {
+      "createdAt": "2025-09-10T04:33:40.779Z",
+      "email": "angelomelcortes06@gmail.com",
+      "firstName": "Melo",
+      "lastName": "Cortez",
+      "middleName": "Escorel",
+      "patientId": "nOayOm2B6tWRBUyfUUKiiNSqiXJ2",
+      "role": "patient"
+    },
+    "p1qcgKsUQOPrt7deqqv4o8YbSik2": {
+      "createdAt": "2025-09-09T09:07:00.686Z",
+      "email": "mariescloset05@gmail.com",
+      "firstName": "Lovely",
+      "lastName": "Winthrop",
+      "middleName": "Evergreen",
+      "patientId": "p1qcgKsUQOPrt7deqqv4o8YbSik2",
+      "role": "patient"
+    },
+    "super-admin-global-access": {
+      "accessLevel": "GLOBAL_ADMIN",
+      "clinicAffiliations": [
+        "*"
+      ],
+      "createdAt": "2025-07-26T00:00:00.000Z",
+      "displayName": "OdysseySystem Super Administrator",
+      "email": "superadmin@odysseysys.com",
+      "lastUpdated": "2025-08-22T18:20:28.515Z",
+      "permissions": {
+        "allClinics": true,
+        "analytics": true,
+        "clinicManagement": true,
+        "dataExport": true,
+        "globalAccess": true,
+        "inventoryManagement": true,
+        "reporting": true,
+        "systemAdmin": true,
+        "userManagement": true
+      },
+      "role": "superadmin",
+      "status": "active",
+      "uid": "super-admin-global-access"
+    },
+    "undefined": {
+      "accessLevel": "GLOBAL_ADMIN",
+      "email": "admin@odyssey.com",
+      "lastUpdated": "2025-09-08T03:09:58.314Z",
+      "role": "superadmin",
+      "sessionCount": 0,
+      "status": "active"
+    },
+    "xgByzv3CB0fPhdFLPEDteFDnbum2": {
+      "clinicAffiliation": "-OZbKbNjweIdcYnQiqil",
+      "contactNumber": "09099855322",
+      "createdAt": "2025-09-08T03:22:43.815Z",
+      "department": "Admin",
+      "email": "jb@gmail.com",
+      "firstName": "Joshua",
+      "lastName": "Bongs",
+      "role": "admin"
+    }
+  },
+  "verification_tracking": {
+    "Tsv5ZrGRp6gUHLesnm3ZcEFFnLo2": {
+      "lastSent": 1757496928607
+    },
+    "k0D1Qg2sjPYEbNH2OYrMIEVa1Ch1": {
+      "lastSent": 1757868191591
+    }
+  }
+}

@@ -679,6 +679,16 @@ export default function PatientReferralDetailsScreen() {
                     : 'Not assigned'}
                 </Text>
               </View>
+              <View style={styles.referralDetailsRowWrapped}>
+                <Text style={styles.referralLabel}>Specialist Clinic</Text>
+                <Text style={styles.referralValueWrapped}>{referralData.specialistClinicAndAddress || 'Not assigned'}</Text>
+              </View>
+              {referralData.practiceLocation?.roomOrUnit && (
+                <View style={styles.referralDetailsRow}>
+                  <Text style={styles.referralLabel}>Room/Unit</Text>
+                  <Text style={styles.referralValue}>{(referralData as any).practiceLocation.roomOrUnit}</Text>
+                </View>
+              )}
               <View style={styles.referralDetailsRow}>
                 <Text style={styles.referralLabel}>
                   {(referralData as any)?.referringSpecialistId ? 'Referring Specialist' : 'Referring Generalist'}
@@ -703,7 +713,7 @@ export default function PatientReferralDetailsScreen() {
                   {referralData.time ? formatTime(referralData.time) : 'Not specified'}
                 </Text>
               </View>
-              <View style={styles.referralDetailsRowWrapped}>
+              {/* <View style={styles.referralDetailsRowWrapped}>
                 <Text style={styles.referralLabel}>Specialist Clinic</Text>
                 <Text style={styles.referralValueWrapped}>{referralData.specialistClinicAndAddress || 'Not assigned'}</Text>
               </View>
@@ -712,7 +722,7 @@ export default function PatientReferralDetailsScreen() {
                   <Text style={styles.referralLabel}>Room/Unit</Text>
                   <Text style={styles.referralValue}>{(referralData as any).practiceLocation.roomOrUnit}</Text>
                 </View>
-              )}
+              )} */}
               <View style={styles.referralDetailsRowNoBorder}>
                 <Text style={styles.referralLabel}>Reason for Referral</Text>
                 <Text style={styles.referralValue}>

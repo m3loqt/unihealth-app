@@ -463,8 +463,18 @@ export const databaseService = {
         
         // Also fetch specialist-to-specialist referrals for both patients and specialists
         const specialistReferrals = await this.getSpecialistReferralsForUser(userId, role);
-        appointments.push(...specialistReferrals);
-        console.log(`🔍 Total appointments (including referrals): ${appointments.length}`);
+        
+        // Filter out specialist referrals that already have corresponding regular appointments
+        const filteredSpecialistReferrals = specialistReferrals.filter(specialistReferral => {
+          // Check if there's already a regular appointment with this referralId
+          const hasCorrespondingAppointment = resolvedAppointments.some(appointment => 
+            appointment.relatedReferralId === specialistReferral.id
+          );
+          return !hasCorrespondingAppointment;
+        });
+        
+        appointments.push(...filteredSpecialistReferrals);
+        console.log(`🔍 Total appointments (including filtered referrals): ${appointments.length}`);
         
         return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
       }
@@ -3291,7 +3301,17 @@ export const databaseService = {
           
           // Also fetch specialist-to-specialist referrals for both patients and specialists
           const specialistReferrals = await this.getSpecialistReferralsForUser(userId, role);
-          appointments.push(...specialistReferrals);
+          
+          // Filter out specialist referrals that already have corresponding regular appointments
+          const filteredSpecialistReferrals = specialistReferrals.filter(specialistReferral => {
+            // Check if there's already a regular appointment with this referralId
+            const hasCorrespondingAppointment = resolvedAppointments.some(appointment => 
+              appointment.relatedReferralId === specialistReferral.id
+            );
+            return !hasCorrespondingAppointment;
+          });
+          
+          appointments.push(...filteredSpecialistReferrals);
           
           callback(appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime()));
         } catch (error) {

@@ -56,6 +56,7 @@ interface ReferralData extends Referral {
   dateTime?: string;
   specialistClinic?: string;
   specialistClinicAndAddress?: string;
+  additionalNotes?: string;
   
   // Clinical fields from medical history
   presentIllnessHistory?: string;
@@ -808,6 +809,18 @@ export default function ReferralDetailsScreen() {
                 </View>
               )}
               {!isFollowUpAppointment && (
+                <View style={styles.referralDetailsRowWrapped}>
+                  <Text style={styles.referralLabel}>Specialist Clinic</Text>
+                  <Text style={styles.referralValueWrapped}>{referralData.specialistClinicAndAddress || 'Not assigned'}</Text>
+                </View>
+              )}
+              {referralData.practiceLocation?.roomOrUnit && (
+                <View style={styles.referralDetailsRow}>
+                  <Text style={styles.referralLabel}>Room/Unit</Text>
+                  <Text style={styles.referralValue}>{referralData.practiceLocation.roomOrUnit}</Text>
+                </View>
+              )}
+              {!isFollowUpAppointment && (
                 <View style={styles.referralDetailsRow}>
                   <Text style={styles.referralLabel}>
                     {(referralData as any)?.referringSpecialistId ? 'Referring Specialist' : 'Referring Generalist'}
@@ -835,7 +848,7 @@ export default function ReferralDetailsScreen() {
                   {referralData.time ? formatTime(referralData.time) : 'Not specified'}
                 </Text>
               </View>
-              {!isFollowUpAppointment && (
+              {/* {!isFollowUpAppointment && (
                 <View style={styles.referralDetailsRowWrapped}>
                   <Text style={styles.referralLabel}>Specialist Clinic</Text>
                   <Text style={styles.referralValueWrapped}>{referralData.specialistClinicAndAddress || 'Not assigned'}</Text>
@@ -846,7 +859,7 @@ export default function ReferralDetailsScreen() {
                   <Text style={styles.referralLabel}>Room/Unit</Text>
                   <Text style={styles.referralValue}>{referralData.practiceLocation.roomOrUnit}</Text>
                 </View>
-              )}
+              )} */}
               <View style={styles.referralDetailsRowNoBorder}>
                 <Text style={styles.referralLabel}>
                   {isFollowUpAppointment ? 'Additional Notes' : 'Reason for Referral'}
