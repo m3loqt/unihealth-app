@@ -12,8 +12,6 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '../src/hooks/auth/useAuth';
-import { MedicalHistoryNotificationsProvider } from '../src/components/MedicalHistoryNotificationsProvider';
-import { NotificationProvider } from '../src/contexts/NotificationContext';
 import { RealtimeNotificationProvider } from '../src/contexts/RealtimeNotificationContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -43,29 +41,25 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <NotificationProvider>
-        <RealtimeNotificationProvider>
-          <MedicalHistoryNotificationsProvider>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="splash" />
-              <Stack.Screen name="index" />
-              <Stack.Screen name="onboarding" />
-              <Stack.Screen name="signin" />
-              <Stack.Screen name="(auth)/forgot-password" />
-              <Stack.Screen name="(auth)/reset-password" />
-              <Stack.Screen name="(auth)/signup/step1" />
-              <Stack.Screen name="(auth)/signup/step2" />
-              <Stack.Screen name="(auth)/signup/step3" />
-              <Stack.Screen name="(patient)/tabs" />
-              <Stack.Screen name="(specialist)/tabs" />
-              <Stack.Screen name="(specialist)/schedule" />
-              <Stack.Screen name="(specialist)/referral-details" />
-              <Stack.Screen name="+not-found" />
-            </Stack>
-            <StatusBar style="dark" />
-          </MedicalHistoryNotificationsProvider>
-        </RealtimeNotificationProvider>
-      </NotificationProvider>
+      <RealtimeNotificationProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="splash" />
+            <Stack.Screen name="index" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="signin" />
+            <Stack.Screen name="(auth)/forgot-password" />
+            <Stack.Screen name="(auth)/reset-password" />
+            <Stack.Screen name="(auth)/signup/step1" />
+            <Stack.Screen name="(auth)/signup/step2" />
+            <Stack.Screen name="(auth)/signup/step3" />
+            <Stack.Screen name="(patient)/tabs" />
+            <Stack.Screen name="(specialist)/tabs" />
+            <Stack.Screen name="(specialist)/schedule" />
+            <Stack.Screen name="(specialist)/referral-details" />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+          <StatusBar style="dark" />
+      </RealtimeNotificationProvider>
     </AuthProvider>
   );
 }

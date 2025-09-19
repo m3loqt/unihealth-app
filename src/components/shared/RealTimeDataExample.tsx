@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { useAppointments, useReferrals, usePrescriptions, useMedicalHistory, useCertificates, useNotifications } from '../../hooks/data';
+import { useAppointments, useReferrals, usePrescriptions, useMedicalHistory, useCertificates } from '../../hooks/data';
+import { useRealtimeNotifications } from '../../hooks/data/useRealtimeNotifications';
 
 export const RealTimeDataExample: React.FC = () => {
   const { appointments, loading: appointmentsLoading, error: appointmentsError } = useAppointments();
@@ -8,7 +9,7 @@ export const RealTimeDataExample: React.FC = () => {
   const { prescriptions, loading: prescriptionsLoading, error: prescriptionsError } = usePrescriptions();
   const { medicalHistory, loading: medicalHistoryLoading, error: medicalHistoryError } = useMedicalHistory();
   const { certificates, loading: certificatesLoading, error: certificatesError } = useCertificates();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useRealtimeNotifications();
 
   const renderSection = (title: string, data: any[], loading: boolean, error: string | null) => (
     <View style={styles.section}>

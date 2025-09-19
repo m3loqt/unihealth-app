@@ -29,7 +29,6 @@ export { default as FormulaSelectionModal } from './FormulaSelectionModal';
 // Test Components
 export { RealTimeTest } from './RealTimeTest';
 export { RealTimeDataExample } from './shared/RealTimeDataExample';
-export { default as TestNotificationButton } from './shared/TestNotificationButton';
 export { GeneralistAvailabilityTest } from './GeneralistAvailabilityTest';
 export { GeneralistDateFilteringTest } from './GeneralistDateFilteringTest';
 

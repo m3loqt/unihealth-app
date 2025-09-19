@@ -5,8 +5,6 @@ export * from './useReferrals';
 export * from './usePatientReferrals';
 export * from './useMedicalHistory';
 export * from './useCertificates';
-export * from './useNotifications';
-export * from './useMedicalHistoryNotifications';
 export * from './usePatientProfile';
 export * from './useSpecialistProfile';
 export * from './useSpecialistSchedules'; 

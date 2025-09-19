@@ -3,7 +3,7 @@ import { View, TouchableOpacity, StyleSheet, Text, Animated, Dimensions, LayoutA
 import { useRouter, usePathname } from 'expo-router';
 import { Home, FileText, Calendar, Pill, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNotifications } from '../../hooks/data/useNotifications';
+import { useRealtimeNotifications } from '../../hooks/data/useRealtimeNotifications';
 import { COLORS } from '../../constants/colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -21,7 +21,7 @@ export default function TabBar({ activeTab }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const router = useRouter();
-  const { unreadCount } = useNotifications();
+  const { unreadCount } = useRealtimeNotifications();
 
   const TABS = [
     { name: 'index', icon: Home, route: '/(patient)/tabs', label: 'Home' },

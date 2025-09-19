@@ -3,7 +3,7 @@ import { View, TouchableOpacity, StyleSheet, Text, Animated, Dimensions, LayoutA
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Users, Calendar, User, QrCode, X, AlertCircle as AlertCircleIcon, User as UserIcon, Phone, Mail, MapPin, Heart, Calendar as CalendarIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNotifications } from '../../hooks/data/useNotifications';
+import { useRealtimeNotifications } from '../../hooks/data/useRealtimeNotifications';
 import { capitalizeRelationship } from '../../utils/formatting';
 import safeDataAccess from '../../utils/safeDataAccess';
 import { CameraView, Camera } from 'expo-camera';
@@ -26,7 +26,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const router = useRouter();
-  const { unreadCount } = useNotifications();
+  const { unreadCount } = useRealtimeNotifications();
 
   // QR Code state
   const [showQRModal, setShowQRModal] = useState(false);
