@@ -127,11 +127,11 @@ export default function SpecialistReviewConfirmScreen() {
         lastUpdated: new Date().toISOString(),
         patientId: patientId,
         practiceLocation: {
-          clinicId: referralData.referringClinicId, // Use referring specialist's clinic
+          clinicId: referralData.assignedClinicId, // Use assigned specialist's clinic
           roomOrUnit: referralData.roomOrUnit // Use room from schedule
         },
         referralTimestamp: new Date().toISOString(),
-        referringClinicId: referralData.assignedClinicId, // Use assigned specialist's clinic
+        referringClinicId: referralData.referringClinicId, // Use referring specialist's clinic
         referringClinicName: referralData.referringClinicName,
         referringSpecialistId: user.uid,
         referringSpecialistFirstName: referringSpecialistFirstName,
