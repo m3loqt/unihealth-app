@@ -88,12 +88,45 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const HORIZONTAL_MARGIN = 24;
 
 // Helper function to format date
+// Formatting helpers (aligned with specialist screen)
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  try {
+    // Handle DD/MM/YYYY format
+    if (dateString.includes('/')) {
+      const [day, month, year] = dateString.split('/').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    }
+    
+    // Handle YYYY-MM-DD format (original logic)
+    if (dateString.includes('-')) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    }
+    
+    // Fallback to native Date parsing
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    }
+    
+    return 'Invalid date';
+  } catch (error) {
+    return 'Invalid date';
+  }
 };
 
 // Helper function to format time
@@ -1086,7 +1119,7 @@ export default function ReferralDetailsScreen() {
                 </View>
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued on:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.issuedDate || cert.createdAt || 'Date not specified'}</Text>
+                  <Text style={styles.certificateInfoValue}>{cert.issuedDate ? formatDate(cert.issuedDate) : 'Not specified'}</Text>
                 </View>
                 <View style={styles.certificateActions}>
                   <TouchableOpacity 

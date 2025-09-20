@@ -104,14 +104,39 @@ const RotatingStethoscope: React.FC = () => {
 // Formatting helpers (aligned with specialist screen)
 const formatDate = (dateString: string) => {
   try {
-    // Parse the date string as local date to avoid timezone issues
-    const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(year, month - 1, day); // month is 0-indexed
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    // Handle DD/MM/YYYY format
+    if (dateString.includes('/')) {
+      const [day, month, year] = dateString.split('/').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    }
+    
+    // Handle YYYY-MM-DD format (original logic)
+    if (dateString.includes('-')) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    }
+    
+    // Fallback to native Date parsing
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    }
+    
+    return 'Invalid date';
   } catch (error) {
     return 'Invalid date';
   }
@@ -915,6 +940,10 @@ export default function PatientReferralDetailsScreen() {
           <Text style={styles.sectionTitle}>Medical Certificates</Text>
           {referralData.status.toLowerCase() === 'completed' && certificates.length ? certificates.map((cert) => {
             const statusStyle = getCertStatusStyles(cert.status);
+            const issuingDoctor = cert.doctor || cert.prescribedBy || cert.specialistName || 
+              ((referralData as any)?.assignedSpecialistFirstName && (referralData as any)?.assignedSpecialistLastName
+                ? `${(referralData as any).assignedSpecialistFirstName} ${(referralData as any).assignedSpecialistLastName}`
+                : 'Unknown Doctor');
             return (
               <View key={cert.id} style={styles.cardBoxCertificate}>
                 <View style={styles.certificateIconTitleRow}>
@@ -932,14 +961,62 @@ export default function PatientReferralDetailsScreen() {
                 <View style={styles.certificateDivider} />
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued by:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.doctor || 'Unknown Doctor'}</Text>
+                  <Text style={styles.certificateInfoValue}>{issuingDoctor}</Text>
                 </View>
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued on:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.issuedDate || 'Date not specified'}</Text>
+                  <Text style={styles.certificateInfoValue}>{cert.issuedDate ? formatDate(cert.issuedDate) : 'Not specified'}</Text>
                 </View>
                 <View style={styles.certificateActions}>
-                  <TouchableOpacity style={[styles.secondaryButton, { marginRight: 9 }]}>
+                <TouchableOpacity 
+                    style={[styles.secondaryButton, { marginRight: 9 }]}
+                    onPress={() => {
+                      // Route to the corresponding certificate screen based on type
+                      const certificateType = cert.type?.toLowerCase();
+                      if (certificateType?.includes('fit to work')) {
+                        router.push({
+                          pathname: '/e-certificate-fit-to-work',
+                          params: { 
+                            certificateId: cert.id,
+                            consultationId: referralData.referralConsultationId || '',
+                            referralId: String(id),
+                            patientId: referralData.patientId || ''
+                          }
+                        });
+                      } else if (certificateType?.includes('medical') || certificateType?.includes('sickness')) {
+                        router.push({
+                          pathname: '/e-certificate-medical-sickness',
+                          params: { 
+                            certificateId: cert.id,
+                            consultationId: referralData.referralConsultationId || '',
+                            referralId: String(id),
+                            patientId: referralData.patientId || ''
+                          }
+                        });
+                      } else if (certificateType?.includes('fit to travel')) {
+                        router.push({
+                          pathname: '/e-certificate-fit-to-travel',
+                          params: { 
+                            certificateId: cert.id,
+                            consultationId: referralData.referralConsultationId || '',
+                            referralId: String(id),
+                            patientId: referralData.patientId || ''
+                          }
+                        });
+                      } else {
+                        // Fallback for unknown certificate types
+                        router.push({
+                          pathname: '/e-certificate-fit-to-work',
+                          params: { 
+                            certificateId: cert.id,
+                            consultationId: referralData.referralConsultationId || '',
+                            referralId: String(id),
+                            patientId: referralData.patientId || ''
+                          }
+                        });
+                      }
+                    }}
+                  >
                     <Eye size={18} color="#374151" />
                     <Text style={styles.secondaryButtonText}>View</Text>
                   </TouchableOpacity>
