@@ -13,6 +13,7 @@ import {
   endBefore
 } from 'firebase/database';
 import { database } from '../../config/firebase';
+import { getCurrentLocalTimestamp } from '../../utils/date';
 
 // Standardized data type definitions for immutable vs mutable data separation
 export interface ImmutableUserData {
@@ -1097,7 +1098,7 @@ export const databaseService = {
               id: childSnapshot.key!,
               ...doctorData,
               availability: doctorData.availability || {
-                lastUpdated: new Date().toISOString(),
+                lastUpdated: getCurrentLocalTimestamp(),
                 weeklySchedule: {},
                 specificDates: {}
               }
@@ -1137,7 +1138,7 @@ export const databaseService = {
               id: childSnapshot.key!,
               ...doctorData,
               availability: doctorData.availability || {
-                lastUpdated: new Date().toISOString(),
+                lastUpdated: getCurrentLocalTimestamp(),
                 weeklySchedule: {},
                 specificDates: {}
               }
@@ -1170,7 +1171,7 @@ export const databaseService = {
               id: doctorId,
               ...doctorData,
               availability: doctorData.availability || {
-                lastUpdated: new Date().toISOString(),
+                lastUpdated: getCurrentLocalTimestamp(),
                 weeklySchedule: {},
                 specificDates: {}
               }
@@ -1205,7 +1206,7 @@ export const databaseService = {
           id: snapshot.key!,
           ...doctorData,
           availability: doctorData.availability || {
-            lastUpdated: new Date().toISOString(),
+            lastUpdated: getCurrentLocalTimestamp(),
             weeklySchedule: {},
             specificDates: {}
           }
@@ -1417,7 +1418,7 @@ export const databaseService = {
       
       if (snapshot.exists()) {
         const appointments: Appointment[] = [];
-        const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+        const today = getCurrentLocalTimestamp().split('T')[0]; // Get today's date in YYYY-MM-DD format
         
         snapshot.forEach((childSnapshot) => {
           const appointmentData = childSnapshot.val();
@@ -1570,8 +1571,8 @@ export const databaseService = {
       
       const appointmentData = {
         ...appointment,
-        createdAt: new Date().toISOString(),
-        lastUpdated: new Date().toISOString(),
+        createdAt: getCurrentLocalTimestamp(),
+        lastUpdated: getCurrentLocalTimestamp(),
       };
       
       await set(newAppointmentRef, appointmentData);
@@ -1592,7 +1593,7 @@ export const databaseService = {
       const appointmentRef = ref(database, `appointments/${id}`);
       await update(appointmentRef, {
         ...updates,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: getCurrentLocalTimestamp(),
       });
     } catch (error) {
       console.error('Update appointment error:', error);
@@ -2306,7 +2307,7 @@ export const databaseService = {
     try {
       console.log('🕐 Updating lastLogin for user:', userId, 'role:', userRole);
       
-      const lastLoginTime = new Date().toISOString();
+      const lastLoginTime = getCurrentLocalTimestamp();
       const nodeName = userRole === 'patient' ? 'patients' : 'doctors';
       const nodeRef = ref(database, `${nodeName}/${userId}`);
       
@@ -2444,7 +2445,7 @@ export const databaseService = {
         // Add new fee history entry
         const newFeeEntry = {
           fee: newFee,
-          effectiveDate: new Date().toISOString(),
+          effectiveDate: getCurrentLocalTimestamp(),
           status: 'active'
         };
         
@@ -2483,7 +2484,7 @@ export const databaseService = {
       if (doctorSnapshot.exists()) {
         await update(doctorRef, {
           professionalFeeStatus: status,
-          lastUpdated: new Date().toISOString(),
+          lastUpdated: getCurrentLocalTimestamp(),
         });
         console.log(`Professional fee status updated to: ${status}`);
       } else {
@@ -2532,7 +2533,7 @@ export const databaseService = {
         medicalConditions: patientData?.medicalConditions || patientData?.medical_conditions || [],
         dateOfBirth: patientData?.dateOfBirth || patientData?.date_of_birth || userData?.dateOfBirth || userData?.date_of_birth || '',
         gender: patientData?.gender || userData?.gender || '',
-        lastUpdated: patientData?.lastUpdated || patientData?.last_updated || new Date().toISOString(),
+        lastUpdated: patientData?.lastUpdated || patientData?.last_updated || getCurrentLocalTimestamp(),
         
         // Computed fields
         fullName: `${userData?.firstName || userData?.first_name || userData?.givenName || ''} ${userData?.lastName || userData?.last_name || userData?.familyName || ''}`.trim() || 'Unknown Patient',
@@ -2586,7 +2587,7 @@ export const databaseService = {
         gender: doctorData?.gender || userData?.gender || '',
         dateOfBirth: doctorData?.dateOfBirth || doctorData?.date_of_birth || userData?.dateOfBirth || userData?.date_of_birth || '',
         civilStatus: doctorData?.civilStatus || doctorData?.civil_status || '',
-        lastUpdated: doctorData?.lastUpdated || doctorData?.last_updated || new Date().toISOString(),
+        lastUpdated: doctorData?.lastUpdated || doctorData?.last_updated || getCurrentLocalTimestamp(),
         
         // Computed fields
         fullName: `${userData?.firstName || userData?.first_name || userData?.givenName || ''} ${userData?.lastName || userData?.last_name || userData?.familyName || ''}`.trim() || 'Unknown Specialist',
@@ -2779,7 +2780,7 @@ export const databaseService = {
       
       const updates: any = {
         status,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: getCurrentLocalTimestamp()
       };
 
       if (reason) {
@@ -2871,7 +2872,7 @@ export const databaseService = {
       
       const certificateData = {
         ...certificate,
-        issueDate: new Date().toISOString(),
+        issueDate: getCurrentLocalTimestamp(),
       };
       
       await set(newCertificateRef, certificateData);
@@ -2887,7 +2888,7 @@ export const databaseService = {
       const certificateRef = ref(database, `certificates/${id}`);
       await update(certificateRef, {
         ...updates,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: getCurrentLocalTimestamp(),
       });
     } catch (error) {
       console.error('Update certificate error:', error);
@@ -3147,7 +3148,7 @@ export const databaseService = {
       
       const updates: any = { 
         status, 
-        lastUpdated: new Date().toISOString() 
+        lastUpdated: getCurrentLocalTimestamp() 
       };
       
       if (declineReason) {
@@ -3259,7 +3260,7 @@ export const databaseService = {
       
       const updatedData = {
         ...updates,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: getCurrentLocalTimestamp()
       };
       
       // Update the referral
@@ -3777,7 +3778,7 @@ export const databaseService = {
       const docRef = ref(database, path);
       await set(docRef, {
         ...data,
-        updatedAt: new Date().toISOString(),
+        updatedAt: getCurrentLocalTimestamp(),
       });
     } catch (error) {
       console.error(`Set document error (${path}):`, error);
@@ -3790,7 +3791,7 @@ export const databaseService = {
       const docRef = ref(database, path);
       await update(docRef, {
         ...updates,
-        updatedAt: new Date().toISOString(),
+        updatedAt: getCurrentLocalTimestamp(),
       });
     } catch (error) {
       console.error(`Update document error (${path}):`, error);
@@ -3814,8 +3815,8 @@ export const databaseService = {
       const newRef = push(docRef);
       await set(newRef, {
         ...data,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: getCurrentLocalTimestamp(),
+        updatedAt: getCurrentLocalTimestamp(),
       });
       return newRef.key!;
     } catch (error) {
@@ -4098,7 +4099,7 @@ export const databaseService = {
       // Generate consultation data with required fields
       const medicalHistoryData = {
         ...consultationData,
-        consultationDate: new Date().toISOString(),
+        consultationDate: getCurrentLocalTimestamp(),
         consultationTime: new Date().toLocaleTimeString(),
         patientId: patientId,
         createdAt: Date.now(),
@@ -4142,7 +4143,7 @@ export const databaseService = {
       // Generate consultation data with required fields
       const medicalHistoryData = {
         ...consultationData,
-        consultationDate: new Date().toISOString(),
+        consultationDate: getCurrentLocalTimestamp(),
         consultationTime: new Date().toLocaleTimeString(),
         patientId: patientId,
         createdAt: Date.now(),
@@ -4202,9 +4203,9 @@ export const databaseService = {
       // Prepare referral data with required fields
       const completeReferralData = {
         ...referralData,
-        referralTimestamp: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        lastUpdated: new Date().toISOString(),
+        referralTimestamp: getCurrentLocalTimestamp(),
+        createdAt: getCurrentLocalTimestamp(),
+        lastUpdated: getCurrentLocalTimestamp(),
         status: referralData.status || 'pending_acceptance'
       };
 

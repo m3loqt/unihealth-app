@@ -3,6 +3,7 @@ import { database } from '../config/firebase';
 import { Appointment, Referral } from './database/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { databaseService } from './database/firebase';
+import { getCurrentLocalTimestamp } from '../utils/date';
 
 // Simple interface for displaying notifications in UI
 export interface RealtimeNotification {
@@ -37,7 +38,7 @@ class RealtimeNotificationService {
   startListening(userId: string, userRole: 'patient' | 'specialist'): () => void {
     console.log('🔔 ===== STARTING REAL-TIME LISTENERS =====');
     console.log('🔔 User:', userId, 'Role:', userRole);
-    console.log('🔔 Timestamp:', new Date().toISOString());
+    console.log('🔔 Timestamp:', getCurrentLocalTimestamp());
     
     // Check if listeners already exist for this user
     if (this.appointmentListeners.has(userId)) {
@@ -127,7 +128,7 @@ class RealtimeNotificationService {
       }
       
       console.log('🔔 Checking notifications from:', new Date(checkFromTime).toISOString());
-      console.log('🔔 Current time:', new Date().toISOString());
+      console.log('🔔 Current time:', getCurrentLocalTimestamp());
       console.log('🔔 Time difference (hours):', (Date.now() - checkFromTime) / (1000 * 60 * 60));
       
       // Check appointments
@@ -451,7 +452,7 @@ class RealtimeNotificationService {
     console.log('🔔 Setting up appointment listener for user:', userId, 'role:', userRole);
     
     const unsubscribe = onValue(appointmentsRef, async (snapshot: DataSnapshot) => {
-      console.log('🔔 Appointment listener triggered for user:', userId, 'at:', new Date().toISOString());
+      console.log('🔔 Appointment listener triggered for user:', userId, 'at:', getCurrentLocalTimestamp());
       try {
         if (!snapshot.exists()) {
           console.log('🔔 No appointments data found');
@@ -527,7 +528,7 @@ class RealtimeNotificationService {
     console.log('🔔 Setting up referral listener for user:', userId, 'role:', userRole);
     
     const unsubscribe = onValue(referralsRef, async (snapshot: DataSnapshot) => {
-      console.log('🔔 Referral listener triggered for user:', userId, 'at:', new Date().toISOString());
+      console.log('🔔 Referral listener triggered for user:', userId, 'at:', getCurrentLocalTimestamp());
       try {
         if (!snapshot.exists()) {
           console.log('🔔 No referrals data found');
@@ -611,7 +612,7 @@ class RealtimeNotificationService {
     console.log('🔔 Setting up doctor listener for user:', userId);
     
     const unsubscribe = onValue(doctorRef, async (snapshot: DataSnapshot) => {
-      console.log('🔔 Doctor listener triggered for user:', userId, 'at:', new Date().toISOString());
+      console.log('🔔 Doctor listener triggered for user:', userId, 'at:', getCurrentLocalTimestamp());
       try {
         if (!snapshot.exists()) {
           console.log('🔔 No doctor data found for user:', userId);

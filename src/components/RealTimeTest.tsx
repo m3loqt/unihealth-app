@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'rea
 import { usePatientProfile } from '../hooks/data/usePatientProfile';
 import { useSpecialistProfile } from '../hooks/data/useSpecialistProfile';
 import { useAuth } from '../hooks/auth/useAuth';
+import { getCurrentLocalTimestamp } from '../utils/date';
 
 export const RealTimeTest: React.FC = () => {
   const { user } = useAuth();
@@ -17,7 +18,7 @@ export const RealTimeTest: React.FC = () => {
       const testData = {
         contactNumber: `Test Phone ${testCount + 1}`,
         address: `Test Address ${testCount + 1}`,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: getCurrentLocalTimestamp(),
       };
       
       console.log('=== RealTimeTest: Testing patient update ===');
@@ -39,7 +40,7 @@ export const RealTimeTest: React.FC = () => {
       const testData = {
         specialty: `Test Specialty ${testCount + 1}`,
         yearsOfExperience: testCount + 1,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: getCurrentLocalTimestamp(),
       };
       
       await updateSpecialistProfile(testData);
@@ -57,7 +58,7 @@ export const RealTimeTest: React.FC = () => {
     try {
       const testData = {
         contactNumber: `Simple ${Date.now()}`,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: getCurrentLocalTimestamp(),
       };
       
       console.log('=== RealTimeTest: Testing simple update ===');
@@ -82,7 +83,7 @@ export const RealTimeTest: React.FC = () => {
       const testAddress = `Flow Test ${Date.now()}`;
       const testData = {
         address: testAddress,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: getCurrentLocalTimestamp(),
       };
       
       console.log('Test data to send:', testData);
@@ -134,7 +135,7 @@ export const RealTimeTest: React.FC = () => {
     try {
       const testData = {
         address: `Address Test ${Date.now()}`,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: getCurrentLocalTimestamp(),
       };
       
       console.log('=== RealTimeTest: Testing address-only update ===');
@@ -160,7 +161,7 @@ export const RealTimeTest: React.FC = () => {
     try {
       const testData = {
         address: `Test Address ${Date.now()}`,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: getCurrentLocalTimestamp(),
       };
       
       console.log('=== RealTimeTest: Testing address update ===');
