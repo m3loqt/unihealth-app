@@ -21,7 +21,7 @@ export const formatDate = (
           month: 'short',
           day: 'numeric',
           year: 'numeric',
-        });
+        }); 
       case 'long':
         return date.toLocaleDateString('en-US', {
           weekday: 'long',
