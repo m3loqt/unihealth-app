@@ -5,7 +5,6 @@ import {
   TextInput,
   StyleSheet,
   SafeAreaView,
-  ScrollView,
   TouchableOpacity,
   StatusBar,
   Platform,
@@ -13,6 +12,7 @@ import {
 } from 'react-native';
 import { ChevronLeft, Lock, Eye, EyeOff, Shield } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { KeyboardAvoidingScrollView } from '../../src/components/ui';
 import { authService } from '../../src/services/api/auth';
 
 export default function ChangePasswordScreen() {
@@ -114,10 +114,11 @@ export default function ChangePasswordScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView
+      <KeyboardAvoidingScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
+        extraOffset={20}
       >
                  {/* Security Notice */}
          <View style={styles.securityNotice}>
@@ -245,7 +246,7 @@ export default function ChangePasswordScreen() {
             <Text style={styles.captchaHelp}>Enter the code shown above</Text>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAvoidingScrollView>
 
       {/* Change Password Button */}
       <View style={styles.bottomContainer}>
