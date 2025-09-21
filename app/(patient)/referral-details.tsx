@@ -33,6 +33,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService, Referral, MedicalHistory } from '../../src/services/database/firebase';
 import { formatRoute, formatFrequency, formatFormula } from '../../src/utils/formatting';
+import { usePdfDownload } from '../../src/hooks/usePdfDownload';
+import { generateReferralRecordPdf } from '../../src/utils/pdfTemplate';
 
 interface ReferralData extends Referral {
   patientName?: string;
@@ -224,6 +226,9 @@ export default function PatientReferralDetailsScreen() {
   });
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isReferralHidden, setIsReferralHidden] = useState(false);
+  
+  // PDF download functionality
+  const { downloadModalVisible, setDownloadModalVisible, downloadSavedPath, logoDataUri, handleDownload } = usePdfDownload();
 
   useEffect(() => {
     if (id) {
@@ -461,6 +466,14 @@ export default function PatientReferralDetailsScreen() {
       ...prev,
       [key]: !prev[key],
     }));
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!referralData) return;
+    
+    const html = generateReferralRecordPdf(referralData, prescriptions, certificates, user, logoDataUri, false);
+    const filename = `UniHealth_Referral_Record_${Date.now()}.pdf`;
+    await handleDownload(html, filename);
   };
 
   const handleReferralFollowUp = () => {
@@ -1020,7 +1033,7 @@ export default function PatientReferralDetailsScreen() {
                     <Eye size={18} color="#374151" />
                     <Text style={styles.secondaryButtonText}>View</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.primaryButton}>
+                  <TouchableOpacity style={styles.primaryButton} onPress={handleDownloadPdf}>
                     <Download size={18} color="#FFFFFF" />
                     <Text style={styles.primaryButtonText}>Download</Text>
                   </TouchableOpacity>
@@ -1117,6 +1130,50 @@ export default function PatientReferralDetailsScreen() {
                </Text>
              </TouchableOpacity>
            </View>
+        </View>
+      )}
+
+      {/* Download Success Modal */}
+      {downloadModalVisible && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            borderRadius: 12,
+            padding: 24,
+            margin: 24,
+            alignItems: 'center',
+            minWidth: 280,
+          }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1F2937', marginBottom: 12 }}>
+              Referral Record Downloaded
+            </Text>
+            <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 20 }}>
+              {downloadSavedPath ? `Your referral record has been saved.${Platform.OS !== 'android' ? '\nPath: ' + downloadSavedPath : ''}` : 'Your referral record has been saved.'}
+            </Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#1E40AF',
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderRadius: 8,
+                width: '100%',
+                alignItems: 'center',
+              }}
+              onPress={() => setDownloadModalVisible(false)}
+            >
+              <Text style={{ color: 'white', fontWeight: '600' }}>Done</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </SafeAreaView>
