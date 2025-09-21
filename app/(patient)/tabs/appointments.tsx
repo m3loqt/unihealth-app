@@ -674,7 +674,10 @@ export default function AppointmentsScreen() {
     
     // Pre-compute sort values for better performance on large lists
     const sortData = sortedFiltered.map(appointment => {
-      const appointmentDate = new Date(appointment.appointmentDate || '').getTime() || 0;
+      // Combine appointmentDate and appointmentTime for more accurate sorting
+      const appointmentDateTime = appointment.appointmentDate && appointment.appointmentTime 
+        ? new Date(`${appointment.appointmentDate} ${appointment.appointmentTime}`).getTime() || 0
+        : new Date(appointment.appointmentDate || '').getTime() || 0;
       const doctorName = safeDataAccess.getAppointmentDoctorName(appointment, '').toLowerCase();
       
       switch (sortBy) {
@@ -682,7 +685,7 @@ export default function AppointmentsScreen() {
         case 'date-oldest':
           return {
             appointment,
-            sortValue: appointmentDate
+            sortValue: appointmentDateTime
           };
         case 'doctor-az':
         case 'doctor-za':
