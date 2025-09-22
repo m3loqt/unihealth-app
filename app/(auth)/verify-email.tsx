@@ -157,19 +157,44 @@ export default function VerifyEmailScreen() {
     sendVerificationEmail();
   };
 
-  const handleContinue = () => {
-    // Check if email is verified
-    if (auth.currentUser?.emailVerified) {
-      // Navigate to appropriate dashboard based on user role
-      // This should only be reached by patients, but we'll handle both cases
-      router.push('/(patient)/tabs');
-    } else {
+  const handleContinue = async () => {
+    setIsLoading(true);
+    try {
+      // Reload the user's authentication state to get updated email verification status
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const isVerified = await authService.checkEmailVerificationStatus(currentUser);
+        
+        if (isVerified) {
+          // Navigate to appropriate dashboard based on user role
+          // This should only be reached by patients, but we'll handle both cases
+          router.push('/(patient)/tabs');
+        } else {
+          setModalData({
+            title: 'Email Not Verified',
+            message: 'Please verify your email address before continuing. Check your inbox for the verification link.',
+            type: 'error'
+          });
+          setShowErrorModal(true);
+        }
+      } else {
+        setModalData({
+          title: 'Authentication Error',
+          message: 'Please sign in again to continue.',
+          type: 'error'
+        });
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Error checking email verification:', error);
       setModalData({
-        title: 'Email Not Verified',
-        message: 'Please verify your email address before continuing. Check your inbox for the verification link.',
+        title: 'Error',
+        message: 'Failed to check email verification status. Please try again.',
         type: 'error'
       });
       setShowErrorModal(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -244,10 +269,23 @@ export default function VerifyEmailScreen() {
             )}
           </View>
 
+          {/* Refresh Status Button */}
+          {/* <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={handleContinue}
+            disabled={isLoading}
+          >
+            <RefreshCw size={20} color="#1E40AF" style={styles.refreshIcon} />
+            <Text style={styles.refreshButtonText}>
+              {isLoading ? 'Checking...' : 'I\'ve clicked the email link - Check Status'}
+            </Text>
+          </TouchableOpacity> */}
+
           {/* Continue Button */}
           <TouchableOpacity
             style={styles.continueButton}
             onPress={handleContinue}
+            disabled={isLoading}
           >
             <Text style={styles.continueButtonText}>Continue to App</Text>
             <ArrowRight size={20} color="#FFFFFF" style={styles.continueIcon} />
@@ -494,6 +532,28 @@ const styles = StyleSheet.create({
   },
   continueIcon: {
     marginLeft: 4,
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    marginBottom: 16,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  refreshButtonText: {
+    color: '#1E40AF',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    marginLeft: 8,
+  },
+  refreshIcon: {
+    marginRight: 4,
   },
   buttonDisabled: {
     opacity: 0.6,
