@@ -1307,18 +1307,23 @@ export default function ReferralDetailsScreen() {
                 </TouchableOpacity>
                 {showReasonDropdown && (
                   <View style={styles.reasonDropdownMenu}>
-                    {['Schedule conflict','Patient needs different specialist','Insufficient information provided','Outside my area of expertise','Clinic capacity full','Other (specify)'].map((reason) => (
-                      <TouchableOpacity
-                        key={reason}
-                        style={styles.reasonDropdownItem}
-                        onPress={() => {
-                          setDeclineReason(reason);
-                          setShowReasonDropdown(false);
-                        }}
-                      >
-                        <Text style={styles.reasonDropdownText}>{reason}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    <ScrollView style={styles.reasonDropdownScrollView} showsVerticalScrollIndicator={true}>
+                      {['Schedule conflict','Patient needs different specialist','Insufficient information provided','Outside my area of expertise','Clinic capacity full','Other (specify)'].map((reason, index) => (
+                        <TouchableOpacity
+                          key={reason}
+                          style={[
+                            styles.reasonDropdownItem,
+                            index === 5 && styles.reasonDropdownItemLast
+                          ]}
+                          onPress={() => {
+                            setDeclineReason(reason);
+                            setShowReasonDropdown(false);
+                          }}
+                        >
+                          <Text style={styles.reasonDropdownText}>{reason}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
                   </View>
                 )}
               </View>
@@ -1775,11 +1780,17 @@ const styles = StyleSheet.create({
     zIndex: 10,
     maxHeight: 200,
   },
+  reasonDropdownScrollView: {
+    maxHeight: 200,
+  },
   reasonDropdownItem: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+  },
+  reasonDropdownItemLast: {
+    borderBottomWidth: 0,
   },
   reasonDropdownText: {
     fontSize: 14,

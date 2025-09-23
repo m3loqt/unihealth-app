@@ -1185,18 +1185,23 @@ export default function SpecialistAppointmentsScreen() {
               </TouchableOpacity>
               {showReasonDropdown && (
                 <View style={styles.reasonDropdownMenu}>
-                  {declineReasons.map((reason) => (
-                    <TouchableOpacity
-                      key={reason}
-                      style={styles.reasonDropdownItem}
-                      onPress={() => {
-                        setDeclineReason(reason);
-                        setShowReasonDropdown(false);
-                      }}
-                    >
-                      <Text style={styles.reasonDropdownText}>{reason}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  <ScrollView style={styles.reasonDropdownScrollView} showsVerticalScrollIndicator={true}>
+                    {declineReasons.map((reason, index) => (
+                      <TouchableOpacity
+                        key={reason}
+                        style={[
+                          styles.reasonDropdownItem,
+                          index === declineReasons.length - 1 && styles.reasonDropdownItemLast
+                        ]}
+                        onPress={() => {
+                          setDeclineReason(reason);
+                          setShowReasonDropdown(false);
+                        }}
+                      >
+                        <Text style={styles.reasonDropdownText}>{reason}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
               )}
             </View>
@@ -1834,11 +1839,17 @@ const styles = StyleSheet.create({
     zIndex: 10,
     maxHeight: 200,
   },
+  reasonDropdownScrollView: {
+    maxHeight: 200,
+  },
   reasonDropdownItem: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+  },
+  reasonDropdownItemLast: {
+    borderBottomWidth: 0,
   },
   reasonDropdownText: {
     fontSize: 14,
