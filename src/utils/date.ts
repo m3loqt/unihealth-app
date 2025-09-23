@@ -21,7 +21,7 @@ export const formatDate = (
           month: 'short',
           day: 'numeric',
           year: 'numeric',
-        });
+        }); 
       case 'long':
         return date.toLocaleDateString('en-US', {
           weekday: 'long',
@@ -185,9 +185,22 @@ export const getCurrentDate = (): string => {
 };
 
 /**
- * Get current timestamp
- * @returns Current timestamp
+ * Get current timestamp in UTC (for backward compatibility)
+ * @returns Current timestamp in UTC
  */
 export const getCurrentTimestamp = (): string => {
   return new Date().toISOString();
+};
+
+/**
+ * Get current timestamp in local time
+ * @returns Current timestamp in local time as ISO string
+ */
+export const getCurrentLocalTimestamp = (): string => {
+  const now = new Date();
+  // Get timezone offset in minutes and convert to milliseconds
+  const timezoneOffset = now.getTimezoneOffset() * 60000;
+  // Create local time by subtracting the offset
+  const localTime = new Date(now.getTime() - timezoneOffset);
+  return localTime.toISOString();
 }; 

@@ -13,6 +13,7 @@ import {
 } from 'firebase/auth';
 import { ref, set, get, child, remove, query, orderByChild, equalTo } from 'firebase/database';
 import { auth, database } from '../../config/firebase';
+import { getCurrentLocalTimestamp } from '../../utils/date';
 import { emailService } from '../email/emailService';
 import { capitalizeRelationship } from '../../utils/formatting';
 import { cleanOptionalString, processAllergies, filterUndefinedValues } from '../../utils/string';
@@ -290,7 +291,7 @@ export const authService = {
                   pendingPassword: null,
                   resetToken: null,
                   resetTokenExpiry: null,
-                  lastPasswordUpdate: new Date().toISOString()
+                  lastPasswordUpdate: getCurrentLocalTimestamp()
                 });
                 
                 console.log('Password reset completed successfully');
@@ -328,7 +329,7 @@ export const authService = {
                     pendingPassword: null,
                     resetToken: null,
                     resetTokenExpiry: null,
-                    lastPasswordUpdate: new Date().toISOString()
+                    lastPasswordUpdate: getCurrentLocalTimestamp()
                   });
                   
                   return {
@@ -364,7 +365,7 @@ export const authService = {
               pendingPassword: null,
               resetToken: null,
               resetTokenExpiry: null,
-              lastPasswordUpdate: new Date().toISOString()
+              lastPasswordUpdate: getCurrentLocalTimestamp()
             });
             
             return {
@@ -545,7 +546,7 @@ export const authService = {
       
       // Use Firebase UID as patient ID
       const patientId = user.uid;
-      const currentTime = new Date().toISOString();
+      const currentTime = getCurrentLocalTimestamp();
       
 
       

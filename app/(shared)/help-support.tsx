@@ -113,7 +113,10 @@ export default function HelpSupportScreen() {
         {/* App Guide */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App Guide</Text>
-          <View style={styles.guideCard}>
+          <TouchableOpacity 
+            style={styles.guideCard}
+            onPress={() => router.push('/(shared)/getting-started-guide')}
+          >
             <Book size={24} color="#1E40AF" />
             <View style={styles.guideContent}>
               <Text style={styles.guideTitle}>Getting Started Guide</Text>
@@ -122,7 +125,7 @@ export default function HelpSupportScreen() {
               </Text>
             </View>
             <ChevronRight size={20} color="#9CA3AF" />
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Privacy & Security */}

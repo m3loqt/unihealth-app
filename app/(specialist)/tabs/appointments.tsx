@@ -543,14 +543,17 @@ export default function SpecialistAppointmentsScreen() {
     // Apply sorting
     const sortData = filtered.map(appointment => {
       const patientName = `${appointment.patientFirstName} ${appointment.patientLastName}`.toLowerCase();
-      const appointmentDate = new Date(appointment.appointmentDate || '').getTime() || 0;
+      // Combine appointmentDate and appointmentTime for more accurate sorting
+      const appointmentDateTime = appointment.appointmentDate && appointment.appointmentTime 
+        ? new Date(`${appointment.appointmentDate} ${appointment.appointmentTime}`).getTime() || 0
+        : new Date(appointment.appointmentDate || '').getTime() || 0;
       
       switch (sortBy) {
         case 'date-newest':
         case 'date-oldest':
           return {
             appointment,
-            sortValue: appointmentDate
+            sortValue: appointmentDateTime
           };
         case 'patient-az':
         case 'patient-za':

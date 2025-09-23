@@ -752,7 +752,13 @@ export default function HomeScreen() {
                     },
                   ]}
                 >
-                  <Image source={{ uri: tip.image }} style={styles.tipCarouselImage} />
+                  <Image 
+                    source={{ uri: tip.image }} 
+                    style={[
+                      styles.tipCarouselImage,
+                      tip.title === 'Eat Mindfully' && styles.tipCarouselImageCentered
+                    ]} 
+                  />
                   <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.80)']}
                     style={styles.tipGradient}
@@ -1362,6 +1368,9 @@ const styles = StyleSheet.create({
     height: '100%',
     position: 'absolute',
     resizeMode: 'cover',
+  },
+  tipCarouselImageCentered: {
+    resizeMode: 'contain',
   },
   tipGradient: {
     position: 'absolute',

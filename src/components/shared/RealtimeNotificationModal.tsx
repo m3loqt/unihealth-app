@@ -37,8 +37,15 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
   const deleteNotification = notificationData.deleteNotification;
   const refresh = notificationData.refresh;
 
-  const handleMarkAsRead = (notificationId: string) => {
-    markAsRead(notificationId);
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      console.log('🔔 Marking notification as read:', notificationId);
+      await markAsRead(notificationId);
+      console.log('🔔 Successfully marked notification as read:', notificationId);
+    } catch (error) {
+      console.error('🔔 Error marking notification as read:', error);
+      Alert.alert('Error', 'Failed to mark notification as read. Please try again.');
+    }
   };
 
   const handleMarkAllAsRead = () => {
@@ -47,7 +54,19 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
       'Are you sure you want to mark all notifications as read?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Mark All Read', onPress: markAllAsRead },
+        { 
+          text: 'Mark All Read', 
+          onPress: async () => {
+            try {
+              console.log('🔔 Marking all notifications as read');
+              await markAllAsRead();
+              console.log('🔔 Successfully marked all notifications as read');
+            } catch (error) {
+              console.error('🔔 Error marking all notifications as read:', error);
+              Alert.alert('Error', 'Failed to mark all notifications as read. Please try again.');
+            }
+          }
+        },
       ]
     );
   };
@@ -58,9 +77,33 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
       `Are you sure you want to delete "${title}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteNotification(notificationId) },
+        { 
+          text: 'Delete', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              console.log('🔔 Deleting notification:', notificationId);
+              await deleteNotification(notificationId);
+              console.log('🔔 Successfully deleted notification:', notificationId);
+            } catch (error) {
+              console.error('🔔 Error deleting notification:', error);
+              Alert.alert('Error', 'Failed to delete notification. Please try again.');
+            }
+          }
+        },
       ]
     );
+  };
+
+  const handleRefresh = async () => {
+    try {
+      console.log('🔔 Refreshing notifications');
+      await refresh();
+      console.log('🔔 Successfully refreshed notifications');
+    } catch (error) {
+      console.error('🔔 Error refreshing notifications:', error);
+      Alert.alert('Error', 'Failed to refresh notifications. Please try again.');
+    }
   };
 
   // Handle notification press - navigate to appropriate route
@@ -179,7 +222,7 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.modalActionButton}
-                onPress={refresh}
+                onPress={handleRefresh}
                 disabled={loading}
               >
                 <RefreshCw size={20} color="#1E40AF" />
@@ -199,7 +242,7 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
             <ScrollView
               style={styles.notificationsList}
               refreshControl={
-                <RefreshControl refreshing={loading} onRefresh={refresh} />
+                <RefreshControl refreshing={loading} onRefresh={handleRefresh} />
               }
             >
               {notifications.length === 0 ? (

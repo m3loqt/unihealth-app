@@ -143,12 +143,13 @@ export default function ReviewConfirmScreen() {
         type: 'general_consultation',
         // Add follow-up tracking information
         isFollowUp: isFollowUp === 'true',
-        originalAppointmentId: originalAppointmentId as string || undefined,
+        // Only include originalAppointmentId if it's not empty
+        ...(originalAppointmentId && originalAppointmentId !== '' && { originalAppointmentId: originalAppointmentId as string }),
         isReferralFollowUp: isReferralFollowUp === 'true',
-        // Add original referring generalist information for follow-ups
-        originalReferringGeneralistFirstName: originalReferringGeneralistFirstName as string || undefined,
-        originalReferringGeneralistLastName: originalReferringGeneralistLastName as string || undefined,
-        originalReferringGeneralistId: originalReferringGeneralistId as string || undefined,
+        // Add original referring generalist information for follow-ups - only include if not empty
+        ...(originalReferringGeneralistFirstName && originalReferringGeneralistFirstName !== '' && { originalReferringGeneralistFirstName: originalReferringGeneralistFirstName as string }),
+        ...(originalReferringGeneralistLastName && originalReferringGeneralistLastName !== '' && { originalReferringGeneralistLastName: originalReferringGeneralistLastName as string }),
+        ...(originalReferringGeneralistId && originalReferringGeneralistId !== '' && { originalReferringGeneralistId: originalReferringGeneralistId as string }),
       };
 
       // Save to database
