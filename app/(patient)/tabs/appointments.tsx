@@ -284,20 +284,31 @@ export default function AppointmentsScreen() {
     hookRefresh();
   };
 
-  const handleFollowUp = (appointment: Appointment) => {
-    // Navigate to select-datetime screen with appointment data for follow-up
-    router.push({
-      pathname: '/(patient)/book-visit/select-datetime',
-      params: {
-        doctorId: appointment.doctorId,
-        clinicId: appointment.clinicId,
-        clinicName: appointment.clinicName || '',
-        doctorName: `${appointment.doctorFirstName || ''} ${appointment.doctorLastName || ''}`.trim(),
-        doctorSpecialty: appointment.specialty || 'General Consultation',
-        isFollowUp: 'true',
-        originalAppointmentId: appointment.id || '',
-      }
-    });
+  const handleFollowUp = async (appointment: Appointment) => {
+    try {
+      // Fetch doctor name from users node using doctorId as single source of truth
+      const doctorData = await databaseService.getDocument(`users/${appointment.doctorId}`);
+      const doctorName = doctorData ? 
+        `${doctorData.firstName || doctorData.first_name || ''} ${doctorData.middleName || doctorData.middle_name || ''} ${doctorData.lastName || doctorData.last_name || ''}`.trim() :
+        'Unknown Doctor';
+      
+      // Navigate to select-datetime screen with appointment data for follow-up
+      router.push({
+        pathname: '/(patient)/book-visit/select-datetime',
+        params: {
+          doctorId: appointment.doctorId,
+          clinicId: appointment.clinicId,
+          clinicName: appointment.clinicName || '',
+          doctorName: doctorName,
+          doctorSpecialty: appointment.specialty || 'General Consultation',
+          isFollowUp: 'true',
+          originalAppointmentId: appointment.id || '',
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching doctor data for follow-up:', error);
+      Alert.alert('Error', 'Unable to fetch doctor information. Please try again.');
+    }
   };
 
   // Handle tag selection
@@ -663,7 +674,10 @@ export default function AppointmentsScreen() {
     
     // Pre-compute sort values for better performance on large lists
     const sortData = sortedFiltered.map(appointment => {
-      const appointmentDate = new Date(appointment.appointmentDate || '').getTime() || 0;
+      // Combine appointmentDate and appointmentTime for more accurate sorting
+      const appointmentDateTime = appointment.appointmentDate && appointment.appointmentTime 
+        ? new Date(`${appointment.appointmentDate} ${appointment.appointmentTime}`).getTime() || 0
+        : new Date(appointment.appointmentDate || '').getTime() || 0;
       const doctorName = safeDataAccess.getAppointmentDoctorName(appointment, '').toLowerCase();
       
       switch (sortBy) {
@@ -671,7 +685,7 @@ export default function AppointmentsScreen() {
         case 'date-oldest':
           return {
             appointment,
-            sortValue: appointmentDate
+            sortValue: appointmentDateTime
           };
         case 'doctor-az':
         case 'doctor-za':
@@ -992,31 +1006,41 @@ export default function AppointmentsScreen() {
                 <View style={styles.completedActionsContainer}>
                   <TouchableOpacity
                     style={styles.followUpButton}
-                    onPress={() => {
+                    onPress={async () => {
                       // For referrals, we need to pass the specialist and clinic information
                       // Navigate directly to select-datetime with referral data for follow-up
                       const specialistId = referral.assignedSpecialistId;
                       const clinicId = referral.practiceLocation?.clinicId;
-                      const specialistName = `${referral.assignedSpecialistFirstName || ''} ${referral.assignedSpecialistLastName || ''}`.trim();
                       
                       if (!specialistId || !clinicId) {
                         Alert.alert('Error', 'Unable to book follow-up. Missing specialist or clinic information.');
                         return;
                       }
                       
-                      router.push({
-                        pathname: '/(patient)/book-visit/select-datetime',
-                        params: {
-                          doctorId: specialistId,
-                          clinicId: clinicId,
-                          clinicName: '', // Will be fetched from clinic data in select-datetime screen
-                          doctorName: specialistName,
-                          doctorSpecialty: 'Specialist Consultation', // Will be fetched from doctor data in select-datetime screen
-                          isFollowUp: 'true',
-                          originalAppointmentId: referral.id!,
-                          isReferralFollowUp: 'true', // Flag to indicate this is a referral follow-up
-                        }
-                      });
+                      try {
+                        // Fetch specialist name from users node using assignedSpecialistId as single source of truth
+                        const specialistData = await databaseService.getDocument(`users/${specialistId}`);
+                        const specialistName = specialistData ? 
+                          `${specialistData.firstName || specialistData.first_name || ''} ${specialistData.middleName || specialistData.middle_name || ''} ${specialistData.lastName || specialistData.last_name || ''}`.trim() :
+                          'Unknown Specialist';
+                        
+                        router.push({
+                          pathname: '/(patient)/book-visit/select-datetime',
+                          params: {
+                            doctorId: specialistId,
+                            clinicId: clinicId,
+                            clinicName: '', // Will be fetched from clinic data in select-datetime screen
+                            doctorName: specialistName,
+                            doctorSpecialty: 'Specialist Consultation', // Will be fetched from doctor data in select-datetime screen
+                            isFollowUp: 'true',
+                            originalAppointmentId: referral.id!,
+                            isReferralFollowUp: 'true', // Flag to indicate this is a referral follow-up
+                          }
+                        });
+                      } catch (error) {
+                        console.error('Error fetching specialist data for follow-up:', error);
+                        Alert.alert('Error', 'Unable to fetch specialist information. Please try again.');
+                      }
                     }}
                   >
                     <Repeat size={16} color="#FFFFFF" />
@@ -1041,31 +1065,41 @@ export default function AppointmentsScreen() {
                 <View style={styles.completedActionsContainer}>
                   <TouchableOpacity
                     style={styles.followUpButton}
-                    onPress={() => {
+                    onPress={async () => {
                       // For referrals, we need to pass the specialist and clinic information
                       // Navigate directly to select-datetime with referral data for follow-up
                       const specialistId = referral.assignedSpecialistId;
                       const clinicId = referral.practiceLocation?.clinicId;
-                      const specialistName = `${referral.assignedSpecialistFirstName || ''} ${referral.assignedSpecialistLastName || ''}`.trim();
                       
                       if (!specialistId || !clinicId) {
                         Alert.alert('Error', 'Unable to book follow-up. Missing specialist or clinic information.');
                         return;
                       }
                       
-                      router.push({
-                        pathname: '/(patient)/book-visit/select-datetime',
-                        params: {
-                          doctorId: specialistId,
-                          clinicId: clinicId,
-                          clinicName: '', // Will be fetched from clinic data in select-datetime screen
-                          doctorName: specialistName,
-                          doctorSpecialty: 'Specialist Consultation', // Will be fetched from doctor data in select-datetime screen
-                          isFollowUp: 'true',
-                          originalAppointmentId: referral.id!,
-                          isReferralFollowUp: 'true', // Flag to indicate this is a referral follow-up
-                        }
-                      });
+                      try {
+                        // Fetch specialist name from users node using assignedSpecialistId as single source of truth
+                        const specialistData = await databaseService.getDocument(`users/${specialistId}`);
+                        const specialistName = specialistData ? 
+                          `${specialistData.firstName || specialistData.first_name || ''} ${specialistData.middleName || specialistData.middle_name || ''} ${specialistData.lastName || specialistData.last_name || ''}`.trim() :
+                          'Unknown Specialist';
+                        
+                        router.push({
+                          pathname: '/(patient)/book-visit/select-datetime',
+                          params: {
+                            doctorId: specialistId,
+                            clinicId: clinicId,
+                            clinicName: '', // Will be fetched from clinic data in select-datetime screen
+                            doctorName: specialistName,
+                            doctorSpecialty: 'Specialist Consultation', // Will be fetched from doctor data in select-datetime screen
+                            isFollowUp: 'true',
+                            originalAppointmentId: referral.id!,
+                            isReferralFollowUp: 'true', // Flag to indicate this is a referral follow-up
+                          }
+                        });
+                      } catch (error) {
+                        console.error('Error fetching specialist data for follow-up:', error);
+                        Alert.alert('Error', 'Unable to fetch specialist information. Please try again.');
+                      }
                     }}
                   >
                     <Repeat size={16} color="#FFFFFF" />

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { databaseService } from '../../services/database/firebase';
 import { SpecialistSchedule, ScheduleFormData, Referral } from '../../types/schedules';
+import { getCurrentLocalTimestamp } from '../../utils/date';
 
 export const useSpecialistSchedules = (specialistId: string) => {
   const [schedules, setSchedules] = useState<SpecialistSchedule[]>([]);
@@ -70,9 +71,9 @@ export const useSpecialistSchedules = (specialistId: string) => {
       console.log('Generated slots:', slots);
       
       const scheduleData = {
-        createdAt: new Date().toISOString(),
+        createdAt: getCurrentLocalTimestamp(),
         isActive: true,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: getCurrentLocalTimestamp(),
         practiceLocation: {
           clinicId: formData.clinicId,
           roomOrUnit: formData.roomOrUnit,
@@ -125,7 +126,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
       const slots = generateTimeSlots(formData.startTime, formData.endTime, formData.slotDuration);
       
       const updateData = {
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: getCurrentLocalTimestamp(),
         practiceLocation: {
           clinicId: formData.clinicId,
           roomOrUnit: formData.roomOrUnit,
@@ -336,7 +337,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
       validFromDate: validFromDate.toISOString(),
       dayOfWeek: schedule.recurrence.dayOfWeek,
       timeSlots: Object.keys(schedule.slotTemplate),
-      today: new Date().toISOString(),
+      today: getCurrentLocalTimestamp(),
       totalReferrals: referrals.length,
       totalSchedules: schedules.length
     });

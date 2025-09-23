@@ -451,7 +451,42 @@ export default function SelectDateTimeScreen() {
     setError(null);
     
     try {
-      const doctorData = await databaseService.getDoctorById(doctorId);
+      // First try to get doctor data from doctors node (for regular appointments)
+      let doctorData = await databaseService.getDoctorById(doctorId);
+      
+      // If not found in doctors node, try to get from users node (for follow-up appointments)
+      if (!doctorData) {
+        console.log('🔍 Doctor not found in doctors node, trying users node for:', doctorId);
+        
+        // Fetch from both users and doctors nodes in parallel
+        const [userData, doctorDataFromDoctors] = await Promise.all([
+          databaseService.getDocument(`users/${doctorId}`),
+          databaseService.getDocument(`doctors/${doctorId}`)
+        ]);
+        
+        if (userData) {
+          console.log('🔍 Found user data, creating doctor object from users node');
+          
+          // Create a doctor object from user data
+          doctorData = {
+            id: doctorId,
+            firstName: userData.firstName || userData.first_name || '',
+            lastName: userData.lastName || userData.last_name || '',
+            middleName: userData.middleName || userData.middle_name || '',
+            fullName: `${userData.firstName || userData.first_name || ''} ${userData.middleName || userData.middle_name || ''} ${userData.lastName || userData.last_name || ''}`.trim(),
+            specialty: doctorDataFromDoctors?.specialty || doctorDataFromDoctors?.specialization || 'General Medicine',
+            contactNumber: doctorDataFromDoctors?.contactNumber || doctorDataFromDoctors?.phone || doctorDataFromDoctors?.phoneNumber || '',
+            clinicAffiliations: doctorDataFromDoctors?.clinicAffiliations || [],
+            isSpecialist: doctorDataFromDoctors?.isSpecialist || userData.role === 'specialist',
+            availability: doctorDataFromDoctors?.availability || {
+              lastUpdated: new Date().toISOString(),
+              weeklySchedule: {},
+              specificDates: {}
+            }
+          };
+        }
+      }
+      
       if (!doctorData) {
         setError('Doctor not found');
         return;
@@ -516,6 +551,12 @@ export default function SelectDateTimeScreen() {
       let specialistDetails = await databaseService.getDoctorById(specialistId, false);
       console.log('🔍 Specialist details from doctors node:', specialistDetails);
       
+      // Always try to get name data from users node (even if doctors node data exists)
+      const userDetails = await databaseService.getDocument(`users/${specialistId}`);
+      console.log('🔍 User details from users node:', userDetails);
+      console.log('🔍 User details firstName:', userDetails?.firstName);
+      console.log('🔍 User details lastName:', userDetails?.lastName);
+      
       // If not found in doctors node, try direct document fetch
       if (!specialistDetails) {
         specialistDetails = await databaseService.getDocument(`doctors/${specialistId}`);
@@ -528,10 +569,20 @@ export default function SelectDateTimeScreen() {
         console.log('🔍 Specialist details from specialists node:', specialistDetails);
       }
       
-      // If still not found, try users node
-      if (!specialistDetails) {
-        specialistDetails = await databaseService.getDocument(`users/${specialistId}`);
-        console.log('🔍 Specialist details from users node:', specialistDetails);
+      // Combine user details (for names) with specialist details (for other data)
+      if (userDetails) {
+        specialistDetails = {
+          ...specialistDetails,
+          ...userDetails,
+          // Keep specialist-specific data from doctors node
+          specialty: specialistDetails?.specialty || specialistDetails?.specialization,
+          contactNumber: specialistDetails?.contactNumber || specialistDetails?.phoneNumber || specialistDetails?.phone,
+          clinicAffiliations: specialistDetails?.clinicAffiliations || [],
+          availability: specialistDetails?.availability || {
+            lastUpdated: new Date().toISOString(),
+            weeklySchedule: {}
+          }
+        };
       }
       
       // Fetch clinic details from clinics node
@@ -539,12 +590,13 @@ export default function SelectDateTimeScreen() {
       console.log('🔍 Clinic details from clinics node:', clinicDetails);
       
       // Create a doctor object with all the fetched information
+      // Use specialistDetails as single source of truth for names
       const specialistData = {
         id: specialistId,
-        firstName: referralData.assignedSpecialistFirstName || specialistDetails?.firstName || '',
-        lastName: referralData.assignedSpecialistLastName || specialistDetails?.lastName || '',
-        middleName: referralData.assignedSpecialistMiddleName || specialistDetails?.middleName || '',
-        fullName: `${referralData.assignedSpecialistFirstName || ''} ${referralData.assignedSpecialistLastName || ''}`.trim(),
+        firstName: specialistDetails?.firstName || specialistDetails?.firstName || '',
+        lastName: specialistDetails?.lastName || specialistDetails?.lastName || '',
+        middleName: specialistDetails?.middleName || specialistDetails?.middleName || '',
+        fullName: `${specialistDetails?.firstName || specialistDetails?.firstName || ''} ${specialistDetails?.middleName || ''} ${specialistDetails?.lastName|| ''}`.trim(),
         specialty: specialistDetails?.specialty || specialistDetails?.specialization || 'Specialist Consultation',
         isSpecialist: true, // Mark as specialist
         contactNumber: specialistDetails?.contactNumber || specialistDetails?.phoneNumber || specialistDetails?.phone || '',

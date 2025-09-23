@@ -1,4 +1,5 @@
 import { databaseService } from './firebase';
+import { getCurrentLocalTimestamp } from '../../utils/date';
 
 export interface NotificationData {
   type: 'appointment' | 'referral' | 'prescription' | 'certificate';
@@ -13,7 +14,7 @@ export const notificationService = {
     try {
       const notification = {
         ...notificationData,
-        timestamp: new Date().toISOString(),
+        timestamp: getCurrentLocalTimestamp(),
         read: false,
       };
       

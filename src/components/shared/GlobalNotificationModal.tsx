@@ -92,20 +92,48 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
   // Handle marking notification as read
   const handleMarkAsRead = async (notificationId: string) => {
     try {
+      console.log('🔔 Marking notification as read:', notificationId);
       await markRealtimeAsRead(notificationId);
-      console.log('🔔 Marked notification as read:', notificationId);
+      console.log('🔔 Successfully marked notification as read:', notificationId);
     } catch (error) {
       console.error('🔔 Error marking notification as read:', error);
+      Alert.alert('Error', 'Failed to mark notification as read. Please try again.');
     }
   };
 
   // Handle deleting notification
   const handleDeleteNotification = async (notificationId: string) => {
     try {
+      console.log('🔔 Deleting notification:', notificationId);
       await deleteRealtimeNotification(notificationId);
-      console.log('🔔 Deleted notification:', notificationId);
+      console.log('🔔 Successfully deleted notification:', notificationId);
     } catch (error) {
       console.error('🔔 Error deleting notification:', error);
+      Alert.alert('Error', 'Failed to delete notification. Please try again.');
+    }
+  };
+
+  // Handle mark all as read
+  const handleMarkAllAsRead = async () => {
+    try {
+      console.log('🔔 Marking all notifications as read');
+      await markAllRealtimeAsRead();
+      console.log('🔔 Successfully marked all notifications as read');
+    } catch (error) {
+      console.error('🔔 Error marking all notifications as read:', error);
+      Alert.alert('Error', 'Failed to mark all notifications as read. Please try again.');
+    }
+  };
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    try {
+      console.log('🔔 Refreshing notifications');
+      await refreshRealtimeNotifications();
+      console.log('🔔 Successfully refreshed notifications');
+    } catch (error) {
+      console.error('🔔 Error refreshing notifications:', error);
+      Alert.alert('Error', 'Failed to refresh notifications. Please try again.');
     }
   };
 
@@ -131,14 +159,14 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
             <View style={[styles.modalActions, { marginBottom: 12 }]}>
               <TouchableOpacity
                 style={styles.modalActionButton}
-                onPress={refreshRealtimeNotifications}
+                onPress={handleRefresh}
               >
                 <RefreshCw size={20} color="#1E40AF" />
                 <Text style={styles.modalActionButtonText}>Refresh</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalActionButton}
-                onPress={markAllRealtimeAsRead}
+                onPress={handleMarkAllAsRead}
               >
                 <Check size={20} color="#1E40AF" />
                 <Text style={styles.modalActionButtonText}>Mark All Read</Text>

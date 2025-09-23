@@ -32,6 +32,8 @@ import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService, Appointment, Prescription, Certificate, MedicalHistory } from '../../src/services/database/firebase';
 import { safeDataAccess } from '../../src/utils/safeDataAccess';
 import { formatRoute, formatFrequency, formatFormula } from '../../src/utils/formatting';
+import { usePdfDownload } from '../../src/hooks/usePdfDownload';
+import { generateVisitRecordPdf } from '../../src/utils/pdfTemplate';
 
 // Extended interface for visit data that includes additional properties
 interface VisitData extends Appointment {
@@ -200,6 +202,9 @@ export default function VisitOverviewScreen() {
     prescriptions: true,
     certificates: true,
   });
+  
+  // PDF download functionality
+  const { downloadModalVisible, setDownloadModalVisible, downloadSavedPath, logoDataUri, handleDownload } = usePdfDownload();
 
   // Load visit data from Firebase
   useEffect(() => {
@@ -336,6 +341,14 @@ export default function VisitOverviewScreen() {
       ...prev,
       [key]: !prev[key],
     }));
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!visitData) return;
+    
+    const html = generateVisitRecordPdf(visitData, prescriptions, certificates, user, logoDataUri);
+    const filename = `UniHealth_Visit_Record_${Date.now()}.pdf`;
+    await handleDownload(html, filename);
   };
 
   if (loading) {
@@ -671,9 +684,7 @@ export default function VisitOverviewScreen() {
         <View style={styles.buttonBarVertical}>
           <TouchableOpacity
             style={styles.primaryBottomButton}
-            onPress={() => {
-              alert('Downloading record...');
-            }}
+            onPress={handleDownloadPdf}
             activeOpacity={0.8}
           >
             <Download size={18} color="#fff" style={{ marginRight: 8 }} />
@@ -689,6 +700,50 @@ export default function VisitOverviewScreen() {
             <Eye size={18} color="#1E40AF" style={{ marginRight: 8 }} />
             <Text style={styles.secondaryBottomButtonOutlineText}>Hide Visit Details</Text>
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Download Success Modal */}
+      {downloadModalVisible && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            borderRadius: 12,
+            padding: 24,
+            margin: 24,
+            alignItems: 'center',
+            minWidth: 280,
+          }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1F2937', marginBottom: 12 }}>
+              Visit Record Downloaded
+            </Text>
+            <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 20 }}>
+              {downloadSavedPath ? `Your visit record has been saved.${Platform.OS !== 'android' ? '\nPath: ' + downloadSavedPath : ''}` : 'Your visit record has been saved.'}
+            </Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#1E40AF',
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderRadius: 8,
+                width: '100%',
+                alignItems: 'center',
+              }}
+              onPress={() => setDownloadModalVisible(false)}
+            >
+              <Text style={{ color: 'white', fontWeight: '600' }}>Done</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </SafeAreaView>
