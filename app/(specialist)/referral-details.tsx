@@ -564,7 +564,8 @@ export default function ReferralDetailsScreen() {
            // Extract prescriptions and certificates from the medical history data
            // Build a set of potential specialist/provider IDs to resolve names dynamically
            const potentialIds = new Set<string>();
-           const providerId = (medicalHistory as any)?.provider?.userId || (medicalHistory as any)?.provider?.id;
+           const providerId = (medicalHistory as any)?.provider?.id;
+           console.log('🔍 Provider ID:', providerId); 
            if (providerId) potentialIds.add(String(providerId));
            (medicalHistory.prescriptions || []).forEach((pr: any) => {
              if (pr?.specialistId) potentialIds.add(String(pr.specialistId));

@@ -190,6 +190,8 @@ export interface Prescription {
   formula?: string;
   take?: string;
   totalQuantity?: string;
+  // appointmentConsultationId?: string;
+  // consultationId?: string;
 }
 
 export interface Certificate {

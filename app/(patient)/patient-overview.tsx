@@ -137,14 +137,14 @@ export default function PatientOverviewScreen() {
           console.log('Could not fetch users node data:', error);
         }
 
-        // Also try to find user data by patientId field in case the user ID doesn't match
+        // Fallback: try to find user data by userId field if direct UID lookup failed
         let usersNodeDataByPatientId = null;
         if (!usersNodeData && (patient as any)?.userId) {
           try {
             usersNodeDataByPatientId = await databaseService.getDocument(`users/${(patient as any).userId}`);
-            console.log('🔍 USERS NODE DATA BY PATIENT ID:', usersNodeDataByPatientId);
+            console.log('🔍 FALLBACK - USERS NODE DATA BY USERID FIELD:', usersNodeDataByPatientId);
           } catch (error) {
-            console.log('Could not fetch users node data by patientId:', error);
+            console.log('Fallback failed - could not fetch users node data by userId field:', error);
           }
         }
 
