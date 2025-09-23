@@ -192,13 +192,13 @@ const allHealthTips = [
     description:
       'Clean hands regularly with soap and water to prevent illness and maintain hygiene.',
   },
-  {
-    image:
-      'https://images.pexels.com/photos/1640778/pexels-photo-1640778.jpeg?auto=compress&cs=tinysrgb&w=400',
-    title: 'Eat Mindfully',
-    description:
-      'Focus on your food while eating to improve digestion and prevent overeating.',
-  },
+  // {
+  //   image:
+  //     'https://images.pexels.com/photos/7622862/pexels-photo-7622862.jpeg?auto=compress&cs=tinysrgb&w=400',
+  //   title: 'Eat Mindfully',
+  //   description:
+  //     'Focus on your food while eating to improve digestion and prevent overeating.',
+  // },
   {
     image:
       'https://images.pexels.com/photos/1181348/pexels-photo-1181348.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -754,10 +754,7 @@ export default function HomeScreen() {
                 >
                   <Image 
                     source={{ uri: tip.image }} 
-                    style={[
-                      styles.tipCarouselImage,
-                      tip.title === 'Eat Mindfully' && styles.tipCarouselImageCentered
-                    ]} 
+                    style={styles.tipCarouselImage}
                   />
                   <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.80)']}
@@ -1368,9 +1365,6 @@ const styles = StyleSheet.create({
     height: '100%',
     position: 'absolute',
     resizeMode: 'cover',
-  },
-  tipCarouselImageCentered: {
-    resizeMode: 'contain',
   },
   tipGradient: {
     position: 'absolute',
