@@ -595,10 +595,21 @@ export default function SpecialistAppointmentsScreen() {
   // Get referrals for appointments
   const getReferralCards = () => {
     const referralCards = [];
+    const processedReferralIds = new Set(); // Track processed referral IDs to prevent duplicates
     
     appointments.forEach(appointment => {
       // Check if this is a referral appointment (has relatedReferralId or is type 'Referral')
       if (appointment.relatedReferralId || appointment.type === 'Referral') {
+        const referralId = appointment.relatedReferralId || appointment.id;
+        
+        // Skip if we've already processed this referral ID
+        if (processedReferralIds.has(referralId)) {
+          return;
+        }
+        
+        // Mark this referral ID as processed
+        processedReferralIds.add(referralId);
+        
         // Apply the same filtering logic as regular appointments
         const patientName = `${appointment.patientFirstName} ${appointment.patientLastName}`;
         const matchesSearch =
@@ -617,12 +628,11 @@ export default function SpecialistAppointmentsScreen() {
         
         // Only include referral cards that match the current filter and search
         if (matchesSearch && matchesFilter) {
-          const referralId = appointment.relatedReferralId || appointment.id;
           const referral = referralId ? referrals[referralId] : null;
           const isLoading = referralId ? loadingReferrals[referralId] : false;
         
         referralCards.push({
-            id: `referral-${appointment.id || referralId}`, // Prefix with 'referral-' to ensure unique keys
+            id: `referral-${referralId}`, // Use referral ID as the key to ensure uniqueness
           type: 'referral',
           appointment,
           referral,

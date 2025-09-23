@@ -103,8 +103,13 @@ export default function AppointmentsScreen() {
       }
     }
   };
-  // Use hook data instead of manual state
-  const appointments = hookAppointments;
+  // Use hook data instead of manual state, with deduplication
+  const appointments = useMemo(() => {
+    // Remove duplicates based on ID to prevent duplicate keys
+    return hookAppointments.filter((appointment, index, self) => 
+      index === self.findIndex(a => a.id === appointment.id)
+    );
+  }, [hookAppointments]);
   const loading = hookLoading;
   const error = hookError;
   const [refreshing, setRefreshing] = useState(false);
@@ -723,6 +728,7 @@ export default function AppointmentsScreen() {
   // Get referrals for appointments
   const getReferralCards = () => {
     const referralCards = [] as Array<{ id: string; type: string; appointment: Appointment; referral: any; loading: boolean }>;
+    const processedReferralIds = new Set(); // Track processed referral IDs to prevent duplicates
     const filterStatus = (activeFilter as string).toLowerCase();
     const matchesFilter = (status: string) => {
       const s = (status || '').toLowerCase();
@@ -733,8 +739,18 @@ export default function AppointmentsScreen() {
 
     let referralItems = appointments
       .filter(appointment => appointment.relatedReferralId && appointment.type !== 'specialist_referral') // Exclude specialist referrals
+      .filter(appointment => {
+        const referralId = appointment.relatedReferralId;
+        // Skip if we've already processed this referral ID
+        if (processedReferralIds.has(referralId)) {
+          return false;
+        }
+        // Mark this referral ID as processed
+        processedReferralIds.add(referralId);
+        return true;
+      })
       .map(appointment => ({
-        id: appointment.id || appointment.relatedReferralId,
+        id: `referral-${appointment.relatedReferralId}`, // Use referral ID as the key to ensure uniqueness
         type: 'referral',
         appointment,
         referral: referrals[appointment.relatedReferralId],

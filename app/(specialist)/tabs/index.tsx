@@ -329,8 +329,29 @@ export default function SpecialistHomeScreen() {
         .sort((a, b) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime())
         .slice(0, 3);
 
-      // Combine appointments and referrals for display
-      const allUpcoming = [...upcomingAppointments, ...upcomingReferrals]
+      // Combine appointments and referrals for display, removing duplicates based on referral ID
+      const processedReferralIds = new Set();
+      const uniqueUpcoming = [];
+      
+      // Add appointments first
+      upcomingAppointments.forEach(appointment => {
+        uniqueUpcoming.push(appointment);
+      });
+      
+      // Add referrals, but skip if we already have an appointment with the same referral ID
+      upcomingReferrals.forEach(referral => {
+        const referralId = referral.id;
+        const hasMatchingAppointment = upcomingAppointments.some(apt => 
+          apt.relatedReferralId === referralId || apt.id === referralId
+        );
+        
+        if (!hasMatchingAppointment && !processedReferralIds.has(referralId)) {
+          processedReferralIds.add(referralId);
+          uniqueUpcoming.push(referral);
+        }
+      });
+      
+      const allUpcoming = uniqueUpcoming
         .sort((a, b) => new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime())
         .slice(0, 3);
 
