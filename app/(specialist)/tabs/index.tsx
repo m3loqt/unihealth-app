@@ -1209,7 +1209,7 @@ export default function SpecialistHomeScreen() {
                     .join(' ');
                 };
 
-                // Format appointment date (full format like patient's version)
+                // Format appointment date (abbreviated format)
                 const formatAppointmentDate = (dateString: string) => {
                   try {
                     if (!dateString) return 'Date not specified';
@@ -1217,7 +1217,7 @@ export default function SpecialistHomeScreen() {
                     const [year, month, day] = dateString.split('-').map(Number);
                     const date = new Date(year, month - 1, day); // month is 0-indexed
                     return date.toLocaleDateString('en-US', {
-                      month: 'long',
+                      month: 'short',
                       day: 'numeric',
                       year: 'numeric'
                     });
@@ -1254,27 +1254,29 @@ export default function SpecialistHomeScreen() {
                       </View>
                     </View>
                     <View style={styles.appointmentFooter}>
-                      <View style={styles.appointmentTimePill}>
-                        <Calendar size={10} color="#9CA3AF" />
-                        <Text style={styles.appointmentDate}>
-                          {formatAppointmentDate(appointment.appointmentDate)}
-                        </Text>
-                      </View>
-                      <View style={styles.appointmentTimePill}>
-                        <Clock size={10} color="#9CA3AF" />
-                        <Text style={styles.appointmentDate}>
-                          {(() => {
-                            const timeString = appointment.appointmentTime;
-                            if (!timeString) return 'Time not specified';
-                            // Handle time strings that already have AM/PM
-                            if (timeString.includes('AM') || timeString.includes('PM')) {
-                              // Remove any duplicate AM/PM and return clean format
-                              const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
-                              return cleanTime.trim();
-                            }
-                            return timeString;
-                          })()}
-                        </Text>
+                      <View style={styles.appointmentTimeInfo}>
+                        <View style={styles.appointmentTimePill}>
+                          <Calendar size={10} color="#9CA3AF" />
+                          <Text style={styles.appointmentDate}>
+                            {formatAppointmentDate(appointment.appointmentDate)}
+                          </Text>
+                        </View>
+                        <View style={styles.appointmentTimePill}>
+                          <Clock size={10} color="#9CA3AF" />
+                          <Text style={styles.appointmentDate}>
+                            {(() => {
+                              const timeString = appointment.appointmentTime;
+                              if (!timeString) return 'Time not specified';
+                              // Handle time strings that already have AM/PM
+                              if (timeString.includes('AM') || timeString.includes('PM')) {
+                                // Remove any duplicate AM/PM and return clean format
+                                const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
+                                return cleanTime.trim();
+                              }
+                              return timeString;
+                            })()}
+                          </Text>
+                        </View>
                       </View>
                       <View style={styles.joinButton}>
                         <Text style={styles.joinButtonText}>View details</Text>
@@ -1868,7 +1870,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between', 
     alignItems: 'center',
     marginTop: 12,
+  },
+  appointmentTimeInfo: {
+    flex: 1,
+    flexDirection: 'row',
     gap: 8,
+    marginRight: 12,
   },
   timeContainer: {
     flexDirection: 'row',
@@ -1881,10 +1888,12 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   joinButton: { 
-    paddingHorizontal: 16, 
+    paddingHorizontal: 14, 
     paddingVertical: 8, 
     backgroundColor: '#1E40AF', 
-    borderRadius: 8 
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
   },
   joinButtonText: { 
     color: '#FFFFFF', 

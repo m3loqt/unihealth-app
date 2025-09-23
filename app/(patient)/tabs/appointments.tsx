@@ -133,9 +133,9 @@ export default function AppointmentsScreen() {
         doctorFirstName: apt.doctorFirstName,
         doctorLastName: apt.doctorLastName,
         doctorSpecialty: apt.doctorSpecialty,
-        referringSpecialistId: apt.referringSpecialistId,
-        referringSpecialistFirstName: apt.referringSpecialistFirstName,
-        referringSpecialistLastName: apt.referringSpecialistLastName
+        // referringSpecialistId: apt.referringSpecialistId,
+        // referringSpecialistFirstName: apt.referringSpecialistFirstName,
+        // referringSpecialistLastName: apt.referringSpecialistLastName
       })));
       
       // Check if specialist referrals are being included
@@ -145,7 +145,7 @@ export default function AppointmentsScreen() {
         console.log('🔍 Specialist referral details:', {
           id: ref.id,
           doctorName: `${ref.doctorFirstName} ${ref.doctorLastName}`,
-          referringDoctor: `${ref.referringSpecialistFirstName} ${ref.referringSpecialistLastName}`
+          // referringDoctor: `${ref.referringSpecialistFirstName} ${ref.referringSpecialistLastName}`
         });
       });
     }
@@ -993,6 +993,14 @@ export default function AppointmentsScreen() {
           <View style={styles.notesSection}>
             <Text style={styles.notesLabel}>Reason:</Text>
             <Text style={styles.notesText}>{referral.initialReasonForReferral}</Text>
+          </View>
+        )}
+
+        {/* Decline Reason for Cancelled Referrals */}
+        {appointment.status === 'cancelled' && (
+          <View style={styles.declineReasonSection}>
+            <Text style={styles.declineReasonLabel}>Decline Reason:</Text>
+            <Text style={styles.declineReasonText}>{appointment.declineReason}</Text>
           </View>
         )}
 
@@ -2027,6 +2035,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     minHeight: 40,
+  },
+  declineReasonSection: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  declineReasonLabel: {
+    fontSize: 13,
+    fontFamily: 'Inter-SemiBold',
+    color: '#EF4444',
+    marginBottom: 4,
+  },
+  declineReasonText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#EF4444',
+    lineHeight: 18,
   },
   emptyState: {
     alignItems: 'center',

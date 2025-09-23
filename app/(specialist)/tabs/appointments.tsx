@@ -788,6 +788,14 @@ export default function SpecialistAppointmentsScreen() {
           </View>
         )}
 
+        {/* Decline Reason for Cancelled Referrals */}
+        {appointment.status === 'cancelled' && referral?.declineReason && (
+          <View style={styles.declineReasonSection}>
+            <Text style={styles.declineReasonLabel}>Decline Reason:</Text>
+            <Text style={styles.declineReasonText}>{referral.declineReason}</Text>
+          </View>
+        )}
+
         {/* Refer Button for Completed Referrals */}
         {appointment.status === 'completed' && (
           <View style={styles.appointmentActions}>
@@ -1002,7 +1010,9 @@ export default function SpecialistAppointmentsScreen() {
         {appointment.status === 'cancelled' && (
           <View style={styles.declineReasonSection}>
             <Text style={styles.declineReasonLabel}>Decline Reason:</Text>
-            <Text style={styles.declineReasonText}>Appointment was declined</Text>
+            <Text style={styles.declineReasonText}>
+              {appointment.declineReason || 'Appointment was declined'}
+            </Text>
           </View>
         )}
 

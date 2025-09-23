@@ -843,7 +843,17 @@ export default function HomeScreen() {
                 <TouchableOpacity 
                   key={appt.id} 
                   style={styles.appointmentCard}
-                  onPress={() => router.push(`/visit-overview?id=${appt.id}`)}
+                  onPress={() => {
+                    if (appt.type === 'specialist_referral') {
+                      // For specialist referrals, navigate to referral details
+                      console.log('🔍 Navigating to referral details for specialist referral:', appt.id);
+                      router.push(`/(patient)/referral-details?id=${appt.id}`);
+                    } else {
+                      // For regular appointments, navigate to visit overview
+                      console.log('🔍 Navigating to visit overview for regular appointment:', appt.id);
+                      router.push(`/visit-overview?id=${appt.id}`);
+                    }
+                  }}
                   activeOpacity={0.7}
                 >
                   <View style={styles.appointmentHeader}>
@@ -892,7 +902,7 @@ export default function HomeScreen() {
                              const [year, month, day] = appt.appointmentDate.split('-').map(Number);
                              const date = new Date(year, month - 1, day); // month is 0-indexed
                              return date.toLocaleDateString('en-US', {
-                               month: 'long',
+                               month: 'short',
                                day: 'numeric',
                                year: 'numeric'
                              });
@@ -904,7 +914,13 @@ export default function HomeScreen() {
                      </View>
                   </View>
                   <View style={styles.appointmentFooter}>
-                    <Text style={styles.appointmentType}>{appt.appointmentPurpose || 'Consultation'}</Text>
+                    <Text 
+                      style={styles.appointmentType}
+                      numberOfLines={3}
+                      ellipsizeMode="tail"
+                    >
+                      {appt.appointmentPurpose || 'Consultation'}
+                    </Text>
                     <View style={styles.joinButton}>
                       <Text style={styles.joinButtonText}>View details</Text>
                     </View>
@@ -1517,17 +1533,23 @@ const styles = StyleSheet.create({
   appointmentFooter: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
-    alignItems: 'center' 
+    alignItems: 'center',
+    marginTop: 8,
   },
   appointmentType: { 
     fontSize: 14, 
-    color: '#374151' 
+    color: '#374151',
+    flex: 1,
+    marginRight: 12,
+    flexWrap: 'wrap',
   },
   joinButton: { 
     paddingHorizontal: 16, 
     paddingVertical: 8, 
     backgroundColor: '#1E40AF', 
-    borderRadius: 8 
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
   },
   joinButtonText: { 
     color: '#FFFFFF', 

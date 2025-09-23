@@ -776,6 +776,12 @@ export default function PatientReferralDetailsScreen() {
                   <Text style={styles.referralValueNotes}>{referralData.generalistNotes}</Text>
                 </View>
               )}
+              {referralData.status === 'cancelled' && referralData.declineReason && (
+                <View style={styles.referralDetailsRowNoBorder}>
+                  <Text style={styles.referralLabel}>Decline Reason</Text>
+                  <Text style={styles.referralValueDeclineReason}>{referralData.declineReason}</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -1386,6 +1392,15 @@ const styles = StyleSheet.create({
   referralValueNotes: {
     fontSize: 14,
     color: '#1F2937',
+    fontFamily: 'Inter-Regular',
+    flex: 2,
+    textAlign: 'right',
+    lineHeight: 22,
+    textAlignVertical: 'top',
+  },
+  referralValueDeclineReason: {
+    fontSize: 14,
+    color: '#EF4444',
     fontFamily: 'Inter-Regular',
     flex: 2,
     textAlign: 'right',
