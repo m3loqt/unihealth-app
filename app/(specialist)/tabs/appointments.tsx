@@ -896,14 +896,13 @@ export default function SpecialistAppointmentsScreen() {
         style={styles.appointmentCard}
         onPress={() => {
           // Handle card click for viewing appointment details
-          if (appointment.status === 'completed') {
+          if (isFollowUpAppointment) {
+            // Always navigate to referral-details screen for follow-up appointments
+            handleViewFollowUpDetails(appointment);
+          } else if (appointment.status === 'completed') {
             loadAppointmentDetails(appointment);
           } else if (appointment.status === 'confirmed') {
-            if (isFollowUpAppointment) {
-              handleViewFollowUpDetails(appointment);
-            } else {
             handleDiagnosePatient(appointment);
-            }
           }
         }}
         activeOpacity={0.7}

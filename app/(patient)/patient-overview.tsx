@@ -777,11 +777,49 @@ export default function PatientOverviewScreen() {
   };
 
   const formatTime = (timeString: string) => {
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+    if (!timeString || typeof timeString !== 'string') {
+      return 'Invalid time';
+    }
+    
+    try {
+      // Handle different time formats
+      let timeToFormat = timeString.trim();
+      
+      // If it already contains AM/PM, format to show only hours and minutes
+      if (timeToFormat.includes('AM') || timeToFormat.includes('PM')) {
+        // Extract time and AM/PM parts
+        const timeMatch = timeToFormat.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
+        if (timeMatch) {
+          const [, hours, minutes, ampm] = timeMatch;
+          return `${hours}:${minutes} ${ampm.toUpperCase()}`;
+        }
+        return timeToFormat;
+      }
+      
+      // If it's in HH:MM:SS format, convert to 12-hour format
+      if (timeToFormat.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
+        const [hours, minutes, seconds] = timeToFormat.split(':');
+        const hour24 = parseInt(hours, 10);
+        const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+        const ampm = hour24 >= 12 ? 'PM' : 'AM';
+        return `${hour12}:${minutes} ${ampm}`;
+      }
+      
+      // Try to parse as a date and format
+      const date = new Date(`2000-01-01T${timeToFormat}`);
+      if (isNaN(date.getTime())) {
+        return 'Invalid time';
+      }
+      
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('Error formatting time:', error, 'Input:', timeString);
+      return 'Invalid time';
+    }
   };
 
   const formatTypeLabel = (raw?: string): string => {
@@ -1047,17 +1085,7 @@ export default function PatientOverviewScreen() {
                             })()}
                       </Text>
                       <Text style={styles.consultationDate}>
-                        {activeConsultations[0]?.appointmentDate ? formatDate(activeConsultations[0].appointmentDate) : 'N/A'} at {(() => {
-                          const timeString = activeConsultations[0]?.appointmentTime;
-                          if (!timeString) return 'N/A';
-                          // Handle time strings that already have AM/PM
-                          if (timeString.includes('AM') || timeString.includes('PM')) {
-                            // Remove any duplicate AM/PM and return clean format
-                            const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
-                            return cleanTime.trim();
-                          }
-                          return timeString;
-                        })()}
+                        {activeConsultations[0]?.appointmentDate ? formatDate(activeConsultations[0].appointmentDate) : 'N/A'} at {activeConsultations[0]?.appointmentTime ? formatTime(activeConsultations[0].appointmentTime) : 'N/A'}
                       </Text>
                       {/* Status pill removed for active consultation preview */}
                     </View>

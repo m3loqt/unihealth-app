@@ -83,18 +83,57 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const HORIZONTAL_MARGIN = 24;
 
-// Helper function to format date
+// Helper function to format date (matching referral details implementation)
 const formatDate = (dateString: string) => {
+  console.log('🔍 VISIT OVERVIEW - formatDate called with:', {
+    input: dateString,
+    type: typeof dateString,
+    length: dateString?.length
+  });
+  
   try {
-    // Parse the date string as local date to avoid timezone issues
-    const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(year, month - 1, day); // month is 0-indexed
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    // Handle DD/MM/YYYY format
+    if (dateString.includes('/')) {
+      const [day, month, year] = dateString.split('/').map(Number);
+      const date = new Date(year, month - 1, day);
+      const result = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      console.log('🔍 VISIT OVERVIEW - DD/MM/YYYY format result:', result);
+      return result;
+    }
+    
+    // Handle YYYY-MM-DD format (original logic)
+    if (dateString.includes('-')) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      const result = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      console.log('🔍 VISIT OVERVIEW - YYYY-MM-DD format result:', result);
+      return result;
+    }
+    
+    // Fallback to native Date parsing
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      const result = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      console.log('🔍 VISIT OVERVIEW - Native parsing result:', result);
+      return result;
+    }
+    
+    console.log('🔍 VISIT OVERVIEW - All parsing methods failed, returning Invalid date');
+    return 'Invalid date';
   } catch (error) {
+    console.log('🔍 VISIT OVERVIEW - formatDate error:', error);
     return 'Invalid date';
   }
 };
@@ -186,6 +225,14 @@ const formatClinicAddress = (clinicData: any, fallbackClinicName?: string): stri
   return fallbackClinicName || 'Address not provided';
 };
 
+const formatDoctorName = (name?: string): string => {
+  if (!name || name.trim().length === 0 || name.toLowerCase().includes('unknown')) {
+    return 'Unknown Doctor';
+  }
+  const stripped = name.replace(/^Dr\.?\s+/i, '').trim();
+  return `Dr. ${stripped}`;
+};
+
 export default function VisitOverviewScreen() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
@@ -241,12 +288,94 @@ export default function VisitOverviewScreen() {
           // Load medical history/consultation data if appointment is completed
           let medicalHistory = null;
           if (appointment.status.toLowerCase() === 'completed') {
+            console.log('🔍 VISIT OVERVIEW - Starting PMH fetch for completed appointment:', {
+              appointmentId: id,
+              patientId: appointment.patientId,
+              appointmentConsultationId: appointment.appointmentConsultationId,
+              status: appointment.status
+            });
+            
             try {
-              // Use the patient ID from the appointment, not the current user's ID
-              medicalHistory = await databaseService.getMedicalHistoryByAppointment(id as string, appointment.patientId);
+              // Primary approach: Try direct access using appointmentConsultationId if available
+              if (appointment.appointmentConsultationId) {
+                console.log('🔍 VISIT OVERVIEW - Attempting direct PMH access with consultation ID:', appointment.appointmentConsultationId);
+                medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${appointment.patientId}/entries/${appointment.appointmentConsultationId}`);
+                console.log('🔍 VISIT OVERVIEW - Direct PMH access successful:', {
+                  found: !!medicalHistory,
+                  hasPresentIllnessHistory: !!(medicalHistory as any)?.presentIllnessHistory,
+                  hasReviewOfSymptoms: !!(medicalHistory as any)?.reviewOfSymptoms,
+                  hasLabResults: !!(medicalHistory as any)?.labResults,
+                  hasDiagnosis: !!(medicalHistory as any)?.diagnosis,
+                  hasSoapNotes: !!(medicalHistory as any)?.soapNotes,
+                  hasTreatmentPlan: !!(medicalHistory as any)?.treatmentPlan,
+                  hasClinicalSummary: !!(medicalHistory as any)?.clinicalSummary
+                });
+              } else {
+                console.log('🔍 VISIT OVERVIEW - No appointmentConsultationId available, skipping direct access');
+              }
             } catch (error) {
-              console.log('No medical history found for this appointment:', error);
+              console.log('🔍 VISIT OVERVIEW - Direct medical history access failed, trying fallback method:', error);
+              try {
+                // Fallback approach: Use the getMedicalHistoryByAppointment method
+                console.log('🔍 VISIT OVERVIEW - Attempting fallback PMH access via getMedicalHistoryByAppointment');
+                medicalHistory = await databaseService.getMedicalHistoryByAppointment(id as string, appointment.patientId);
+                console.log('🔍 VISIT OVERVIEW - Fallback PMH access result:', {
+                  found: !!medicalHistory,
+                  hasPresentIllnessHistory: !!(medicalHistory as any)?.presentIllnessHistory,
+                  hasReviewOfSymptoms: !!(medicalHistory as any)?.reviewOfSymptoms,
+                  hasLabResults: !!(medicalHistory as any)?.labResults,
+                  hasDiagnosis: !!(medicalHistory as any)?.diagnosis,
+                  hasSoapNotes: !!(medicalHistory as any)?.soapNotes,
+                  hasTreatmentPlan: !!(medicalHistory as any)?.treatmentPlan,
+                  hasClinicalSummary: !!(medicalHistory as any)?.clinicalSummary
+                });
+              } catch (fallbackError) {
+                console.log('🔍 VISIT OVERVIEW - No medical history found for this appointment:', fallbackError);
+              }
             }
+            
+            // Final PMH debug summary
+            console.log('🔍 VISIT OVERVIEW - Final PMH fetch summary:', {
+              appointmentId: id,
+              patientId: appointment.patientId,
+              medicalHistoryFound: !!medicalHistory,
+              medicalHistoryId: (medicalHistory as any)?.id,
+              consultationDate: (medicalHistory as any)?.consultationDate,
+              consultationTime: (medicalHistory as any)?.consultationTime,
+              provider: (medicalHistory as any)?.provider ? {
+                id: (medicalHistory as any).provider.id,
+                name: `${(medicalHistory as any).provider.firstName} ${(medicalHistory as any).provider.lastName}`,
+                type: (medicalHistory as any).provider.providerType
+              } : null,
+              clinicalFields: {
+                presentIllnessHistory: (medicalHistory as any)?.presentIllnessHistory || 'Not available',
+                reviewOfSymptoms: (medicalHistory as any)?.reviewOfSymptoms || 'Not available',
+                labResults: (medicalHistory as any)?.labResults || 'Not available',
+                diagnosis: (medicalHistory as any)?.diagnosis || 'Not available',
+                differentialDiagnosis: (medicalHistory as any)?.differentialDiagnosis || 'Not available',
+                treatmentPlan: (medicalHistory as any)?.treatmentPlan || 'Not available',
+                clinicalSummary: (medicalHistory as any)?.clinicalSummary || 'Not available'
+              },
+              soapNotes: (medicalHistory as any)?.soapNotes ? {
+                hasSubjective: !!(medicalHistory as any).soapNotes.subjective,
+                hasObjective: !!(medicalHistory as any).soapNotes.objective,
+                hasAssessment: !!(medicalHistory as any).soapNotes.assessment,
+                hasPlan: !!(medicalHistory as any).soapNotes.plan
+              } : null,
+              prescriptions: (medicalHistory as any)?.prescriptions ? {
+                count: (medicalHistory as any).prescriptions.length,
+                medications: (medicalHistory as any).prescriptions.map((p: any) => p.medication)
+              } : null,
+              certificates: (medicalHistory as any)?.certificates ? {
+                count: (medicalHistory as any).certificates.length,
+                types: (medicalHistory as any).certificates.map((c: any) => c.type)
+              } : null
+            });
+          } else {
+            console.log('🔍 VISIT OVERVIEW - Appointment not completed, skipping PMH fetch:', {
+              appointmentId: id,
+              status: appointment.status
+            });
           }
           
           // Debug logging
@@ -313,10 +442,69 @@ export default function VisitOverviewScreen() {
         setVisitData(combinedVisitData);
         
         // Load related prescriptions and certificates
-        const [visitPrescriptions, visitCertificates] = await Promise.all([
-          databaseService.getPrescriptionsByAppointment(id as string),
-          databaseService.getCertificatesByAppointment(id as string)
-        ]);
+        // First try to get them from the medical history if available
+        let visitPrescriptions: any[] = [];
+        let visitCertificates: any[] = [];
+        
+        if (medicalHistory) {
+          // Use prescriptions and certificates from medical history if available
+          const mhPrescriptions = (medicalHistory as any)?.prescriptions || [];
+          const mhCertificates = (medicalHistory as any)?.certificates || [];
+          
+          // Process prescriptions to ensure they have proper prescribedBy field
+          visitPrescriptions = mhPrescriptions.map((prescription: any, index: number) => ({
+            id: prescription.id || `${(medicalHistory as any)?.id || 'mh'}-${index}`,
+            ...prescription,
+            prescribedBy: prescription.prescribedBy || prescription.specialistName || 
+              ((medicalHistory as any)?.provider ? 
+                `${(medicalHistory as any).provider.firstName} ${(medicalHistory as any).provider.lastName}` : 
+                visitData?.doctorName || 'Unknown Doctor')
+          }));
+          
+          visitCertificates = mhCertificates;
+          
+          console.log('🔍 VISIT OVERVIEW - Using prescriptions/certificates from medical history:', {
+            prescriptionsFromMH: visitPrescriptions.length,
+            certificatesFromMH: visitCertificates.length,
+            processedPrescriptions: visitPrescriptions.map(p => ({ 
+              id: p.id, 
+              medication: p.medication, 
+              prescribedBy: p.prescribedBy 
+            }))
+          });
+        }
+        
+        // If no prescriptions/certificates from medical history, try separate database calls
+        if (visitPrescriptions.length === 0 || visitCertificates.length === 0) {
+          console.log('🔍 VISIT OVERVIEW - Fetching prescriptions/certificates from separate database calls');
+          const [dbPrescriptions, dbCertificates] = await Promise.all([
+            databaseService.getPrescriptionsByAppointment(id as string),
+            databaseService.getCertificatesByAppointment(id as string)
+          ]);
+          
+          // Use database results if medical history didn't have them
+          if (visitPrescriptions.length === 0) {
+            visitPrescriptions = dbPrescriptions;
+          }
+          if (visitCertificates.length === 0) {
+            visitCertificates = dbCertificates;
+          }
+        }
+        
+        console.log('🔍 VISIT OVERVIEW - Final prescriptions/certificates to display:', {
+          prescriptionsCount: visitPrescriptions.length,
+          certificatesCount: visitCertificates.length,
+          prescriptions: visitPrescriptions.map(p => ({ id: p.id, medication: p.medication, dosage: p.dosage })),
+          certificates: visitCertificates.map(c => ({ 
+            id: c.id, 
+            type: c.type, 
+            status: c.status, 
+            issuedDate: (c as any).issuedDate,
+            doctor: (c as any).doctor,
+            prescribedBy: (c as any).prescribedBy,
+            specialistName: (c as any).specialistName
+          }))
+        });
         
         setPrescriptions(visitPrescriptions);
         setCertificates(visitCertificates);
@@ -598,11 +786,11 @@ export default function VisitOverviewScreen() {
               <View style={styles.prescriptionMeta}>
                 <View style={styles.metaRow}>
                   <Text style={styles.metaLabel}>Prescribed by:</Text>
-                  <Text style={styles.metaValue}>{p.prescribedBy || 'Unknown Doctor'}</Text>
+                  <Text style={styles.metaValue}>{formatDoctorName(p.prescribedBy)}</Text>
                 </View>
                 <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Next refill:</Text>
-                  <Text style={styles.metaValue}>{p.nextRefill || 'Not specified'}</Text>
+                  <Text style={styles.metaLabel}>Description:</Text>
+                  <Text style={styles.metaValue}>{p.description || 'No description provided'}</Text>
                 </View>
               </View>
             </View>
@@ -626,6 +814,33 @@ export default function VisitOverviewScreen() {
           <Text style={styles.sectionTitle}>Medical Certificates</Text>
           {visitData.status.toLowerCase() === 'completed' && certificates.length ? certificates.map((cert) => {
             const statusStyle = getCertStatusStyles(cert.status);
+            const certData = cert as any;
+            const issuingDoctor = certData.doctor || certData.prescribedBy || certData.specialistName || visitData?.doctorName;
+            
+            // Enhanced date handling with fallbacks
+            const issuedDate = certData.issuedDate || 
+                              certData.createdAt || 
+                              certData.examinationDate || 
+                              certData.date ||
+                              certData.validUntil ||
+                              visitData?.date;
+            
+            // Debug logging for certificate date
+            console.log('🔍 VISIT OVERVIEW - Certificate date debug:', {
+              certificateId: cert.id,
+              certificateType: cert.type,
+              certDataIssuedDate: certData.issuedDate,
+              certDataCreatedAt: certData.createdAt,
+              certDataExaminationDate: certData.examinationDate,
+              certDataDate: certData.date,
+              certDataValidUntil: certData.validUntil,
+              visitDataDate: visitData?.date,
+              finalIssuedDate: issuedDate,
+              issuedDateType: typeof issuedDate,
+              issuedDateValue: issuedDate,
+              allCertDataKeys: Object.keys(certData)
+            });
+            
             return (
               <View key={cert.id} style={styles.cardBox}>
                 <View style={styles.certificateIconTitleRow}>
@@ -643,11 +858,11 @@ export default function VisitOverviewScreen() {
                 <View style={styles.certificateDivider} />
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued by:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.doctor || 'Unknown Doctor'}</Text>
+                  <Text style={styles.certificateInfoValue}>{formatDoctorName(issuingDoctor)}</Text>
                 </View>
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued on:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.issuedDate || 'Date not specified'}</Text>
+                  <Text style={styles.certificateInfoValue}>{issuedDate ? formatDate(issuedDate) : 'Not specified'}</Text>
                 </View>
                 <View style={styles.certificateActions}>
                   <TouchableOpacity style={[styles.secondaryButton, { marginRight: 9 }]}>

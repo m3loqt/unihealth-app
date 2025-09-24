@@ -964,6 +964,12 @@ export default function PatientReferralDetailsScreen() {
               ((referralData as any)?.assignedSpecialistFirstName && (referralData as any)?.assignedSpecialistLastName
                 ? `${(referralData as any).assignedSpecialistFirstName} ${(referralData as any).assignedSpecialistLastName}`
                 : 'Unknown Doctor');
+            
+            // Enhanced date handling with fallbacks
+            const issuedDate = cert.issuedDate;
+
+            console.log("HATDOG", cert.issuedDate)
+            
             return (
               <View key={cert.id} style={styles.cardBoxCertificate}>
                 <View style={styles.certificateIconTitleRow}>
@@ -985,7 +991,7 @@ export default function PatientReferralDetailsScreen() {
                 </View>
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued on:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.issuedDate ? formatDate(cert.issuedDate) : 'Not specified'}</Text>
+                  <Text style={styles.certificateInfoValue}>{issuedDate ? formatDate(issuedDate) : 'Not specified'}</Text>
                 </View>
                 <View style={styles.certificateActions}>
                 <TouchableOpacity 

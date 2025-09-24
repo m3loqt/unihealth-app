@@ -44,13 +44,17 @@ import { DynamicUnitInput, PrescriptionUnitInputs, KeyboardAvoidingScrollView } 
 import { formatFrequency, formatRoute, formatFormula, determineUnit } from '../../src/utils/formatting';
 
 export default function PatientConsultationScreen() {
-  const { patientId, consultationId, referralId } = useLocalSearchParams();
+  const { patientId, consultationId, referralId, isFollowUp, originalReferralId } = useLocalSearchParams();
   const { user } = useAuth();
   
   // Convert consultationId to string if it's an array
   const consultationIdString = Array.isArray(consultationId) ? consultationId[0] : consultationId;
   // Convert referralId to string if it's an array
   const referralIdString = Array.isArray(referralId) ? referralId[0] : referralId;
+  // Convert isFollowUp to boolean
+  const isFollowUpAppointment = isFollowUp === 'true';
+  // Convert originalReferralId to string if it's an array
+  const originalReferralIdString = Array.isArray(originalReferralId) ? originalReferralId[0] : originalReferralId;
 
   // Voice-to-text hook
   const {
@@ -1224,7 +1228,12 @@ export default function PatientConsultationScreen() {
       if (referralIdString) {
         router.replace(`/(specialist)/referral-details?id=${referralIdString}${refreshParam}`);
       } else if (consultationIdString) {
-        router.replace(`/visit-overview?id=${consultationIdString}${refreshParam}`);
+        if (isFollowUpAppointment && originalReferralIdString) {
+          // For follow-up appointments, navigate back to the original referral details
+          router.replace(`/(specialist)/referral-details?id=${originalReferralIdString}&isFollowUp=true&appointmentId=${consultationIdString}${refreshParam}`);
+        } else {
+          router.replace(`/visit-overview?id=${consultationIdString}${refreshParam}`);
+        }
       } else {
         router.back();
       }

@@ -445,20 +445,66 @@ export default function ReferralDetailsScreen() {
         
                  // Load medical history/consultation data if referral is completed
          let medicalHistory = null;
-         if (referral.status.toLowerCase() === 'completed' && referral.referralConsultationId) {
-           try {
-             // Fetch medical history from patientMedicalHistory > patientId > entries > referralConsultationId
-             medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${referral.patientId}/entries/${referral.referralConsultationId}`);
-             console.log('🔍 Fetched medical history from referralConsultationId:', referral.referralConsultationId, medicalHistory);
-           } catch (error) {
-             console.log('No medical history found for this referral consultation:', error);
-             
-             // Fallback: try the old method if referralConsultationId approach fails
+         if (referral.status.toLowerCase() === 'completed') {
+           if (isFollowUpAppointment) {
+             // For follow-up appointments, try to load medical history from the original appointment
              try {
-               medicalHistory = await databaseService.getMedicalHistoryByAppointment(referral.clinicAppointmentId, referral.patientId);
-               console.log('🔍 Fallback: Fetched medical history using appointment method:', medicalHistory);
-             } catch (fallbackError) {
-               console.log('Fallback method also failed:', fallbackError);
+               const appointment = await databaseService.getDocument(`appointments/${id}`);
+               console.log('🔍 Follow-up appointment data:', appointment);
+               
+               if (appointment?.originalAppointmentId) {
+                 // Try to get medical history from the original appointment's consultation
+                 try {
+                   const originalAppointment = await databaseService.getDocument(`appointments/${appointment.originalAppointmentId}`);
+                   console.log('🔍 Original appointment data:', originalAppointment);
+                   
+                   if (originalAppointment?.appointmentConsultationId) {
+                     medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${referral.patientId}/entries/${originalAppointment.appointmentConsultationId}`);
+                     console.log('🔍 Fetched medical history from original appointment consultation:', originalAppointment.appointmentConsultationId, medicalHistory);
+                   }
+                 } catch (error) {
+                   console.log('No medical history found for original appointment:', error);
+                 }
+               }
+               
+               // If no medical history from original appointment, try current appointment's consultation
+               if (!medicalHistory && appointment?.appointmentConsultationId) {
+                 try {
+                   medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${referral.patientId}/entries/${appointment.appointmentConsultationId}`);
+                   console.log('🔍 Fetched medical history from follow-up appointment consultation:', appointment.appointmentConsultationId, medicalHistory);
+                 } catch (error) {
+                   console.log('No medical history found for follow-up appointment consultation:', error);
+                 }
+               }
+               
+               // Fallback: try the old method for follow-up appointments
+               if (!medicalHistory) {
+                 try {
+                   medicalHistory = await databaseService.getMedicalHistoryByAppointment(id as string, referral.patientId);
+                   console.log('🔍 Fallback: Fetched medical history using appointment method for follow-up:', medicalHistory);
+                 } catch (fallbackError) {
+                   console.log('Fallback method also failed for follow-up:', fallbackError);
+                 }
+               }
+             } catch (error) {
+               console.log('Error loading follow-up appointment data:', error);
+             }
+           } else if (referral.referralConsultationId) {
+             // For regular referrals, use the existing logic
+             try {
+               // Fetch medical history from patientMedicalHistory > patientId > entries > referralConsultationId
+               medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${referral.patientId}/entries/${referral.referralConsultationId}`);
+               console.log('🔍 Fetched medical history from referralConsultationId:', referral.referralConsultationId, medicalHistory);
+             } catch (error) {
+               console.log('No medical history found for this referral consultation:', error);
+               
+               // Fallback: try the old method if referralConsultationId approach fails
+               try {
+                 medicalHistory = await databaseService.getMedicalHistoryByAppointment(referral.clinicAppointmentId, referral.patientId);
+                 console.log('🔍 Fallback: Fetched medical history using appointment method:', medicalHistory);
+               } catch (fallbackError) {
+                 console.log('Fallback method also failed:', fallbackError);
+               }
              }
            }
          }
@@ -560,7 +606,7 @@ export default function ReferralDetailsScreen() {
          let referralPrescriptions = [];
          let referralCertificates = [];
          
-         if (referral.referralConsultationId && medicalHistory) {
+         if (medicalHistory && (referral.referralConsultationId || (isFollowUpAppointment && medicalHistory))) {
            // Extract prescriptions and certificates from the medical history data
            // Build a set of potential specialist/provider IDs to resolve names dynamically
            const potentialIds = new Set<string>();
@@ -603,7 +649,7 @@ export default function ReferralDetailsScreen() {
            referralPrescriptions = (medicalHistory.prescriptions || []).map((prescription: any, index: number) => {
              const prescriberFromId = prescription?.specialistId ? idToName[String(prescription.specialistId)] : undefined;
              return {
-               id: `${referral.referralConsultationId || 'mh'}-${index}`,
+               id: `${referral.referralConsultationId || (isFollowUpAppointment ? id : 'mh')}-${index}`,
                ...prescription,
                prescribedBy: prescription.prescribedBy || prescriberFromId || resolvedProviderName,
              };
@@ -614,7 +660,7 @@ export default function ReferralDetailsScreen() {
                (providerId && idToName[providerId]) || assignedSpecialistName || 'Unknown Doctor';
              
              return {
-               id: certificate.id || `${referral.referralConsultationId || 'mh'}-cert-${index}`,
+               id: certificate.id || `${referral.referralConsultationId || (isFollowUpAppointment ? id : 'mh')}-cert-${index}`,
                ...certificate,
                doctor: issuingDoctor,
                // Ensure we have a proper date field
@@ -628,59 +674,64 @@ export default function ReferralDetailsScreen() {
          } else {
            // Fallback: try using appointment method
            try {
-             [referralPrescriptions, referralCertificates] = await Promise.all([
-               databaseService.getPrescriptionsByAppointment(referral.clinicAppointmentId),
-               databaseService.getCertificatesByAppointment(referral.clinicAppointmentId)
-             ]);
-             console.log('🔍 Fallback: Fetched prescriptions and certificates using appointment method');
-
-             // Enrich prescriptions with specialist names from DB
-             const uniqueSpecialistIds = Array.from(new Set((referralPrescriptions || [])
-               .map((p: any) => p.specialistId)
-               .filter(Boolean)));
-
-             const specialistProfiles = await Promise.all(uniqueSpecialistIds.map(async (specId) => {
-               let profile = await databaseService.getDocument(`specialists/${specId}`);
-               if (!profile) {
-                 profile = await databaseService.getDocument(`users/${specId}`);
-               }
-               return { id: specId, profile };
-             }));
-
-             const specialistIdToName: Record<string, string> = {};
-             specialistProfiles.forEach(({ id, profile }) => {
-               const name = profile
-                 ? `${profile.firstName || profile.first_name || ''} ${profile.lastName || profile.last_name || ''}`.trim()
-                 : '';
-               specialistIdToName[id] = name || 'Unknown Doctor';
-             });
-
-             referralPrescriptions = (referralPrescriptions || []).map((p: any, index: number) => ({
-               id: p.id || `${referral.clinicAppointmentId || 'appt'}-${index}`,
-               ...p,
-               prescribedBy: p.prescribedBy || specialistIdToName[p.specialistId] || (
-                 ((referral as any)?.assignedSpecialistFirstName || (referral as any)?.assignedSpecialistLastName)
-                   ? `${(referral as any)?.assignedSpecialistFirstName || ''} ${(referral as any)?.assignedSpecialistLastName || ''}`.trim()
-                   : 'Unknown Doctor'
-               )
-             }));
+             // For follow-up appointments, use the appointment ID directly
+             const appointmentId = isFollowUpAppointment ? id : referral.clinicAppointmentId;
              
-             // Enrich certificates with specialist names
-             referralCertificates = (referralCertificates || []).map((cert: any, index: number) => {
-               const issuingDoctor = cert.doctor || cert.prescribedBy || cert.specialistName || 
-                 (cert.specialistId && specialistIdToName[cert.specialistId]) || 
-                 ((referral as any)?.assignedSpecialistFirstName && (referral as any)?.assignedSpecialistLastName
-                   ? `${(referral as any)?.assignedSpecialistFirstName || ''} ${(referral as any)?.assignedSpecialistLastName || ''}`.trim()
-                   : 'Unknown Doctor');
+             if (appointmentId) {
+               [referralPrescriptions, referralCertificates] = await Promise.all([
+                 databaseService.getPrescriptionsByAppointment(appointmentId),
+                 databaseService.getCertificatesByAppointment(appointmentId)
+               ]);
+               console.log('🔍 Fallback: Fetched prescriptions and certificates using appointment method for ID:', appointmentId);
+
+               // Enrich prescriptions with specialist names from DB
+               const uniqueSpecialistIds = Array.from(new Set((referralPrescriptions || [])
+                 .map((p: any) => p.specialistId)
+                 .filter(Boolean)));
+
+               const specialistProfiles = await Promise.all(uniqueSpecialistIds.map(async (specId) => {
+                 let profile = await databaseService.getDocument(`specialists/${specId}`);
+                 if (!profile) {
+                   profile = await databaseService.getDocument(`users/${specId}`);
+                 }
+                 return { id: specId, profile };
+               }));
+
+               const specialistIdToName: Record<string, string> = {};
+               specialistProfiles.forEach(({ id, profile }) => {
+                 const name = profile
+                   ? `${profile.firstName || profile.first_name || ''} ${profile.lastName || profile.last_name || ''}`.trim()
+                   : '';
+                 specialistIdToName[id] = name || 'Unknown Doctor';
+               });
+
+               referralPrescriptions = (referralPrescriptions || []).map((p: any, index: number) => ({
+                 id: p.id || `${appointmentId || 'appt'}-${index}`,
+                 ...p,
+                 prescribedBy: p.prescribedBy || specialistIdToName[p.specialistId] || (
+                   ((referral as any)?.assignedSpecialistFirstName || (referral as any)?.assignedSpecialistLastName)
+                     ? `${(referral as any)?.assignedSpecialistFirstName || ''} ${(referral as any)?.assignedSpecialistLastName || ''}`.trim()
+                     : 'Unknown Doctor'
+                 )
+               }));
                
-               return {
-                 id: cert.id || `${referral.clinicAppointmentId || 'appt'}-cert-${index}`,
-                 ...cert,
-                 doctor: issuingDoctor,
-                 // Ensure we have a proper date field
-                 issuedDate: cert.issuedDate || cert.createdAt || cert.consultationDate
-               };
-             });
+               // Enrich certificates with specialist names
+               referralCertificates = (referralCertificates || []).map((cert: any, index: number) => {
+                 const issuingDoctor = cert.doctor || cert.prescribedBy || cert.specialistName || 
+                   (cert.specialistId && specialistIdToName[cert.specialistId]) || 
+                   ((referral as any)?.assignedSpecialistFirstName && (referral as any)?.assignedSpecialistLastName
+                     ? `${(referral as any)?.assignedSpecialistFirstName || ''} ${(referral as any)?.assignedSpecialistLastName || ''}`.trim()
+                     : 'Unknown Doctor');
+                 
+                 return {
+                   id: cert.id || `${appointmentId || 'appt'}-cert-${index}`,
+                   ...cert,
+                   doctor: issuingDoctor,
+                   // Ensure we have a proper date field
+                   issuedDate: cert.issuedDate || cert.createdAt || cert.consultationDate
+                 };
+               });
+             }
            } catch (fallbackError) {
              console.log('Fallback method also failed for prescriptions/certificates:', fallbackError);
            }
@@ -1270,14 +1321,27 @@ export default function ReferralDetailsScreen() {
                 style={styles.primaryBottomButton}
                 onPress={() => {
                   // Navigate to patient consultation using referral context
-                  router.push({
-                    pathname: '/patient-consultation',
-                    params: {
-                      patientId: referralData?.patientId || '',
-                      referralId: String(id || referralData?.id || ''),
-                      appointmentId: isFollowUpAppointment ? String(appointmentId) : undefined,
-                    },
-                  });
+                  if (isFollowUpAppointment) {
+                    // For follow-up appointments, use appointmentId as consultationId
+                    router.push({
+                      pathname: '/patient-consultation',
+                      params: {
+                        patientId: referralData?.patientId || '',
+                        consultationId: String(appointmentId || id || ''),
+                        isFollowUp: 'true',
+                        originalReferralId: String(id || ''),
+                      },
+                    });
+                  } else {
+                    // For regular referrals, use referralId
+                    router.push({
+                      pathname: '/patient-consultation',
+                      params: {
+                        patientId: referralData?.patientId || '',
+                        referralId: String(id || referralData?.id || ''),
+                      },
+                    });
+                  }
                 }}
                 activeOpacity={0.8}
               >
