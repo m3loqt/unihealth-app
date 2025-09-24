@@ -211,13 +211,26 @@ export default function PatientConsultationScreen() {
       
       checkCompletionStatus();
       
-      // Also try to get medical history for this appointment
+      // Also try to get medical history for this appointment or referral
       let medicalHistory = null;
-      if (patientId && consultationIdString) {
+      
+      // For regular appointments
+      if (patientId && consultationIdString && !referralIdString) {
         try {
           medicalHistory = await databaseService.getMedicalHistoryByAppointment(consultationIdString as string, patientId as string);
+          console.log('🔍 Loaded medical history for appointment:', medicalHistory);
         } catch (error) {
           console.log('No medical history found for this appointment:', error);
+        }
+      }
+      
+      // For referrals
+      if (patientId && referralIdString && referral?.referralConsultationId) {
+        try {
+          medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${patientId}/entries/${referral.referralConsultationId}`);
+          console.log('🔍 Loaded medical history for referral:', medicalHistory);
+        } catch (error) {
+          console.log('No medical history found for this referral:', error);
         }
       }
 
@@ -994,96 +1007,149 @@ export default function PatientConsultationScreen() {
       return;
     }
 
-    try {
-      // Use existing consultationId or generate a new one using Firebase push key
-      let consultationIdToUse = consultationIdString as string;
-      
-      if (!consultationIdToUse) {
-        // Generate a new consultationId using Firebase push key
-        const medicalHistoryData = {
-          // Step 1: Patient History
-          presentIllnessHistory: formData.presentIllnessHistory,
-          reviewOfSymptoms: formData.reviewOfSymptoms,
-          
-          // Step 2: Findings
-          labResults: formData.labResults,
-          medications: formData.medications,
-          
-          // Step 3: Diagnoses
-          diagnosis: formData.diagnoses,
-          differentialDiagnosis: formData.differentialDiagnosis,
-          
-          // Step 4: SOAP Notes
-          soapNotes: {
-            subjective: formData.subjective,
-            objective: formData.objective,
-            assessment: formData.assessment,
-            plan: formData.plan,
-          },
-          
-          // Step 5: Treatment & Wrap-Up
-          treatmentPlan: formData.treatmentPlan,
-          clinicalSummary: formData.clinicalSummary,
-          
-          prescriptions: formData.prescriptions,
-          certificates: formData.certificates,
-          
-          consultationDate: new Date().toISOString(),
-          consultationTime: new Date().toLocaleTimeString(),
-          patientId: patientId as string,
-          provider: {
-            id: user?.uid || '',
-            firstName: user?.firstName || '',
-            lastName: user?.lastName || '',
-            providerType: 'specialist',
-            sourceSystem: 'unihealth',
-          },
-          type: 'consultation',
-        };
+    const patientIdString = Array.isArray(patientId) ? patientId[0] : patientId;
+    console.log('Using patientIdString for save:', patientIdString);
 
-        // Use Firebase push to generate the consultationId
-        consultationIdToUse = await databaseService.pushDocument(`patientMedicalHistory/${patientId}/entries`, medicalHistoryData);
-        console.log('Generated consultationId using Firebase push key:', consultationIdToUse);
-      } else {
-        // Save consultation data to medical history with existing consultationId
+    try {
+      // Prepare consultation data (same structure as complete consultation)
+      const consultationData = {
+        diagnosis: formData.diagnoses,
+        differentialDiagnosis: formData.differentialDiagnosis,
+        reviewOfSymptoms: formData.reviewOfSymptoms,
+        presentIllnessHistory: formData.presentIllnessHistory,
+        soapNotes: {
+          subjective: formData.subjective,
+          objective: formData.objective,
+          assessment: formData.assessment,
+          plan: formData.plan,
+        },
+        labResults: formData.labResults,
+        medications: formData.medications,
+        prescriptions: formData.prescriptions,
+        certificates: formData.certificates,
+        clinicalSummary: formData.clinicalSummary,
+        treatmentPlan: formData.treatmentPlan,
+        provider: {
+          id: user?.uid || '',
+          firstName: user?.firstName || '',
+          lastName: user?.lastName || '',
+          providerType: 'specialist',
+          sourceSystem: 'UniHealth_Patient_App',
+        },
+        type: 'General Consultation',
+      };
+
+      // Handle consultation - prioritize referral if both exist (same logic as complete consultation)
+      if (referralIdString) {
+        console.log('Saving consultation for referral:', referralIdString);
+        
+        // Check if referral already has a consultation ID
+        try {
+          const referralData = await databaseService.getReferralById(referralIdString as string);
+          const existingReferralConsultationId = referralData?.referralConsultationId;
+          
+          if (existingReferralConsultationId) {
+            // Update existing consultation
+            const medicalHistoryPath = `patientMedicalHistory/${patientIdString}/entries/${existingReferralConsultationId}`;
+            const medicalHistoryData = {
+              ...consultationData,
+              type: 'Referral Consultation',
+              consultationDate: new Date().toISOString(),
+              consultationTime: new Date().toLocaleTimeString(),
+              patientId: patientIdString,
+              provider: {
+                id: user?.uid || '',
+                firstName: user?.firstName || '',
+                lastName: user?.lastName || '',
+                providerType: 'specialist',
+                sourceSystem: 'UniHealth_Patient_App',
+              },
+              relatedReferral: {
+                id: referralIdString,
+                type: 'Referral Consultation'
+              },
+              lastUpdated: new Date().toISOString(),
+            };
+            await databaseService.setDocument(medicalHistoryPath, medicalHistoryData);
+            console.log('Updated existing referral consultation with ID:', existingReferralConsultationId);
+          } else {
+            // Create new consultation for referral
+            const referralConsultationId = await databaseService.saveReferralConsultationData(
+              patientIdString,
+              referralIdString as string,
+              {
+                ...consultationData,
+                type: 'Referral Consultation',
+              }
+            );
+            console.log('Created new referral consultation with ID:', referralConsultationId);
+            
+            // Update referral with the consultation ID
+            try {
+              const referralExists = await databaseService.getReferralById(referralIdString as string);
+              if (referralExists) {
+                await databaseService.updateReferral(referralIdString as string, {
+                  referralConsultationId,
+                });
+                console.log('Referral updated with referralConsultationId:', referralConsultationId);
+              }
+            } catch (error) {
+              console.error('Error updating referral with consultation ID:', error);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking referral for existing consultation ID:', error);
+          // Fallback: create new consultation
+          const referralConsultationId = await databaseService.saveReferralConsultationData(
+            patientIdString,
+            referralIdString as string,
+            {
+              ...consultationData,
+              type: 'Referral Consultation',
+            }
+          );
+          console.log('Created new referral consultation with ID (fallback):', referralConsultationId);
+        }
+      } else if (consultationIdString) {
+        console.log('Saving consultation for appointment:', consultationIdString);
+        
+        // Update existing consultation
+        const medicalHistoryPath = `patientMedicalHistory/${patientIdString}/entries/${consultationIdString}`;
         const medicalHistoryData = {
-          diagnosis: formData.diagnoses,
-          differentialDiagnosis: formData.differentialDiagnosis,
-          reviewOfSymptoms: formData.reviewOfSymptoms,
-          presentIllnessHistory: formData.presentIllnessHistory,
-          soapNotes: {
-            subjective: formData.subjective,
-            objective: formData.objective,
-            assessment: formData.assessment,
-            plan: formData.plan,
-          },
-          labResults: formData.labResults,
-          medications: formData.medications,
-          prescriptions: formData.prescriptions,
-          certificates: formData.certificates,
+          ...consultationData,
           consultationDate: new Date().toISOString(),
           consultationTime: new Date().toLocaleTimeString(),
-          patientId: patientId as string,
+          patientId: patientIdString,
           provider: {
             id: user?.uid || '',
             firstName: user?.firstName || '',
             lastName: user?.lastName || '',
             providerType: 'specialist',
-            sourceSystem: 'unihealth',
+            sourceSystem: 'UniHealth_Patient_App',
           },
           relatedAppointment: {
-            id: consultationIdToUse,
-            type: 'consultation',
+            id: consultationIdString,
+            type: 'General Consultation'
           },
-          type: 'consultation',
-          clinicalSummary: formData.diagnoses.length > 0 ? formData.diagnoses[0].description : '',
-          treatmentPlan: formData.plan,
           lastUpdated: new Date().toISOString(),
         };
-
-        // Save to medical history
-        const medicalHistoryPath = `patientMedicalHistory/${patientId}/entries/${consultationIdToUse}`;
         await databaseService.setDocument(medicalHistoryPath, medicalHistoryData);
+        console.log('Updated existing appointment consultation with ID:', consultationIdString);
+        
+        // Ensure appointment is linked to this consultation ID
+        try {
+          await databaseService.updateAppointment(consultationIdString as string, {
+            appointmentConsultationId: consultationIdString,
+          });
+          console.log('Appointment linked with appointmentConsultationId:', consultationIdString);
+        } catch (error) {
+          console.error('Error linking appointment with consultation ID:', error);
+        }
+      } else {
+        // No existing consultation ID - this shouldn't happen in normal flow
+        console.warn('No consultation ID or referral ID found for save operation');
+        Alert.alert('Error', 'No consultation context found. Please try again.');
+        return;
       }
 
       Alert.alert('Success', 'Changes saved successfully!');
@@ -1151,37 +1217,98 @@ export default function PatientConsultationScreen() {
 
       // Handle consultation - prioritize referral if both exist
       if (referralIdString) {
-        console.log('Saving consultation for referral:', referralIdString);
+        console.log('Completing consultation for referral:', referralIdString);
         console.log('Referral ID format check:', {
           referralId: referralIdString,
           isFirebaseKey: (referralIdString as string).startsWith('-'),
           length: (referralIdString as string).length,
         });
 
-        const referralConsultationId = await databaseService.saveReferralConsultationData(
-          patientIdString,
-          referralIdString as string,
-          {
-            ...consultationData,
-            type: 'Referral Consultation',
-          }
-        );
-        console.log('Referral consultation saved with ID:', referralConsultationId);
-
-        // Update referral with the referralConsultationId to create the link
+        // Check if referral already has a consultation ID
         try {
-          const referralExists = await databaseService.getReferralById(referralIdString as string);
-          if (referralExists) {
-            await databaseService.updateReferral(referralIdString as string, {
-              status: 'completed',
-              referralConsultationId,
-            });
-            console.log('Referral updated with referralConsultationId:', referralConsultationId);
+          const referralData = await databaseService.getReferralById(referralIdString as string);
+          const existingReferralConsultationId = referralData?.referralConsultationId;
+          
+          if (existingReferralConsultationId) {
+            // Update existing consultation and mark as completed
+            const medicalHistoryPath = `patientMedicalHistory/${patientIdString}/entries/${existingReferralConsultationId}`;
+            const medicalHistoryData = {
+              ...consultationData,
+              type: 'Referral Consultation',
+              consultationDate: new Date().toISOString(),
+              consultationTime: new Date().toLocaleTimeString(),
+              patientId: patientIdString,
+              provider: {
+                id: user?.uid || '',
+                firstName: user?.firstName || '',
+                lastName: user?.lastName || '',
+                providerType: 'specialist',
+                sourceSystem: 'UniHealth_Patient_App',
+              },
+              relatedReferral: {
+                id: referralIdString,
+                type: 'Referral Consultation'
+              },
+              lastUpdated: new Date().toISOString(),
+            };
+            await databaseService.setDocument(medicalHistoryPath, medicalHistoryData);
+            console.log('Updated existing referral consultation with ID:', existingReferralConsultationId);
+            
+            // Update referral status to completed
+            try {
+              const referralExists = await databaseService.getReferralById(referralIdString as string);
+              if (referralExists) {
+                await databaseService.updateReferral(referralIdString as string, {
+                  status: 'completed',
+                  referralConsultationId: existingReferralConsultationId,
+                });
+                console.log('Referral updated with referralConsultationId:', existingReferralConsultationId);
+              } else {
+                console.warn('Referral not found with ID:', referralIdString);
+              }
+            } catch (error) {
+              console.error('Error updating referral with consultation ID:', error);
+            }
           } else {
-            console.warn('Referral not found with ID:', referralIdString);
+            // Create new consultation for referral
+            const referralConsultationId = await databaseService.saveReferralConsultationData(
+              patientIdString,
+              referralIdString as string,
+              {
+                ...consultationData,
+                type: 'Referral Consultation',
+              }
+            );
+            console.log('Created new referral consultation with ID:', referralConsultationId);
+
+            // Update referral with the referralConsultationId to create the link
+            try {
+              const referralExists = await databaseService.getReferralById(referralIdString as string);
+              if (referralExists) {
+                await databaseService.updateReferral(referralIdString as string, {
+                  status: 'completed',
+                  referralConsultationId,
+                });
+                console.log('Referral updated with referralConsultationId:', referralConsultationId);
+              } else {
+                console.warn('Referral not found with ID:', referralIdString);
+              }
+            } catch (error) {
+              console.error('Error updating referral with consultation ID:', error);
+            }
           }
         } catch (error) {
-          console.error('Error updating referral with consultation ID:', error);
+          console.error('Error checking referral for existing consultation ID:', error);
+          // Fallback: create new consultation
+          const referralConsultationId = await databaseService.saveReferralConsultationData(
+            patientIdString,
+            referralIdString as string,
+            {
+              ...consultationData,
+              type: 'Referral Consultation',
+            }
+          );
+          console.log('Created new referral consultation with ID (fallback):', referralConsultationId);
         }
 
         // Clean up temporary referral data saved with referralId as the key
@@ -1202,13 +1329,43 @@ export default function PatientConsultationScreen() {
           }
         }
       } else if (consultationIdString) {
-        console.log('Saving consultation for appointment:', consultationIdString);
-        const consultationId = await databaseService.saveConsultationData(
-          patientIdString,
-          consultationIdString as string,
-          consultationData
-        );
-        console.log('Consultation saved with ID:', consultationId);
+        console.log('Completing consultation for appointment:', consultationIdString);
+        
+        // Check if we already have a consultation entry for this appointment
+        const existingConsultation = await databaseService.getDocument(`patientMedicalHistory/${patientIdString}/entries/${consultationIdString}`);
+        
+        if (existingConsultation) {
+          // Update existing consultation
+          const medicalHistoryPath = `patientMedicalHistory/${patientIdString}/entries/${consultationIdString}`;
+          const medicalHistoryData = {
+            ...consultationData,
+            consultationDate: new Date().toISOString(),
+            consultationTime: new Date().toLocaleTimeString(),
+            patientId: patientIdString,
+            provider: {
+              id: user?.uid || '',
+              firstName: user?.firstName || '',
+              lastName: user?.lastName || '',
+              providerType: 'specialist',
+              sourceSystem: 'UniHealth_Patient_App',
+            },
+            relatedAppointment: {
+              id: consultationIdString,
+              type: 'General Consultation'
+            },
+            lastUpdated: new Date().toISOString(),
+          };
+          await databaseService.setDocument(medicalHistoryPath, medicalHistoryData);
+          console.log('Updated existing appointment consultation with ID:', consultationIdString);
+        } else {
+          // Create new consultation for appointment
+          const consultationId = await databaseService.saveConsultationData(
+            patientIdString,
+            consultationIdString as string,
+            consultationData
+          );
+          console.log('Created new appointment consultation with ID:', consultationId);
+        }
 
         // Update appointment status to completed
         try {
@@ -2304,6 +2461,15 @@ export default function PatientConsultationScreen() {
 
       {/* Bottom Action Buttons */}
       <View style={styles.bottomContainer}>
+        {/* Save Consultation Button - Show on all steps, disabled when no changes */}
+        <TouchableOpacity
+          style={[styles.saveButton, !hasChanges && styles.saveButtonDisabled]}
+          onPress={handleSaveChanges}
+          disabled={!hasChanges}
+        >
+          <Text style={[styles.saveButtonText, !hasChanges && styles.saveButtonTextDisabled]}>Save Consultation</Text>
+        </TouchableOpacity>
+
         {/* Step Navigation (only for steps 1-4) */}
         {currentStep < totalSteps && (
           <View style={styles.stepNavigation}>
@@ -2327,25 +2493,16 @@ export default function PatientConsultationScreen() {
           </View>
         )}
 
-        {/* Last step (5): show Save Consultation + Complete Consultation */}
+        {/* Last step (5): show Complete Consultation */}
         {currentStep === totalSteps && (
-          <>
-            <TouchableOpacity
-              style={[styles.saveButton, !hasChanges && styles.saveButtonDisabled]}
-              onPress={handleSaveChanges}
-              disabled={!hasChanges}
-            >
-              <Text style={[styles.saveButtonText, !hasChanges && styles.saveButtonTextDisabled]}>Save Consultation</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.completeButton, !isCompleteEnabled && styles.completeButtonDisabled]}
-              onPress={handleOpenFeeModal}
-              disabled={!isCompleteEnabled}
-            >
-              <CheckCircle size={18} color="#FFFFFF" />
-              <Text style={styles.completeButtonText}>Complete Consultation</Text>
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity
+            style={[styles.completeButton, !isCompleteEnabled && styles.completeButtonDisabled]}
+            onPress={handleOpenFeeModal}
+            disabled={!isCompleteEnabled}
+          >
+            <CheckCircle size={18} color="#FFFFFF" />
+            <Text style={styles.completeButtonText}>Complete Consultation</Text>
+          </TouchableOpacity>
         )}
       </View>
 
