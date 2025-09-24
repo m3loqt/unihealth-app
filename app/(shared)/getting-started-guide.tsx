@@ -91,22 +91,38 @@ export default function GettingStartedGuideScreen() {
             </Text>
           </View>
           
-          <View style={styles.featureHighlights}>
-            <View style={styles.highlightItem}>
-              <CheckCircle size={20} color="#10B981" />
-              <Text style={styles.highlightText}>Secure & HIPAA Compliant</Text>
+          <View style={styles.featureList}>
+            <View style={[styles.navItem, styles.navItemAligned]}>
+              <View style={styles.navIconContainer}>
+                <CheckCircle size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Secure & HIPAA Compliant</Text>
+              </View>
             </View>
-            <View style={styles.highlightItem}>
-              <CheckCircle size={20} color="#10B981" />
-              <Text style={styles.highlightText}>24/7 Access to Health Records</Text>
+            <View style={[styles.navItem, styles.navItemAligned]}>
+              <View style={styles.navIconContainer}>
+                <CheckCircle size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>24/7 Access to Health Records</Text>
+              </View>
             </View>
-            <View style={styles.highlightItem}>
-              <CheckCircle size={20} color="#10B981" />
-              <Text style={styles.highlightText}>Easy Appointment Booking</Text>
+            <View style={[styles.navItem, styles.navItemAligned]}>
+              <View style={styles.navIconContainer}>
+                <CheckCircle size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Easy Appointment Booking</Text>
+              </View>
             </View>
-            <View style={styles.highlightItem}>
-              <CheckCircle size={20} color="#10B981" />
-              <Text style={styles.highlightText}>Digital Prescription Management</Text>
+            <View style={[styles.navItem, styles.navItemAligned]}>
+              <View style={styles.navIconContainer}>
+                <CheckCircle size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Digital Prescription Management</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -273,69 +289,81 @@ export default function GettingStartedGuideScreen() {
           </Text>
           
           {isPatient && (
-            <View style={styles.featureGrid}>
-              <View style={styles.featureCard}>
-                <View style={styles.featureIcon}>
+            <View style={styles.featureList}>
+              <View style={styles.navItem}>
+                <View style={styles.navIconContainer}>
                   <QrCode size={24} color="#1E40AF" />
                 </View>
-                <Text style={styles.featureTitle}>Generate QR Code</Text>
-                <Text style={styles.featureDescription}>
-                  Create a personal QR code for quick check-ins at clinics
-                </Text>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>Generate QR Code</Text>
+                  <Text style={styles.navDescription}>
+                    Create a personal QR code for quick check-ins at clinics
+                  </Text>
+                </View>
               </View>
               
-              <View style={styles.featureCard}>
-                <View style={styles.featureIcon}>
+              <View style={styles.navItem}>
+                <View style={styles.navIconContainer}>
                   <FileText size={24} color="#1E40AF" />
                 </View>
-                <Text style={styles.featureTitle}>View Medical History</Text>
-                <Text style={styles.featureDescription}>
-                  Access your complete medical records and consultation history
-                </Text>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>View Medical History</Text>
+                  <Text style={styles.navDescription}>
+                    Access your complete medical records and consultation history
+                  </Text>
+                </View>
               </View>
               
-              <View style={styles.featureCard}>
-                <View style={styles.featureIcon}>
+              <View style={styles.navItem}>
+                <View style={styles.navIconContainer}>
                   <Calendar size={24} color="#1E40AF" />
                 </View>
-                <Text style={styles.featureTitle}>Book Consultation</Text>
-                <Text style={styles.featureDescription}>
-                  Schedule appointments with healthcare providers
-                </Text>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>Book Consultation</Text>
+                  <Text style={styles.navDescription}>
+                    Schedule appointments with healthcare providers
+                  </Text>
+                </View>
               </View>
             </View>
           )}
 
           {isSpecialist && (
-            <View style={styles.featureGrid}>
-              <View style={styles.featureCard}>
-                <View style={styles.featureIcon}>
+            <View style={styles.featureList}>
+              <View style={styles.navItem}>
+                <View style={styles.navIconContainer}>
                   <Users size={24} color="#1E40AF" />
                 </View>
-                <Text style={styles.featureTitle}>Patient Metrics</Text>
-                <Text style={styles.featureDescription}>
-                  View total patients, growth trends, and appointment statistics
-                </Text>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>Patient Metrics</Text>
+                  <Text style={styles.navDescription}>
+                    View total patients, growth trends, and appointment statistics
+                  </Text>
+                </View>
               </View>
               
-              <View style={styles.featureCard}>
-                <View style={styles.featureIcon}>
+              <View style={styles.navItem}>
+                <View style={styles.navIconContainer}>
                   <Calendar size={24} color="#1E40AF" />
                 </View>
-                <Text style={styles.featureTitle}>Today's Schedule</Text>
-                <Text style={styles.featureDescription}>
-                  See today's appointments, pending requests, and completed visits
-                </Text>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>Today's Schedule</Text>
+                  <Text style={styles.navDescription}>
+                    See today's appointments, pending requests, and completed visits
+                  </Text>
+                </View>
               </View>
               
-              <View style={styles.featureCard}>
-                <View style={styles.featureIcon}>
+              <View style={styles.navItem}>
+                <View style={styles.navIconContainer}>
                   <QrCode size={24} color="#1E40AF" />
                 </View>
-                <Text style={styles.featureTitle}>QR Scanner</Text>
-                <Text style={styles.featureDescription}>
-                  Scan patient QR codes for quick check-ins and patient access
-                </Text>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>QR Scanner</Text>
+                  <Text style={styles.navDescription}>
+                    Scan patient QR codes for quick check-ins and patient access
+                  </Text>
+                </View>
               </View>
             </View>
           )}
@@ -370,50 +398,50 @@ export default function GettingStartedGuideScreen() {
           </Text>
           
           {isPatient && (
-            <View style={styles.stepList}>
-              <View style={styles.stepItem}>
+            <View style={styles.featureList}>
+              <View style={styles.navItem}>
                 <View style={styles.stepNumber}>
                   <Text style={styles.stepNumberText}>1</Text>
                 </View>
-                <View style={styles.stepContent}>
-                  <Text style={styles.stepTitle}>Book an Appointment</Text>
-                  <Text style={styles.stepDescription}>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>Book an Appointment</Text>
+                  <Text style={styles.navDescription}>
                     Tap "Book Clinic Consultation" on the home screen or visit the Visits tab
                   </Text>
                 </View>
               </View>
               
-              <View style={styles.stepItem}>
+              <View style={styles.navItem}>
                 <View style={styles.stepNumber}>
                   <Text style={styles.stepNumberText}>2</Text>
                 </View>
-                <View style={styles.stepContent}>
-                  <Text style={styles.stepTitle}>Select Clinic & Time</Text>
-                  <Text style={styles.stepDescription}>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>Select Clinic & Time</Text>
+                  <Text style={styles.navDescription}>
                     Choose your preferred clinic, date, and available time slot
                   </Text>
                 </View>
               </View>
               
-              <View style={styles.stepItem}>
+              <View style={styles.navItem}>
                 <View style={styles.stepNumber}>
                   <Text style={styles.stepNumberText}>3</Text>
                 </View>
-                <View style={styles.stepContent}>
-                  <Text style={styles.stepTitle}>Add Details</Text>
-                  <Text style={styles.stepDescription}>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>Add Details</Text>
+                  <Text style={styles.navDescription}>
                     Specify the purpose of your visit and any additional notes
                   </Text>
                 </View>
               </View>
               
-              <View style={styles.stepItem}>
+              <View style={styles.navItem}>
                 <View style={styles.stepNumber}>
                   <Text style={styles.stepNumberText}>4</Text>
                 </View>
-                <View style={styles.stepContent}>
-                  <Text style={styles.stepTitle}>Confirm Booking</Text>
-                  <Text style={styles.stepDescription}>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>Confirm Booking</Text>
+                  <Text style={styles.navDescription}>
                     Review your details and confirm. You'll receive a confirmation within 24 hours
                   </Text>
                 </View>
@@ -422,41 +450,47 @@ export default function GettingStartedGuideScreen() {
           )}
 
           {isSpecialist && (
-            <View style={styles.featureGrid}>
-              <View style={styles.featureCard}>
-                <View style={styles.featureIcon}>
-                  <Clock size={24} color="#1E40AF" />
+            <View style={styles.featureList}>
+              <View style={styles.navItem}>
+                <View style={styles.navIconContainer}>
+                <Clock size={24} color="#1E40AF" />
                 </View>
-                <Text style={styles.featureTitle}>View Appointments</Text>
-                <Text style={styles.featureDescription}>
-                  See all your appointments with filtering by status (pending, confirmed, completed)
-                </Text>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>View Appointments</Text>
+                  <Text style={styles.navDescription}>
+                    See all your appointments with filtering by status (pending, confirmed, completed)
+                  </Text>
+                </View>
               </View>
               
-              <View style={styles.featureCard}>
-                <View style={styles.featureIcon}>
-                  <Stethoscope size={24} color="#1E40AF" />
+              <View style={styles.navItem}>
+                <View style={styles.navIconContainer}>
+                <Stethoscope size={24} color="#1E40AF" />
                 </View>
-                <Text style={styles.featureTitle}>Start Consultations</Text>
-                <Text style={styles.featureDescription}>
-                  Begin consultations directly from confirmed appointments
-                </Text>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>Start Consultations</Text>
+                  <Text style={styles.navDescription}>
+                    Begin consultations directly from confirmed appointments
+                  </Text>
+                </View>
               </View>
               
-              <View style={styles.featureCard}>
-                <View style={styles.featureIcon}>
-                  <Users size={24} color="#1E40AF" />
+              <View style={styles.navItem}>
+                <View style={styles.navIconContainer}>
+                <Users size={24} color="#1E40AF" />
                 </View>
-                <Text style={styles.featureTitle}>Manage Referrals</Text>
-                <Text style={styles.featureDescription}>
-                  Create and manage specialist referrals for patients
-                </Text>
+                <View style={styles.navContent}>
+                  <Text style={styles.navTitle}>Manage Referrals</Text>
+                  <Text style={styles.navDescription}>
+                    Create and manage specialist referrals for patients
+                  </Text>
+                </View>
               </View>
             </View>
           )}
           
           <View style={styles.tipBox}>
-            <Zap size={20} color="#F59E0B" />
+            <Zap size={20} color="#3B82F6" />
             <Text style={styles.tipText}>
               <Text style={styles.tipTitle}>Pro Tip:</Text> {isPatient 
                 ? "You can reschedule or cancel appointments up to 24 hours in advance through the Visits tab."
@@ -482,40 +516,46 @@ export default function GettingStartedGuideScreen() {
             }
           </Text>
           
-          <View style={styles.prescriptionFeatures}>
-            <View style={styles.prescriptionFeature}>
+          <View style={styles.featureList}>
+            <View style={styles.navItem}>
               <View style={styles.prescriptionIcon}>
-                <Clock size={20} color="#10B981" />
+                <Clock size={20} color="#1E40AF" />
               </View>
-              <Text style={styles.prescriptionTitle}>Active Prescriptions</Text>
-              <Text style={styles.prescriptionDescription}>
-                View current medications with remaining days and dosage instructions
-              </Text>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Active Prescriptions</Text>
+                <Text style={styles.navDescription}>
+                  View current medications with remaining days and dosage instructions
+                </Text>
+              </View>
             </View>
             
-            <View style={styles.prescriptionFeature}>
+            <View style={styles.navItem}>
               <View style={styles.prescriptionIcon}>
-                <RefreshCw size={20} color="#3B82F6" />
+                <RefreshCw size={20} color="#1E40AF" />
               </View>
-              <Text style={styles.prescriptionTitle}>Prescription Tracking</Text>
-              <Text style={styles.prescriptionDescription}>
-                View active prescriptions with dosage and duration information
-              </Text>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Prescription Tracking</Text>
+                <Text style={styles.navDescription}>
+                  View active prescriptions with dosage and duration information
+                </Text>
+              </View>
             </View>
             
-            <View style={styles.prescriptionFeature}>
+            <View style={styles.navItem}>
               <View style={styles.prescriptionIcon}>
-                <FileText size={20} color="#8B5CF6" />
+                <FileText size={20} color="#1E40AF" />
               </View>
-              <Text style={styles.prescriptionTitle}>Medication History</Text>
-              <Text style={styles.prescriptionDescription}>
-                Access your complete prescription history and doctor notes
-              </Text>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Medication History</Text>
+                <Text style={styles.navDescription}>
+                  Access your complete prescription history and doctor notes
+                </Text>
+              </View>
             </View>
           </View>
           
           <View style={styles.reminderBox}>
-            <Bell size={20} color="#EF4444" />
+            <Bell size={20} color="#3B82F6" />
             <Text style={styles.reminderText}>
               Set up medication reminders in your device settings to never miss a dose.
             </Text>
@@ -536,45 +576,53 @@ export default function GettingStartedGuideScreen() {
             }
           </Text>
           
-          <View style={styles.certificateTypes}>
-            <View style={styles.certificateType}>
+          <View style={styles.featureList}>
+            <View style={styles.navItem}>
               <View style={styles.certificateIcon}>
-                <CheckCircle size={20} color="#10B981" />
+                <CheckCircle size={20} color="#1E40AF" />
               </View>
-              <Text style={styles.certificateTitle}>Fit to Work</Text>
-              <Text style={styles.certificateDescription}>
-                Medical clearance certificates for employment
-              </Text>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Fit to Work</Text>
+                <Text style={styles.navDescription}>
+                  Medical clearance certificates for employment
+                </Text>
+              </View>
             </View>
             
-            <View style={styles.certificateType}>
+            <View style={styles.navItem}>
               <View style={styles.certificateIcon}>
-                <Calendar size={20} color="#3B82F6" />
+                <Calendar size={20} color="#1E40AF" />
               </View>
-              <Text style={styles.certificateTitle}>Medical Leave</Text>
-              <Text style={styles.certificateDescription}>
-                Official documents for sick leave and medical absence
-              </Text>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Medical Leave</Text>
+                <Text style={styles.navDescription}>
+                  Official documents for sick leave and medical absence
+                </Text>
+              </View>
             </View>
             
-            <View style={styles.certificateType}>
+            <View style={styles.navItem}>
               <View style={styles.certificateIcon}>
-                <Stethoscope size={20} color="#8B5CF6" />
+                <Stethoscope size={20} color="#1E40AF" />
               </View>
-              <Text style={styles.certificateTitle}>Health Assessments</Text>
-              <Text style={styles.certificateDescription}>
-                Comprehensive health evaluation reports
-              </Text>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Health Assessments</Text>
+                <Text style={styles.navDescription}>
+                  Comprehensive health evaluation reports
+                </Text>
+              </View>
             </View>
             
-            <View style={styles.certificateType}>
+            <View style={styles.navItem}>
               <View style={styles.certificateIcon}>
-                <Shield size={20} color="#F59E0B" />
+                <Shield size={20} color="#1E40AF" />
               </View>
-              <Text style={styles.certificateTitle}>Vaccination Records</Text>
-              <Text style={styles.certificateDescription}>
-                Immunization history and vaccination certificates
-              </Text>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Vaccination Records</Text>
+                <Text style={styles.navDescription}>
+                  Immunization history and vaccination certificates
+                </Text>
+              </View>
             </View>
           </View>
           
@@ -597,42 +645,58 @@ export default function GettingStartedGuideScreen() {
             Customize your UniHEALTH experience and manage your account:
           </Text>
           
-          <View style={styles.settingsGrid}>
-            <View style={styles.settingItem}>
-              <Pencil size={20} color="#1E40AF" />
-              <Text style={styles.settingTitle}>Edit Profile</Text>
-              <Text style={styles.settingDescription}>
-                Update personal information, contact details, and emergency contacts
-              </Text>
+          <View style={styles.featureList}>
+            <View style={styles.navItem}>
+              <View style={styles.navIconContainer}>
+                <Pencil size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Edit Profile</Text>
+                <Text style={styles.navDescription}>
+                  Update personal information, contact details, and emergency contacts
+                </Text>
+              </View>
             </View>
             
-            <View style={styles.settingItem}>
-              <Fingerprint size={20} color="#1E40AF" />
-              <Text style={styles.settingTitle}>Biometric Login</Text>
-              <Text style={styles.settingDescription}>
-                Enable fingerprint or face recognition for quick access
-              </Text>
+            <View style={styles.navItem}>
+              <View style={styles.navIconContainer}>
+                <Fingerprint size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Biometric Login</Text>
+                <Text style={styles.navDescription}>
+                  Enable fingerprint or face recognition for quick access
+                </Text>
+              </View>
             </View>
             
-            <View style={styles.settingItem}>
-              <Bell size={20} color="#1E40AF" />
-              <Text style={styles.settingTitle}>Notifications</Text>
-              <Text style={styles.settingDescription}>
-                View notification preferences (feature coming soon)
-              </Text>
+            <View style={styles.navItem}>
+              <View style={styles.navIconContainer}>
+                <Bell size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Notifications</Text>
+                <Text style={styles.navDescription}>
+                  View notification preferences (feature coming soon)
+                </Text>
+              </View>
             </View>
             
-            <View style={styles.settingItem}>
-              <Lock size={20} color="#1E40AF" />
-              <Text style={styles.settingTitle}>Security</Text>
-              <Text style={styles.settingDescription}>
-                Change password and manage account security settings
-              </Text>
+            <View style={styles.navItem}>
+              <View style={styles.navIconContainer}>
+                <Lock size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Security</Text>
+                <Text style={styles.navDescription}>
+                  Change password and manage account security settings
+                </Text>
+              </View>
             </View>
           </View>
           
           <View style={styles.emergencyBox}>
-            <AlertCircle size={20} color="#EF4444" />
+            <AlertCircle size={20} color="#3B82F6" />
             <Text style={styles.emergencyText}>
               <Text style={styles.emergencyTitle}>Emergency Contact:</Text> Make sure to keep your emergency contact information up to date in your profile.
             </Text>
@@ -650,50 +714,58 @@ export default function GettingStartedGuideScreen() {
             Your health data is protected with industry-leading security measures:
           </Text>
           
-          <View style={styles.securityFeatures}>
-            <View style={styles.securityFeature}>
+          <View style={styles.featureList}>
+            <View style={styles.navItem}>
               <View style={styles.securityIcon}>
-                <Lock size={20} color="#10B981" />
+                <Lock size={20} color="#1E40AF" />
               </View>
-              <Text style={styles.securityTitle}>End-to-End Encryption</Text>
-              <Text style={styles.securityDescription}>
-                All your health data is encrypted both in transit and at rest
-              </Text>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>End-to-End Encryption</Text>
+                <Text style={styles.navDescription}>
+                  All your health data is encrypted both in transit and at rest
+                </Text>
+              </View>
             </View>
             
-            <View style={styles.securityFeature}>
+            <View style={styles.navItem}>
               <View style={styles.securityIcon}>
-                <Shield size={20} color="#3B82F6" />
+                <Shield size={20} color="#1E40AF" />
               </View>
-              <Text style={styles.securityTitle}>HIPAA Compliance</Text>
-              <Text style={styles.securityDescription}>
-                We meet all healthcare privacy and security standards
-              </Text>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>HIPAA Compliance</Text>
+                <Text style={styles.navDescription}>
+                  We meet all healthcare privacy and security standards
+                </Text>
+              </View>
             </View>
             
-            <View style={styles.securityFeature}>
+            <View style={styles.navItem}>
               <View style={styles.securityIcon}>
-                <Eye size={20} color="#8B5CF6" />
+                <Eye size={20} color="#1E40AF" />
               </View>
-              <Text style={styles.securityTitle}>Access Controls</Text>
-              <Text style={styles.securityDescription}>
-                Only you and authorized healthcare providers can access your data
-              </Text>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Access Controls</Text>
+                <Text style={styles.navDescription}>
+                  Only you and authorized healthcare providers can access your data
+                </Text>
+              </View>
             </View>
             
-            <View style={styles.securityFeature}>
+            <View style={styles.navItem}>
               <View style={styles.securityIcon}>
-                <TrendingUp size={20} color="#F59E0B" />
+                <TrendingUp size={20} color="#1E40AF" />
               </View>
-              <Text style={styles.securityTitle}>Regular Audits</Text>
-              <Text style={styles.securityDescription}>
-                Continuous security monitoring and regular compliance audits
-              </Text>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Regular Audits</Text>
+                <Text style={styles.navDescription}>
+                  Continuous security monitoring and regular compliance audits
+                </Text>
+              </View>
             </View>
           </View>
           
           <View style={styles.privacyBox}>
-            <Globe size={20} color="#6B7280" />
+            <Globe size={20} color="#3B82F6" />
             <Text style={styles.privacyText}>
               We never share your personal health information without your explicit consent. You control your data.
             </Text>
@@ -711,52 +783,62 @@ export default function GettingStartedGuideScreen() {
             Make the most of your UniHEALTH experience with these helpful tips:
           </Text>
           
-          <View style={styles.tipsList}>
-            <View style={styles.tipItem}>
-              <Target size={20} color="#10B981" />
-              <View style={styles.tipContent}>
-                <Text style={styles.tipTitle}>Keep Your Profile Updated</Text>
-                <Text style={styles.tipDescription}>
+          <View style={styles.featureList}>
+            <View style={styles.navItem}>
+              <View style={styles.navIconContainer}>
+                <Target size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Keep Your Profile Updated</Text>
+                <Text style={styles.navDescription}>
                   Regularly update your contact information and emergency contacts
                 </Text>
               </View>
             </View>
             
-            <View style={styles.tipItem}>
-              <Bell size={20} color="#3B82F6" />
-              <View style={styles.tipContent}>
-                <Text style={styles.tipTitle}>Stay Updated</Text>
-                <Text style={styles.tipDescription}>
+            <View style={styles.navItem}>
+              <View style={styles.navIconContainer}>
+                <Bell size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Stay Updated</Text>
+                <Text style={styles.navDescription}>
                   The app automatically sends notifications for appointment updates and status changes
                 </Text>
               </View>
             </View>
             
-            <View style={styles.tipItem}>
-              <QrCode size={20} color="#8B5CF6" />
-              <View style={styles.tipContent}>
-                <Text style={styles.tipTitle}>Use QR Codes</Text>
-                <Text style={styles.tipDescription}>
+            <View style={styles.navItem}>
+              <View style={styles.navIconContainer}>
+                <QrCode size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Use QR Codes</Text>
+                <Text style={styles.navDescription}>
                   Generate QR codes for quick check-ins at participating clinics
                 </Text>
               </View>
             </View>
             
-            <View style={styles.tipItem}>
-              <Download size={20} color="#F59E0B" />
-              <View style={styles.tipContent}>
-                <Text style={styles.tipTitle}>Download Certificates</Text>
-                <Text style={styles.tipDescription}>
+            <View style={styles.navItem}>
+              <View style={styles.navIconContainer}>
+                <Download size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Download Certificates</Text>
+                <Text style={styles.navDescription}>
                   Save important medical certificates to your device for offline access
                 </Text>
               </View>
             </View>
             
-            <View style={styles.tipItem}>
-              <MessageCircle size={20} color="#EF4444" />
-              <View style={styles.tipContent}>
-                <Text style={styles.tipTitle}>Contact Support</Text>
-                <Text style={styles.tipDescription}>
+            <View style={styles.navItem}>
+              <View style={styles.navIconContainer}>
+                <MessageCircle size={20} color="#1E40AF" />
+              </View>
+              <View style={styles.navContent}>
+                <Text style={styles.navTitle}>Contact Support</Text>
+                <Text style={styles.navDescription}>
                   Use the Help & Support section if you need assistance with any features
                 </Text>
               </View>
@@ -914,6 +996,7 @@ const styles = StyleSheet.create({
   progressContainer: {
     paddingHorizontal: 24,
     paddingBottom: 16,
+    marginTop: 24,
   },
   progressBar: {
     height: 4,
@@ -938,7 +1021,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     alignItems: 'center',
     paddingHorizontal: 24,
-    marginBottom: 32,
+    marginBottom: 16,
   },
   sectionIconContainer: {
     width: 64,
@@ -947,7 +1030,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 32,
   },
   sectionTitle: {
     fontSize: 24,
@@ -965,6 +1048,13 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 24,
     textAlign: 'center',
+    marginTop: 8,
+  },
+  
+  // Feature List aligned with page 2 layout
+  featureList: {
+    gap: 20,
+    marginBottom: 24,
   },
   
   // Welcome Section
@@ -1034,6 +1124,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  navItemAligned: {
+    alignItems: 'center',
+  },
   navIconContainer: {
     width: 40,
     height: 40,
@@ -1046,11 +1139,18 @@ const styles = StyleSheet.create({
   navContent: {
     flex: 1,
   },
+  navContentCentered: {
+    flex: 1,
+    alignItems: 'center',
+  },
   navTitle: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
     marginBottom: 4,
+  },
+  navTitleCentered: {
+    textAlign: 'center',
   },
   navDescription: {
     fontSize: 14,
@@ -1158,16 +1258,16 @@ const styles = StyleSheet.create({
   tipBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FFFBEB',
+    backgroundColor: '#EFF6FF',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FEF3C7',
+    borderColor: '#DBEAFE',
   },
   tipText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#92400E',
+    color: '#1E40AF',
     lineHeight: 20,
     marginLeft: 12,
     flex: 1,
@@ -1190,7 +1290,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1212,16 +1312,16 @@ const styles = StyleSheet.create({
   reminderBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#EFF6FF',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#DBEAFE',
   },
   reminderText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#DC2626',
+    color: '#1E40AF',
     lineHeight: 20,
     marginLeft: 12,
     flex: 1,
@@ -1245,7 +1345,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1315,16 +1415,16 @@ const styles = StyleSheet.create({
   emergencyBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#EFF6FF',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: '#DBEAFE',
   },
   emergencyText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#DC2626',
+    color: '#1E40AF',
     lineHeight: 20,
     marginLeft: 12,
     flex: 1,
@@ -1351,7 +1451,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1373,16 +1473,16 @@ const styles = StyleSheet.create({
   privacyBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#EFF6FF',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#DBEAFE',
   },
   privacyText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
+    color: '#1E40AF',
     lineHeight: 20,
     marginLeft: 12,
     flex: 1,
@@ -1456,9 +1556,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
     borderRadius: 8,
-    backgroundColor: '#10B981',
+    backgroundColor: '#1E40AF',
   },
   completeButtonText: {
     fontSize: 16,

@@ -26,6 +26,12 @@ export const ErrorModal: React.FC<ErrorModalProps> = ({
   showRetry = false,
   onRetry,
 }) => {
+  const isPendingApproval = title === 'Account Pending Approval';
+  const iconSize = isPendingApproval ? 40 : 24;
+  const closeButtonStyle = StyleSheet.flatten([
+    styles.closeButton,
+    isPendingApproval ? styles.closeButtonCompact : null,
+  ]);
   // Check if this is an email error for a cleaner display
   const isEmailError = fieldName === 'Email' && message.includes('already registered');
   
@@ -68,21 +74,21 @@ export const ErrorModal: React.FC<ErrorModalProps> = ({
       animationType="fade"
       style={styles.modalContainer}
     >
-      <View style={styles.header}>
-        <View style={styles.iconContainer}>
-          <AlertTriangle size={24} color={COLORS.error} />
+      <View style={[styles.header, isPendingApproval && styles.headerCompact]}>
+        <View style={isPendingApproval ? styles.iconContainerLarge : styles.iconContainer}>
+          <AlertTriangle size={iconSize} color={COLORS.error} />
         </View>
         <Text style={styles.title}>{title}</Text>
       </View>
 
-      <View style={styles.content}>
+      <View style={[styles.content, isPendingApproval && styles.contentCompact]}>
         {fieldName && (
           <Text style={styles.fieldName}>
             Field: <Text style={styles.fieldNameBold}>{fieldName}</Text>
           </Text>
         )}
         
-        <Text style={styles.message}>{message}</Text>
+        <Text style={[styles.message, isPendingApproval && styles.messageCompact]}>{message}</Text>
         
         {suggestion && (
           <View style={styles.suggestionContainer}>
@@ -105,7 +111,7 @@ export const ErrorModal: React.FC<ErrorModalProps> = ({
           title="Got it"
           onPress={onClose}
           variant="primary"
-          style={styles.closeButton}
+          style={closeButtonStyle}
           fullWidth={!showRetry}
         />
       </View>
@@ -121,6 +127,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  headerCompact: {
+    marginBottom: 8,
+  },
   iconContainer: {
     width: 48,
     height: 48,
@@ -128,7 +137,16 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.errorLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  iconContainerLarge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.errorLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   title: {
     fontSize: 20,
@@ -138,6 +156,9 @@ const styles = StyleSheet.create({
   },
   content: {
     marginBottom: 24,
+  },
+  contentCompact: {
+    marginBottom: 16,
   },
   fieldName: {
     fontSize: 14,
@@ -157,6 +178,9 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     textAlign: 'center',
     marginBottom: 16,
+  },
+  messageCompact: {
+    marginBottom: 6,
   },
   suggestionContainer: {
     backgroundColor: COLORS.infoLight,
@@ -195,6 +219,9 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     flex: 1,
+  },
+  closeButtonCompact: {
+    marginTop: 8,
   },
 });
 

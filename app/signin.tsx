@@ -154,8 +154,7 @@ export default function SignInScreen() {
         if (result.error.type === 'specialist_pending') {
           showErrorModalWithData(
             'Account Pending Approval',
-            result.error.message,
-            result.error.suggestion
+            result.error.message
           );
         } else {
           // For other errors, show in the existing error message area
@@ -195,8 +194,7 @@ export default function SignInScreen() {
           if (result.error.type === 'specialist_pending') {
             showErrorModalWithData(
               'Account Pending Approval',
-              result.error.message,
-              result.error.suggestion
+              result.error.message
             );
           } else {
             setErrorMessage('Biometric login failed. Please sign in with password.');

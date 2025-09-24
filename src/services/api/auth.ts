@@ -418,8 +418,7 @@ export const authService = {
               success: false,
               error: {
                 type: 'specialist_pending',
-                message: 'Your account is currently pending approval.',
-                suggestion: 'Please contact support for assistance or wait for your account to be approved.'
+                message: 'Your account is currently pending approval.'
               }
             };
           }
@@ -460,8 +459,7 @@ export const authService = {
               success: false,
               error: {
                 type: 'specialist_pending',
-                message: 'Your account is currently pending approval.',
-                suggestion: 'Please contact support for assistance or wait for your account to be approved.'
+                message: 'Your account is currently pending approval.'
               }
             };
           }
