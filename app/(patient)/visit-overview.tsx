@@ -535,37 +535,48 @@ export default function VisitOverviewScreen() {
   };
   const handleHideVisitDetails = async () => {
     if (!visitData || !user) return;
+    
     try {
-      // Require completed appointment and a consultation id to persist hide
-      if ((visitData.status || '').toLowerCase() !== 'completed') {
+      // Check if this is a completed visit with consultation data
+      if (visitData.status.toLowerCase() !== 'completed' || !visitData.appointmentConsultationId) {
         Alert.alert('Error', 'Cannot hide visit details. Visit must be completed first.');
         return;
       }
-      const consultationIdToUse = (visitData as any).appointmentConsultationId || (visitData as any).consultationId;
-      if (!consultationIdToUse) {
-        Alert.alert('Error', 'Cannot hide visit details. No consultation reference was found.');
-        return;
-      }
 
+      // Show confirmation dialog
       Alert.alert(
         'Hide Visit Details',
         'Are you sure you want to hide this visit from your medical history? You can show it again anytime.',
         [
-          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          },
           {
             text: 'Hide',
             style: 'destructive',
             onPress: async () => {
               try {
+                // Update the medical history entry to mark it as hidden
                 await databaseService.updateDocument(
-                  `patientMedicalHistory/${visitData.patientId}/entries/${consultationIdToUse}`,
+                  `patientMedicalHistory/${user.uid}/entries/${visitData.appointmentConsultationId}`,
                   { isHidden: true }
                 );
+                
                 setIsVisitHidden(true);
-                Alert.alert('Success', 'Visit details have been hidden from your medical history.', [
-                  { text: 'OK' }
-                ]);
+                
+                Alert.alert(
+                  'Success',
+                  'Visit details have been hidden from your medical history.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => router.back()
+                    }
+                  ]
+                );
               } catch (error) {
+                console.error('Error hiding visit details:', error);
                 Alert.alert('Error', 'Failed to hide visit details. Please try again.');
               }
             }
@@ -573,41 +584,53 @@ export default function VisitOverviewScreen() {
         ]
       );
     } catch (error) {
+      console.error('Error in handleHideVisitDetails:', error);
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     }
   };
 
   const handleShowVisitDetails = async () => {
     if (!visitData || !user) return;
+    
     try {
-      if ((visitData.status || '').toLowerCase() !== 'completed') {
+      // Check if this is a completed visit with consultation data
+      if (visitData.status.toLowerCase() !== 'completed' || !visitData.appointmentConsultationId) {
         Alert.alert('Error', 'Cannot show visit details. Visit must be completed first.');
         return;
       }
-      const consultationIdToUse = (visitData as any).appointmentConsultationId || (visitData as any).consultationId;
-      if (!consultationIdToUse) {
-        Alert.alert('Error', 'Cannot show visit details. No consultation reference was found.');
-        return;
-      }
 
+      // Show confirmation dialog
       Alert.alert(
         'Show Visit Details',
         'Are you sure you want to show this visit in your medical history again?',
         [
-          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          },
           {
             text: 'Show',
             onPress: async () => {
               try {
+                // Remove the isHidden property from the medical history entry
                 await databaseService.updateDocument(
-                  `patientMedicalHistory/${visitData.patientId}/entries/${consultationIdToUse}`,
+                  `patientMedicalHistory/${user.uid}/entries/${visitData.appointmentConsultationId}`,
                   { isHidden: null }
                 );
+                
                 setIsVisitHidden(false);
-                Alert.alert('Success', 'Visit details have been shown in your medical history again.', [
-                  { text: 'OK' }
-                ]);
+                
+                Alert.alert(
+                  'Success',
+                  'Visit details have been shown in your medical history again.',
+                  [
+                    {
+                      text: 'OK'
+                    }
+                  ]
+                );
               } catch (error) {
+                console.error('Error showing visit details:', error);
                 Alert.alert('Error', 'Failed to show visit details. Please try again.');
               }
             }
@@ -615,6 +638,7 @@ export default function VisitOverviewScreen() {
         ]
       );
     } catch (error) {
+      console.error('Error in handleShowVisitDetails:', error);
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     }
   };
