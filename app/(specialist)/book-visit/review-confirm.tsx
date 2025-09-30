@@ -9,23 +9,31 @@ import {
   StatusBar,
   Platform,
   Alert,
+  Modal,
+  Pressable,
 } from 'react-native';
 import {
   ChevronLeft,
   Check,
   Calendar,
   Clock,
-  MapPin,
   User,
   Stethoscope,
   Phone,
+  CircleCheck as CheckCircle,
+  X,
+  MapPin,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { BlurView } from 'expo-blur';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService } from '../../../src/services/database/firebase';
 import { getReferralDataWithClinicAndRoom } from '../../../src/utils/referralUtils';
+import { emailService } from '../../../src/services/email/emailService';
+import { formatClinicAddress } from '../../../src/utils/formatting';
 
 const BLUE = '#1E40AF';
+const LIGHT_BLUE = '#DBEAFE';
 
 export default function SpecialistReviewConfirmScreen() {
   const params = useLocalSearchParams();
@@ -44,12 +52,30 @@ export default function SpecialistReviewConfirmScreen() {
   const patientLastName = params.patientLastName as string;
   const originalAppointmentId = params.originalAppointmentId as string;
   const isReferral = params.isReferral as string;
+  const selectedPurpose = params.selectedPurpose as string;
   const reasonForReferral = params.reasonForReferral as string;
+  const sourceType = params.sourceType as string; // New parameter for tracking source type
+
+  // Debug: Log all referral parameters
+  console.log('🔍 Review-confirm referral parameters:', {
+    originalAppointmentId,
+    sourceType,
+    isReferral,
+    patientId,
+    patientFirstName,
+    patientLastName,
+    doctorId,
+    doctorName,
+    clinicId,
+    clinicName
+  });
 
   const [loading, setLoading] = useState(false);
   const [createdAppointmentId, setCreatedAppointmentId] = useState<string | null>(null);
   const [doctorData, setDoctorData] = useState<any>(null);
   const [clinicData, setClinicData] = useState<any>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
 
   useEffect(() => {
     loadAdditionalData();
@@ -70,14 +96,22 @@ export default function SpecialistReviewConfirmScreen() {
     }
   };
 
+  const handleCloseModal = () => {
+    setShowSuccessModal(false);
+    router.push('/(specialist)/tabs');
+  };
+
+
   const formatDate = (dateString: string) => {
     try {
+      // Parse the date string as local date to avoid timezone issues
       const [year, month, day] = dateString.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
+      const date = new Date(year, month - 1, day); // month is 0-indexed
       return date.toLocaleDateString('en-US', {
+        weekday: 'long',
         year: 'numeric',
         month: 'long',
-        day: 'numeric',
+        day: 'numeric'
       });
     } catch (error) {
       return 'Invalid date';
@@ -102,9 +136,8 @@ export default function SpecialistReviewConfirmScreen() {
       return;
     }
 
+    setIsBooking(true);
     try {
-      setLoading(true);
-
       // Get proper clinic and room information
       const referralData = await getReferralDataWithClinicAndRoom(
         user.uid, // referring specialist ID
@@ -118,12 +151,29 @@ export default function SpecialistReviewConfirmScreen() {
       const referringSpecialistFirstName = referringSpecialistData?.firstName || referringSpecialistData?.first_name || '';
       const referringSpecialistLastName = referringSpecialistData?.lastName || referringSpecialistData?.last_name || '';
 
+      // Validate and prepare clinicAppointmentId for specialist-to-specialist referrals
+      let clinicAppointmentId = '';
+      let clinicAppointmentIdSource = '';
+      
+      if (originalAppointmentId && originalAppointmentId !== 'undefined' && originalAppointmentId !== '') {
+        clinicAppointmentId = originalAppointmentId;
+        clinicAppointmentIdSource = sourceType || 'unknown';
+        console.log('✅ Using originalAppointmentId as clinicAppointmentId:', {
+          clinicAppointmentId,
+          sourceType: clinicAppointmentIdSource,
+          originalAppointmentId
+        });
+      } else {
+        console.warn('⚠️ No originalAppointmentId provided - creating referral without clinicAppointmentId');
+        console.log('⚠️ This may indicate a direct specialist referral without a source appointment/referral');
+      }
+
       const appointmentData = {
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
         assignedSpecialistId: doctorId,
-        clinicAppointmentId: originalAppointmentId, // Link to original appointment
-        additionalNotes: reasonForReferral || 'Specialist referral',
+        clinicAppointmentId: clinicAppointmentId, // Now properly validated
+        additionalNotes: reasonForReferral?.replace(/^Additional Notes:\s*/, '') || 'Specialist referral',
         lastUpdated: new Date().toISOString(),
         patientId: patientId,
         practiceLocation: {
@@ -139,6 +189,9 @@ export default function SpecialistReviewConfirmScreen() {
         sourceSystem: 'UniHealth_Specialist_App',
         status: 'pending' as const,
         specialistScheduleId: referralData.scheduleId, // Store the schedule ID for reference
+        // Add metadata for better tracking
+        referralSourceType: clinicAppointmentIdSource, // Track what type of source this referral came from
+        referralSourceId: clinicAppointmentId, // Track the source ID for debugging
       };
 
       // Save to database as referral
@@ -146,20 +199,35 @@ export default function SpecialistReviewConfirmScreen() {
       console.log('Specialist referral created successfully with ID:', referralId);
       setCreatedAppointmentId(referralId);
 
-      Alert.alert(
-        'Appointment Booked Successfully!',
-        `Your referral appointment for ${patientFirstName} ${patientLastName} has been booked for ${formatDate(selectedDate)} at ${formatTime(selectedTime)}.`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Navigate back to appointments screen
-              router.push('/(specialist)/tabs/appointments');
-            }
-          }
-        ]
-      );
+      // Send referral confirmation email (non-blocking for booking flow)
+      try {
+        if (emailService && typeof emailService.isEmailServiceReady === 'function' && emailService.isEmailServiceReady()) {
+          const patientNameForEmail = `${patientFirstName} ${patientLastName}`.trim();
+          const clinicAddressStr = clinicData ? formatClinicAddress(clinicData) : '';
+          const doctorNameStr = doctorData 
+            ? `Dr. ${[doctorData.firstName || doctorData.first_name, doctorData.middleName || doctorData.middle_name, doctorData.lastName || doctorData.last_name].filter(Boolean).join(' ')}`
+            : `Dr. ${doctorName}`;
 
+          await emailService.sendAppointmentConfirmationEmail({
+            email: user.email || '',
+            userName: `${referringSpecialistFirstName} ${referringSpecialistLastName}`,
+            clinicName: clinicName || '',
+            appointmentDate: formatDate(selectedDate),
+            appointmentTime: selectedTime || '',
+            appointmentPurpose: selectedPurpose || 'Specialist referral',
+            doctorName: doctorNameStr,
+            clinicAddress: clinicAddressStr,
+            additionalNotes: `Patient: ${patientNameForEmail}`,
+            appointmentId: String(referralId || ''),
+          });
+        } else {
+          console.warn('Email service not ready; skipping referral confirmation email');
+        }
+      } catch (emailErr) {
+        console.error('Failed to send referral confirmation email:', emailErr);
+      }
+
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Error booking appointment:', error);
       
@@ -177,50 +245,43 @@ export default function SpecialistReviewConfirmScreen() {
       
       Alert.alert('Error', errorMessage);
     } finally {
-      setLoading(false);
+      setIsBooking(false);
     }
   };
 
-  if (createdAppointmentId) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.push('/(specialist)/tabs/appointments')} style={styles.backButton}>
-            <ChevronLeft size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Appointment Confirmed</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-        <View style={styles.successContainer}>
-          <View style={styles.successIcon}>
-            <Check size={48} color="#FFFFFF" />
-          </View>
-          <Text style={styles.successTitle}>Appointment Booked!</Text>
-          <Text style={styles.successDescription}>
-            Your referral appointment has been successfully booked.
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ChevronLeft size={24} color="#1F2937" />
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <ChevronLeft size={24} color={BLUE} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Review & Confirm</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      {/* Progress Bar */}
+      <View style={styles.progressBarRoot}>
+        <View style={styles.progressBarBg} />
+        <View style={[styles.progressBarActive, { width: '200%' }]} />
+        <View style={styles.progressDotsRow}>
+          <View style={[styles.progressDotNew, styles.progressDotActiveNew, { left: 0 }]} />
+          <View style={[styles.progressDotNew, styles.progressDotActiveNew, { left: '45%' }]} />
+          <View style={[styles.progressDotNew, styles.progressDotActiveNew, { left: '90%' }]} />
+        </View>
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      >
         {/* Referral Summary Card */}
         <View style={styles.summaryCard}>
-          {/* <Text style={styles.summaryTitle}>Referral Summary</Text> */}
+          <Text style={styles.summaryTitle}>Referral Summary</Text>
           
           {/* Clinic Info */}
           <View style={styles.clinicSection}>
@@ -269,13 +330,15 @@ export default function SpecialistReviewConfirmScreen() {
 
           <View style={styles.appointmentDetailRow}>
             <Text style={styles.appointmentDetailLabel}>Purpose of Visit:</Text>
-            <Text style={styles.appointmentDetailValue}>Referral</Text>
+            <Text style={styles.appointmentDetailValue}>{selectedPurpose}</Text>
           </View>
 
           {reasonForReferral && (
             <View style={styles.appointmentDetailRow}>
-              <Text style={styles.appointmentDetailLabel}>Reason for Referral:</Text>
-              <Text style={styles.appointmentDetailValue}>{reasonForReferral}</Text>
+              <Text style={styles.appointmentDetailLabel}>Additional Notes:</Text>
+              <Text style={styles.appointmentDetailValue}>
+                {reasonForReferral.replace(/^Additional Notes:\s*/, '')}
+              </Text>
             </View>
           )}
 
@@ -288,18 +351,123 @@ export default function SpecialistReviewConfirmScreen() {
           </View>
         </View>
 
-        {/* Confirm Button */}
-        <TouchableOpacity 
-          style={[styles.confirmButton, loading && styles.confirmButtonDisabled]} 
-          onPress={handleBookAppointment}
-          disabled={loading}
-        >
-          <Text style={styles.confirmButtonText}>
-            {loading ? 'Booking Appointment...' : 'Confirm Referral'}
-          </Text>
-          <Check size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        {/* Important Information */}
+        <View style={styles.infoCard}>
+          <Text style={styles.infoTitle}>Before the Referral Appointment</Text>
+          <View style={styles.infoList}>
+            <Text style={styles.infoItem}>• Patient should arrive 15 minutes early for check-in</Text>
+            <Text style={styles.infoItem}>• Patient should bring valid ID and insurance card (if applicable)</Text>
+            <Text style={styles.infoItem}>• Referral can be rescheduled up to 24 hours before the appointment</Text>
+            {/* <Text style={styles.infoItem}>• Both specialists will be notified of the referral</Text> */}
+          </View>
+        </View>
+
+        {/* Next Steps */}
+        <View style={styles.nextStepsCard}>
+          <Text style={styles.nextStepsTitle}>What Happens Next?</Text>
+          <View style={styles.stepsList}>
+            <View style={styles.stepItem}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>1</Text>
+              </View>
+              <Text style={styles.stepText}>Assigned specialist will review and confirm the referral</Text>
+            </View>
+            <View style={styles.stepItem}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>2</Text>
+              </View>
+              <Text style={styles.stepText}>Patient will receive a confirmation notification</Text>
+            </View>
+            {/* <View style={styles.stepItem}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>3</Text>
+              </View>
+              <Text style={styles.stepText}>You'll be notified when the consultation is completed</Text>
+            </View> */}
+          </View>
+        </View>
       </ScrollView>
+
+      {/* Confirm Referral Button */}
+      <View style={styles.bottomContainer}>
+        <TouchableOpacity
+          style={[styles.bookButton, isBooking && styles.bookButtonDisabled]}
+          onPress={handleBookAppointment}
+          disabled={isBooking}
+        >
+          <Text style={styles.bookButtonText}>
+            {isBooking ? 'Booking Referral...' : 'Confirm Referral'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCloseModal}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={handleCloseModal}>
+          <View style={styles.modalOverlay} />
+        </Pressable>
+        
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.successIconContainer}>
+              <CheckCircle size={64} color="#2563EB" />
+            </View>
+            <Text style={styles.successTitle}>Referral Requested!</Text>
+            <Text style={styles.successMessage}>
+              Your referral request has been submitted to {clinicName}. 
+              The assigned specialist will review and confirm the referral.
+            </Text>
+            <View style={styles.modalDetailsCard}>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Patient:</Text>
+                <Text style={styles.modalDetailValue}>{patientFirstName} {patientLastName}</Text>
+              </View>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Clinic:</Text>
+                <Text style={styles.modalDetailValue}>{clinicName}</Text>
+              </View>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Date:</Text>
+                <Text style={styles.modalDetailValue}>{formatDate(selectedDate)}</Text>
+              </View>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Time:</Text>
+                <Text style={styles.modalDetailValue}>{formatTime(selectedTime)}</Text>
+              </View>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Purpose:</Text>
+                <Text style={styles.modalDetailValue}>{selectedPurpose}</Text>
+              </View>
+              <View style={styles.modalDetailRow}>
+                <Text style={styles.modalDetailLabel}>Specialist:</Text>
+                <Text style={styles.modalDetailValue}>
+                  {doctorData 
+                    ? `Dr. ${[doctorData.firstName || doctorData.first_name, doctorData.middleName || doctorData.middle_name, doctorData.lastName || doctorData.last_name].filter(Boolean).join(' ')}`
+                    : `Dr. ${doctorName}`
+                  }
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={handleCloseModal}
+            >
+              <Text style={styles.modalCloseButtonText}>Close</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalXButton}
+              onPress={handleCloseModal}
+            >
+              <X size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -308,17 +476,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 10 : 20,
-    paddingBottom: 20,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 10,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     width: 40,
@@ -327,160 +494,367 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
   },
   headerSpacer: {
     width: 40,
   },
-  content: {
+  scrollView: {
     flex: 1,
-    paddingHorizontal: 20,
   },
-  section: {
-    marginTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  infoCard: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+
+  // Progress Bar
+  progressBarRoot: {
+    height: 26,
+    justifyContent: 'center',
     marginBottom: 16,
+    marginTop: -6,
+    paddingHorizontal: 36,
+    position: 'relative',
   },
-  infoContent: {
-    flex: 1,
-    marginLeft: 12,
+  progressBarBg: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#E5E7EB',
+    top: '50%',
+    marginTop: -2,
   },
-  infoLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  infoValue: {
-    fontSize: 16,
-    color: '#1F2937',
-    fontWeight: '500',
-  },
-  confirmButton: {
+  progressBarActive: {
+    position: 'absolute',
+    left: 0,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: BLUE,
-    borderRadius: 12,
-    padding: 16,
+    top: '50%',
+    marginTop: -2,
+    zIndex: 1,
+  },
+  progressDotsRow: {
+    position: 'absolute',
+    top: '50%',
+    left: 50,
+    right: 0,
+    height: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 24,
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    zIndex: 2,
+    marginTop: -9,
+    pointerEvents: 'none',
+    paddingHorizontal: 16,
   },
-  confirmButtonDisabled: {
-    backgroundColor: '#9CA3AF',
+  progressDotNew: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    position: 'absolute',
   },
-  confirmButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    marginRight: 8,
+  progressDotActiveNew: {
+    backgroundColor: BLUE,
+    borderColor: BLUE,
+    zIndex: 10,
   },
-  successContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  successIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#10B981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  successDescription: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
+
+  // Card
   summaryCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F9FAFB',
     borderRadius: 16,
     padding: 20,
-    marginVertical: 20,
+    marginHorizontal: 24,
+    marginBottom: 24,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 1,
   },
   summaryTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
-    marginBottom: 16,
-    textAlign: 'center',
+    marginBottom: 18,
+    letterSpacing: 0.2,
   },
   clinicSection: {
     marginBottom: 16,
   },
   clinicName: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
     marginBottom: 4,
   },
   clinicAddress: {
-    fontSize: 14,
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   dividerLine: {
     height: 1,
     backgroundColor: '#E5E7EB',
-    marginVertical: 16,
+    marginBottom: 16,
   },
   appointmentDetailRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
-    alignItems: 'flex-start',
+    paddingVertical: 2,
   },
   appointmentDetailLabel: {
-    fontSize: 14,
+    fontSize: 13,
+    fontFamily: 'Inter-Medium',
     color: '#6B7280',
-    fontWeight: '500',
     width: 140,
     flexShrink: 0,
   },
   appointmentDetailValue: {
-    fontSize: 14,
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
+    textAlign: 'right',
     flex: 1,
-    lineHeight: 20,
+    marginLeft: 12,
+  },
+
+  // Info Card
+  infoCard: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 24,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  infoTitle: {
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+    color: '#0C4A6E',
+    marginBottom: 10,
+  },
+  infoList: {
+    gap: 7,
+  },
+  infoItem: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#0C4A6E',
+    lineHeight: 18,
+  },
+  // Next Steps
+  nextStepsCard: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 24,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  nextStepsTitle: {
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+    color: '#0C4A6E',
+    marginBottom: 12,
+  },
+  stepsList: {
+    gap: 11,
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  stepNumber: {
+    width: 20,
+    height: 20,
+    borderRadius: 12,
+    backgroundColor: BLUE,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  stepNumberText: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    color: '#FFFFFF',
+  },
+  stepText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#0C4A6E',
+    flex: 1,
+    lineHeight: 18,
+  },
+  bottomContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  bookButton: {
+    backgroundColor: BLUE,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  bookButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+  },
+  bookButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  // Modal Styles
+  successTitle: {
+    fontSize: 22,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  blurView: {
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    position: 'relative',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    width: '100%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  successIconContainer: {
+    marginBottom: 20,
+  },
+  successMessage: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 22,
+  },
+  modalDetailsCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  modalDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalDetailLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  modalDetailValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 12,
+  },
+  modalCloseButton: {
+    backgroundColor: BLUE,
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 32,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalCloseButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+  },
+  modalXButton: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
 });

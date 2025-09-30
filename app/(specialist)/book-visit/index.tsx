@@ -2,29 +2,66 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
   StatusBar,
   Platform,
-  TextInput,
+  Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {
   ChevronLeft,
-  ChevronRight,
   Search,
-  MapPin,
-  Phone,
+  ChevronRight,
+  Stethoscope,
+  Syringe,
+  HeartPulse,
+  Shield,
+  User,
+  PlusCircle,
+  Filter as FilterIcon,
   Check,
-  Building2,
+  Phone,
+  Mail,
+  AlertTriangle,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService, Clinic } from '../../../src/services/database/firebase';
+import { safeDataAccess } from '../../../src/utils/safeDataAccess';
+import { formatClinicAddress } from '../../../src/utils/formatting';
 
+// Color constants (match booking process screens)
 const BLUE = '#1E40AF';
+const LIGHT_BLUE = '#DBEAFE';
+
+// Map services to icons
+const SERVICE_ICONS = {
+  'General Medicine': Stethoscope,
+  'Cardiology': HeartPulse,
+  'Dermatology': Shield,
+  'Pediatrics': User,
+  'Orthopedics': Shield,
+  'Neurology': HeartPulse,
+  'Psychiatry': User,
+  'Ophthalmology': Shield,
+  'Dental': Stethoscope,
+  'Gynecology': User,
+  'Urology': Shield,
+  'Oncology': HeartPulse,
+  'Emergency Medicine': Shield,
+  'Radiology': Shield,
+  'Pathology': Stethoscope,
+  'Anesthesiology': Shield,
+  'Physical Therapy': User,
+  'Nutrition': User,
+  'Laboratory': Stethoscope,
+  'Pharmacy': Syringe,
+};
 
 interface ClinicWithSpecialists extends Clinic {
   hasSpecialistDoctors?: boolean;
@@ -42,6 +79,18 @@ export default function SpecialistBookVisitScreen() {
   const originalAppointmentId = params.originalAppointmentId as string;
   const isReferral = params.isReferral as string;
   const reasonForReferral = params.reasonForReferral as string;
+  const sourceType = params.sourceType as string; // New parameter for tracking source type
+
+  // Debug: Log all referral parameters
+  console.log('🔍 Specialist book-visit index parameters:', {
+    originalAppointmentId,
+    sourceType,
+    isReferral,
+    patientId,
+    patientFirstName,
+    patientLastName,
+    reasonForReferral
+  });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClinic, setSelectedClinic] = useState<ClinicWithSpecialists | null>(null);
@@ -108,6 +157,10 @@ export default function SpecialistBookVisitScreen() {
 
   const handleClinicSelect = (clinic: ClinicWithSpecialists) => {
     setSelectedClinic(clinic);
+    console.log('🔍 Navigating to select-doctor with clinic:', clinic.name);
+    console.log('🔍 Passing originalAppointmentId:', originalAppointmentId);
+    console.log('🔍 Passing sourceType:', sourceType);
+    
     router.push({
       pathname: '/(specialist)/book-visit/select-doctor',
       params: {
@@ -133,19 +186,24 @@ export default function SpecialistBookVisitScreen() {
     return 'Address not available';
   };
 
-  const getClinicTypeDisplay = (type: string): string => {
+  const getClinicTypeDisplay = (type: string) => {
     const typeMap: { [key: string]: string } = {
-      'general': 'General Practice',
-      'specialist': 'Specialist Clinic',
       'hospital': 'Hospital',
-      'clinic': 'Medical Clinic',
-      'health_center': 'Health Center',
+      'private_clinic': 'Private Clinic',
+      'specialty_clinic': 'Specialty Clinic',
+      'medical_center': 'Medical Center',
     };
-    return typeMap[type.toLowerCase()] || type;
+    return typeMap[type] || 'Clinic';
   };
 
-  const getServiceIcon = (type: string) => {
-    return Building2; // Default icon for all clinic types
+  const getServiceIcon = (clinicType: string) => {
+    const iconMap: { [key: string]: any } = {
+      'hospital': Stethoscope,
+      'private_clinic': Shield,
+      'specialty_clinic': HeartPulse,
+      'medical_center': User,
+    };
+    return iconMap[clinicType] || Stethoscope;
   };
 
   if (loading) {
@@ -160,6 +218,7 @@ export default function SpecialistBookVisitScreen() {
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={BLUE} />
           <Text style={styles.loadingText}>Loading clinics...</Text>
         </View>
       </SafeAreaView>
@@ -174,7 +233,7 @@ export default function SpecialistBookVisitScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <ChevronLeft size={24} color="#1F2937" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Select Clinic</Text>
+          <Text style={styles.headerTitle}>Book Visit</Text>
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.errorContainer}>
@@ -189,50 +248,57 @@ export default function SpecialistBookVisitScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ChevronLeft size={24} color="#1F2937" />
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <ChevronLeft size={24} color={BLUE} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Select Clinic</Text>
+        <Text style={styles.headerTitle}>Book Visit</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.searchContainer}>
+      {/* Progress Bar */}
+      <View style={styles.progressBarRoot}>
+        <View style={styles.progressBarBg} />
+        <View style={[styles.progressBarActive, { width: '17%' }]} />
+        <View style={styles.progressDotsRow}>
+          <View style={[styles.progressDotNew, styles.progressDotActiveNew, { left: 0 }]} />
+          <View style={[styles.progressDotNew, styles.progressDotInactiveNew, { left: '45%' }]} />
+          <View style={[styles.progressDotNew, styles.progressDotInactiveNew, { left: '90%' }]} />
+        </View>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
           <Search size={20} color="#6B7280" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search clinics..."
+            placeholder="Search a clinic"
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="#9CA3AF"
           />
         </View>
+      </View>
 
-        <View style={styles.patientInfo}>
-          <Text style={styles.patientInfoTitle}>Referring Patient:</Text>
-          <Text style={styles.patientInfoText}>
-            {patientFirstName} {patientLastName}
+      {/* Clinics List */}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Available Clinics</Text>
+          <Text style={styles.sectionSubtitle}>
+            {filteredClinics.length} clinic{filteredClinics.length !== 1 ? 's' : ''} found
           </Text>
-          {/* {reasonForReferral && (
-            <>
-              <Text style={styles.patientInfoTitle}>Reason for Referral:</Text>
-              <Text style={styles.patientInfoText}>{reasonForReferral}</Text>
-            </>
-          )} */}
         </View>
 
         {filteredClinics.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Building2 size={48} color="#9CA3AF" />
-            <Text style={styles.emptyStateTitle}>No Clinics Found</Text>
-            <Text style={styles.emptyStateDescription}>
-              {searchQuery 
-                ? 'No clinics match your search criteria.'
-                : 'No clinics with available specialists found.'
-              }
+          <View style={styles.emptyContainer}>
+            <Stethoscope size={48} color="#E5E7EB" />
+            <Text style={styles.emptyText}>No clinics found</Text>
+            <Text style={styles.emptySubtext}>
+              Try adjusting your search terms
             </Text>
           </View>
         ) : (
@@ -280,7 +346,7 @@ export default function SpecialistBookVisitScreen() {
             })}
           </View>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -289,17 +355,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 10 : 20,
-    paddingBottom: 20,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 10,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     width: 40,
@@ -308,28 +373,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
   },
   headerSpacer: {
     width: 40,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
   searchContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginTop: 20,
-    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
@@ -340,70 +406,70 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#1F2937',
+    fontFamily: 'Inter-Regular',
   },
-  patientInfo: {
-    backgroundColor: '#F0F9FF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
   },
-  patientInfoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0369A1',
+  section: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
     marginBottom: 4,
   },
-  patientInfoText: {
-    fontSize: 16,
-    color: '#0C4A6E',
-    marginBottom: 8,
+  sectionSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
   },
   clinicsList: {
-    flex: 1,
+    gap: 16,
   },
   clinicCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: 18,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
     elevation: 1,
   },
   clinicHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   clinicIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: LIGHT_BLUE,
   },
   clinicInfo: {
     flex: 1,
   },
   clinicName: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
     marginBottom: 4,
   },
   clinicType: {
     fontSize: 14,
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
   clinicDetails: {
@@ -412,78 +478,158 @@ const styles = StyleSheet.create({
   detailRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+    marginBottom: 4,
   },
   detailLabel: {
     fontSize: 14,
+    fontFamily: 'Inter-Medium',
     color: '#6B7280',
-    width: 80,
-    fontWeight: '500',
+    minWidth: 60,
   },
   detailValue: {
     fontSize: 14,
-    color: '#374151',
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    textAlign: 'right',
     flex: 1,
+    lineHeight: 20,
+    marginLeft: 12,
   },
   availableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: LIGHT_BLUE,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: BLUE,
   },
   availableText: {
-    fontSize: 14,
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
     color: BLUE,
-    fontWeight: '500',
-    marginLeft: 6,
+    marginLeft: 8,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#6B7280',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 20,
   },
   loadingText: {
+    marginTop: 16,
     fontSize: 16,
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 40,
   },
   errorText: {
     fontSize: 16,
+    fontFamily: 'Inter-Regular',
     color: '#EF4444',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   retryButton: {
     backgroundColor: BLUE,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
-  emptyState: {
-    flex: 1,
+
+  // Progress Bar (matching booking process screens)
+  progressBarRoot: {
+    height: 26,
     justifyContent: 'center',
+    marginBottom: 16,
+    marginTop: -6,
+    paddingHorizontal: 36,
+    position: 'relative',
+  },
+  progressBarBg: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#E5E7EB',
+    top: '50%',
+    marginTop: -2,
+  },
+  progressBarActive: {
+    position: 'absolute',
+    left: 0,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: BLUE,
+    top: '50%',
+    marginTop: -2,
+    zIndex: 1,
+  },
+  progressDotsRow: {
+    position: 'absolute',
+    top: '50%',
+    left: 50,
+    right: 0,
+    height: 18,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    zIndex: 2,
+    marginTop: -9,
+    pointerEvents: 'none',
+    paddingHorizontal: 16,
   },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
-    marginBottom: 8,
+  progressDotNew: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    position: 'absolute',
   },
-  emptyStateDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
+  progressDotActiveNew: {
+    backgroundColor: BLUE,
+    borderColor: BLUE,
+    zIndex: 10,
+  },
+  progressDotInactiveNew: {
+    backgroundColor: '#E5E7EB',
+    borderColor: '#E5E7EB',
+    zIndex: 10,
   },
 });

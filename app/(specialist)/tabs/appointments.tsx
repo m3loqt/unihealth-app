@@ -435,6 +435,30 @@ export default function SpecialistAppointmentsScreen() {
   const handleReferPatient = (appointmentOrReferral: any) => {
     console.log('🔍 HANDLING REFER PATIENT:', appointmentOrReferral);
     
+    // Determine the correct source ID to use for clinicAppointmentId
+    let sourceId = '';
+    let sourceType = '';
+    
+    if (appointmentOrReferral.id) {
+      sourceId = appointmentOrReferral.id;
+      // Determine if this is an appointment or referral based on type or structure
+      if (appointmentOrReferral.type === 'specialist_referral' || appointmentOrReferral.relatedReferralId) {
+        sourceType = 'referral';
+      } else {
+        sourceType = 'appointment';
+      }
+    } else if (appointmentOrReferral.relatedReferralId) {
+      sourceId = appointmentOrReferral.relatedReferralId;
+      sourceType = 'referral';
+    }
+    
+    console.log('🔍 Source ID determination:', { sourceId, sourceType, appointmentOrReferral });
+    
+    if (!sourceId) {
+      Alert.alert('Error', 'Unable to determine source appointment/referral ID for referral tracking');
+      return;
+    }
+    
     // Navigate to clinic selection for specialists
     router.push({
       pathname: '/(specialist)/book-visit',
@@ -442,9 +466,10 @@ export default function SpecialistAppointmentsScreen() {
         patientId: appointmentOrReferral.patientId,
         patientFirstName: appointmentOrReferral.patientFirstName,
         patientLastName: appointmentOrReferral.patientLastName,
-        originalAppointmentId: appointmentOrReferral.id,
+        originalAppointmentId: sourceId, // Use the determined source ID
         isReferral: 'true',
         reasonForReferral: appointmentOrReferral.initialReasonForReferral || appointmentOrReferral.appointmentPurpose || 'Specialist referral',
+        sourceType: sourceType, // Add source type for better tracking
       }
     });
   };

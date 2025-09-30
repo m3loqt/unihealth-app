@@ -77,7 +77,7 @@ export interface Referral {
   assignedSpecialistFirstName: string;
   assignedSpecialistId: string;
   assignedSpecialistLastName: string;
-  clinicAppointmentId: string;
+  clinicAppointmentId?: string; // Made optional for specialist-to-specialist referrals
   consultationId?: string;
   referralConsultationId?: string;
   generalistNotes?: string;

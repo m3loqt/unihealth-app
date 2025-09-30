@@ -3822,6 +3822,30 @@ export const databaseService = {
   async createReferral(referralData: Partial<Referral>): Promise<string> {
     try {
       console.log('🔔 Creating referral with Firebase push key...');
+      console.log('🔍 Referral data clinicAppointmentId:', referralData.clinicAppointmentId);
+      // console.log('🔍 Referral source type:', referralData.referralSourceType);
+      // console.log('🔍 Referral source ID:', referralData.referralSourceId);
+      
+      // Validate required fields for specialist-to-specialist referrals
+      if (!referralData.patientId) {
+        throw new Error('Patient ID is required for referral creation');
+      }
+      if (!referralData.assignedSpecialistId) {
+        throw new Error('Assigned specialist ID is required for referral creation');
+      }
+      if (!referralData.referringSpecialistId) {
+        throw new Error('Referring specialist ID is required for specialist-to-specialist referrals');
+      }
+      
+      // Log warning if clinicAppointmentId is missing for specialist referrals
+      if (!referralData.clinicAppointmentId || referralData.clinicAppointmentId === '') {
+        console.warn('⚠️ Creating specialist referral without clinicAppointmentId');
+        console.warn('⚠️ This may indicate a direct specialist referral without a source appointment/referral');
+        // console.warn('⚠️ Referral source type:', referralData.referralSourceType || 'unknown');
+      } else {
+        console.log('✅ Referral includes clinicAppointmentId:', referralData.clinicAppointmentId);
+        // console.log('✅ Source type:', referralData.referralSourceType || 'unknown');
+      }
       
       // Prepare referral data with required fields
       const completeReferralData = {
@@ -3835,6 +3859,7 @@ export const databaseService = {
       // Use Firebase push to generate the referralId
       const referralId = await this.pushDocument('referrals', completeReferralData);
       console.log('✅ Referral created with Firebase push key:', referralId);
+      console.log('✅ Referral includes clinicAppointmentId:', completeReferralData.clinicAppointmentId || 'none');
       
       // Create notifications for the referral (pending status)
       // Notification creation disabled - using real-time listeners instead

@@ -1302,7 +1302,7 @@ export default function ReferralDetailsScreen() {
                 <Download size={18} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={styles.primaryBottomButtonText}>Generate Visit Report</Text>
               </TouchableOpacity>
-              {user?.role !== 'specialist' && (
+              {user?.role === 'patient' && (
                 <TouchableOpacity
                   style={styles.secondaryBottomButtonOutline}
                   onPress={() => {

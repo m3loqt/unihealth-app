@@ -26,6 +26,8 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  MoreHorizontal,
+  Stethoscope,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
@@ -241,6 +243,7 @@ export default function VisitOverviewScreen() {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isVisitHidden, setIsVisitHidden] = useState(false);
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
     patientHistory: true,
     findings: true,
@@ -249,6 +252,7 @@ export default function VisitOverviewScreen() {
     prescriptions: true,
     certificates: true,
   });
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   
   // PDF download functionality
   const { downloadModalVisible, setDownloadModalVisible, downloadSavedPath, logoDataUri, handleDownload } = usePdfDownload();
@@ -441,6 +445,19 @@ export default function VisitOverviewScreen() {
         
         setVisitData(combinedVisitData);
         
+        // Determine if this visit is hidden (persisted flag on medical history entry)
+        try {
+          const consultationIdToCheck = combinedVisitData.appointmentConsultationId || combinedVisitData.consultationId;
+          if (consultationIdToCheck) {
+            const medicalHistoryForHide = await databaseService.getDocument(`patientMedicalHistory/${appointment.patientId}/entries/${consultationIdToCheck}`);
+            setIsVisitHidden((medicalHistoryForHide as any)?.isHidden === true);
+          } else {
+            setIsVisitHidden(false);
+          }
+        } catch (hideFlagErr) {
+          setIsVisitHidden(false);
+        }
+        
         // Load related prescriptions and certificates
         // First try to get them from the medical history if available
         let visitPrescriptions: any[] = [];
@@ -516,6 +533,91 @@ export default function VisitOverviewScreen() {
       setLoading(false);
     }
   };
+  const handleHideVisitDetails = async () => {
+    if (!visitData || !user) return;
+    try {
+      // Require completed appointment and a consultation id to persist hide
+      if ((visitData.status || '').toLowerCase() !== 'completed') {
+        Alert.alert('Error', 'Cannot hide visit details. Visit must be completed first.');
+        return;
+      }
+      const consultationIdToUse = (visitData as any).appointmentConsultationId || (visitData as any).consultationId;
+      if (!consultationIdToUse) {
+        Alert.alert('Error', 'Cannot hide visit details. No consultation reference was found.');
+        return;
+      }
+
+      Alert.alert(
+        'Hide Visit Details',
+        'Are you sure you want to hide this visit from your medical history? You can show it again anytime.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Hide',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await databaseService.updateDocument(
+                  `patientMedicalHistory/${visitData.patientId}/entries/${consultationIdToUse}`,
+                  { isHidden: true }
+                );
+                setIsVisitHidden(true);
+                Alert.alert('Success', 'Visit details have been hidden from your medical history.', [
+                  { text: 'OK' }
+                ]);
+              } catch (error) {
+                Alert.alert('Error', 'Failed to hide visit details. Please try again.');
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    }
+  };
+
+  const handleShowVisitDetails = async () => {
+    if (!visitData || !user) return;
+    try {
+      if ((visitData.status || '').toLowerCase() !== 'completed') {
+        Alert.alert('Error', 'Cannot show visit details. Visit must be completed first.');
+        return;
+      }
+      const consultationIdToUse = (visitData as any).appointmentConsultationId || (visitData as any).consultationId;
+      if (!consultationIdToUse) {
+        Alert.alert('Error', 'Cannot show visit details. No consultation reference was found.');
+        return;
+      }
+
+      Alert.alert(
+        'Show Visit Details',
+        'Are you sure you want to show this visit in your medical history again?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Show',
+            onPress: async () => {
+              try {
+                await databaseService.updateDocument(
+                  `patientMedicalHistory/${visitData.patientId}/entries/${consultationIdToUse}`,
+                  { isHidden: null }
+                );
+                setIsVisitHidden(false);
+                Alert.alert('Success', 'Visit details have been shown in your medical history again.', [
+                  { text: 'OK' }
+                ]);
+              } catch (error) {
+                Alert.alert('Error', 'Failed to show visit details. Please try again.');
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -537,6 +639,28 @@ export default function VisitOverviewScreen() {
     const html = generateVisitRecordPdf(visitData, prescriptions, certificates, user, logoDataUri);
     const filename = `UniHealth_Visit_Record_${Date.now()}.pdf`;
     await handleDownload(html, filename);
+  };
+
+  const handleVisitFollowUp = () => {
+    if (!visitData) return;
+    const specialistOrDoctorId = (visitData as any).doctorId || (visitData as any).assignedSpecialistId;
+    const clinicId = (visitData as any).clinicId;
+    const doctorName = visitData.doctorName || 'Doctor';
+    if (!specialistOrDoctorId || !clinicId) {
+      Alert.alert('Error', 'Unable to book follow-up. Missing doctor or clinic information.');
+      return;
+    }
+    const params = {
+      doctorId: specialistOrDoctorId,
+      clinicId: clinicId,
+      clinicName: '',
+      doctorName: doctorName,
+      doctorSpecialty: visitData.doctorSpecialty || 'Consultation',
+      isFollowUp: 'true',
+      originalAppointmentId: String(id),
+      isReferralFollowUp: 'false',
+    } as any;
+    router.push({ pathname: '/(patient)/book-visit/select-datetime', params });
   };
 
   if (loading) {
@@ -894,27 +1018,76 @@ export default function VisitOverviewScreen() {
        
       </ScrollView>
 
-      {/* --- BOTTOM ACTION BAR (VERTICAL, OUTLINED SECONDARY) --- */}
+      {/* --- BOTTOM ACTION BAR (COMPACT WITH MORE MENU) --- */}
       {visitData.status.toLowerCase() === 'completed' && (
-        <View style={styles.buttonBarVertical}>
+        <View style={styles.compactButtonBar}>
           <TouchableOpacity
-            style={styles.primaryBottomButton}
+            style={[styles.primaryActionButton, user?.role !== 'patient' && styles.primaryActionButtonFullWidth]}
             onPress={handleDownloadPdf}
             activeOpacity={0.8}
           >
             <Download size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.primaryBottomButtonText}>Download Record</Text>
+            <Text style={styles.primaryActionButtonText}>Generate Visit Report</Text>
           </TouchableOpacity>
+          {user?.role === 'patient' && (
+            <TouchableOpacity
+              style={styles.moreButton}
+              onPress={() => setShowMoreMenu(!showMoreMenu)}
+              activeOpacity={0.8}
+            >
+              <MoreHorizontal size={20} color="#1E40AF" />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* More Menu Dropdown */}
+      {showMoreMenu && user?.role === 'patient' && (
+        <View style={styles.moreMenuOverlay}>
           <TouchableOpacity
-            style={styles.secondaryBottomButtonOutline}
-            onPress={() => {
-              alert('Visit details hidden');
-            }}
-            activeOpacity={0.8}
-          >
-            <Eye size={18} color="#1E40AF" style={{ marginRight: 8 }} />
-            <Text style={styles.secondaryBottomButtonOutlineText}>Hide Visit Details</Text>
-          </TouchableOpacity>
+            style={styles.moreMenuBackdrop}
+            onPress={() => setShowMoreMenu(false)}
+            activeOpacity={1}
+          />
+          <View style={styles.moreMenuContainer}>
+            <TouchableOpacity
+              style={styles.moreMenuItem}
+              onPress={() => {
+                setShowMoreMenu(false);
+                router.push({ pathname: '/e-prescription', params: { id: String(id) } });
+              }}
+              activeOpacity={0.8}
+            >
+              <FileText size={18} color="#1E40AF" style={{ marginRight: 12 }} />
+              <Text style={styles.moreMenuItemText}>Generate E‑Prescription</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.moreMenuItem}
+              onPress={() => {
+                setShowMoreMenu(false);
+                handleVisitFollowUp();
+              }}
+              activeOpacity={0.8}
+            >
+              <Stethoscope size={18} color="#1E40AF" style={{ marginRight: 12 }} />
+              <Text style={styles.moreMenuItemText}>Book Follow-up</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.moreMenuItem}
+              onPress={() => {
+                setShowMoreMenu(false);
+                if (isVisitHidden) {
+                  handleShowVisitDetails();
+                } else {
+                  handleHideVisitDetails();
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Eye size={18} color="#1E40AF" style={{ marginRight: 12 }} />
+              <Text style={styles.moreMenuItemText}>{isVisitHidden ? 'Show Visit Details' : 'Hide Visit Details'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -1406,7 +1579,7 @@ const styles = StyleSheet.create({
   },
 
   // ------- BOTTOM BAR BUTTONS (VERTICAL, OUTLINED SECONDARY) --------
-  buttonBarVertical: {
+  compactButtonBar: {
     position: 'absolute',
     left: 0,
     right: 0,
@@ -1417,39 +1590,73 @@ const styles = StyleSheet.create({
     paddingHorizontal: HORIZONTAL_MARGIN,
     paddingBottom: Platform.OS === 'ios' ? 26 : 18,
     paddingTop: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  primaryBottomButton: {
-    width: '100%',
+  primaryActionButton: {
+    flex: 1,
     backgroundColor: '#1E40AF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 11,
     paddingVertical: 15,
-    marginBottom: 11,
   },
-  primaryBottomButtonText: {
+  primaryActionButtonText: {
     color: '#fff',
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
     letterSpacing: 0.2,
   },
-  secondaryBottomButtonOutline: {
-    width: '100%',
-    backgroundColor: '#fff',
-    flexDirection: 'row',
+  primaryActionButtonFullWidth: {
+    flex: 1,
+    marginRight: 0,
+  },
+  moreButton: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 11,
-    paddingVertical: 15,
-    borderWidth: 1.5,
-    borderColor: '#1E40AF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  secondaryBottomButtonOutlineText: {
-    color: '#1E40AF',
+  moreMenuOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  moreMenuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  moreMenuContainer: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 90 : 82,
+    right: HORIZONTAL_MARGIN,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minWidth: 200,
+  },
+  moreMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  moreMenuItemText: {
+    color: '#1F2937',
     fontSize: 15,
-    fontFamily: 'Inter-SemiBold',
-    letterSpacing: 0.2,
+    fontFamily: 'Inter-Medium',
   },
 });
 
