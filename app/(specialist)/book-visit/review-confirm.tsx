@@ -76,6 +76,7 @@ export default function SpecialistReviewConfirmScreen() {
   const [clinicData, setClinicData] = useState<any>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
+  const [referralConfirmed, setReferralConfirmed] = useState(false);
 
   useEffect(() => {
     loadAdditionalData();
@@ -198,6 +199,7 @@ export default function SpecialistReviewConfirmScreen() {
       const referralId = await databaseService.createReferral(appointmentData);
       console.log('Specialist referral created successfully with ID:', referralId);
       setCreatedAppointmentId(referralId);
+      setReferralConfirmed(true);
 
       // Send referral confirmation email (non-blocking for booking flow)
       try {
@@ -388,18 +390,20 @@ export default function SpecialistReviewConfirmScreen() {
         </View>
       </ScrollView>
 
-      {/* Confirm Referral Button */}
-      <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={[styles.bookButton, isBooking && styles.bookButtonDisabled]}
-          onPress={handleBookAppointment}
-          disabled={isBooking}
-        >
-          <Text style={styles.bookButtonText}>
-            {isBooking ? 'Booking Referral...' : 'Confirm Referral'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* Confirm Referral Button - Only show if referral hasn't been confirmed yet */}
+      {!referralConfirmed && (
+        <View style={styles.bottomContainer}>
+          <TouchableOpacity
+            style={[styles.bookButton, isBooking && styles.bookButtonDisabled]}
+            onPress={handleBookAppointment}
+            disabled={isBooking}
+          >
+            <Text style={styles.bookButtonText}>
+              {isBooking ? 'Booking Referral...' : 'Confirm Referral'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Success Modal */}
       <Modal
