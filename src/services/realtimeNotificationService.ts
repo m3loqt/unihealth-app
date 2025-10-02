@@ -31,6 +31,8 @@ class RealtimeNotificationService {
   private processedNotifications: Map<string, Set<string>> = new Map();
   private isProcessingNotifications: Map<string, boolean> = new Map();
   private globalNotificationCache: Map<string, { timestamp: number; userId: string }> = new Map();
+  private notifiedReferralStatuses: Map<string, Map<string, Set<string>>> = new Map(); // userId -> referralId -> Set<status>
+  private callbackDebounceTimers: Map<string, ReturnType<typeof setTimeout>> = new Map(); // Debounce UI callback calls
 
   /**
    * Start listening to appointment and referral changes for a specific user
@@ -39,6 +41,8 @@ class RealtimeNotificationService {
     console.log('🔔 ===== STARTING REAL-TIME LISTENERS =====');
     console.log('🔔 User:', userId, 'Role:', userRole);
     console.log('🔔 Timestamp:', getCurrentLocalTimestamp());
+    console.log('🔔 Platform:', typeof window !== 'undefined' ? 'web' : 'mobile');
+    console.log('🔔 Firebase database reference:', database);
     
     // Check if listeners already exist for this user
     if (this.appointmentListeners.has(userId)) {
@@ -59,7 +63,12 @@ class RealtimeNotificationService {
     });
     
     // Check for missed notifications first (when user was offline)
-    console.log('🔔 Calling checkMissedNotifications...');
+    console.log('🔔 Calling checkMissedNotifications on login...');
+    
+    // Clear status tracking to ensure we catch all missed notifications on login
+    console.log('🔔 LOGIN: Clearing status tracking to allow missed notifications');
+    this.notifiedReferralStatuses.delete(userId);
+    
     this.checkMissedNotifications(userId, userRole);
     
     // Start appointment listener
@@ -76,6 +85,9 @@ class RealtimeNotificationService {
       doctorUnsubscribe = this.startDoctorListener(userId);
       this.doctorListeners.set(userId, doctorUnsubscribe);
     }
+    
+    // Call debug method to expose global functions
+    this.debugNotifications(userId, userRole);
     
     // Return cleanup function
     return () => {
@@ -240,7 +252,15 @@ class RealtimeNotificationService {
         const notification = this.createAppointmentNotification(userId, userRole, enrichedAppointment);
         if (notification) {
           console.log('🔔 Created notification for appointment:', appointment.id);
+          console.log('🔔 Notification details:', {
+            id: notification.id,
+            title: notification.title,
+            type: notification.type,
+            status: notification.status
+          });
           return notification;
+        } else {
+          console.log('🔔 Failed to create notification for appointment:', appointment.id);
         }
         
         return null;
@@ -295,8 +315,12 @@ class RealtimeNotificationService {
       const existingNotificationIds = new Set(cachedNotifications.map(n => n.relatedId));
       
       // Process referrals in parallel
-      const notificationPromises = Object.values(referrals).map(async (referral: any) => {
+      const notificationPromises = Object.keys(referrals).map(async (referralId) => {
+        const referral = referrals[referralId];
         if (!referral) return null;
+        
+        // Ensure referral has an ID
+        referral.id = referralId;
         
         // Check if referral was created or updated after lastLogin
         const createdAt = new Date(referral.createdAt || referral.referralTimestamp).getTime();
@@ -314,10 +338,18 @@ class RealtimeNotificationService {
           isRecentUpdate: lastUpdatedTime >= fromTime
         });
         
-        // Skip if both creation and last update are before lastLogin
-        if (createdAt < fromTime && lastUpdatedTime < fromTime) {
+        // More flexible time window: Include referrals from the last 24 hours regardless of login time
+        const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
+        const isWithin24Hours = createdAt >= twentyFourHoursAgo || lastUpdatedTime >= twentyFourHoursAgo;
+        
+        // Skip if both creation and last update are before lastLogin AND not within 24 hours
+        if (createdAt < fromTime && lastUpdatedTime < fromTime && !isWithin24Hours) {
           console.log('🔔 Skipping old referral:', referral.id, 'created:', new Date(createdAt).toISOString(), 'updated:', new Date(lastUpdatedTime).toISOString(), 'before lastLogin:', new Date(fromTime).toISOString());
           return null;
+        }
+        
+        if (isWithin24Hours) {
+          console.log('🔔 Including recent referral within 24 hours:', referral.id, 'created:', new Date(createdAt).toISOString());
         }
         
         recentReferrals++;
@@ -328,14 +360,17 @@ class RealtimeNotificationService {
           ? referral.patientId === userId
           : referral.assignedSpecialistId === userId;
           
-        console.log('🔔 Referral relevance check:', {
+        console.log('🔔 Missed referral relevance check:', {
           referralId: referral.id,
           userRole,
           userId,
           patientId: referral.patientId,
           assignedSpecialistId: referral.assignedSpecialistId,
+          referringSpecialistId: referral.referringSpecialistId,
           isRelevant,
-          status: referral.status
+          status: referral.status,
+          appointmentDate: referral.appointmentDate,
+          appointmentTime: referral.appointmentTime
         });
           
         if (!isRelevant) {
@@ -352,6 +387,27 @@ class RealtimeNotificationService {
           return null;
         }
         
+        // Enhanced deduplication: Check for duplicate content
+        const duplicateExists = cachedNotifications.some(existing => 
+          existing.type === 'referral' && 
+          existing.relatedId === referral.id && 
+          existing.status === referral.status
+        );
+        
+        if (duplicateExists) {
+          console.log('🔔 Duplicate referral notification content exists for:', referral.id, 'status:', referral.status);
+          return null;
+        }
+        
+        // Status-based deduplication: Check if we've already notified about this referral status
+        const userStatusMap = this.notifiedReferralStatuses.get(userId) || new Map();
+        const referralStatusSet = userStatusMap.get(referral.id) || new Set();
+        
+        if (referralStatusSet.has(referral.status)) {
+          console.log('🔔 Already notified about referral:', referral.id, 'status:', referral.status);
+          return null;
+        }
+        
         // Check if we should create a notification for this status
         const shouldNotify = this.shouldCreateReferralNotification(referral, userRole);
         console.log('🔔 Should notify for referral:', referral.id, 'status:', referral.status, 'shouldNotify:', shouldNotify);
@@ -362,6 +418,14 @@ class RealtimeNotificationService {
         const notification = await this.createReferralNotification(userId, userRole, referral);
         if (notification) {
           console.log('🔔 Created notification for referral:', referral.id);
+          
+          // Track that we've notified about this referral status
+          const userStatusMap = this.notifiedReferralStatuses.get(userId) || new Map();
+          const referralStatusSet = userStatusMap.get(referral.id) || new Set();
+          referralStatusSet.add(referral.status);
+          userStatusMap.set(referral.id, referralStatusSet);
+          this.notifiedReferralStatuses.set(userId, userStatusMap);
+          
           return notification;
         }
         return null;
@@ -453,6 +517,9 @@ class RealtimeNotificationService {
     
     const unsubscribe = onValue(appointmentsRef, async (snapshot: DataSnapshot) => {
       console.log('🔔 Appointment listener triggered for user:', userId, 'at:', getCurrentLocalTimestamp());
+      console.log('🔔 Platform:', typeof window !== 'undefined' ? 'web' : 'mobile');
+      console.log('🔔 Snapshot exists:', snapshot.exists());
+      console.log('🔔 Snapshot has children:', snapshot.hasChildren());
       try {
         if (!snapshot.exists()) {
           console.log('🔔 No appointments data found');
@@ -548,20 +615,23 @@ class RealtimeNotificationService {
           try {
             const referral = referrals[referralId];
             
-            // Check if this referral is relevant to the user
-            const isRelevant = userRole === 'patient' 
-              ? referral.patientId === userId
-              : referral.assignedSpecialistId === userId;
-              
-            console.log('🔔 Real-time referral relevance check:', {
-              referralId,
-              userRole,
-              userId,
-              patientId: referral.patientId,
-              assignedSpecialistId: referral.assignedSpecialistId,
-              isRelevant,
-              status: referral.status
-            });
+        // Check if this referral is relevant to the user
+        const isRelevant = userRole === 'patient' 
+          ? referral.patientId === userId
+          : referral.assignedSpecialistId === userId;
+          
+        console.log('🔔 Real-time referral relevance check:', {
+          referralId,
+          userRole,
+          userId,
+          patientId: referral.patientId,
+          assignedSpecialistId: referral.assignedSpecialistId,
+          referringSpecialistId: referral.referringSpecialistId,
+          isRelevant,
+          status: referral.status,
+          appointmentDate: referral.appointmentDate,
+          appointmentTime: referral.appointmentTime
+        });
               
             if (isRelevant) {
               console.log('🔔 Adding relevant referral to userReferrals:', referralId);
@@ -846,8 +916,13 @@ class RealtimeNotificationService {
         return notification;
       } else if (previousState && previousState.status !== currentState.status) {
         // Status changed - create notification
-        console.log('🔔 Referral status changed:', referralId, previousState.status, '->', currentState.status);
+        console.log('🔔 Referral status changed:', referralId, previousState.status, '->', currentState.status, 'for user:', userId, 'role:', userRole);
         const notification = await this.createReferralNotification(userId, userRole, referral);
+        if (notification) {
+          console.log('🔔 Created referral status change notification:', notification.id, 'for', userRole, userId);
+        } else {
+          console.log('🔔 No notification created for referral status change');
+        }
         return notification;
       } else if (previousState && previousState.lastUpdated !== currentState.lastUpdated) {
         // LastUpdated changed but status is the same - check if it's a meaningful change
@@ -1153,7 +1228,7 @@ class RealtimeNotificationService {
       timestamp: Date.now(),
       read: false,
       priority,
-      relatedId: referral.id,
+      relatedId: referral.id || `referral-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       status
     };
   }
@@ -1211,15 +1286,52 @@ class RealtimeNotificationService {
   private async loadCachedNotifications(userId: string): Promise<RealtimeNotification[]> {
     try {
       const key = `notifications_${userId}`;
+      const platform = typeof window !== 'undefined' ? 'web' : 'mobile';
+      console.log(`🔔 [${platform}] Attempting to load cached notifications for user ${userId} with key: ${key}`);
       const cached = await AsyncStorage.getItem(key);
+      console.log(`🔔 [${platform}] AsyncStorage.getItem result:`, cached ? 'Found data' : 'No data found');
+      
       if (cached) {
         const notifications = JSON.parse(cached);
-        this.cachedNotifications.set(userId, notifications);
-        console.log(`🔔 Loaded ${notifications.length} cached notifications for user ${userId}`);
-        return notifications;
+        
+        // Remove duplicates based on content (message + type + timestamp proximity)
+        const uniqueNotifications = notifications.filter((notification, index, self) => {
+          const firstIndex = self.findIndex(n => {
+            // Same message and type
+            const sameContent = n.message === notification.message && n.type === notification.type;
+            
+            // Within 5 minutes of each other (likely duplicates)
+            const timeDiff = Math.abs(n.timestamp - notification.timestamp);
+            const withinTimeWindow = timeDiff < 5 * 60 * 1000; // 5 minutes
+            
+            return sameContent && withinTimeWindow;
+          });
+          
+          return index === firstIndex;
+        });
+        
+        // If duplicates were found, save the cleaned version back to cache
+        if (uniqueNotifications.length !== notifications.length) {
+          console.log(`🔔 [${platform}] Found ${notifications.length - uniqueNotifications.length} duplicate notifications, cleaning cache`);
+          await this.saveCachedNotifications(userId, uniqueNotifications);
+        }
+        
+        this.cachedNotifications.set(userId, uniqueNotifications);
+        console.log(`🔔 [${platform}] Loaded ${uniqueNotifications.length} cached notifications for user ${userId}`);
+        console.log(`🔔 [${platform}] Notification IDs:`, uniqueNotifications.map(n => n.id));
+        console.log(`🔔 [${platform}] Notification messages:`, uniqueNotifications.map(n => n.message.substring(0, 50) + '...'));
+        return uniqueNotifications;
+      } else {
+        console.log(`🔔 [${platform}] No cached notifications found for user ${userId}`);
       }
     } catch (error) {
       console.error('🔔 Error loading cached notifications:', error);
+      console.error('🔔 Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        userId,
+        platform: typeof window !== 'undefined' ? 'web' : 'mobile'
+      });
     }
     return [];
   }
@@ -1230,11 +1342,33 @@ class RealtimeNotificationService {
   private async saveCachedNotifications(userId: string, notifications: RealtimeNotification[]): Promise<void> {
     try {
       const key = `notifications_${userId}`;
-      await AsyncStorage.setItem(key, JSON.stringify(notifications));
+      console.log(`🔔 Attempting to save ${notifications.length} notifications for user ${userId} with key: ${key}`);
+      console.log(`🔔 Notifications to save:`, notifications.map(n => ({ id: n.id, title: n.title, type: n.type })));
+      
+      const jsonString = JSON.stringify(notifications);
+      console.log(`🔔 JSON string length:`, jsonString.length);
+      
+      await AsyncStorage.setItem(key, jsonString);
       this.cachedNotifications.set(userId, notifications);
-      console.log(`🔔 Saved ${notifications.length} notifications to cache for user ${userId}`);
+      console.log(`🔔 Successfully saved ${notifications.length} notifications to cache for user ${userId}`);
+      
+      // Verify the save worked
+      const verification = await AsyncStorage.getItem(key);
+      if (verification) {
+        const parsed = JSON.parse(verification);
+        console.log(`🔔 Verification: Saved ${parsed.length} notifications, retrieved ${parsed.length}`);
+      } else {
+        console.log(`🔔 Verification: Failed to retrieve saved notifications`);
+      }
     } catch (error) {
       console.error('🔔 Error saving cached notifications:', error);
+      console.error('🔔 Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        userId,
+        notificationCount: notifications.length,
+        platform: typeof window !== 'undefined' ? 'web' : 'mobile'
+      });
     }
   }
 
@@ -1295,27 +1429,48 @@ class RealtimeNotificationService {
     try {
       console.log('🔔 notifyCallbacks called for user:', userId, 'with', notifications.length, 'new notifications');
       
-      // Load cached notifications
-      const cached = await this.loadCachedNotifications(userId);
-      console.log('🔔 Loaded', cached.length, 'cached notifications for user:', userId);
-      
-      // Merge with new notifications
-      const merged = this.mergeNotifications(cached, notifications);
-      console.log('🔔 Merged to', merged.length, 'total notifications for user:', userId);
-      
-      // Save back to cache
-      await this.saveCachedNotifications(userId, merged);
-      
-      // Notify callback with the merged notifications
-      const callback = this.callbacks.get(userId);
-      if (callback) {
-        console.log('🔔 Notifying callback with', merged.length, 'notifications for user', userId);
-        callback(merged);
-      } else {
-        console.warn('🔔 No callback found for user:', userId);
+      // Clear any existing debounce timer for this user
+      const existingTimer = this.callbackDebounceTimers.get(userId);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
       }
+      
+      // Debounce the callback to prevent rapid multiple calls
+      const debounceTimer = setTimeout(async () => {
+        try {
+          // Load cached notifications
+          const cached = await this.loadCachedNotifications(userId);
+          console.log('🔔 [Debounced] Loaded', cached.length, 'cached notifications for user:', userId);
+          
+          // Merge with new notifications
+          const merged = this.mergeNotifications(cached, notifications);
+          console.log('🔔 [Debounced] Merged to', merged.length, 'total notifications for user:', userId);
+          
+          // Save back to cache
+          await this.saveCachedNotifications(userId, merged);
+          
+          // Notify callback with the merged notifications
+          const callback = this.callbacks.get(userId);
+          if (callback) {
+            console.log('🔔 [Debounced] Notifying callback with', merged.length, 'notifications for user', userId);
+            callback(merged);
+          } else {
+            console.warn('🔔 [Debounced] No callback found for user:', userId);
+          }
+          
+          // Clean up the timer
+          this.callbackDebounceTimers.delete(userId);
+        } catch (error) {
+          console.error('🔔 Error in debounced callback:', error);
+          this.callbackDebounceTimers.delete(userId);
+        }
+      }, 100); // 100ms debounce delay
+      
+      // Store the timer
+      this.callbackDebounceTimers.set(userId, debounceTimer);
+      
     } catch (error) {
-      console.error('🔔 Error notifying callbacks:', error);
+      console.error('🔔 Error setting up debounced callback:', error);
     }
   }
 
@@ -1359,19 +1514,32 @@ class RealtimeNotificationService {
    */
   async markAsRead(userId: string, notificationId: string): Promise<void> {
     try {
+      const platform = typeof window !== 'undefined' ? 'web' : 'mobile';
+      console.log(`🔔 [${platform}] markAsRead called for user ${userId}, notification ${notificationId}`);
+      
       const notifications = await this.loadCachedNotifications(userId);
+      console.log(`🔔 [${platform}] Loaded ${notifications.length} notifications for markAsRead`);
+      
       const updated = notifications.map(n => 
         n.id === notificationId ? { ...n, read: true } : n
       );
+      
+      const foundNotification = updated.find(n => n.id === notificationId);
+      console.log(`🔔 [${platform}] Found notification to mark as read:`, foundNotification ? 'Yes' : 'No');
+      
       await this.saveCachedNotifications(userId, updated);
+      console.log(`🔔 [${platform}] Saved updated notifications to cache`);
       
       // Notify callback
       const callback = this.callbacks.get(userId);
       if (callback) {
+        console.log(`🔔 [${platform}] Calling UI callback with ${updated.length} notifications`);
         callback(updated);
+      } else {
+        console.warn(`🔔 [${platform}] No callback found for user ${userId}`);
       }
       
-      console.log('🔔 Marked notification as read:', notificationId);
+      console.log(`🔔 [${platform}] Marked notification as read:`, notificationId);
     } catch (error) {
       console.error('🔔 Error marking notification as read:', error);
     }
@@ -1441,13 +1609,27 @@ class RealtimeNotificationService {
       await AsyncStorage.removeItem(key);
       this.cachedNotifications.delete(userId);
       
+      // Clear in-memory deduplication tracking
+      this.notifiedReferralStatuses.delete(userId);
+      this.processedNotifications.delete(userId);
+      this.previousAppointmentStates.delete(userId);
+      this.previousReferralStates.delete(userId);
+      this.previousDoctorStates.delete(userId);
+      
+      // Clear callback debounce timer
+      const existingTimer = this.callbackDebounceTimers.get(userId);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+        this.callbackDebounceTimers.delete(userId);
+      }
+      
       // Notify callback
       const callback = this.callbacks.get(userId);
       if (callback) {
         callback([]);
       }
       
-      console.log('🔔 Cleared all notifications');
+      console.log('🔔 Cleared all notifications and deduplication tracking for user:', userId);
     } catch (error) {
       console.error('🔔 Error clearing notifications:', error);
     }
@@ -1473,6 +1655,10 @@ class RealtimeNotificationService {
     this.notificationDebounceTimers.clear();
     this.processedNotifications.clear();
     this.isProcessingNotifications.clear();
+    
+    // Clear all callback debounce timers
+    this.callbackDebounceTimers.forEach(timer => clearTimeout(timer));
+    this.callbackDebounceTimers.clear();
     this.globalNotificationCache.clear();
   }
 
@@ -1483,7 +1669,7 @@ class RealtimeNotificationService {
     if (!appointment || !appointment.status) return false;
     
     const shouldNotify = userRole === 'patient' 
-      ? ['confirmed', 'completed', 'cancelled'].includes(appointment.status)
+      ? ['pending', 'confirmed', 'completed', 'cancelled'].includes(appointment.status)
       : ['pending', 'confirmed', 'completed', 'cancelled'].includes(appointment.status);
     
     console.log('🔔 shouldCreateAppointmentNotification:', {
@@ -1492,7 +1678,7 @@ class RealtimeNotificationService {
       userRole,
       shouldNotify,
       allowedStatuses: userRole === 'patient' 
-        ? ['confirmed', 'completed', 'cancelled'] 
+        ? ['pending', 'confirmed', 'completed', 'cancelled'] 
         : ['pending', 'confirmed', 'completed', 'cancelled']
     });
     
@@ -1506,7 +1692,7 @@ class RealtimeNotificationService {
     if (!referral || !referral.status) return false;
     
     if (userRole === 'patient') {
-      return ['confirmed', 'completed', 'cancelled'].includes(referral.status);
+      return ['pending', 'confirmed', 'completed', 'cancelled'].includes(referral.status);
     } else {
       return ['pending', 'confirmed', 'completed', 'cancelled'].includes(referral.status);
     }
@@ -1663,7 +1849,39 @@ class RealtimeNotificationService {
    */
   async forceCheckMissedNotifications(userId: string, userRole: 'patient' | 'specialist'): Promise<void> {
     console.log('🔔 FORCE CHECK: Starting missed notification check for user:', userId);
+    
+    // Clear status tracking to allow re-checking of all statuses
+    console.log('🔔 FORCE CHECK: Clearing status tracking to allow missed notifications');
+    this.notifiedReferralStatuses.delete(userId);
+    
     await this.checkMissedNotifications(userId, userRole);
+  }
+
+  /**
+   * Debug method - expose to global scope for testing
+   */
+  debugNotifications(userId: string, userRole: 'patient' | 'specialist'): void {
+    console.log('🔔 ===== NOTIFICATION DEBUG INFO =====');
+    console.log('🔔 User ID:', userId);
+    console.log('🔔 User Role:', userRole);
+    console.log('🔔 Platform:', typeof window !== 'undefined' ? 'web' : 'mobile');
+    console.log('🔔 Firebase Database:', database);
+    console.log('🔔 Active Listeners:', {
+      appointments: this.appointmentListeners.has(userId),
+      referrals: this.referralListeners.has(userId),
+      doctors: this.doctorListeners.has(userId)
+    });
+    console.log('🔔 Cached Notifications:', this.cachedNotifications.get(userId)?.length || 0);
+    console.log('🔔 Callbacks:', this.callbacks.has(userId));
+    console.log('🔔 ===== END DEBUG INFO =====');
+    
+    // Make this available globally for easy testing
+    if (typeof window !== 'undefined') {
+      (window as any).debugNotifications = () => this.debugNotifications(userId, userRole);
+      (window as any).forceCheckNotifications = () => this.forceCheckMissedNotifications(userId, userRole);
+      (window as any).clearNotificationCache = () => this.clearNotifications(userId);
+      console.log('🔔 Debug functions available globally: debugNotifications(), forceCheckNotifications(), clearNotificationCache()');
+    }
   }
 
   /**
