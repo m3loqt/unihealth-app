@@ -39,11 +39,12 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      console.log('🔔 Marking notification as read:', notificationId);
+      const platform = typeof window !== 'undefined' ? 'web' : 'mobile';
+      console.log(`🔔 [${platform}] RealtimeModal handleMarkAsRead called for notification:`, notificationId);
       await markAsRead(notificationId);
-      console.log('🔔 Successfully marked notification as read:', notificationId);
+      console.log(`🔔 [${platform}] RealtimeModal Successfully marked notification as read:`, notificationId);
     } catch (error) {
-      console.error('🔔 Error marking notification as read:', error);
+      console.error(`🔔 [${platform}] RealtimeModal Error marking notification as read:`, error);
       Alert.alert('Error', 'Failed to mark notification as read. Please try again.');
     }
   };
