@@ -21,6 +21,14 @@ export const RealtimeNotificationProvider: React.FC<RealtimeNotificationProvider
     unreadCount: typeof notifications.unreadCount === 'number' ? notifications.unreadCount : 0,
   };
 
+  // Debug logging
+  console.log('🔔 RealtimeNotificationContext - Provider State:', {
+    notificationsCount: safeNotifications.notifications.length,
+    unreadCount: safeNotifications.unreadCount,
+    loading: safeNotifications.loading,
+    error: safeNotifications.error
+  });
+
   return (
     <RealtimeNotificationContext.Provider value={{ notifications: safeNotifications }}>
       {children}
