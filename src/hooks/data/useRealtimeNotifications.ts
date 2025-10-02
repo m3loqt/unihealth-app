@@ -35,13 +35,21 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
     if (!user?.uid) return;
     
     try {
+      // Ensure callback is still registered before marking as read
+      const userRole = getUserRole();
+      realtimeNotificationService.setCallback(user.uid, (notifications) => {
+        const safeNotifications = Array.isArray(notifications) ? notifications : [];
+        setNotifications(safeNotifications);
+        setUnreadCount(safeNotifications.filter(n => !n.read).length);
+      });
+      
       await realtimeNotificationService.markAsRead(user.uid, notificationId);
       console.log('🔔 Marked notification as read:', notificationId);
     } catch (err) {
       console.error('🔔 Error marking notification as read:', err);
       setError(err instanceof Error ? err.message : 'Failed to mark notification as read');
     }
-  }, [user?.uid]);
+  }, [user?.uid, getUserRole]);
 
   // Mark all notifications as read (update cache)
   const markAllAsRead = useCallback(async () => {
@@ -69,18 +77,47 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
     }
   }, [user?.uid]);
 
-  // Refresh notifications (force reload from cache)
+  // Refresh notifications (force reload from cache + check missed)
   const refresh = useCallback(async () => {
     if (!user?.uid) return;
     
     try {
-      console.log('🔔 Refreshing notifications for user:', user.uid);
+      const platform = typeof window !== 'undefined' ? 'web' : 'mobile';
+      console.log(`🔔 [${platform}] REFRESH: Starting refresh for user:`, user.uid);
+      const userRole = getUserRole();
+      
+      // Get current notification count before refresh
+      const beforeCount = notifications.length;
+      console.log(`🔔 [${platform}] REFRESH: Current notifications before refresh:`, beforeCount);
+      
+      // First check for missed notifications
+      console.log(`🔔 [${platform}] REFRESH: Checking for missed notifications...`);
+      await realtimeNotificationService.forceCheckMissedNotifications(user.uid, userRole);
+      
+      // Re-register callback to ensure it's working
+      console.log(`🔔 [${platform}] REFRESH: Re-registering callback...`);
+      realtimeNotificationService.setCallback(user.uid, (updatedNotifications) => {
+        const safeNotifications = Array.isArray(updatedNotifications) ? updatedNotifications : [];
+        console.log(`🔔 [${platform}] REFRESH: Callback triggered with ${safeNotifications.length} notifications`);
+        setNotifications(safeNotifications);
+        setUnreadCount(safeNotifications.filter(n => !n.read).length);
+      });
+      
+      // Then force refresh the UI
+      console.log(`🔔 [${platform}] REFRESH: Force refreshing UI...`);
       await realtimeNotificationService.forceRefresh(user.uid);
+      
+      // Wait a bit for state updates
+      setTimeout(() => {
+        console.log(`🔔 [${platform}] REFRESH: Notifications after refresh:`, notifications.length);
+      }, 1000);
+      
+      console.log(`🔔 [${platform}] REFRESH: Successfully completed refresh`);
     } catch (err) {
       console.error('🔔 Error refreshing notifications:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh notifications');
     }
-  }, [user?.uid]);
+  }, [user?.uid, getUserRole, notifications.length]);
 
   // Clear all notifications (clear cache)
   const clearNotifications = useCallback(async () => {
@@ -101,7 +138,8 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
       hasUser: !!user,
       userId: user?.uid,
       userRole: user?.role,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      platform: typeof window !== 'undefined' ? 'web' : 'mobile'
     });
 
     if (!user?.uid) {
@@ -134,6 +172,7 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
       realtimeNotificationService.setCallback(user.uid, (notifications) => {
         try {
           console.log('🔔 Received real-time notification update:', notifications.length, 'for user:', user.uid);
+          console.log('🔔 Hook user details:', { uid: user.uid, role: user.role, email: user.email });
           
           // Ensure we have a valid notifications array
           const safeNotifications = Array.isArray(notifications) ? notifications : [];
