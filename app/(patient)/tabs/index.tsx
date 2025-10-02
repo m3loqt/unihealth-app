@@ -59,6 +59,7 @@ import { performanceUtils } from '@/utils/performance';
 // import RealtimeNotificationTest from '@/components/shared/RealtimeNotificationTest';
 import { getSafeNotifications, getSafeUnreadCount } from '@/utils/notificationUtils';
 import { GlobalNotificationModal } from '@/components/shared';
+import NotificationDebugger from '@/components/debug/NotificationDebugger';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_GAP = 16;
@@ -246,6 +247,13 @@ export default function HomeScreen() {
   // Safely extract notifications and unread count
   const realtimeNotifications = getSafeNotifications(realtimeNotificationData.notifications);
   const realtimeUnreadCount = getSafeUnreadCount(realtimeNotificationData.unreadCount);
+  
+  // Debug logging for UI state
+  console.log('🔔 Patient Home - UI State:', {
+    notificationsCount: realtimeNotifications.length,
+    unreadCount: realtimeUnreadCount,
+    notifications: realtimeNotifications.map(n => ({ id: n.id, title: n.title, read: n.read }))
+  });
   const markRealtimeAsRead = realtimeNotificationData.markAsRead;
   const markAllRealtimeAsRead = realtimeNotificationData.markAllAsRead;
   const deleteRealtimeNotification = realtimeNotificationData.deleteNotification;
@@ -262,6 +270,7 @@ export default function HomeScreen() {
   const [showQRSuccessModal, setShowQRSuccessModal] = useState<boolean>(false);
   const [hasMediaPermission, setHasMediaPermission] = useState<boolean>(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showDebugger, setShowDebugger] = useState(false);
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [activePrescriptions, setActivePrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -714,6 +723,18 @@ export default function HomeScreen() {
                  </View>
                )}
              </TouchableOpacity>
+             
+             {/* Debug Button */}
+             {/* <TouchableOpacity 
+               style={[styles.iconButton, { backgroundColor: '#FF6B6B', marginLeft: 8, minWidth: 48, minHeight: 48, justifyContent: 'center', alignItems: 'center' }]}
+               onPress={() => {
+                 console.log('🔔 Debug button pressed!');
+                 setShowDebugger(true);
+               }}
+               activeOpacity={0.7}
+             >
+               <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>🐛</Text>
+             </TouchableOpacity> */}
              <TouchableOpacity onPress={() => router.push('/(patient)/tabs/profile')}>
                <View style={styles.profileInitialsCircle}>
                  <Text style={styles.profileInitialsText}>{userInitials}</Text>
@@ -1283,6 +1304,40 @@ export default function HomeScreen() {
         onClose={handleCloseNotificationModal}
         userRole="patient"
       />
+
+      {/* Debug Modal */}
+      {/* <NotificationDebugger
+        visible={showDebugger}
+        onClose={() => setShowDebugger(false)}
+      /> */}
+
+      {/* Floating Debug Button */}
+      {/* <TouchableOpacity
+        style={{
+          position: 'absolute',
+          top: 100,
+          right: 20,
+          backgroundColor: '#FF6B6B',
+          width: 60,
+          height: 60,
+          borderRadius: 30,
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          elevation: 5,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 3.84,
+        }}
+        onPress={() => {
+          console.log('🔔 Floating debug button pressed!');
+          setShowDebugger(true);
+        }}
+        activeOpacity={0.8}
+      >
+        <Text style={{ color: 'white', fontSize: 20, fontWeight: 'bold' }}>🐛</Text>
+      </TouchableOpacity> */}
 
     </SafeAreaView>
     </ErrorBoundary>
