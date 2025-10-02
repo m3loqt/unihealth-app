@@ -63,6 +63,7 @@ import { dataValidation } from '../../../src/utils/dataValidation';
 import { useDeepMemo } from '../../../src/utils/performance';
 import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
 import { GlobalNotificationModal } from '../../../src/components/shared';
+import NotificationDebugger from '../../../src/components/debug/NotificationDebugger';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -83,8 +84,22 @@ export default function SpecialistHomeScreen() {
   const refreshNotifications = realtimeNotificationData.refresh;
   // const handleNotificationPress = realtimeNotificationData.handleNotificationPress;
   
-  // Debug log to check notification count
-  console.log('🔔 Specialist Home page - unreadCount:', unreadCount);
+  // Debug logging for UI state
+  console.log('🔔 Specialist Home - UI State:', {
+    userId: user?.uid,
+    userRole: user?.role,
+    notificationsCount: notifications.length,
+    unreadCount: unreadCount,
+    notifications: notifications.map(n => ({ id: n.id, title: n.title, read: n.read }))
+  });
+
+  // Force refresh notifications when component mounts
+  React.useEffect(() => {
+    if (user?.uid && refreshNotifications) {
+      console.log('🔔 Force refreshing notifications for user:', user.uid);
+      refreshNotifications();
+    }
+  }, [user?.uid, refreshNotifications]);
 
   
   const { 
@@ -141,6 +156,7 @@ export default function SpecialistHomeScreen() {
   
   // Notification Modal State
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showDebugger, setShowDebugger] = useState(false);
   
   // Ref to track if data has been loaded on focus to prevent infinite loops
   const hasLoadedOnFocus = React.useRef(false);
@@ -772,6 +788,17 @@ export default function SpecialistHomeScreen() {
               <TouchableOpacity onPress={() => setShowChart(true)} style={styles.toggleIconBtn}>
                 <LineChartIcon size={18} color={showChart ? '#1E40AF' : '#6B7280'} />
               </TouchableOpacity>
+              {/* Debug Button */}
+              {/* <TouchableOpacity 
+                onPress={() => {
+                  console.log('🔔 Specialist debug button pressed!');
+                  setShowDebugger(true);
+                }} 
+                style={[styles.toggleIconBtn, { backgroundColor: '#FF6B6B', minWidth: 40, minHeight: 40, justifyContent: 'center', alignItems: 'center' }]}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: 'white', fontSize: 14, fontWeight: 'bold' }}>🐛</Text>
+              </TouchableOpacity> */}
             </View>
           </View>
 
@@ -1651,6 +1678,40 @@ export default function SpecialistHomeScreen() {
         onClose={handleCloseNotificationModal}
         userRole="specialist"
       />
+
+      {/* Debug Modal */}
+      {/* <NotificationDebugger
+        visible={showDebugger}
+        onClose={() => setShowDebugger(false)}
+      /> */}
+
+      {/* Floating Debug Button */}
+      {/* <TouchableOpacity
+        style={{
+          position: 'absolute',
+          top: 100,
+          right: 20,
+          backgroundColor: '#FF6B6B',
+          width: 60,
+          height: 60,
+          borderRadius: 30,
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          elevation: 5,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 3.84,
+        }}
+        onPress={() => {
+          console.log('🔔 Specialist floating debug button pressed!');
+          setShowDebugger(true);
+        }}
+        activeOpacity={0.8}
+      >
+        <Text style={{ color: 'white', fontSize: 20, fontWeight: 'bold' }}>🐛</Text>
+      </TouchableOpacity> */}
       </ErrorBoundary>
   );
 }
