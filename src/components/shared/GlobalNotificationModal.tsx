@@ -41,11 +41,13 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
 
   // Handle notification press
   const handleNotificationPress = (notification: any, onClose: () => void) => {
-    console.log('🔔 Notification pressed:', notification);
-    console.log('🔔 Related ID:', notification.relatedId);
-    console.log('🔔 Notification type:', notification.type);
+    const platform = typeof window !== 'undefined' ? 'web' : 'mobile';
+    console.log(`🔔 [${platform}] Notification pressed:`, notification);
+    console.log(`🔔 [${platform}] Related ID:`, notification.relatedId);
+    console.log(`🔔 [${platform}] Notification type:`, notification.type);
     
     // Mark as read first
+    console.log(`🔔 [${platform}] About to call handleMarkAsRead for:`, notification.id);
     handleMarkAsRead(notification.id);
     
     // Navigate based on notification type and user role
@@ -92,11 +94,12 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
   // Handle marking notification as read
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      console.log('🔔 Marking notification as read:', notificationId);
+      const platform = typeof window !== 'undefined' ? 'web' : 'mobile';
+      console.log(`🔔 [${platform}] UI handleMarkAsRead called for notification:`, notificationId);
       await markRealtimeAsRead(notificationId);
-      console.log('🔔 Successfully marked notification as read:', notificationId);
+      console.log(`🔔 [${platform}] UI Successfully marked notification as read:`, notificationId);
     } catch (error) {
-      console.error('🔔 Error marking notification as read:', error);
+      console.error(`🔔 [${platform}] UI Error marking notification as read:`, error);
       Alert.alert('Error', 'Failed to mark notification as read. Please try again.');
     }
   };
