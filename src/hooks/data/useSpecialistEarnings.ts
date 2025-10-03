@@ -123,15 +123,48 @@ export function useSpecialistEarnings(): UseSpecialistEarningsReturn {
         isArray: Array.isArray(feeHistory)
       });
       
-      // Get appointments and referrals
-      const [appointments, referrals] = await Promise.all([
-        databaseService.getAppointments(specialistId, 'specialist'),
-        databaseService.getReferralsBySpecialist(specialistId)
+      // Get appointments and referrals - use separate sources to avoid duplicates
+      const [allAppointmentsData, referrals] = await Promise.all([
+        databaseService.getAppointmentsBySpecialist(specialistId), // This already includes referrals
+        databaseService.getReferralsBySpecialist(specialistId) // This gets referrals separately
       ]);
 
-      // Filter completed consultations
-      const completedAppointments = appointments.filter(a => a.status === 'completed');
+      console.log('📊 Earnings Debug - Raw Data:', {
+        specialistId,
+        totalAppointments: allAppointmentsData.length,
+        totalReferrals: referrals.length,
+        appointments: allAppointmentsData.map(a => ({ id: a.id, status: a.status, appointmentDate: a.appointmentDate, type: a.type || 'appointment' })),
+        referrals: referrals.map(r => ({ id: r.id, status: r.status, appointmentDate: r.appointmentDate }))
+      });
+
+      // Separate regular appointments from referrals in the combined data
+      const regularAppointments = allAppointmentsData.filter(a => 
+        !a.type || 
+        (a.type !== 'Referral' && a.type !== 'specialist_referral' && a.type !== 'referral')
+      );
+      const referralAppointments = allAppointmentsData.filter(a => 
+        a.type === 'Referral' || a.type === 'specialist_referral' || a.type === 'referral'
+      );
+      
+      console.log('📊 Earnings Debug - Separated Data:', {
+        regularAppointments: regularAppointments.length,
+        referralAppointments: referralAppointments.length,
+        separateReferrals: referrals.length,
+        regularAppointmentsData: regularAppointments.map(a => ({ id: a.id, status: a.status, appointmentDate: a.appointmentDate })),
+        referralAppointmentsData: referralAppointments.map(a => ({ id: a.id, status: a.status, appointmentDate: a.appointmentDate }))
+      });
+
+      // Filter completed consultations - use only regular appointments and separate referrals to avoid duplicates
+      const completedAppointments = regularAppointments.filter(a => a.status === 'completed');
       const completedReferrals = referrals.filter(r => r.status === 'completed');
+      
+      console.log('📊 Earnings Debug - Final Filtered Data:', {
+        completedRegularAppointments: completedAppointments.length,
+        completedReferrals: completedReferrals.length,
+        totalCompleted: completedAppointments.length + completedReferrals.length,
+        completedAppointmentsData: completedAppointments.map(a => ({ id: a.id, status: a.status, appointmentDate: a.appointmentDate, type: a.type })),
+        completedReferralsData: completedReferrals.map(r => ({ id: r.id, status: r.status, appointmentDate: r.appointmentDate }))
+      });
       
       // Calculate earnings by fee period
       let totalEarnings = 0;
@@ -212,7 +245,7 @@ export function useSpecialistEarnings(): UseSpecialistEarningsReturn {
         };
       }
 
-      setEarnings({
+      const finalEarnings = {
         totalEarnings,
         totalAppointments: completedAppointments.length,
         totalReferrals: completedReferrals.length,
@@ -222,7 +255,9 @@ export function useSpecialistEarnings(): UseSpecialistEarningsReturn {
         previousPeriod,
         loading: false,
         error: null,
-      });
+      };
+
+      setEarnings(finalEarnings);
 
       console.log('💰 Specialist Earnings Calculated:', {
         specialistId,
@@ -230,7 +265,12 @@ export function useSpecialistEarnings(): UseSpecialistEarningsReturn {
         totalAppointments: completedAppointments.length,
         totalReferrals: completedReferrals.length,
         totalEarnings,
-        usingHistoricalFees: feeHistory.length > 0
+        usingHistoricalFees: feeHistory.length > 0,
+        finalEarningsBreakdown: {
+          appointments: finalEarnings.totalAppointments,
+          referrals: finalEarnings.totalReferrals,
+          total: finalEarnings.totalAppointments + finalEarnings.totalReferrals
+        }
       });
 
     } catch (error) {
