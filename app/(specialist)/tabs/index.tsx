@@ -127,6 +127,7 @@ export default function SpecialistHomeScreen() {
   const [nextAppointments, setNextAppointments] = useState<any[]>([]);
   const [newPatients, setNewPatients] = useState<any[]>([]);
   const [clinicData, setClinicData] = useState<{[key: string]: any}>({});
+  const [allAppointments, setAllAppointments] = useState<any[]>([]);
   
   // Performance optimization: memoize filtered data
   const validNextAppointments = useDeepMemo(() => {
@@ -211,26 +212,13 @@ export default function SpecialistHomeScreen() {
     }, [user])
   );
 
-  // Regenerate chart data when chart range changes
+  // Consolidated chart data generation - prevents race conditions
   useEffect(() => {
-    if (user && user.uid && nextAppointments.length > 0) {
+    if (user && user.uid && !referralsLoading && allAppointments.length >= 0) {
+      // Always generate chart data when both referrals and appointments are loaded
       generateChartData();
     }
-  }, [chartRange, user]); // Remove nextAppointments dependency to prevent unnecessary regeneration
-
-  // Initialize chart data when component mounts and when referrals are loaded
-  useEffect(() => {
-    if (user && user.uid && referrals.length >= 0 && !referralsLoading) {
-      generateChartData();
-    }
-  }, [user, referrals, referralsLoading]);
-
-  // Regenerate chart data when chart range changes (only if referrals are loaded)
-  useEffect(() => {
-    if (user && user.uid && referrals.length >= 0 && !referralsLoading) {
-      generateChartData();
-    }
-  }, [chartRange, user, referrals, referralsLoading]);
+  }, [chartRange, user, referrals, referralsLoading, allAppointments]);
 
   // Request camera permission when QR modal is opened
   useEffect(() => {
@@ -261,7 +249,7 @@ export default function SpecialistHomeScreen() {
         appointments,
         pendingAppointments,
         completedAppointments,
-        allAppointments,
+        allAppointmentsData,
         referrals,
         pendingAcceptanceReferrals
       ] = await Promise.all([
@@ -273,6 +261,9 @@ export default function SpecialistHomeScreen() {
         databaseService.getReferralsBySpecialist(user.uid),
         databaseService.getReferralsBySpecialistAndStatus(user.uid, 'pending_acceptance')
       ]);
+
+      // Store all appointments for chart data
+      setAllAppointments(allAppointmentsData);
 
       // Get all pending referrals (both 'pending' and 'pending_acceptance' statuses)
       const pendingReferrals = referrals.filter(ref => 
@@ -447,10 +438,42 @@ export default function SpecialistHomeScreen() {
     setRefreshing(false);
   };
 
-  // Function to aggregate referral data by date for chart
-  const aggregateReferralData = (range: 'weekly' | 'monthly') => {
-    if (!referrals || referrals.length === 0) {
-      // Return empty data if no referrals
+  // Function to aggregate ALL appointment data (referrals + regular appointments) by date for chart
+  const aggregateAllAppointments = (range: 'weekly' | 'monthly') => {
+    console.log('📊 Aggregating ALL appointment data:', { 
+      range, 
+      referralsCount: referrals?.length || 0,
+      appointmentsCount: allAppointments?.length || 0,
+      referrals: referrals?.slice(0, 2), // Log first 2 referrals for debugging
+      appointments: allAppointments?.slice(0, 2) // Log first 2 appointments for debugging
+    });
+    
+    // Combine referrals and regular appointments, removing duplicates
+    const allAppointmentData = [
+      ...(referrals || []).map(ref => ({ ...ref, appointmentDate: ref.appointmentDate, type: 'referral' })),
+      ...(allAppointments || []).map(apt => ({ ...apt, appointmentDate: apt.appointmentDate, type: 'appointment' }))
+    ];
+    
+    // Remove duplicates based on ID to prevent double counting
+    const uniqueAppointments = allAppointmentData.filter((appointment, index, self) => 
+      index === self.findIndex(a => a.id === appointment.id)
+    );
+    
+    console.log('📊 Combined appointment data:', {
+      totalCombined: allAppointmentData.length,
+      uniqueCount: uniqueAppointments.length,
+      duplicatesRemoved: allAppointmentData.length - uniqueAppointments.length,
+      sampleData: uniqueAppointments.slice(0, 5).map(item => ({
+        id: item.id,
+        appointmentDate: item.appointmentDate,
+        type: item.type,
+        patientName: item.patientName || item.patient?.name || 'Unknown'
+      }))
+    });
+    
+    if (!uniqueAppointments || uniqueAppointments.length === 0) {
+      console.log('📊 No unique appointment data (referrals + appointments), returning empty chart data');
+      // Return empty data if no appointments
       if (range === 'weekly') {
         return { data: Array(7).fill(0).map((_, i) => {
           const days = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
@@ -480,24 +503,41 @@ export default function SpecialistHomeScreen() {
         return { value: 0, label: day, date: date.toISOString().split('T')[0] };
       });
 
-      // Count referrals for each day
-      referrals.forEach(referral => {
-        const referralDate = new Date(referral.appointmentDate);
-        const dateStr = referralDate.toISOString().split('T')[0];
-        
-        // Find matching day in our data array
-        const dayIndex = data.findIndex(item => item.date === dateStr);
-        if (dayIndex !== -1) {
-          data[dayIndex].value += 1;
+      // Count ALL appointments (referrals + regular appointments) for each day
+      uniqueAppointments.forEach(appointment => {
+        try {
+          if (!appointment.appointmentDate) {
+            console.warn('📊 Appointment missing appointmentDate:', appointment);
+            return;
+          }
+          
+          const appointmentDate = new Date(appointment.appointmentDate);
+          if (isNaN(appointmentDate.getTime())) {
+            console.warn('📊 Invalid appointmentDate:', appointment.appointmentDate);
+            return;
+          }
+          
+          const dateStr = appointmentDate.toISOString().split('T')[0];
+          
+          // Find matching day in our data array
+          const dayIndex = data.findIndex(item => item.date === dateStr);
+          if (dayIndex !== -1) {
+            data[dayIndex].value += 1;
+          }
+        } catch (error) {
+          console.error('📊 Error processing appointment:', error, appointment);
         }
       });
 
       // Remove date property and return data with total count
       const totalCount = data.reduce((sum, item) => sum + item.value, 0);
-      return { 
+      const result = { 
         data: data.map(({ value, label }) => ({ value, label })), 
         totalCount 
       };
+      
+      console.log('📊 Weekly aggregation result:', { totalCount, dataPoints: result.data.length });
+      return result;
     } else {
       // Monthly aggregation
       const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
@@ -511,37 +551,68 @@ export default function SpecialistHomeScreen() {
         return { value: 0, label: months[monthIdx], month: monthIdx, year: date.getFullYear() };
       });
 
-      // Count referrals for each month
-      referrals.forEach(referral => {
-        const referralDate = new Date(referral.appointmentDate);
-        const referralMonth = referralDate.getMonth();
-        const referralYear = referralDate.getFullYear();
-        
-        // Find matching month in our data array
-        const monthIndex = data.findIndex(item => 
-          item.month === referralMonth && item.year === referralYear
-        );
-        if (monthIndex !== -1) {
-          data[monthIndex].value += 1;
+      // Count ALL appointments (referrals + regular appointments) for each month
+      uniqueAppointments.forEach(appointment => {
+        try {
+          if (!appointment.appointmentDate) {
+            console.warn('📊 Appointment missing appointmentDate:', appointment);
+            return;
+          }
+          
+          const appointmentDate = new Date(appointment.appointmentDate);
+          if (isNaN(appointmentDate.getTime())) {
+            console.warn('📊 Invalid appointmentDate:', appointment.appointmentDate);
+            return;
+          }
+          
+          const appointmentMonth = appointmentDate.getMonth();
+          const appointmentYear = appointmentDate.getFullYear();
+          
+          // Find matching month in our data array
+          const monthIndex = data.findIndex(item => 
+            item.month === appointmentMonth && item.year === appointmentYear
+          );
+          if (monthIndex !== -1) {
+            data[monthIndex].value += 1;
+          }
+        } catch (error) {
+          console.error('📊 Error processing appointment:', error, appointment);
         }
       });
 
       // Remove month and year properties and return data with total count
       const totalCount = data.reduce((sum, item) => sum + item.value, 0);
-      return { 
+      const result = { 
         data: data.map(({ value, label }) => ({ value, label })), 
         totalCount 
       };
+      
+      console.log('📊 Monthly aggregation result:', { totalCount, dataPoints: result.data.length });
+      return result;
     }
   };
 
   const generateChartData = () => {
     if (!user) return;
     
-    // Use real referral data instead of hardcoded values
-    const result = aggregateReferralData(chartRange);
+    console.log('📊 Generating chart data:', { 
+      chartRange, 
+      referralsCount: referrals?.length || 0,
+      appointmentsCount: allAppointments?.length || 0,
+      referralsLoading 
+    });
+    
+    // Use ALL appointment data (referrals + regular appointments) instead of just referrals
+    const result = aggregateAllAppointments(chartRange);
     const newChartData = result.data;
     const totalCount = result.totalCount;
+    
+    console.log('📊 Chart data generated:', { 
+      dataPoints: newChartData.length, 
+      totalCount,
+      sampleData: newChartData.slice(0, 3) // Log first 3 data points for debugging
+    });
+    
     setChartData(newChartData);
     
     // Don't reset selected band when data changes to keep selection persistent
