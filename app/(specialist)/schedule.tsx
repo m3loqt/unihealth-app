@@ -50,6 +50,7 @@ export default function SpecialistScheduleScreen() {
     doctors: {},
     clinics: {}
   });
+  const [activeView, setActiveView] = useState<'appointments' | 'schedules'>('appointments');
 
   // Use the custom hook for schedule management
   const {
@@ -575,9 +576,9 @@ export default function SpecialistScheduleScreen() {
                     styles.cancelledStatusText
                   ]}>
                     {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-            </Text>
-          </View>
-        </View>
+                  </Text>
+                </View>
+              </View>
 
               <View style={styles.appointmentDetails}>
                 <Text style={styles.patientName}>
@@ -671,10 +672,13 @@ export default function SpecialistScheduleScreen() {
 
   return (
     <ErrorBoundary>
-      <SafeAreaView style={[styles.container, Platform.OS === 'android' ? { paddingTop: StatusBar.currentHeight } : null]}>
+      <SafeAreaView style={[styles.container, Platform.OS === 'android' ? { paddingTop: StatusBar.currentHeight, backgroundColor: '#FFFFFF' } : { backgroundColor: '#FFFFFF' }]}>
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            activeView === 'appointments' && styles.scrollContentAppointments
+          ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -713,21 +717,54 @@ export default function SpecialistScheduleScreen() {
             {renderCalendarLegend()}
           </View>
 
+          {/* Toggle Buttons */}
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity
+              style={[
+                styles.toggleButton,
+                activeView === 'appointments' && styles.toggleButtonActive
+              ]}
+              onPress={() => setActiveView('appointments')}
+            >
+              <Text style={[
+                styles.toggleButtonText,
+                activeView === 'appointments' && styles.toggleButtonTextActive
+              ]}>
+                Appointments
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.toggleButton,
+                activeView === 'schedules' && styles.toggleButtonActive
+              ]}
+              onPress={() => setActiveView('schedules')}
+            >
+              <Text style={[
+                styles.toggleButtonText,
+                activeView === 'schedules' && styles.toggleButtonTextActive
+              ]}>
+                Schedules
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Selected Date Details */}
-          {renderSelectedDateDetails()}
+          {activeView === 'appointments' && renderSelectedDateDetails()}
 
           {/* Schedule Management Section */}
-          <View style={styles.scheduleManagementContainer}>
-            <ScheduleList
-              schedules={schedules}
-              clinics={Object.values(clinicData).filter(Boolean)}
-              referrals={referrals}
-              appointments={appointments}
-              onEdit={handleEditSchedule}
-              onDelete={handleDeleteSchedule}
-              onAddNew={handleAddSchedule}
-            />
-          </View>
+          {activeView === 'schedules' && (
+            <View style={styles.scheduleManagementContainer}>
+              <ScheduleList
+                schedules={schedules}
+                clinics={Object.values(clinicData).filter(Boolean)}
+                referrals={referrals}
+                appointments={appointments}
+                onEdit={handleEditSchedule}
+                onDelete={handleDeleteSchedule}
+              />
+            </View>
+          )}
         </ScrollView>
 
         {/* Schedule Form Modal */}
@@ -755,13 +792,18 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24
   },
+  scrollContentAppointments: {
+    paddingBottom: 30,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: 16,
     paddingBottom: 16,
+    paddingHorizontal: 24,
     backgroundColor: '#FFFFFF',
+    marginHorizontal: -24,
   },
   backButton: {
     width: 40,
@@ -805,7 +847,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginTop: 16,
     paddingHorizontal: 24,
-    paddingVertical: 24,
+    paddingVertical: 16,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -814,7 +856,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   navButton: {
     width: 40,
@@ -833,7 +875,7 @@ const styles = StyleSheet.create({
   },
   dayNames: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   dayName: {
     flex: 1,
@@ -849,11 +891,11 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: '14.28%',
-    height: 48,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    marginVertical: 4,
+    marginVertical: 2,
   },
   dayNumber: {
     fontSize: 16,
@@ -906,6 +948,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 16,
     paddingTop: 12,
     borderTopWidth: 1,
@@ -1078,6 +1121,37 @@ const styles = StyleSheet.create({
   scheduleManagementContainer: {
     marginTop: 16,
     marginBottom: 24,
+  },
+
+  // Toggle buttons styles
+  toggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    marginTop: 16,
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleButtonActive: {
+    backgroundColor: '#1E40AF',
+  },
+  toggleButtonText: {
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+    color: '#6B7280',
+  },
+  toggleButtonTextActive: {
+    color: '#FFFFFF',
   },
 
   // New appointment display styles

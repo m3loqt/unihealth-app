@@ -8,7 +8,8 @@ import {
   Alert,
   Modal,
 } from 'react-native';
-import { Edit, Trash2, Calendar, Clock, MapPin, Building } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Edit, Trash2, Calendar, Clock, MapPin, Building, Check } from 'lucide-react-native';
 import { SpecialistSchedule, Clinic } from '../types/schedules';
 import Button from './ui/Button';
 import { formatDate } from '../utils/date';
@@ -20,7 +21,6 @@ interface ScheduleListProps {
   appointments?: any[]; // Optional appointments for blocking check
   onEdit: (schedule: SpecialistSchedule) => void;
   onDelete: (scheduleId: string) => Promise<void>;
-  onAddNew: () => void;
 }
 
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -31,8 +31,7 @@ export default function ScheduleList({
   referrals,
   appointments = [],
   onEdit, 
-  onDelete, 
-  onAddNew 
+  onDelete
 }: ScheduleListProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState<SpecialistSchedule | null>(null);
@@ -178,16 +177,7 @@ export default function ScheduleList({
   }
 
   return (
-    <View style={styles.container}>
-                    <View style={styles.header}>
-         <Text style={styles.title}>Your Schedules</Text>
-         <Button
-           title="Add Schedule"
-           onPress={onAddNew}
-           style={styles.addButton}
-         />
-       </View>
-
+    <>
       <ScrollView style={styles.scheduleList} showsVerticalScrollIndicator={false}>
         {schedules.map((schedule) => {
           console.log('🗑️ Rendering schedule:', schedule.id, schedule);
@@ -207,6 +197,16 @@ export default function ScheduleList({
                   <Text style={styles.clinicName}>
                     {getClinicName(schedule.practiceLocation.clinicId)}
                   </Text>
+                  <View style={styles.statusBadge}>
+                    {schedule.isActive ? (
+                      <>
+                        <Check size={14} color="#374151" />
+                        <Text style={styles.statusText}>Active</Text>
+                      </>
+                    ) : (
+                      <Text style={styles.statusText}>Inactive</Text>
+                    )}
+                  </View>
                 </View>
                 
                 <View style={styles.actions}>
@@ -269,28 +269,20 @@ export default function ScheduleList({
 
               {!canEdit && (
                 <View style={styles.warningContainer}>
+                  <Ionicons name="information-circle" size={16} color="#6B7280" style={styles.warningIcon} />
                   <Text style={styles.warningText}>
                     This schedule cannot be modified because it has confirmed appointments that match this schedule's pattern.
                   </Text>
                 </View>
               )}
 
-              <View style={styles.statusIndicator}>
-                <View style={[
-                  styles.statusDot,
-                  schedule.isActive ? styles.activeStatus : styles.inactiveStatus
-                ]} />
-                <Text style={styles.statusText}>
-                  {schedule.isActive ? 'Active' : 'Inactive'}
-                </Text>
-              </View>
             </View>
           );
-                 })}
-       </ScrollView>
+        })}
+      </ScrollView>
 
-       {/* Custom Delete Confirmation Modal */}
-       <Modal
+      {/* Custom Delete Confirmation Modal */}
+      <Modal
          visible={showDeleteModal}
          transparent={true}
          animationType="fade"
@@ -332,38 +324,15 @@ export default function ScheduleList({
            </View>
          </View>
        </Modal>
-     </View>
-   );
+    </>
+  );
  }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  title: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#1F2937',
-  },
-  addButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
   scheduleList: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingHorizontal: 0,
+    paddingTop: 0,
   },
   scheduleCard: {
     backgroundColor: '#FFFFFF',
@@ -372,14 +341,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
   scheduleHeader: {
     flexDirection: 'row',
@@ -391,6 +352,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
   },
   clinicName: {
     fontSize: 16,
@@ -404,21 +366,21 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: 8,
     borderRadius: 6,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#DBEAFE',
   },
   deleteButton: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#DBEAFE',
   },
   lockedIndicator: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#DBEAFE',
     borderRadius: 4,
   },
   lockedText: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    color: '#92400E',
+    color: '#1E40AF',
   },
   scheduleDetails: {
     gap: 8,
@@ -437,22 +399,32 @@ const styles = StyleSheet.create({
   warningContainer: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F3F4F6',
     borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#F59E0B',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  warningIcon: {
+    marginRight: 8,
+    marginTop: 2,
   },
   warningText: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#92400E',
-    lineHeight: 16,
+    color: '#6B7280',
+    lineHeight: 20,
+    flex: 1,
   },
-  statusIndicator: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    gap: 6,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F9FAFB',
   },
   statusDot: {
     width: 8,
@@ -467,8 +439,8 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
+    color: '#374151',
     fontFamily: 'Inter-Medium',
-    color: '#6B7280',
   },
   emptyContainer: {
     flex: 1,

@@ -14,6 +14,7 @@ import {
   Pressable,
   Alert,
   Share as RNShare,
+  TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -35,6 +36,9 @@ import {
   Trash2,
   MessageCircle,
   Hourglass,
+  Bot,
+  Cpu,
+  Brain,
 } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { BlurView } from 'expo-blur';
@@ -59,8 +63,7 @@ import { performanceUtils } from '@/utils/performance';
 import { consentService } from '@/services/consentService';
 // import RealtimeNotificationTest from '@/components/shared/RealtimeNotificationTest';
 import { getSafeNotifications, getSafeUnreadCount } from '@/utils/notificationUtils';
-import { GlobalNotificationModal } from '@/components/shared';
-import NotificationDebugger from '@/components/debug/NotificationDebugger';
+import { aiService, ChatMessage } from '@/services/aiService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_GAP = 16;
@@ -272,6 +275,10 @@ export default function HomeScreen() {
   const [hasMediaPermission, setHasMediaPermission] = useState<boolean>(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showDebugger, setShowDebugger] = useState(false);
+  const [showChatbotModal, setShowChatbotModal] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatbotLoading, setIsChatbotLoading] = useState(false);
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [activePrescriptions, setActivePrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -729,6 +736,64 @@ export default function HomeScreen() {
   
   const handleCloseNotificationModal = () => setShowNotificationModal(false);
   
+  // Chatbot functions
+  const handleOpenChatbot = () => {
+    setShowChatbotModal(true);
+    // Add welcome message if no messages exist
+    if (chatMessages.length === 0) {
+      const welcomeMessage: ChatMessage = {
+        id: 'welcome',
+        text: 'Hello! I\'m your health assistant. I can help answer general health questions and provide wellness tips. Remember to always consult with your healthcare provider for medical advice.',
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setChatMessages([welcomeMessage]);
+    }
+  };
+
+  const handleCloseChatbot = () => {
+    setShowChatbotModal(false);
+  };
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || isChatbotLoading) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      text: chatInput.trim(),
+      isUser: true,
+      timestamp: new Date(),
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setIsChatbotLoading(true);
+
+    try {
+      const response = await aiService.sendMessage(userMessage.text);
+      
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        text: response.text,
+        isUser: false,
+        timestamp: new Date(),
+      };
+
+      setChatMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        text: 'I apologize, but I\'m having trouble processing your request right now. Please try again later.',
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsChatbotLoading(false);
+    }
+  };
+  
   
 
 
@@ -861,12 +926,19 @@ export default function HomeScreen() {
             <Text style={styles.userName}>{user?.firstName || ''}</Text>
           </View>
            <View style={styles.headerIcons}>
-             {/* <TouchableOpacity 
-               style={styles.iconButton}
-               onPress={() => router.push('/(patient)/tabs/chats')}
-             >
-               <MessageCircle size={24} color="#6B7280" />
-             </TouchableOpacity> */}
+             {/* AI Chat Button */}
+             <View style={styles.chatbotButtonContainer}>
+               <TouchableOpacity 
+                 style={styles.iconButton}
+                 onPress={handleOpenChatbot}
+               >
+                 <Bot size={24} color="#6B7280" />
+               </TouchableOpacity>
+               <View style={styles.newBadge}>
+                 <Text style={styles.newBadgeText}>NEW</Text>
+               </View>
+             </View>
+             
              <TouchableOpacity 
                style={styles.iconButton}
                onPress={handleOpenNotifications}
@@ -1034,6 +1106,12 @@ export default function HomeScreen() {
                   }}
                   activeOpacity={0.7}
                 >
+                  {/* Decorative corner accent */}
+                  <View style={styles.cornerAccent} />
+                  
+                  {/* Gradient overlay */}
+                  <View style={styles.gradientOverlay} />
+                  
                   <View style={styles.appointmentHeader}>
                     <View style={styles.doctorAvatar}>
                       <Text style={styles.doctorInitial}>
@@ -1071,34 +1149,52 @@ export default function HomeScreen() {
                       </Text>
                       <Text style={styles.doctorSpecialty}>{appt.specialty || 'General Medicine'}</Text>
                     </View>
-                     <View style={styles.appointmentTimePill}>
-                       <Calendar size={10} color="#9CA3AF" />
-                       <Text style={styles.appointmentDate}>
-                         {appt.appointmentDate ? (() => {
-                           try {
-                             // Parse the date string as local date to avoid timezone issues
-                             const [year, month, day] = appt.appointmentDate.split('-').map(Number);
-                             const date = new Date(year, month - 1, day); // month is 0-indexed
-                             return date.toLocaleDateString('en-US', {
-                               month: 'short',
-                               day: 'numeric',
-                               year: 'numeric'
-                             });
-                           } catch (error) {
-                             return 'Invalid date';
-                           }
-                         })() : 'Date not specified'}
-                       </Text>
-                     </View>
-                  </View>
-                  <View style={styles.appointmentFooter}>
                     <Text 
-                      style={styles.appointmentType}
-                      numberOfLines={3}
+                      style={styles.appointmentPurpose}
+                      numberOfLines={2}
                       ellipsizeMode="tail"
                     >
                       {appt.appointmentPurpose || 'Consultation'}
                     </Text>
+                  </View>
+                  <View style={styles.appointmentFooter}>
+                    <View style={styles.appointmentTimeInfo}>
+                      <View style={styles.appointmentTimePill}>
+                        <Calendar size={10} color="#FFFFFF" />
+                        <Text style={styles.appointmentDate}>
+                          {appt.appointmentDate ? (() => {
+                            try {
+                              // Parse the date string as local date to avoid timezone issues
+                              const [year, month, day] = appt.appointmentDate.split('-').map(Number);
+                              const date = new Date(year, month - 1, day); // month is 0-indexed
+                              return date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              });
+                            } catch (error) {
+                              return 'Invalid date';
+                            }
+                          })() : 'Date not specified'}
+                        </Text>
+                      </View>
+                      <View style={styles.appointmentTimePill}>
+                        <Clock size={10} color="#FFFFFF" />
+                        <Text style={styles.appointmentDate}>
+                          {(() => {
+                            const timeString = appt.appointmentTime;
+                            if (!timeString) return 'Time not specified';
+                            // Handle time strings that already have AM/PM
+                            if (timeString.includes('AM') || timeString.includes('PM')) {
+                              // Remove any duplicate AM/PM and return clean format
+                              const cleanTime = timeString.replace(/\s*(AM|PM)\s*(AM|PM)\s*/gi, ' $1');
+                              return cleanTime.trim();
+                            }
+                            return timeString;
+                          })()}
+                        </Text>
+                      </View>
+                    </View>
                     <View style={styles.joinButton}>
                       <Text style={styles.joinButtonText}>View details</Text>
                     </View>
@@ -1534,18 +1630,121 @@ export default function HomeScreen() {
         </View>
       </Modal>
                   
-      {/* === GLOBAL NOTIFICATION MODAL === */}
-      <GlobalNotificationModal
-        visible={showNotificationModal}
-        onClose={handleCloseNotificationModal}
-        userRole="patient"
-      />
+      {/* === CHATBOT MODAL === */}
+      <Modal
+        visible={showChatbotModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCloseChatbot}
+      >
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <Pressable style={chatbotModalStyles.backdrop} onPress={handleCloseChatbot}>
+          <BlurView intensity={22} style={chatbotModalStyles.blurView}>
+            <View style={chatbotModalStyles.overlay} />
+          </BlurView>
+        </Pressable>
+        <View style={chatbotModalStyles.modalContainer}>
+          <SafeAreaView style={chatbotModalStyles.safeArea}>
+            <View style={chatbotModalStyles.modalContent}>
+              {/* Header */}
+              <View style={chatbotModalStyles.header}>
+                <View style={chatbotModalStyles.headerLeft}>
+                  <View style={chatbotModalStyles.botAvatar}>
+                    <Bot size={20} color="#FFFFFF" />
+                  </View>
+                  <View>
+                    <Text style={chatbotModalStyles.headerTitle}>Health Assistant</Text>
+                    <Text style={chatbotModalStyles.headerSubtitle}>Ask me anything about health</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={chatbotModalStyles.closeButton} onPress={handleCloseChatbot}>
+                  <X size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Divider */}
+              <View style={chatbotModalStyles.divider} />
+              
+              {/* Messages */}
+              <ScrollView 
+                style={chatbotModalStyles.messagesContainer}
+                contentContainerStyle={chatbotModalStyles.messagesContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {chatMessages.map((message) => (
+                  <View
+                    key={message.id}
+                    style={[
+                      chatbotModalStyles.messageContainer,
+                      message.isUser ? chatbotModalStyles.userMessage : chatbotModalStyles.botMessage
+                    ]}
+                  >
+                    <View
+                      style={[
+                        chatbotModalStyles.messageBubble,
+                        message.isUser ? chatbotModalStyles.userBubble : chatbotModalStyles.botBubble
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          chatbotModalStyles.messageText,
+                          message.isUser ? chatbotModalStyles.userText : chatbotModalStyles.botText
+                        ]}
+                      >
+                        {message.text}
+                      </Text>
+                    </View>
+                    <Text style={chatbotModalStyles.messageTime}>
+                      {message.timestamp.toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Text>
+                  </View>
+                ))}
+                {isChatbotLoading && (
+                  <View style={[chatbotModalStyles.messageContainer, chatbotModalStyles.botMessage]}>
+                    <View style={[chatbotModalStyles.messageBubble, chatbotModalStyles.botBubble]}>
+                      <View style={chatbotModalStyles.typingIndicator}>
+                        <View style={chatbotModalStyles.typingDot} />
+                        <View style={chatbotModalStyles.typingDot} />
+                        <View style={chatbotModalStyles.typingDot} />
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+              
+              {/* Input */}
+              <View style={chatbotModalStyles.inputContainer}>
+                <View style={chatbotModalStyles.inputWrapper}>
+                  <TextInput
+                    style={chatbotModalStyles.textInput}
+                    placeholder="Ask a health question..."
+                    placeholderTextColor="#9CA3AF"
+                    value={chatInput}
+                    onChangeText={setChatInput}
+                    multiline
+                    maxLength={500}
+                    editable={!isChatbotLoading}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      chatbotModalStyles.sendButton,
+                      (!chatInput.trim() || isChatbotLoading) && chatbotModalStyles.sendButtonDisabled
+                    ]}
+                    onPress={handleSendMessage}
+                    disabled={!chatInput.trim() || isChatbotLoading}
+                  >
+                    <Bot size={20} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
 
-      {/* Debug Modal */}
-      {/* <NotificationDebugger
-        visible={showDebugger}
-        onClose={() => setShowDebugger(false)}
-      /> */}
 
       {/* Floating Debug Button */}
       {/* <TouchableOpacity
@@ -1628,8 +1827,29 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 16, color: '#6B7280' },
   userName: { fontSize: 24, color: '#1F2937', marginTop: 4 },
-  headerIcons: { flexDirection: 'row', alignItems: 'center' },
+  headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: { padding: 8 },
+  chatbotButtonContainer: {
+    position: 'relative',
+  },
+  newBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    minWidth: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontFamily: 'Inter-Bold',
+    fontWeight: '700',
+  },
   profileImage: {
     width: 36,
     height: 36,
@@ -1770,11 +1990,33 @@ const styles = StyleSheet.create({
   
   appointmentCard: {
     padding: 16,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#1E40AF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#1E40AF',
     marginBottom: 12,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cornerAccent: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 20,
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 60,
+    height: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 30,
   },
   appointmentHeader: { 
     flexDirection: 'row', 
@@ -1785,24 +2027,31 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1E40AF',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   doctorInitial: { 
-    color: '#FFFFFF', 
+    color: '#1E40AF', 
     fontSize: 14 
   },
   appointmentDetails: { flex: 1 },
   doctorName: { 
     fontSize: 16, 
-    color: '#1F2937' 
+    color: '#FFFFFF' 
   },
   doctorSpecialty: { 
     fontSize: 14, 
-    color: '#6B7280', 
+    color: '#E5E7EB', 
     marginTop: 2 
+  },
+  appointmentPurpose: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    textAlign: 'right',
+    maxWidth: 120,
+    lineHeight: 16,
   },
    appointmentTimePill: {
      flexDirection: 'row',
@@ -1810,14 +2059,14 @@ const styles = StyleSheet.create({
      paddingHorizontal: 8,
      paddingVertical: 4,
      borderRadius: 12,
-     backgroundColor: '#FFFFFF',
+     backgroundColor: 'rgba(255, 255, 255, 0.2)',
      borderWidth: 1,
-     borderColor: '#D1D5DB',
+     borderColor: 'rgba(255, 255, 255, 0.3)',
      gap: 4,
    },
    appointmentDate: { 
      fontSize: 12, 
-     color: '#9CA3AF',
+     color: '#FFFFFF',
      textAlign: 'center',
      fontFamily: 'Inter-Regular',
    },
@@ -1827,23 +2076,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-  appointmentType: { 
-    fontSize: 14, 
-    color: '#374151',
+  appointmentTimeInfo: {
     flex: 1,
+    flexDirection: 'row',
+    gap: 8,
     marginRight: 12,
-    flexWrap: 'wrap',
   },
   joinButton: { 
     paddingHorizontal: 16, 
     paddingVertical: 8, 
-    backgroundColor: '#1E40AF', 
+    backgroundColor: '#FFFFFF', 
     borderRadius: 8,
     minWidth: 100,
     alignItems: 'center',
   },
   joinButtonText: { 
-    color: '#FFFFFF', 
+    color: '#1E40AF', 
     fontSize: 14 
   },
   prescriptionsContainer: { gap: 12 },
@@ -1890,7 +2138,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3F4F6',
     borderWidth: 1,
     borderColor: '#D1D5DB',
     gap: 4,
@@ -2199,4 +2447,167 @@ const qrSuccessStyles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 12, marginTop: 24 },
   primaryButton: { flex: 1, backgroundColor: '#1E40AF', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-SemiBold' },
+});
+
+// Chatbot Modal Styles
+const chatbotModalStyles = StyleSheet.create({
+  backdrop: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1,
+  },
+  blurView: { flex: 1 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.34)' },
+  modalContainer: {
+    flex: 1, justifyContent: 'flex-end', zIndex: 2,
+  },
+  safeArea: { width: '100%' },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    minHeight: SCREEN_HEIGHT * 0.7,
+    maxHeight: SCREEN_HEIGHT * 0.9,
+  },
+  header: {
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 16,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  botAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1E40AF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  headerTitle: {
+    fontSize: 18, 
+    fontFamily: 'Inter-Bold', 
+    color: '#1F2937', 
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 13, 
+    fontFamily: 'Inter-Regular', 
+    color: '#6B7280',
+  },
+  closeButton: {
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    borderWidth: 1, 
+    borderColor: '#E5E7EB',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginBottom: 16,
+  },
+  messagesContainer: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  messagesContent: {
+    paddingVertical: 8,
+  },
+  messageContainer: {
+    marginBottom: 16,
+  },
+  userMessage: {
+    alignItems: 'flex-end',
+  },
+  botMessage: {
+    alignItems: 'flex-start',
+  },
+  messageBubble: {
+    maxWidth: '80%',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  userBubble: {
+    backgroundColor: '#1E40AF',
+    borderBottomRightRadius: 4,
+  },
+  botBubble: {
+    backgroundColor: '#F3F4F6',
+    borderBottomLeftRadius: 4,
+  },
+  messageText: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 20,
+  },
+  userText: {
+    color: '#FFFFFF',
+  },
+  botText: {
+    color: '#1F2937',
+  },
+  messageTime: {
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    marginTop: 4,
+    marginHorizontal: 16,
+  },
+  typingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  typingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#9CA3AF',
+  },
+  inputContainer: {
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    maxHeight: 100,
+    paddingVertical: 8,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1E40AF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
 });

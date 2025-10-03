@@ -1143,17 +1143,9 @@ export default function PatientOverviewScreen() {
                           <ChevronLeft size={16} color={prescriptionPage === 1 ? "#9CA3AF" : "#1E40AF"} />
                         </TouchableOpacity>
                         
-                        {Array.from({ length: Math.ceil(activePrescriptions.length / itemsPerPage) }, (_, i) => i + 1).map((pageNum) => (
-                          <TouchableOpacity
-                            key={pageNum}
-                            style={[styles.paginationPageButton, prescriptionPage === pageNum && styles.paginationPageButtonActive]}
-                            onPress={() => setPrescriptionPage(pageNum)}
-                          >
-                            <Text style={[styles.paginationPageText, prescriptionPage === pageNum && styles.paginationPageTextActive]}>
-                              {pageNum}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
+                        <Text style={styles.paginationText}>
+                          {prescriptionPage} of {Math.ceil(activePrescriptions.length / itemsPerPage)}
+                        </Text>
                         
                         <TouchableOpacity 
                           style={[styles.paginationButton, prescriptionPage === Math.ceil(activePrescriptions.length / itemsPerPage) && styles.paginationButtonDisabled]}
@@ -1168,14 +1160,6 @@ export default function PatientOverviewScreen() {
                   
                   
                   
-                                     {/* Page info text */}
-                   {activePrescriptions.length > itemsPerPage && (
-                     <View style={styles.pageInfoContainer}>
-                       <Text style={styles.pageInfoText}>
-                         Page {prescriptionPage} of {Math.ceil(activePrescriptions.length / itemsPerPage)}
-                       </Text>
-                     </View>
-                   )}
                 </View>
               </View>
             )}
@@ -1879,14 +1863,14 @@ const styles = StyleSheet.create({
   },
   // Pagination styles
   paginationContainer: {
-    alignItems: 'center',
+    alignItems: 'flex-end',
     paddingVertical: 8,
     marginTop: 4,
   },
   paginationControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
   paginationButton: {
     width: 32,
@@ -1902,28 +1886,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderColor: '#E5E7EB',
   },
-  paginationPageButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  paginationPageButtonActive: {
-    backgroundColor: '#1E40AF',
-    borderColor: '#1E40AF',
-  },
-  paginationPageText: {
+  paginationText: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
-    color: '#374151',
+    color: '#6B7280',
   },
-     paginationPageTextActive: {
-     color: '#FFFFFF',
-   },
    // Page info styles
    pageInfoContainer: {
      alignItems: 'center',

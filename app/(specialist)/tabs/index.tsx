@@ -1522,6 +1522,12 @@ export default function SpecialistHomeScreen() {
                     }}
                     activeOpacity={0.7}
                   >
+                    {/* Decorative corner accent */}
+                    <View style={styles.cornerAccent} />
+                    
+                    {/* Gradient overlay */}
+                    <View style={styles.gradientOverlay} />
+                    
                     <View style={styles.appointmentHeader}>
                       <View style={styles.patientAvatar}>
                         <Text style={styles.patientInitial}>
@@ -1538,13 +1544,13 @@ export default function SpecialistHomeScreen() {
                     <View style={styles.appointmentFooter}>
                       <View style={styles.appointmentTimeInfo}>
                         <View style={styles.appointmentTimePill}>
-                          <Calendar size={10} color="#9CA3AF" />
+                          <Calendar size={10} color="#FFFFFF" />
                           <Text style={styles.appointmentDate}>
                             {formatAppointmentDate(appointment.appointmentDate)}
                           </Text>
                         </View>
                         <View style={styles.appointmentTimePill}>
-                          <Clock size={10} color="#9CA3AF" />
+                          <Clock size={10} color="#FFFFFF" />
                           <Text style={styles.appointmentDate}>
                             {(() => {
                               const timeString = appointment.appointmentTime;
@@ -1628,13 +1634,13 @@ export default function SpecialistHomeScreen() {
                     onPress={() => router.push(`/patient-overview?id=${patient.id}`)}
                   >
                     <View style={styles.patientHeader}>
-                      <View style={styles.patientAvatar}>
-                        <Text style={styles.patientInitial}>
+                      <View style={styles.patientAvatarNew}>
+                        <Text style={styles.patientInitialNew}>
                           {patientInitials}
                         </Text>
                       </View>
                       <View style={styles.patientDetails}>
-                        <Text style={styles.patientName}>{patientName}</Text>
+                        <Text style={styles.patientNameNew}>{patientName}</Text>
                         <Text style={styles.referredFrom}>
                           {patient.referredFrom ? `Referred from ${patient.referredFrom}` : 'Direct registration'}
                         </Text>
@@ -2228,12 +2234,34 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   appointmentCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#1E40AF',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#1E40AF',
     marginBottom: 8,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cornerAccent: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 20,
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 60,
+    height: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 30,
   },
   appointmentHeader: {
     flexDirection: 'row',
@@ -2243,15 +2271,35 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1E40AF',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   patientInitial: {
+    color: '#1E40AF',
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+  },
+  patientAvatarNew: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1E40AF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  patientInitialNew: {
     color: '#FFFFFF',
     fontSize: 13,
     fontFamily: 'Inter-Regular',
+  },
+  patientNameNew: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    marginBottom: 2,
   },
   appointmentDetails: {
     flex: 1,
@@ -2259,13 +2307,13 @@ const styles = StyleSheet.create({
   patientName: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#1F2937',
+    color: '#FFFFFF',
     marginBottom: 2,
   },
   appointmentType: {
     fontSize: 13,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
+    color: '#E5E7EB',
     marginTop: 2,
   },
 
@@ -2280,15 +2328,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     gap: 4,
   },
   appointmentDate: {
     fontSize: 11,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
+    color: '#FFFFFF',
   },
   appointmentFooter: { 
     flexDirection: 'row', 
@@ -2315,13 +2363,13 @@ const styles = StyleSheet.create({
   joinButton: { 
     paddingHorizontal: 14, 
     paddingVertical: 8, 
-    backgroundColor: '#1E40AF', 
+    backgroundColor: '#FFFFFF', 
     borderRadius: 8,
     minWidth: 100,
     alignItems: 'center',
   },
   joinButtonText: { 
-    color: '#FFFFFF', 
+    color: '#1E40AF', 
     fontSize: 14 
   },
   patientsContainer: {
@@ -2333,7 +2381,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 12,
+    marginBottom: 4,
   },
   patientHeader: {
     flexDirection: 'row',
