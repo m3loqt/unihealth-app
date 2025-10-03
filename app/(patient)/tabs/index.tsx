@@ -56,6 +56,7 @@ import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { dataValidation } from '@/utils/dataValidation';
 import { performanceUtils } from '@/utils/performance';
+import { consentService } from '@/services/consentService';
 // import RealtimeNotificationTest from '@/components/shared/RealtimeNotificationTest';
 import { getSafeNotifications, getSafeUnreadCount } from '@/utils/notificationUtils';
 import { GlobalNotificationModal } from '@/components/shared';
@@ -278,6 +279,12 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
+  
+  // Consent system state
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [consentRequest, setConsentRequest] = useState<any>(null);
+  const [consentLoading, setConsentLoading] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
   // Function to get 5 random tips for today
   const getDailyHealthTips = async () => {
@@ -308,10 +315,160 @@ export default function HomeScreen() {
     }
   };
 
+  // Consent handling functions
+  const handleConsentRequest = async (requestId: string) => {
+    try {
+      console.log('📋 Processing consent request:', requestId);
+      setConsentLoading(true);
+      
+      // Get the consent request details
+      const request = await consentService.getConsentRequest(requestId);
+      if (!request) {
+        console.error('❌ Consent request not found:', requestId);
+        return;
+      }
+      
+      // Check if request is still pending and not expired
+      if (request.status !== 'pending') {
+        console.log('⚠️ Consent request already processed:', request.status);
+        return;
+      }
+      
+      if (consentService.isConsentRequestExpired(request)) {
+        console.log('⚠️ Consent request expired');
+        Alert.alert(
+          'Request Expired',
+          'This consent request has expired. Please ask the specialist to scan your QR code again.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      // Get specialist details dynamically
+      const specialistDetails = await consentService.getSpecialistDetailsFromConsentRequest(request);
+      
+      // Show consent modal with enhanced request data
+      setConsentRequest({
+        ...request,
+        specialistDetails
+      });
+      setShowConsentModal(true);
+      
+    } catch (error) {
+      console.error('❌ Error handling consent request:', error);
+    } finally {
+      setConsentLoading(false);
+    }
+  };
+
+  const handleConsentResponse = async (response: 'approved' | 'denied') => {
+    if (!consentRequest) return;
+    
+    try {
+      console.log('📝 Patient consent response:', response);
+      setConsentLoading(true);
+      
+      // Handle the consent response
+      await consentService.handleConsentResponse(consentRequest.id, response);
+      
+      // Close the modal
+      setShowConsentModal(false);
+      setConsentRequest(null);
+      
+      // Show confirmation
+      Alert.alert(
+        response === 'approved' ? 'Access Granted' : 'Access Denied',
+        response === 'approved' 
+          ? 'You have granted access to your medical records.'
+          : 'You have denied access to your medical records.',
+        [{ text: 'OK' }]
+      );
+      
+    } catch (error) {
+      console.error('❌ Error handling consent response:', error);
+      Alert.alert(
+        'Error',
+        'Failed to process your response. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setConsentLoading(false);
+    }
+  };
+
+  const handleCloseConsentModal = () => {
+    setShowConsentModal(false);
+    setConsentRequest(null);
+    setTimeRemaining(0);
+  };
+
+  // Countdown timer for consent requests
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    
+    if (showConsentModal && consentRequest) {
+      const updateTimer = () => {
+        const remaining = Math.max(0, consentRequest.expiresAt - Date.now());
+        setTimeRemaining(Math.ceil(remaining / 1000));
+        
+        if (remaining <= 0) {
+          setShowConsentModal(false);
+          setConsentRequest(null);
+          Alert.alert(
+            'Request Expired',
+            'This consent request has expired. Please ask the specialist to scan your QR code again.',
+            [{ text: 'OK' }]
+          );
+        }
+      };
+      
+      updateTimer();
+      interval = setInterval(updateTimer, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [showConsentModal, consentRequest]);
+
   // Load user data
   useEffect(() => {
     if (user) {
       loadDashboardData();
+      
+      // Listen for consent requests in real-time
+      const listenForConsentRequests = () => {
+        console.log('🔍 Setting up consent request listener for patient:', user.uid);
+        
+        // Set up Firebase real-time listener for consent requests
+        const unsubscribe = databaseService.listenToConsentRequests(user.uid, (requests) => {
+          console.log('📋 Received consent requests:', requests.length);
+          
+          // Find pending requests for this patient
+          const pendingRequests = requests.filter(req => 
+            req.patientId === user.uid && 
+            req.status === 'pending' &&
+            !consentService.isConsentRequestExpired(req)
+          );
+          
+          if (pendingRequests.length > 0) {
+            console.log('🔔 New consent request found:', pendingRequests[0].id);
+            // Handle the first pending request
+            handleConsentRequest(pendingRequests[0].id);
+          }
+        });
+        
+        return unsubscribe;
+      };
+      
+      const unsubscribe = listenForConsentRequests();
+      
+      return () => {
+        if (unsubscribe) {
+          console.log('🔇 Unsubscribing from consent request listener');
+          unsubscribe();
+        }
+      };
     }
   }, [user]);
 
@@ -1297,6 +1454,85 @@ export default function HomeScreen() {
           </SafeAreaView>
         </View>
       </Modal>
+
+      {/* === CONSENT REQUEST MODAL === */}
+      <Modal
+        visible={showConsentModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCloseConsentModal}
+      >
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <Pressable style={qrModalStyles.backdrop} onPress={handleCloseConsentModal}>
+          <BlurView intensity={22} style={qrModalStyles.blurView}>
+            <View style={qrModalStyles.overlay} />
+          </BlurView>
+        </Pressable>
+        <View style={qrModalStyles.modalContainer}>
+          <SafeAreaView style={qrModalStyles.safeArea}>
+            <View style={qrModalStyles.modalContent}>
+              <View style={qrModalStyles.header}>
+                <View style={qrModalStyles.headerLeft}>
+                  <Text style={qrModalStyles.headerTitle}>Medical Data Access Request</Text>
+                  <Text style={qrModalStyles.headerSubtitle}>A healthcare provider is requesting access</Text>
+                </View>
+                <TouchableOpacity style={qrModalStyles.closeButton} onPress={handleCloseConsentModal}>
+                  <X size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              <View style={qrModalStyles.divider} />
+              
+              {consentRequest && (
+                <View style={qrModalStyles.permissionContainer}>
+                  <View style={qrModalStyles.specialistInfo}>
+                    <Text style={qrModalStyles.permissionTitle}>
+                      Dr. {consentRequest.specialistDetails?.name || 'Unknown Specialist'}
+                    </Text>
+                    <Text style={qrModalStyles.permissionText}>
+                      is requesting access to your medical records for consultation purposes.
+                    </Text>
+                  </View>
+                  
+                  <View style={qrModalStyles.accessDetails}>
+                    <Text style={qrModalStyles.detailsTitle}>What they can access:</Text>
+                    <Text style={qrModalStyles.detailsText}>
+                      • Medical history and conditions{'\n'}
+                      • Current medications and prescriptions{'\n'}
+                      • Allergies and emergency contacts{'\n'}
+                      • Previous consultation notes
+                    </Text>
+                  </View>
+                  
+                  <View style={qrModalStyles.actions}>
+                    <TouchableOpacity
+                      style={[qrModalStyles.secondaryButton, { backgroundColor: '#EF4444' }]}
+                      onPress={() => handleConsentResponse('denied')}
+                      disabled={consentLoading}
+                    >
+                      <Text style={[qrModalStyles.secondaryButtonText, { color: '#FFFFFF' }]}>
+                        {consentLoading ? 'Processing...' : 'Deny Access'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[qrModalStyles.primaryButton, { backgroundColor: '#10B981' }]}
+                      onPress={() => handleConsentResponse('approved')}
+                      disabled={consentLoading}
+                    >
+                      <Text style={[qrModalStyles.primaryButtonText, { color: '#FFFFFF' }]}>
+                        {consentLoading ? 'Processing...' : 'Allow Access'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <Text style={[qrModalStyles.permissionText, { marginTop: 16, fontSize: 12, color: '#6B7280' }]}>
+                    This request will expire in {timeRemaining} seconds. You can revoke access at any time.
+                  </Text>
+                </View>
+              )}
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
                   
       {/* === GLOBAL NOTIFICATION MODAL === */}
       <GlobalNotificationModal
@@ -1881,6 +2117,53 @@ const qrModalStyles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
+  },
+  
+  // Consent modal specific styles
+  specialistInfo: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  accessDetails: {
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  detailsTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  detailsText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    lineHeight: 18,
+  },
+  permissionContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 32,
+  },
+  permissionTitle: {
+    color: '#1F2937',
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  permissionText: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
   },
 });
 
