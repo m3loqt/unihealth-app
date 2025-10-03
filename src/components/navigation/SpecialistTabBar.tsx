@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Text, Animated, Dimensions, LayoutAnimation, Platform, UIManager, Modal, Alert, Pressable, StatusBar, SafeAreaView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text, Animated, Dimensions, LayoutAnimation, Platform, UIManager, Modal, Alert, Pressable, StatusBar, SafeAreaView, ActivityIndicator } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Home, Users, Calendar, User, QrCode, X, AlertCircle as AlertCircleIcon, User as UserIcon, Phone, Mail, MapPin, Heart, Calendar as CalendarIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,8 @@ import { CameraView, Camera } from 'expo-camera';
 import { BlurView } from 'expo-blur';
 import { databaseService } from '../../services/database/firebase';
 import { COLORS } from '../../constants/colors';
+import { handleQRScan, handleManualConsent, parseQRData } from '../../utils/qrScanning';
+import { useAuth } from '../../hooks/auth/useAuth';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -27,6 +29,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { unreadCount } = useRealtimeNotifications();
+  const { user } = useAuth();
 
   // QR Code state
   const [showQRModal, setShowQRModal] = useState(false);
@@ -34,6 +37,14 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
   const [scanned, setScanned] = useState(false);
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [scannedPatient, setScannedPatient] = useState<any>(null);
+  
+  // Consent system state
+  const [showConsentWaiting, setShowConsentWaiting] = useState(false);
+  const [consentRequestId, setConsentRequestId] = useState<string | null>(null);
+  const [showManualConsent, setShowManualConsent] = useState(false);
+  const [manualConsentData, setManualConsentData] = useState<any>(null);
+  const [consentError, setConsentError] = useState<string | null>(null);
+  const [pendingQRData, setPendingQRData] = useState<any>(null); // Store QR data for consent approval
 
   const TABS = [
     { name: 'index', icon: Home, route: '/(specialist)/tabs', label: 'Home', isAction: false },
@@ -121,82 +132,69 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
 
   const handleCloseQRModal = () => {
     setShowQRModal(false);
-    setScanned(false);
+    // Don't reset scanned here - let the scan result handlers manage it
+  };
+
+  const handleManualCloseQRModal = () => {
+    setShowQRModal(false);
+    setScanned(false); // Reset scanned when user manually closes
   };
 
   const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
     if (scanned) return; // Prevent multiple scans
     
     setScanned(true);
+    setConsentError(null);
     
     try {
-      // Parse the QR code data
-      const qrData = JSON.parse(data);
+      console.log('🔍 QR Code scanned:', { type, data });
       
-      // Validate that this is a patient QR code
-      if (qrData.type === 'patient' && qrData.id) {
-        console.log('Scanned patient QR code:', qrData);
+      // Parse QR data safely
+      const qrData = parseQRData(data);
+      
+      // Process QR scan with consent logic
+      const result = await handleQRScan(qrData, user?.uid);
+      
+      console.log('📋 QR scan result:', result);
+      
+      if (result.action === 'direct_access') {
+        // Trusted specialist - load patient data immediately
+        console.log('✅ Direct access granted:', result.reason);
+        await loadPatientData(qrData);
         
-        // Fetch additional patient information from database
-        let patientDetails = null;
-        try {
-          patientDetails = await databaseService.getPatientById(qrData.id);
-        } catch (error) {
-          console.log('Could not fetch patient details from database:', error);
-        }
-        
-        // Combine QR data with database data
-        const enhancedPatientData = {
-          ...qrData,
-          ...patientDetails,
-          // Ensure we have the most complete information
-          name: patientDetails?.name || patientDetails?.patientFirstName + ' ' + patientDetails?.patientLastName || qrData.name || 'Unknown Patient',
-          email: patientDetails?.email || qrData.email || '',
-          phone: patientDetails?.phone || patientDetails?.contactNumber || qrData.phone || '',
-          address: patientDetails?.address || qrData.address || '',
-          dateOfBirth: patientDetails?.dateOfBirth || '',
-          gender: patientDetails?.gender || '',
-          bloodType: safeDataAccess.getBloodType(patientDetails) || '',
-          allergies: patientDetails?.allergies || [],
-
-          emergencyContact: patientDetails?.emergencyContact || null,
-          createdAt: patientDetails?.createdAt || '',
-          lastVisit: patientDetails?.lastVisit || '',
-          specialty: patientDetails?.specialty || '',
-          status: patientDetails?.status || ''
-        };
-        
-        // Set the enhanced patient data and show the modal
-        setScannedPatient(enhancedPatientData);
-        setShowPatientModal(true);
+      } else if (result.action === 'request_consent') {
+        // New specialist - show waiting screen for patient consent
+        console.log('⏳ Requesting consent:', result.reason);
+        setConsentRequestId(result.requestId!);
+        setPendingQRData(qrData); // Store QR data for later use
+        setShowConsentWaiting(true);
         handleCloseQRModal();
-      } else {
+        
+      } else if (result.action === 'manual_consent_required') {
+        // System failed - show manual consent screen
+        console.log('🔧 Manual consent required:', result.reason);
+        setManualConsentData({ qrData, specialistId: user?.uid });
+        setShowManualConsent(true);
+        handleCloseQRModal();
+        
+      } else if (result.action === 'error') {
+        // Error occurred - show error message
+        console.error('❌ QR scan error:', result.error);
+        setConsentError(result.error || 'Unknown error occurred');
         Alert.alert(
-          'Invalid QR Code',
-          'This QR code is not a valid patient QR code. Please try scanning a different code.',
-          [
-            {
-              text: 'Scan Again',
-              onPress: () => {
-                setScanned(false);
-              },
-            },
-          ]
+          'Error',
+          result.error || 'Failed to process QR code. Please try again.',
+          [{ text: 'OK', onPress: () => setScanned(false) }]
         );
       }
+      
     } catch (error) {
-      console.error('Error parsing QR code data:', error);
+      console.error('❌ QR scan processing failed:', error);
+      setConsentError(error.message);
       Alert.alert(
-        'Invalid QR Code',
-        'The scanned QR code could not be read. Please try scanning a different code.',
-        [
-          {
-            text: 'Scan Again',
-            onPress: () => {
-              setScanned(false);
-            },
-          },
-        ]
+        'Error',
+        'Failed to process QR code. Please try again.',
+        [{ text: 'OK', onPress: () => setScanned(false) }]
       );
     }
   };
@@ -204,6 +202,170 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
   const handleScanAgain = () => {
     setScanned(false);
   };
+
+  // Load patient data for trusted specialists
+  const loadPatientData = async (qrData: any) => {
+    try {
+      console.log('📋 Loading patient data for:', qrData.id);
+      
+      // Fetch additional patient information from database
+      let patientDetails = null;
+      try {
+        patientDetails = await databaseService.getPatientById(qrData.id);
+      } catch (error) {
+        console.log('Could not fetch patient details from database:', error);
+      }
+      
+      // Combine QR data with database data
+      const enhancedPatientData = {
+        ...qrData,
+        ...patientDetails,
+        // Ensure we have the most complete information
+        name: patientDetails?.name || patientDetails?.patientFirstName + ' ' + patientDetails?.patientLastName || qrData.name || 'Unknown Patient',
+        email: patientDetails?.email || qrData.email || '',
+        phone: patientDetails?.phone || patientDetails?.contactNumber || qrData.phone || '',
+        address: patientDetails?.address || qrData.address || '',
+        dateOfBirth: patientDetails?.dateOfBirth || '',
+        gender: patientDetails?.gender || '',
+        bloodType: safeDataAccess.getBloodType(patientDetails) || '',
+        emergencyContact: patientDetails?.emergencyContact || null,
+        createdAt: patientDetails?.createdAt || '',
+        lastVisit: patientDetails?.lastVisit || '',
+        specialty: patientDetails?.specialty || '',
+        status: patientDetails?.status || ''
+      };
+      
+      // Set the enhanced patient data and show the modal
+      setScannedPatient(enhancedPatientData);
+      setShowPatientModal(true);
+      handleCloseQRModal();
+      
+    } catch (error) {
+      console.error('❌ Error loading patient data:', error);
+      setConsentError('Failed to load patient data');
+      Alert.alert(
+        'Error',
+        'Failed to load patient data. Please try again.',
+        [{ text: 'OK', onPress: () => setScanned(false) }]
+      );
+    }
+  };
+
+  // Consent handling functions
+  const handleConsentApproved = async () => {
+    if (consentRequestId) {
+      try {
+        console.log('✅ Consent approved for request:', consentRequestId);
+        await loadPatientData(manualConsentData?.qrData);
+        setShowConsentWaiting(false);
+        setConsentRequestId(null);
+      } catch (error) {
+        console.error('❌ Error handling consent approval:', error);
+        setConsentError('Failed to process consent approval');
+      }
+    }
+  };
+
+  const handleConsentDenied = async () => {
+    if (consentRequestId) {
+      try {
+        console.log('❌ Consent denied for request:', consentRequestId);
+        setShowConsentWaiting(false);
+        setConsentRequestId(null);
+        Alert.alert(
+          'Access Denied',
+          'Patient has denied access to their medical records.',
+          [{ text: 'OK' }]
+        );
+      } catch (error) {
+        console.error('❌ Error handling consent denial:', error);
+        setConsentError('Failed to process consent denial');
+      }
+    }
+  };
+
+  const handleManualConsentResponse = async (response: 'approved' | 'denied') => {
+    try {
+      console.log('🔧 Manual consent response:', response);
+      
+      if (response === 'approved') {
+        await loadPatientData(manualConsentData?.qrData);
+      } else {
+        Alert.alert(
+          'Access Denied',
+          'Patient has denied access to their medical records.',
+          [{ text: 'OK' }]
+        );
+      }
+      
+      setShowManualConsent(false);
+      setManualConsentData(null);
+      
+    } catch (error) {
+      console.error('❌ Error handling manual consent:', error);
+      setConsentError('Failed to process manual consent');
+    }
+  };
+
+  const handleCloseConsentWaiting = () => {
+    setShowConsentWaiting(false);
+    setConsentRequestId(null);
+    setPendingQRData(null); // Clear stored data
+  };
+
+  const handleCloseManualConsent = () => {
+    setShowManualConsent(false);
+    setManualConsentData(null);
+  };
+
+  // Listen for consent request status updates
+  useEffect(() => {
+    if (consentRequestId) {
+      console.log('👂 Setting up consent status listener for request:', consentRequestId);
+      
+      const unsubscribe = databaseService.listenToConsentRequestStatus(consentRequestId, (request) => {
+        if (request) {
+          console.log('📋 Consent request status updated:', request.status);
+          
+          if (request.status === 'approved') {
+            console.log('✅ Patient approved consent');
+            setShowConsentWaiting(false);
+            setConsentRequestId(null);
+            // Load patient data using stored QR data
+            if (pendingQRData) {
+              loadPatientData(pendingQRData);
+              setPendingQRData(null); // Clear stored data
+            }
+          } else if (request.status === 'denied') {
+            console.log('❌ Patient denied consent');
+            setShowConsentWaiting(false);
+            setConsentRequestId(null);
+            setPendingQRData(null); // Clear stored data
+            Alert.alert(
+              'Access Denied',
+              'Patient has denied access to their medical records.',
+              [{ text: 'OK' }]
+            );
+          } else if (request.status === 'expired') {
+            console.log('⏰ Consent request expired');
+            setShowConsentWaiting(false);
+            setConsentRequestId(null);
+            setPendingQRData(null); // Clear stored data
+            Alert.alert(
+              'Request Expired',
+              'The consent request has expired. Please ask the patient to scan their QR code again.',
+              [{ text: 'OK' }]
+            );
+          }
+        }
+      });
+      
+      return () => {
+        console.log('🔇 Unsubscribing from consent status listener');
+        unsubscribe();
+      };
+    }
+  }, [consentRequestId]);
 
   const handleViewPatient = () => {
     if (scannedPatient) {
@@ -397,11 +559,11 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
         visible={showQRModal}
         transparent={true}
         animationType="fade"
-        onRequestClose={handleCloseQRModal}
+        onRequestClose={handleManualCloseQRModal}
       >
         <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
         {/* Backdrop/Blur */}
-        <Pressable style={qrModalStyles.backdrop} onPress={handleCloseQRModal}>
+        <Pressable style={qrModalStyles.backdrop} onPress={handleManualCloseQRModal}>
           <BlurView intensity={22} style={qrModalStyles.blurView}>
             <View style={qrModalStyles.backdropOverlay} />
           </BlurView>
@@ -416,7 +578,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
                   <Text style={qrModalStyles.headerTitle}>Scan Patient QR Code</Text>
                   <Text style={qrModalStyles.headerSubtitle}>Position the QR code within the frame</Text>
                 </View>
-                <TouchableOpacity style={qrModalStyles.closeButton} onPress={handleCloseQRModal}>
+                <TouchableOpacity style={qrModalStyles.closeButton} onPress={handleManualCloseQRModal}>
                   <X size={24} color="#6B7280" />
                 </TouchableOpacity>
               </View>
@@ -435,7 +597,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
                   <Text style={qrModalStyles.permissionText}>
                     To scan patient QR codes, this app needs access to your camera.
                   </Text>
-                  <TouchableOpacity style={qrModalStyles.permissionButton} onPress={handleCloseQRModal}>
+                  <TouchableOpacity style={qrModalStyles.permissionButton} onPress={handleManualCloseQRModal}>
                     <Text style={qrModalStyles.permissionButtonText}>Go Back</Text>
                   </TouchableOpacity>
                 </View>
@@ -471,6 +633,115 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
                   </TouchableOpacity>
                 </View>
               )}
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
+
+      {/* === CONSENT WAITING MODAL === */}
+      <Modal
+        visible={showConsentWaiting}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCloseConsentWaiting}
+      >
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <Pressable style={qrModalStyles.backdrop} onPress={handleCloseConsentWaiting}>
+          <BlurView intensity={22} style={qrModalStyles.blurView}>
+            <View style={qrModalStyles.backdropOverlay} />
+          </BlurView>
+        </Pressable>
+        <View style={qrModalStyles.modalContainer}>
+          <SafeAreaView style={qrModalStyles.safeArea}>
+            <View style={qrModalStyles.modalContent}>
+              <View style={qrModalStyles.header}>
+                <View style={qrModalStyles.headerLeft}>
+                  <Text style={qrModalStyles.headerTitle}>Waiting for Patient Consent</Text>
+                  <Text style={qrModalStyles.headerSubtitle}>Please ask the patient to approve access on their device</Text>
+                </View>
+                <TouchableOpacity style={qrModalStyles.closeButton} onPress={handleCloseConsentWaiting}>
+                  <X size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              <View style={qrModalStyles.divider} />
+              
+              <View style={qrModalStyles.loadingContainer}>
+                <ActivityIndicator size="large" color="#1E40AF" />
+                <Text style={qrModalStyles.loadingText}>
+                  Waiting for patient to approve access to their medical records...
+                </Text>
+                <Text style={[qrModalStyles.loadingText, { marginTop: 16, fontSize: 14, color: '#6B7280' }]}>
+                  This request will expire in 5 minutes
+                </Text>
+              </View>
+              
+              <View style={qrModalStyles.actions}>
+                <TouchableOpacity
+                  style={qrModalStyles.secondaryButton}
+                  onPress={handleCloseConsentWaiting}
+                >
+                  <Text style={qrModalStyles.secondaryButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
+
+      {/* === MANUAL CONSENT MODAL === */}
+      <Modal
+        visible={showManualConsent}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCloseManualConsent}
+      >
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <Pressable style={qrModalStyles.backdrop} onPress={handleCloseManualConsent}>
+          <BlurView intensity={22} style={qrModalStyles.blurView}>
+            <View style={qrModalStyles.backdropOverlay} />
+          </BlurView>
+        </Pressable>
+        <View style={qrModalStyles.modalContainer}>
+          <SafeAreaView style={qrModalStyles.safeArea}>
+            <View style={qrModalStyles.modalContent}>
+              <View style={qrModalStyles.header}>
+                <View style={qrModalStyles.headerLeft}>
+                  <Text style={qrModalStyles.headerTitle}>Manual Consent Required</Text>
+                  <Text style={qrModalStyles.headerSubtitle}>Electronic consent system is unavailable</Text>
+                </View>
+                <TouchableOpacity style={qrModalStyles.closeButton} onPress={handleCloseManualConsent}>
+                  <X size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              <View style={qrModalStyles.divider} />
+              
+              <View style={qrModalStyles.permissionContainer}>
+                <AlertCircleIcon size={64} color="#F59E0B" />
+                <Text style={qrModalStyles.permissionTitle}>Request Verbal Consent</Text>
+                <Text style={qrModalStyles.permissionText}>
+                  Please ask the patient: "I need to access your medical records for this consultation. 
+                  Do you give me permission to view your medical information?"
+                </Text>
+                
+                <View style={qrModalStyles.actions}>
+                  <TouchableOpacity
+                    style={[qrModalStyles.secondaryButton, { backgroundColor: '#EF4444' }]}
+                    onPress={() => handleManualConsentResponse('denied')}
+                  >
+                    <Text style={[qrModalStyles.secondaryButtonText, { color: '#FFFFFF' }]}>Patient Said No</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[qrModalStyles.secondaryButton, { backgroundColor: '#10B981' }]}
+                    onPress={() => handleManualConsentResponse('approved')}
+                  >
+                    <Text style={[qrModalStyles.secondaryButtonText, { color: '#FFFFFF' }]}>Patient Said Yes</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <Text style={[qrModalStyles.permissionText, { marginTop: 16, fontSize: 12, color: '#6B7280' }]}>
+                  This consent will be logged for compliance purposes.
+                </Text>
+              </View>
             </View>
           </SafeAreaView>
         </View>
