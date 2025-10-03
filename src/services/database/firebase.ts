@@ -4113,6 +4113,278 @@ export const databaseService = {
     }
   },
 
+  // Permission Requests (for consent system)
+  async getPermissionRequests(patientId?: string, specialistId?: string): Promise<any[]> {
+    try {
+      console.log('🔍 Getting permission requests for patient:', patientId, 'specialist:', specialistId);
+      
+      const permissionRequestsRef = ref(database, 'permissionRequests');
+      const snapshot = await get(permissionRequestsRef);
+      
+      if (snapshot.exists()) {
+        const requestsData = snapshot.val();
+        let requests = Object.entries(requestsData).map(([id, data]: [string, any]) => ({
+          id,
+          ...data
+        }));
+        
+        // Filter by patient or specialist if specified
+        if (patientId) {
+          requests = requests.filter(req => req.patientId === patientId);
+        }
+        if (specialistId) {
+          requests = requests.filter(req => req.specialistId === specialistId);
+        }
+        
+        // Sort by timestamp (newest first)
+        requests.sort((a, b) => b.timestamp - a.timestamp);
+        
+        console.log('✅ Found', requests.length, 'permission requests');
+        return requests;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('❌ Error getting permission requests:', error);
+      return [];
+    }
+  },
+
+  async getPermissionRequestById(requestId: string): Promise<any | null> {
+    try {
+      console.log('🔍 Getting permission request:', requestId);
+      
+      const requestRef = ref(database, `permissionRequests/${requestId}`);
+      const snapshot = await get(requestRef);
+      
+      if (snapshot.exists()) {
+        const requestData = snapshot.val();
+        console.log('✅ Found permission request:', requestId);
+        return {
+          id: requestId,
+          ...requestData
+        };
+      }
+      
+      console.log('❌ Permission request not found:', requestId);
+      return null;
+    } catch (error) {
+      console.error('❌ Error getting permission request:', error);
+      return null;
+    }
+  },
+
+  async createPermissionRequest(requestData: any): Promise<string> {
+    try {
+      console.log('📝 Creating permission request for patient:', requestData.patientId);
+      
+      const requestId = requestData.id || `consent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const requestRef = ref(database, `permissionRequests/${requestId}`);
+      
+      await set(requestRef, {
+        ...requestData,
+        id: requestId,
+        createdAt: new Date().toISOString()
+      });
+      
+      console.log('✅ Permission request created:', requestId);
+      return requestId;
+    } catch (error) {
+      console.error('❌ Error creating permission request:', error);
+      throw error;
+    }
+  },
+
+  async updatePermissionRequest(requestId: string, updates: any): Promise<void> {
+    try {
+      console.log('📝 Updating permission request:', requestId);
+      
+      const requestRef = ref(database, `permissionRequests/${requestId}`);
+      await update(requestRef, {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      });
+      
+      console.log('✅ Permission request updated:', requestId);
+    } catch (error) {
+      console.error('❌ Error updating permission request:', error);
+      throw error;
+    }
+  },
+
+  async deletePermissionRequest(requestId: string): Promise<void> {
+    try {
+      console.log('🗑️ Deleting permission request:', requestId);
+      
+      const requestRef = ref(database, `permissionRequests/${requestId}`);
+      await remove(requestRef);
+      
+      console.log('✅ Permission request deleted:', requestId);
+    } catch (error) {
+      console.error('❌ Error deleting permission request:', error);
+      throw error;
+    }
+  },
+
+  async getExpiredPermissionRequests(): Promise<any[]> {
+    try {
+      console.log('🔍 Getting expired permission requests');
+      
+      const now = Date.now();
+      const requests = await this.getPermissionRequests();
+      
+      const expiredRequests = requests.filter(req => 
+        req.status === 'pending' && req.expiresAt < now
+      );
+      
+      console.log('✅ Found', expiredRequests.length, 'expired permission requests');
+      return expiredRequests;
+    } catch (error) {
+      console.error('❌ Error getting expired permission requests:', error);
+      return [];
+    }
+  },
+
+  async cleanupExpiredPermissionRequests(): Promise<void> {
+    try {
+      console.log('🧹 Cleaning up expired permission requests');
+      
+      const expiredRequests = await this.getExpiredPermissionRequests();
+      
+      for (const request of expiredRequests) {
+        await this.updatePermissionRequest(request.id, {
+          status: 'expired',
+          expiredAt: Date.now()
+        });
+      }
+      
+      console.log('✅ Cleaned up', expiredRequests.length, 'expired permission requests');
+    } catch (error) {
+      console.error('❌ Error cleaning up expired permission requests:', error);
+    }
+  },
+
+  // Patient Consent Settings
+  async getPatientConsentSettings(patientId: string): Promise<any | null> {
+    try {
+      console.log('🔍 Getting consent settings for patient:', patientId);
+      
+      const settingsRef = ref(database, `patientConsentSettings/${patientId}`);
+      const snapshot = await get(settingsRef);
+      
+      if (snapshot.exists()) {
+        const settingsData = snapshot.val();
+        console.log('✅ Found consent settings for patient:', patientId);
+        return {
+          patientId,
+          ...settingsData
+        };
+      }
+      
+      // Return default settings if none exist
+      const defaultSettings = {
+        patientId,
+        defaultConsent: 'ask',
+        lastUpdated: new Date().toISOString(),
+        version: 1
+      };
+      
+      console.log('📝 Using default consent settings for patient:', patientId);
+      return defaultSettings;
+    } catch (error) {
+      console.error('❌ Error getting patient consent settings:', error);
+      return null;
+    }
+  },
+
+  async updatePatientConsentSettings(patientId: string, settings: any): Promise<void> {
+    try {
+      console.log('📝 Updating consent settings for patient:', patientId);
+      
+      const settingsRef = ref(database, `patientConsentSettings/${patientId}`);
+      await set(settingsRef, {
+        ...settings,
+        patientId,
+        lastUpdated: new Date().toISOString(),
+        version: (settings.version || 1) + 1
+      });
+      
+      console.log('✅ Consent settings updated for patient:', patientId);
+    } catch (error) {
+      console.error('❌ Error updating patient consent settings:', error);
+      throw error;
+    }
+  },
+
+  // Real-time listener for consent requests
+  listenToConsentRequests(patientId: string, callback: (requests: any[]) => void): () => void {
+    try {
+      console.log('👂 Setting up real-time listener for consent requests for patient:', patientId);
+      
+      const permissionRequestsRef = ref(database, 'permissionRequests');
+      
+      const unsubscribe = onValue(permissionRequestsRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const requestsData = snapshot.val();
+          const requests = Object.entries(requestsData).map(([id, data]: [string, any]) => ({
+            id,
+            ...data
+          }));
+          
+          // Filter requests for this patient
+          const patientRequests = requests.filter(req => req.patientId === patientId);
+          
+          console.log('📋 Real-time consent requests update:', patientRequests.length, 'requests for patient');
+          callback(patientRequests);
+        } else {
+          console.log('📋 No consent requests found');
+          callback([]);
+        }
+      }, (error) => {
+        console.error('❌ Error listening to consent requests:', error);
+        callback([]);
+      });
+      
+      return unsubscribe;
+    } catch (error) {
+      console.error('❌ Error setting up consent request listener:', error);
+      return () => {}; // Return empty unsubscribe function
+    }
+  },
+
+  // Real-time listener for consent request status updates
+  listenToConsentRequestStatus(requestId: string, callback: (request: any) => void): () => void {
+    try {
+      console.log('👂 Setting up real-time listener for consent request status:', requestId);
+      
+      const requestRef = ref(database, `permissionRequests/${requestId}`);
+      
+      const unsubscribe = onValue(requestRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const requestData = snapshot.val();
+          const request = {
+            id: requestId,
+            ...requestData
+          };
+          
+          console.log('📋 Real-time consent request status update:', request.status);
+          callback(request);
+        } else {
+          console.log('📋 Consent request not found');
+          callback(null);
+        }
+      }, (error) => {
+        console.error('❌ Error listening to consent request status:', error);
+        callback(null);
+      });
+      
+      return unsubscribe;
+    } catch (error) {
+      console.error('❌ Error setting up consent request status listener:', error);
+      return () => {}; // Return empty unsubscribe function
+    }
+  },
+
 
 };  
 
