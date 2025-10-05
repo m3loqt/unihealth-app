@@ -1114,13 +1114,15 @@ export const databaseService = {
           const doctorData = childSnapshot.val();
           // Check if doctor is affiliated with the selected clinic and is a specialist
           // Check both clinic ID and clinic name for affiliation
+          // IMPORTANT: Also verify specialist status - only show verified specialists
           if (doctorData.clinicAffiliations && 
               (doctorData.clinicAffiliations.includes(clinicId) ||
                doctorData.clinicAffiliations.some((affiliation: string) => 
                  affiliation.toLowerCase().includes(clinicId.toLowerCase()) ||
                  clinicId.toLowerCase().includes(affiliation.toLowerCase())
                )) &&
-              doctorData.isSpecialist === true) {
+              doctorData.isSpecialist === true &&
+              doctorData.status !== 'pending') { // ✅ Added status verification
             // Ensure doctor has proper availability data
             const doctorWithDefaults = {
               id: childSnapshot.key!,
@@ -1134,6 +1136,7 @@ export const databaseService = {
             doctors.push(doctorWithDefaults);
           }
         });
+        console.log(`🔍 Filtered specialists for clinic ${clinicId}: ${doctors.length} verified specialists found`);
         return doctors;
       }
       return [];
@@ -1154,7 +1157,11 @@ export const databaseService = {
         
         Object.keys(doctorsData).forEach(doctorId => {
           const doctorData = doctorsData[doctorId];
-          if (this.hasValidAvailability(doctorData)) {
+          // IMPORTANT: Only include verified specialists and generalists
+          // Filter out pending specialists to prevent them from appearing in any doctor lists
+          if (this.hasValidAvailability(doctorData) && 
+              (doctorData.isGeneralist === true || 
+               (doctorData.isSpecialist === true && doctorData.status !== 'pending'))) {
             doctors.push({
               id: doctorId,
               ...doctorData,
@@ -1167,6 +1174,7 @@ export const databaseService = {
           }
         });
         
+        console.log(`🔍 Loaded ${doctors.length} verified doctors (generalists + verified specialists)`);
         return doctors;
       }
       return [];
