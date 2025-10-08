@@ -28,6 +28,7 @@ import {
   Clock,
   MoreHorizontal,
   Stethoscope,
+  Hourglass,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
@@ -909,36 +910,203 @@ export default function VisitOverviewScreen() {
         {/* --- PRESCRIPTIONS --- */}
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Prescriptions</Text>
-          {visitData.status.toLowerCase() === 'completed' && prescriptions.length ? prescriptions.map((p) => (
-            <View key={p.id} style={styles.cardBox}>
+          {visitData.status.toLowerCase() === 'completed' && prescriptions.length ? prescriptions.map((prescription) => (
+            <View key={prescription.id} style={styles.prescriptionCard}>
               <View style={styles.prescriptionHeader}>
-                <View style={[styles.medicationIcon, { backgroundColor: `${p.color}15` }]}>
-                  <Pill size={20} color={p.color} />
+                <View style={[styles.medicationIcon, { backgroundColor: '#1E3A8A15' }]}>
+                  <Pill size={20} color="#1E3A8A" />
                 </View>
                 <View style={styles.prescriptionDetails}>
-                  <Text style={styles.medicationName}>{p.medication || 'Unknown Medication'}</Text>
-                  <Text style={styles.medicationDosage}>
-                    {p.dosage || 'N/A'} • {formatFrequency(p.frequency, 'patient')}
-                    {p.route && ` • ${formatRoute(p.route, 'patient')}`}
-                    {p.formula && ` • ${formatFormula(p.formula, 'patient')}`}
-                    {p.take && ` • Take: ${p.take}`}
-                    {p.totalQuantity && ` • Total: ${p.totalQuantity}`}
+                  {/* Medication name with dosage */}
+                  <View style={styles.medicationNameRow}>
+                    <Text style={styles.medicationName}>
+                      {prescription.medication || 'Unknown Medication'}
+                    </Text>
+                    {prescription.dosage && (
+                      <Text style={styles.medicationDosage}>
+                        {` (${prescription.dosage})`}
+                      </Text>
+                    )}
+                  </View>
+                  
+                  {/* Structured description */}
+                  <Text style={styles.prescriptionDescription}>
+                    {(() => {
+                      // Build structured description with available data
+                      let description = '';
+                      
+                      // Start with "Take" if we have any dosage info
+                      let hasStarted = false;
+                      
+                      // Handle take amount and formula
+                      if (prescription.take && prescription.formula) {
+                        const formulaText = prescription.formula.toLowerCase().includes('tab') ? 
+                          (prescription.take === '1' ? 'tablet' : 'tablets') : 
+                          prescription.formula.replace(/,.*/, '').trim();
+                        description = `Take ${prescription.take} ${formulaText}`;
+                        hasStarted = true;
+                      } else if (prescription.take) {
+                        // If we have take but no formula, assume tablets
+                        const unit = prescription.take === '1' ? 'tablet' : 'tablets';
+                        description = `Take ${prescription.take} ${unit}`;
+                        hasStarted = true;
+                      } else if (prescription.formula) {
+                        // If we have formula but no take amount
+                        description = `Take ${prescription.formula.replace(/,.*/, '').trim()}`;
+                        hasStarted = true;
+                      } else {
+                        // No specific amount, just start with "Take"
+                        description = 'Take';
+                        hasStarted = true;
+                      }
+                      
+                      // Add route (by mouth, etc.)
+                      if (prescription.route) {
+                        const route = prescription.route.toLowerCase().trim();
+                        let routeText = '';
+                        if (route === 'po' || route === 'p.o.' || route === 'po or po' || route.includes('po')) {
+                          routeText = 'by mouth';
+                        } else {
+                          routeText = route;
+                        }
+                        
+                        if (routeText) {
+                          description = hasStarted ? `${description} ${routeText}` : routeText;
+                          hasStarted = true;
+                        }
+                      }
+                      
+                      // Add frequency 
+                      if (prescription.frequency) {
+                        const freq = prescription.frequency.toLowerCase().trim();
+                        let freqText = '';
+                        if (freq === 'daily' || freq === 'once daily' || freq === 'every day') {
+                          freqText = 'daily';
+                        } else if (freq === 'bid' || freq === 'twice daily') {
+                          freqText = 'twice daily';
+                        } else if (freq === 'tid' || freq === 'three times daily') {
+                          freqText = 'three times daily';
+                        } else {
+                          freqText = freq;
+                        }
+                        
+                        if (freqText) {
+                          description = hasStarted ? `${description} ${freqText}` : freqText;
+                          hasStarted = true;
+                        }
+                      }
+                      
+                      // Add duration
+                      if (prescription.duration) {
+                        const durationText = `for ${prescription.duration}`;
+                        description = hasStarted ? `${description} ${durationText}` : durationText;
+                        hasStarted = true;
+                      }
+                      
+                      // End main instruction with period
+                      if (description && hasStarted) {
+                        description += '.';
+                      }
+                      
+                      // Add total quantity as separate sentence (only if we have it)
+                      if (prescription.totalQuantity) {
+                        const quantityText = prescription.formula && prescription.formula.toLowerCase().includes('tab') ? 
+                          `Total: ${prescription.totalQuantity} tablets.` : 
+                          `Total: ${prescription.totalQuantity}.`;
+                        description = description ? `${description} ${quantityText}` : quantityText;
+                      }
+                      
+                      // Add custom instructions if available and meaningful
+                      if (prescription.instructions && prescription.instructions.trim() && 
+                          prescription.instructions.toLowerCase() !== 'as prescribed') {
+                        const instructions = prescription.instructions.trim();
+                        if (!description.toLowerCase().includes(instructions.toLowerCase())) {
+                          description = description ? `${description} ${instructions}` : instructions;
+                        }
+                      }
+                      
+                      return description || 'No dosage instructions available.';
+                    })()}
                   </Text>
-                  <Text style={styles.prescriptionDescription}>{p.description || 'No description provided'}</Text>
                 </View>
+                
+                {/* Days left section */}
                 <View style={styles.prescriptionStatus}>
-                  <Text style={styles.remainingDays}>{p.remaining}</Text>
-                  <Text style={styles.remainingLabel}>remaining</Text>
-                </View>
-              </View>
-              <View style={styles.prescriptionMeta}>
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Prescribed by:</Text>
-                  <Text style={styles.metaValue}>{formatDoctorName(p.prescribedBy)}</Text>
-                </View>
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Description:</Text>
-                  <Text style={styles.metaValue}>{p.description || 'No description provided'}</Text>
+                  {(() => {
+                    // Calculate remaining days logic similar to prescriptions.tsx
+                    if (!prescription.duration || 
+                        prescription.duration.toLowerCase().includes('ongoing') || 
+                        prescription.duration.toLowerCase().includes('continuous')) {
+                      return (
+                        <View style={styles.remainingDaysPill}>
+                          <Hourglass size={10} color="#9CA3AF" />
+                          <Text style={styles.remainingDays}>Ongoing</Text>
+                        </View>
+                      );
+                    }
+                    
+                    try {
+                      const prescribedDate = new Date(prescription.prescribedDate);
+                      const now = new Date();
+                      const durationMatch = prescription.duration.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
+                      
+                      if (durationMatch) {
+                        const [, amount, unit] = durationMatch;
+                        const durationAmount = parseInt(amount, 10);
+                        const durationUnit = unit.toLowerCase();
+                        
+                        const endDate = new Date(prescribedDate);
+                        switch (durationUnit) {
+                          case 'day':
+                          case 'days':
+                            endDate.setDate(endDate.getDate() + durationAmount);
+                            break;
+                          case 'week':
+                          case 'weeks':
+                            endDate.setDate(endDate.getDate() + (durationAmount * 7));
+                            break;
+                          case 'month':
+                          case 'months':
+                            endDate.setMonth(endDate.getMonth() + durationAmount);
+                            break;
+                          case 'year':
+                          case 'years':
+                            endDate.setFullYear(endDate.getFullYear() + durationAmount);
+                            break;
+                        }
+                        
+                        const remainingTime = endDate.getTime() - now.getTime();
+                        const remainingDays = Math.ceil(remainingTime / (1000 * 60 * 60 * 24));
+                        
+                        if (remainingDays > 0) {
+                          return (
+                            <View style={styles.remainingDaysPill}>
+                              <Hourglass size={10} color="#9CA3AF" />
+                              <Text style={styles.remainingDays}>
+                                {remainingDays} days left
+                              </Text>
+                            </View>
+                          );
+                        } else {
+                          return (
+                            <View style={styles.remainingDaysPill}>
+                              <Hourglass size={10} color="#9CA3AF" />
+                              <Text style={styles.remainingDays}>Expired</Text>
+                            </View>
+                          );
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Error calculating remaining days:', error);
+                    }
+                    
+                    return (
+                      <View style={styles.remainingDaysPill}>
+                        <Hourglass size={10} color="#9CA3AF" />
+                        <Text style={styles.remainingDays}>Ongoing</Text>
+                      </View>
+                    );
+                  })()}
                 </View>
               </View>
             </View>
@@ -1404,44 +1572,73 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
-  prescriptionHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 10,
+  prescriptionCard: { 
+    padding: 16, 
+    backgroundColor: '#F9FAFB', 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
   },
-  medicationIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  prescriptionHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'flex-start' 
+  },
+  medicationIcon: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
     marginRight: 12,
+    marginTop: 2,
   },
-  prescriptionDetails: { flex: 1 },
-  medicationName: {
-    fontSize: 16,
+  prescriptionDetails: { 
+    flex: 1 
+  },
+  medicationName: { 
+    fontSize: 16, 
     color: '#1F2937',
-    fontFamily: 'Inter-SemiBold',
-    marginBottom: 2,
+    fontFamily: 'Inter-Regular',
   },
   medicationDosage: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
-    marginBottom: 1,
+    fontStyle: 'italic',
     fontFamily: 'Inter-Regular',
   },
-  prescriptionDescription: {
-    fontSize: 14,
-    color: '#6B7280',
+  prescriptionDescription: { 
+    fontSize: 13, 
+    color: '#6B7280', 
     fontFamily: 'Inter-Regular',
+    lineHeight: 18,
+    marginTop: 2,
   },
-  prescriptionStatus: {
+  prescriptionStatus: { 
     alignItems: 'flex-end',
   },
   remainingDays: {
-    fontSize: 14,
-    color: '#1F2937',
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    fontFamily: 'Inter-Regular',
+  },
+  medicationNameRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
+  remainingDaysPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    gap: 4,
   },
   remainingLabel: {
     fontSize: 12,

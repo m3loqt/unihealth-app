@@ -42,7 +42,8 @@ import {
   LayoutGrid,
   RefreshCw,
   Check,
-  Trash2
+  Trash2,
+  CalendarDays
 } from 'lucide-react-native';
 // @ts-ignore - library has no types bundled
 import { LineChart } from 'react-native-gifted-charts';
@@ -1438,22 +1439,37 @@ export default function SpecialistHomeScreen() {
               onPress={handleScanQR}
               activeOpacity={0.88}
             >
-              <QrCode size={24} color="#1E40AF" />
-              <Text style={styles.quickActionText}>Scan Patient{'\n'}QR Code</Text>
+              <View style={styles.quickActionIconContainer}>
+                <QrCode size={24} color="#1E40AF" />
+              </View>
+              <Text style={styles.quickActionText}>Scan{'\n'}QR Code</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => router.push('/(specialist)/schedule')}
+            >
+              <View style={styles.quickActionIconContainer}>
+                <CalendarDays size={24} color="#1E40AF" />
+              </View>
+              <Text style={styles.quickActionText}>Check Schedule</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickActionButton}
               onPress={() => router.push('/(specialist)/tabs/prescriptions')}
             >
-              <Pill size={24} color="#1E40AF" />
-              <Text style={styles.quickActionText}>View Issued{'\n'}Medicines</Text>
+              <View style={styles.quickActionIconContainer}>
+                <Pill size={24} color="#1E40AF" />
+              </View>
+              <Text style={styles.quickActionText}>Issued{'\n'}Medicines</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickActionButton}
               onPress={() => router.push('/(specialist)/tabs/certificates')}
             >
-              <FileText size={24} color="#1E40AF" />
-              <Text style={styles.quickActionText}>View Issued{'\n'}Certificates</Text>
+              <View style={styles.quickActionIconContainer}>
+                <FileText size={24} color="#1E40AF" />
+              </View>
+              <Text style={styles.quickActionText}>Issued{'\n'}Certificates</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -2475,22 +2491,30 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingHorizontal: 0,
   },
   quickActionButton: {
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
     flex: 1,
-    marginHorizontal: 4,
+    marginHorizontal: 8,
+  },
+  quickActionIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   quickActionText: { 
     fontSize: 12, 
     color: '#374151', 
-    marginTop: 8, 
-    textAlign: 'center' 
+    textAlign: 'center',
+    fontFamily: 'Inter-Medium',
+    lineHeight: 16,
   },
   toggleIconBtn: {
     width: 32,

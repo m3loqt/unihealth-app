@@ -43,13 +43,6 @@ export default function SpecialistHeader({
       </View>
       
       <View style={styles.headerIcons}>
-        {/* <TouchableOpacity 
-          style={styles.iconButton}
-          onPress={() => router.push('/(specialist)/tabs/chats')}
-        >
-          <MessageCircle size={24} color="#6B7280" />
-        </TouchableOpacity> */}
-        
         <TouchableOpacity 
           style={styles.iconButton}
           onPress={onNotificationPress}
@@ -62,13 +55,6 @@ export default function SpecialistHeader({
               </Text>
             </View>
           )}
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.iconButton}
-          onPress={() => router.push('/(specialist)/schedule')}
-        >
-          <Calendar size={24} color="#6B7280" />
         </TouchableOpacity>
         
         <TouchableOpacity 
