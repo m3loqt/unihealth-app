@@ -90,16 +90,6 @@ export default function VerifyEmailScreen() {
         // Reset timer when email is sent
         setTimeLeft(300);
         setCanResend(false);
-        
-        // Show appropriate message based on whether email was actually sent or skipped
-        if (result.message.includes('sent recently')) {
-          setModalData({
-            title: 'Email Already Sent',
-            message: 'A verification email was sent recently. Please check your inbox and spam folder.',
-            type: 'success'
-          });
-          setShowSuccessModal(true);
-        }
       } else {
         setModalData({
           title: 'Error',
@@ -340,12 +330,6 @@ export default function VerifyEmailScreen() {
                 {modalData?.title === 'Email Verified!' && (
                   <Text style={styles.instructionText}>
                     Your email has been successfully verified. You can now access all features.
-                  </Text>
-                )}
-                
-                {modalData?.title === 'Email Already Sent' && (
-                  <Text style={styles.instructionText}>
-                    Please check your inbox and spam folder for the verification link.
                   </Text>
                 )}
               </View>

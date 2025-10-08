@@ -86,13 +86,20 @@ export default function SpecialistChatsScreen() {
 
   // Load chat threads
   const loadChats = useCallback(async () => {
-    if (!user || patientsLoading || patients.length === 0) {
+    if (!user || patientsLoading) {
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
+
+      // If no patients available, set empty chats and finish loading
+      if (patients.length === 0) {
+        setChats([]);
+        setLoading(false);
+        return;
+      }
 
       const chatList: ChatListItem[] = [];
 
@@ -433,7 +440,6 @@ export default function SpecialistChatsScreen() {
       <Text style={styles.emptyTitle}>No Patients Available</Text>
       <Text style={styles.emptyDescription}>
         You'll see your patients here once you have appointments or referrals.{'\n'}
-        Patients will appear here when they book appointments with you.
       </Text>
     </View>
   );

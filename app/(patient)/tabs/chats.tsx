@@ -86,13 +86,20 @@ export default function PatientChatsScreen() {
 
   // Load chat threads
   const loadChats = useCallback(async () => {
-    if (!user || doctorsLoading || doctors.length === 0) {
+    if (!user || doctorsLoading) {
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
+
+      // If no doctors available, set empty chats and finish loading
+      if (doctors.length === 0) {
+        setChats([]);
+        setLoading(false);
+        return;
+      }
 
       const chatList: ChatListItem[] = [];
 
@@ -445,7 +452,6 @@ export default function PatientChatsScreen() {
       <Text style={styles.emptyTitle}>No Doctors Available</Text>
       <Text style={styles.emptyDescription}>
         You'll see your doctors here once you have appointments or referrals.{'\n'}
-        Book an appointment to start chatting with healthcare providers.
       </Text>
     </View>
   );

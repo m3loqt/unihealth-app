@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Text, Animated, Dimensions, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
-import { Home, FileText, Calendar, Pill, User } from 'lucide-react-native';
+import { Home, FileText, Calendar, Pill, MessageCircle } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRealtimeNotifications } from '../../hooks/data/useRealtimeNotifications';
 import { COLORS } from '../../constants/colors';
@@ -26,9 +26,9 @@ export default function TabBar({ activeTab }: TabBarProps) {
   const TABS = [
     { name: 'index', icon: Home, route: '/(patient)/tabs', label: 'Home' },
     { name: 'appointments', icon: Calendar, route: '/(patient)/tabs/appointments', label: 'Visits' },
+    { name: 'chats', icon: MessageCircle, route: '/(patient)/tabs/chats', label: 'Chats' },
     { name: 'prescriptions', icon: Pill, route: '/(patient)/tabs/prescriptions?filter=active', label: 'Medicines' },
     { name: 'certificates', icon: FileText, route: '/(patient)/tabs/certificates', label: 'Records' },
-    { name: 'profile', icon: User, route: '/(patient)/tabs/profile', label: 'Profile' },
   ] as const;
 
   // Animation values for each tab
@@ -50,9 +50,9 @@ export default function TabBar({ activeTab }: TabBarProps) {
     const lastSegment = segments[segments.length - 1];
 
     if (lastSegment === 'appointments') return 'appointments';
+    if (lastSegment === 'chats') return 'chats';
     if (lastSegment === 'prescriptions') return 'prescriptions';
     if (lastSegment === 'certificates') return 'certificates';
-    if (lastSegment === 'profile') return 'profile';
 
     return 'index';
   };

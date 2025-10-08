@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, Text, Animated, Dimensions, LayoutAnimation, Platform, UIManager, Modal, Alert, Pressable, StatusBar, SafeAreaView, ActivityIndicator } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
-import { Home, Users, Calendar, User, QrCode, X, AlertCircle as AlertCircleIcon, User as UserIcon, Phone, Mail, MapPin, Heart, Calendar as CalendarIcon } from 'lucide-react-native';
+import { Home, Users, Calendar, MessageCircle, QrCode, X, AlertCircle as AlertCircleIcon, User as UserIcon, Phone, Mail, MapPin, Heart, Calendar as CalendarIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRealtimeNotifications } from '../../hooks/data/useRealtimeNotifications';
 import { capitalizeRelationship } from '../../utils/formatting';
@@ -48,10 +48,10 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
 
   const TABS = [
     { name: 'index', icon: Home, route: '/(specialist)/tabs', label: 'Home', isAction: false },
-    { name: 'patients', icon: Users, route: '/(specialist)/tabs/patients', label: 'Patients', isAction: false },
-    { name: 'qr-code', icon: QrCode, route: null, label: 'QR Code', isAction: true },
     { name: 'appointments', icon: Calendar, route: '/(specialist)/tabs/appointments', label: 'Visits', isAction: false },
-    { name: 'profile', icon: User, route: '/(specialist)/tabs/profile', label: 'Profile', isAction: false },
+    { name: 'qr-code', icon: QrCode, route: null, label: 'QR Code', isAction: true },
+    { name: 'chats', icon: MessageCircle, route: '/(specialist)/tabs/chats', label: 'Chats', isAction: false },
+    { name: 'patients', icon: Users, route: '/(specialist)/tabs/patients', label: 'Patients', isAction: false },
   ] as const;
 
   // Animation values for each tab
@@ -75,9 +75,9 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
     const segments = pathname.split('/');
     const lastSegment = segments[segments.length - 1];
 
-    if (lastSegment === 'patients') return 'patients';
     if (lastSegment === 'appointments') return 'appointments';
-    if (lastSegment === 'profile') return 'profile';
+    if (lastSegment === 'chats') return 'chats';
+    if (lastSegment === 'patients') return 'patients';
 
     return 'index';
   };
