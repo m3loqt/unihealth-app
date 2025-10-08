@@ -440,7 +440,6 @@ export default function SpecialistChatsScreen() {
       <Text style={styles.emptyTitle}>No Patients Available</Text>
       <Text style={styles.emptyDescription}>
         You'll see your patients here once you have appointments or referrals.{'\n'}
-        Patients will appear here when they book appointments with you.
       </Text>
     </View>
   );

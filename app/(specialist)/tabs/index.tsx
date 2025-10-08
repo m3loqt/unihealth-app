@@ -173,8 +173,14 @@ export default function SpecialistHomeScreen() {
   const hasLoadedOnFocus = React.useRef(false);
   
   // Notification Modal Actions
-  const handleOpenNotifications = () => setShowNotificationModal(true);
-  const handleCloseNotificationModal = () => setShowNotificationModal(false);
+  const handleOpenNotifications = () => {
+    console.log('🔔 Specialist - Opening notification modal');
+    setShowNotificationModal(true);
+  };
+  const handleCloseNotificationModal = () => {
+    console.log('🔔 Specialist - Closing notification modal');
+    setShowNotificationModal(false);
+  };
   
   // Handle marking notification as read
   const handleMarkAsRead = async (notificationId: string) => {
