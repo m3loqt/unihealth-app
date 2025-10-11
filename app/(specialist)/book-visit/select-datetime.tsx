@@ -51,6 +51,7 @@ const REFERRAL_PURPOSES = [
   'Second Opinion',
   'Surgical Consultation',
   'Emergency Referral',
+  'Return to Generalist',
   'Other',
 ];
 
@@ -98,6 +99,12 @@ const REFERRAL_PURPOSE_CONFIGS = {
     label: 'Additional Notes',
     placeholder: 'Please describe the emergency situation...',
     required: true
+  },
+  'Return to Generalist': {
+    inputType: 'textarea',
+    label: 'Additional Notes',
+    placeholder: 'Please describe any additional notes for the generalist...',
+    required: false
   },
   'Other': {
     inputType: 'textarea',
@@ -280,7 +287,10 @@ export default function SelectDateTimeScreen() {
     patientLastName: string;
     originalAppointmentId?: string;
     isReferral?: string;
+    referralType?: string;
     reasonForReferral?: string;
+    sourceType?: string;
+    isTraceBack?: string;
   }>();
   
   const { 
@@ -294,17 +304,23 @@ export default function SelectDateTimeScreen() {
     patientLastName,
     originalAppointmentId,
     isReferral,
+    referralType,
     reasonForReferral,
+    sourceType,
+    isTraceBack,
   } = params;
   
   // Debug: Log all received parameters
   console.log('🔍 Specialist select-datetime parameters:', {
     originalAppointmentId,
     isReferral,
+    referralType,
+    isTraceBack,
     patientId,
     patientFirstName,
     patientLastName,
     reasonForReferral,
+    sourceType,
     doctorId,
     doctorName,
     clinicId,
@@ -864,13 +880,22 @@ export default function SelectDateTimeScreen() {
   // Initialize referral mode
   useEffect(() => {
     if (reasonForReferral) {
-      setSelectedPurpose('Advanced Treatment');
-      setPurposeFormData({
-        primaryValue: reasonForReferral,
-        secondaryValue: ''
-      });
+      // For trace-back referrals, use the predefined reason
+      if (isTraceBack === 'true') {
+        setSelectedPurpose('Return to Generalist');
+        setPurposeFormData({
+          primaryValue: reasonForReferral,
+          secondaryValue: ''
+        });
+      } else {
+        setSelectedPurpose('Advanced Treatment');
+        setPurposeFormData({
+          primaryValue: reasonForReferral,
+          secondaryValue: ''
+        });
+      }
     }
-  }, [reasonForReferral]);
+  }, [reasonForReferral, isTraceBack]);
 
   // Reset purpose form data when purpose changes
   useEffect(() => {
@@ -1097,7 +1122,11 @@ export default function SelectDateTimeScreen() {
   };
 
   const handleContinue = () => {
-    if (selectedDate && selectedTime && selectedPurpose && isPurposeFormValid()) {
+    // For trace-back referrals, skip purpose form validation since it's predefined
+    const isValid = selectedDate && selectedTime && selectedPurpose && 
+                   (isTraceBack === 'true' || isPurposeFormValid());
+    
+    if (isValid) {
       // Format the structured purpose data into text for additionalNotes
       const formattedNotes = formatPurposeDataToText(selectedPurpose, purposeFormData, notes);
       
@@ -1430,16 +1459,25 @@ export default function SelectDateTimeScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Referral Purpose</Text>
           <TouchableOpacity
-            style={styles.purposeDropdown}
-            onPress={() => setShowPurposeDropdown(!showPurposeDropdown)}
+            style={[
+              styles.purposeDropdown,
+              isTraceBack === 'true' && styles.purposeDropdownDisabled
+            ]}
+            onPress={() => {
+              if (isTraceBack !== 'true') {
+                setShowPurposeDropdown(!showPurposeDropdown);
+              }
+            }}
+            disabled={isTraceBack === 'true'}
           >
             <Text style={[
               styles.purposeDropdownText,
-              !selectedPurpose && styles.purposePlaceholder
+              !selectedPurpose && styles.purposePlaceholder,
+              isTraceBack === 'true' && styles.purposeDropdownTextDisabled
             ]}>
               {selectedPurpose || 'Select referral purpose'}
             </Text>
-            <ChevronDown size={20} color="#6B7280" />
+            {isTraceBack !== 'true' && <ChevronDown size={20} color="#6B7280" />}
           </TouchableOpacity>
           
           {showPurposeDropdown && (
@@ -1497,14 +1535,14 @@ export default function SelectDateTimeScreen() {
         <TouchableOpacity
           style={[
             styles.continueButton,
-            (!selectedDate || !selectedTime || !selectedPurpose || !isPurposeFormValid()) && styles.continueButtonDisabled
+            (!selectedDate || !selectedTime || !selectedPurpose || (isTraceBack !== 'true' && !isPurposeFormValid())) && styles.continueButtonDisabled
           ]}
           onPress={handleContinue}
-          disabled={!selectedDate || !selectedTime || !selectedPurpose || !isPurposeFormValid()}
+          disabled={!selectedDate || !selectedTime || !selectedPurpose || (isTraceBack !== 'true' && !isPurposeFormValid())}
         >
           <Text style={[
             styles.continueButtonText,
-            (!selectedDate || !selectedTime || !selectedPurpose || !isPurposeFormValid()) && styles.continueButtonTextDisabled
+            (!selectedDate || !selectedTime || !selectedPurpose || (isTraceBack !== 'true' && !isPurposeFormValid())) && styles.continueButtonTextDisabled
           ]}>
             Continue
           </Text>
