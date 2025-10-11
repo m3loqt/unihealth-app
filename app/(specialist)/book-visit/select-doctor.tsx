@@ -44,12 +44,14 @@ export default function SpecialistSelectDoctorScreen() {
   const isReferral = params.isReferral as string;
   const reasonForReferral = params.reasonForReferral as string;
   const sourceType = params.sourceType as string; // New parameter for tracking source type
+  const referralType = params.referralType as string; // New parameter for referral type (specialist/generalist)
   
   // Debug: Log all referral parameters
   console.log('🔍 Specialist select-doctor parameters:', {
     originalAppointmentId,
     sourceType,
     isReferral,
+    referralType,
     patientId,
     patientFirstName,
     patientLastName,
@@ -71,8 +73,16 @@ export default function SpecialistSelectDoctorScreen() {
       setLoading(true);
       setError(null);
       
-      // Get specialist doctors by clinic
-      const doctorsData = await databaseService.getSpecialistDoctorsByClinic(clinicId);
+      let doctorsData;
+      
+      // Get doctors based on referral type
+      if (referralType === 'generalist') {
+        // For generalist referrals, get generalist doctors by clinic
+        doctorsData = await databaseService.getGeneralistDoctorsByClinic(clinicId);
+      } else {
+        // For specialist referrals (default), get specialist doctors by clinic
+        doctorsData = await databaseService.getSpecialistDoctorsByClinic(clinicId);
+      }
       
       // Enrich each doctor with data from users node
       const enrichedDoctors = await Promise.all(
@@ -94,21 +104,31 @@ export default function SpecialistSelectDoctorScreen() {
                 : doctor.fullName,
               contactNumber: clinicData?.phone || clinicData?.contactNumber || doctor.contactNumber || '',
               email: userData?.email || '',
+              specialty: doctor.specialty || doctor.specialization || (referralType === 'generalist' ? 'General Medicine' : 'Specialist Consultation'),
+              isSpecialist: doctor.isSpecialist || false,
+              isGeneralist: doctor.isGeneralist || false,
             };
           } catch (error) {
             console.error('Error enriching doctor data:', error);
-            return doctor; // Return original doctor data if enrichment fails
+            return {
+              ...doctor,
+              specialty: doctor.specialty || doctor.specialization || (referralType === 'generalist' ? 'General Medicine' : 'Specialist Consultation'),
+              isSpecialist: doctor.isSpecialist || false,
+              isGeneralist: doctor.isGeneralist || false,
+            };
           }
         })
       );
       
-      // Filter out the currently logged-in specialist
-      const filteredDoctors = enrichedDoctors.filter(doctor => doctor.id !== user?.uid);
+      // Filter out the currently logged-in specialist for specialist referrals only
+      const filteredDoctors = referralType === 'generalist' 
+        ? enrichedDoctors 
+        : enrichedDoctors.filter(doctor => doctor.id !== user?.uid);
       
       setDoctors(filteredDoctors);
     } catch (error) {
-      console.error('Failed to load specialist doctors:', error);
-      setError('Failed to load specialist doctors. Please try again.');
+      console.error('Failed to load doctors:', error);
+      setError('Failed to load doctors. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -126,13 +146,15 @@ export default function SpecialistSelectDoctorScreen() {
         clinicName,
         doctorId: doctor.id,
         doctorName: safeDataAccess.getUserFullName(doctor, 'Unknown Doctor'),
-        doctorSpecialty: doctor.specialty || 'Specialist Consultation',
+        doctorSpecialty: doctor.specialty || (referralType === 'generalist' ? 'General Medicine' : 'Specialist Consultation'),
         patientId,
         patientFirstName,
         patientLastName,
         originalAppointmentId,
         isReferral,
+        referralType,
         reasonForReferral,
+        sourceType,
       }
     });
   };

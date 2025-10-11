@@ -80,12 +80,14 @@ export default function SpecialistBookVisitScreen() {
   const isReferral = params.isReferral as string;
   const reasonForReferral = params.reasonForReferral as string;
   const sourceType = params.sourceType as string; // New parameter for tracking source type
+  const referralType = params.referralType as string; // New parameter for referral type (specialist/generalist)
 
   // Debug: Log all referral parameters
   console.log('🔍 Specialist book-visit index parameters:', {
     originalAppointmentId,
     sourceType,
     isReferral,
+    referralType,
     patientId,
     patientFirstName,
     patientLastName,
@@ -106,27 +108,43 @@ export default function SpecialistBookVisitScreen() {
     try {
       setLoading(true);
       setError(null);
-      const clinicsData = await databaseService.getClinics();
+      
+      let clinicsData;
+      
+      // Load clinics based on referral type
+      if (referralType === 'generalist') {
+        // For generalist referrals, get clinics with generalist doctors
+        clinicsData = await databaseService.getClinicsWithGeneralistDoctors();
+      } else {
+        // For specialist referrals (default), get clinics with specialist doctors
+        clinicsData = await databaseService.getClinics();
+      }
       
       // Filter out clinics where the logged-in specialist is the only specialist available
       const filteredClinics = await Promise.all(
         clinicsData.map(async (clinic) => {
-          if (!clinic.hasSpecialistDoctors) {
-            return null; // Skip clinics without specialists
+          if (referralType === 'generalist') {
+            // For generalist referrals, just check if clinic has generalist doctors
+            return clinic.hasGeneralistDoctors ? clinic : null;
+          } else {
+            // For specialist referrals, filter out clinics where logged-in specialist is the only one
+            if (!clinic.hasSpecialistDoctors) {
+              return null; // Skip clinics without specialists
+            }
+            
+            // Get all specialists for this clinic
+            const specialists = await databaseService.getSpecialistDoctorsByClinic(clinic.id);
+            
+            // Filter out the logged-in specialist
+            const otherSpecialists = specialists.filter(specialist => specialist.id !== user?.uid);
+            
+            // Only include clinic if there are other specialists available
+            if (otherSpecialists.length > 0) {
+              return clinic;
+            }
+            
+            return null;
           }
-          
-          // Get all specialists for this clinic
-          const specialists = await databaseService.getSpecialistDoctorsByClinic(clinic.id);
-          
-          // Filter out the logged-in specialist
-          const otherSpecialists = specialists.filter(specialist => specialist.id !== user?.uid);
-          
-          // Only include clinic if there are other specialists available
-          if (otherSpecialists.length > 0) {
-            return clinic;
-          }
-          
-          return null;
         })
       );
       
@@ -171,7 +189,9 @@ export default function SpecialistBookVisitScreen() {
         patientLastName,
         originalAppointmentId,
         isReferral,
+        referralType,
         reasonForReferral,
+        sourceType,
       }
     });
   };
