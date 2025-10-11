@@ -352,6 +352,7 @@ export interface Doctor {
   contactNumber: string;
   clinicAffiliations: string[];
   isSpecialist?: boolean;
+  isGeneralist?: boolean;
   middleName?: string;
   phoneNumber?: string;
   phone?: string;
@@ -860,8 +861,11 @@ export const databaseService = {
       
       if (snapshot.exists()) {
         let hasGeneralist = false;
+        let generalistCount = 0;
+        
         snapshot.forEach((childSnapshot) => {
           const doctorData = childSnapshot.val();
+          
           // Check if doctor is affiliated with the clinic and is a generalist
           // Check both clinic ID and clinic name for affiliation
           if (doctorData.clinicAffiliations && 
@@ -872,9 +876,14 @@ export const databaseService = {
                )) &&
               doctorData.isGeneralist === true &&
               this.hasValidAvailability(doctorData)) {
+            
+            generalistCount++;
             hasGeneralist = true;
+            console.log(`🔍 Found generalist doctor ${doctorData.firstName} ${doctorData.lastName} for clinic ${clinicId}`);
           }
         });
+        
+        console.log(`🔍 Clinic ${clinicId} has ${generalistCount} generalist doctors`);
         return hasGeneralist;
       }
       return false;
@@ -1122,7 +1131,7 @@ export const databaseService = {
                  clinicId.toLowerCase().includes(affiliation.toLowerCase())
                )) &&
               doctorData.isSpecialist === true &&
-              doctorData.status !== 'pending') { // ✅ Added status verification
+              doctorData.status !== 'pending' && doctorData.status !== 'rejected' && doctorData.status !== 'suspended') { // ✅ Added status verification
             // Ensure doctor has proper availability data
             const doctorWithDefaults = {
               id: childSnapshot.key!,
@@ -1146,6 +1155,223 @@ export const databaseService = {
     }
   },
 
+  async getGeneralistDoctorsByClinic(clinicId: string): Promise<Doctor[]> {
+    try {
+      const doctorsRef = ref(database, 'doctors');
+      const snapshot = await get(doctorsRef);
+      
+      if (snapshot.exists()) {
+        const doctors: Doctor[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const doctorData = childSnapshot.val();
+          // Check if doctor is affiliated with the selected clinic and is a generalist
+          // Check both clinic ID and clinic name for affiliation
+          if (doctorData.clinicAffiliations && 
+              (doctorData.clinicAffiliations.includes(clinicId) ||
+               doctorData.clinicAffiliations.some((affiliation: string) => 
+                 affiliation.toLowerCase().includes(clinicId.toLowerCase()) ||
+                 clinicId.toLowerCase().includes(affiliation.toLowerCase())
+               )) &&
+              doctorData.isGeneralist === true) {
+            // Ensure doctor has proper availability data
+            const doctorWithDefaults = {
+              id: childSnapshot.key!,
+              ...doctorData,
+              availability: doctorData.availability || {
+                lastUpdated: getCurrentLocalTimestamp(),
+                weeklySchedule: {},
+                specificDates: {}
+              }
+            };
+            doctors.push(doctorWithDefaults);
+          }
+        });
+        return doctors;
+      }
+      return [];
+    } catch (error) {
+      console.error('Get generalist doctors by clinic error:', error);
+      throw new Error('Failed to load generalist doctors from database');
+    }
+  },
+
+  async getClinicsWithGeneralistDoctors(): Promise<Clinic[]> {
+    try {
+      const clinicsRef = ref(database, 'clinics');
+      const snapshot = await get(clinicsRef);
+      
+      if (snapshot.exists()) {
+        const clinicsData = snapshot.val();
+        const clinics: Clinic[] = [];
+        
+        Object.keys(clinicsData).forEach(clinicId => {
+          const clinicData = clinicsData[clinicId];
+          // Only include active clinics with valid address
+          // Handle both addressLine (current format) and separate address/city/province fields
+          const hasValidAddress = (clinicData.addressLine && clinicData.addressLine.trim() !== '') ||
+                                 (clinicData.address && clinicData.city && clinicData.province &&
+                                  clinicData.address.trim() !== '' && 
+                                  clinicData.city.trim() !== '' && 
+                                  clinicData.province.trim() !== '');
+          
+          if (clinicData.isActive && hasValidAddress) {
+            clinics.push({
+              id: clinicId,
+              name: clinicData.name || 'Unknown Clinic',
+              address: clinicData.address || clinicData.addressLine || '',
+              addressLine: clinicData.addressLine || '',
+              city: clinicData.city || '',
+              province: clinicData.province || '',
+              zipCode: clinicData.zipCode || '',
+              phone: clinicData.phone || clinicData.contactNumber || '',
+              email: clinicData.email || '',
+              type: clinicData.type || 'Primary Clinic',
+              isActive: clinicData.isActive || false,
+              createdAt: clinicData.createdAt || Date.now(),
+              updatedAt: clinicData.updatedAt || Date.now(),
+              hasGeneralistDoctors: true // We'll verify this below
+            });
+          }
+        });
+        
+        console.log(`🔍 Found ${clinics.length} active clinics with valid addresses`);
+        
+        // Filter clinics to only include those with generalist doctors
+        const clinicsWithGeneralists = await Promise.all(
+          clinics.map(async (clinic) => {
+            const hasGeneralists = await this.hasGeneralistDoctors(clinic.id);
+            console.log(`🔍 Clinic ${clinic.name} (${clinic.id}) has generalists: ${hasGeneralists}`);
+            return hasGeneralists ? { ...clinic, hasGeneralistDoctors: true } : null;
+          })
+        );
+        
+        const validClinics = clinicsWithGeneralists.filter(Boolean) as Clinic[];
+        console.log(`🔍 Final result: ${validClinics.length} clinics with generalist doctors`);
+        
+        return validClinics;
+      }
+      return [];
+    } catch (error) {
+      console.error('Get clinics with generalist doctors error:', error);
+      throw new Error('Failed to load clinics from database');
+    }
+  },
+
+  // Trace original generalist from clinicAppointmentId
+  async traceOriginalGeneralist(clinicAppointmentId: string): Promise<{
+    doctor: Doctor | null;
+    appointment: Appointment | null;
+    clinic: Clinic | null;
+  }> {
+    try {
+      console.log(`🔍 ===== DATABASE SERVICE: TRACE ORIGINAL GENERALIST =====`);
+      console.log(`🔍 Input clinicAppointmentId: ${clinicAppointmentId}`);
+      
+      // Get the appointment
+      console.log(`🔍 Fetching appointment from appointments/${clinicAppointmentId}...`);
+      const appointmentRef = ref(database, `appointments/${clinicAppointmentId}`);
+      const appointmentSnapshot = await get(appointmentRef);
+      
+      if (!appointmentSnapshot.exists()) {
+        console.log(`❌ Appointment ${clinicAppointmentId} not found in database`);
+        return { doctor: null, appointment: null, clinic: null };
+      }
+      
+      const appointment = appointmentSnapshot.val() as Appointment;
+      console.log(`✅ Found appointment:`, {
+        id: appointment.id,
+        doctorId: appointment.doctorId,
+        patientId: appointment.patientId,
+        clinicId: appointment.clinicId,
+        type: appointment.type,
+        status: appointment.status
+      });
+      
+      // Get the doctor details
+      console.log(`🔍 Fetching doctor from doctors/${appointment.doctorId}...`);
+      const doctorRef = ref(database, `doctors/${appointment.doctorId}`);
+      const doctorSnapshot = await get(doctorRef);
+      
+      if (!doctorSnapshot.exists()) {
+        console.log(`❌ Doctor ${appointment.doctorId} not found in database`);
+        return { doctor: null, appointment, clinic: null };
+      }
+      
+      const doctorData = doctorSnapshot.val();
+      console.log(`✅ Found doctor data:`, {
+        id: appointment.doctorId,
+        firstName: doctorData.firstName,
+        lastName: doctorData.lastName,
+        isGeneralist: doctorData.isGeneralist,
+        isSpecialist: doctorData.isSpecialist,
+        specialty: doctorData.specialty
+      });
+      
+      // Validate that the doctor is a generalist
+      if (!doctorData.isGeneralist) {
+        console.log(`❌ Doctor ${appointment.doctorId} is not a generalist (isGeneralist: ${doctorData.isGeneralist})`);
+        return { doctor: null, appointment, clinic: null };
+      }
+      
+      const doctor: Doctor = {
+        id: appointment.doctorId,
+        ...doctorData,
+        isGeneralist: doctorData.isGeneralist || false,
+        isSpecialist: doctorData.isSpecialist || false,
+        availability: doctorData.availability || {
+          lastUpdated: getCurrentLocalTimestamp(),
+          weeklySchedule: {},
+          specificDates: {}
+        }
+      };
+      
+      console.log(`✅ Validated generalist: ${doctor.firstName} ${doctor.lastName}`);
+      
+      // Get the clinic details
+      console.log(`🔍 Fetching clinic from clinics/${appointment.clinicId}...`);
+      const clinicRef = ref(database, `clinics/${appointment.clinicId}`);
+      const clinicSnapshot = await get(clinicRef);
+      
+      let clinic: Clinic | null = null;
+      if (clinicSnapshot.exists()) {
+        const clinicData = clinicSnapshot.val();
+        clinic = {
+          id: appointment.clinicId,
+          name: clinicData.name || 'Unknown Clinic',
+          address: clinicData.address || clinicData.addressLine || '',
+          addressLine: clinicData.addressLine || '',
+          city: clinicData.city || '',
+          province: clinicData.province || '',
+          zipCode: clinicData.zipCode || '',
+          phone: clinicData.phone || clinicData.contactNumber || '',
+          email: clinicData.email || '',
+          type: clinicData.type || 'Primary Clinic',
+          isActive: clinicData.isActive || false,
+          createdAt: clinicData.createdAt || Date.now(),
+          updatedAt: clinicData.updatedAt || Date.now(),
+        };
+        console.log(`✅ Found clinic: ${clinic.name} (${clinic.id})`);
+      } else {
+        console.log(`❌ Clinic ${appointment.clinicId} not found in database`);
+      }
+      
+      console.log(`✅ ===== DATABASE SERVICE: TRACE SUCCESS =====`);
+      console.log(`✅ Returning:`, {
+        doctor: doctor ? `${doctor.firstName} ${doctor.lastName}` : null,
+        clinic: clinic ? clinic.name : null,
+        appointment: appointment ? appointment.id : null
+      });
+      
+      return { doctor, appointment, clinic };
+      
+    } catch (error) {
+      console.error('❌ ===== DATABASE SERVICE: TRACE ERROR =====');
+      console.error('❌ Error tracing original generalist:', error);
+      return { doctor: null, appointment: null, clinic: null };
+    }
+  },
+
+
   async getAllDoctors(): Promise<Doctor[]> {
     try {
       const doctorsRef = ref(database, 'doctors');
@@ -1161,7 +1387,7 @@ export const databaseService = {
           // Filter out pending specialists to prevent them from appearing in any doctor lists
           if (this.hasValidAvailability(doctorData) && 
               (doctorData.isGeneralist === true || 
-               (doctorData.isSpecialist === true && doctorData.status !== 'pending'))) {
+               (doctorData.isSpecialist === true && doctorData.status !== 'pending' && doctorData.status !== 'rejected' && doctorData.status !== 'suspended'))) {
             doctors.push({
               id: doctorId,
               ...doctorData,
