@@ -55,19 +55,24 @@ export default function SpecialistReviewConfirmScreen() {
   const selectedPurpose = params.selectedPurpose as string;
   const reasonForReferral = params.reasonForReferral as string;
   const sourceType = params.sourceType as string; // New parameter for tracking source type
+  const referralType = params.referralType as string;
+  const isTraceBack = params.isTraceBack as string; // Flag to indicate trace-back referral
 
   // Debug: Log all referral parameters
   console.log('🔍 Review-confirm referral parameters:', {
     originalAppointmentId,
     sourceType,
     isReferral,
+    referralType,
+    isTraceBack,
     patientId,
     patientFirstName,
     patientLastName,
     doctorId,
     doctorName,
     clinicId,
-    clinicName
+    clinicName,
+    reasonForReferral
   });
 
   const [loading, setLoading] = useState(false);
@@ -169,37 +174,84 @@ export default function SpecialistReviewConfirmScreen() {
         console.log('⚠️ This may indicate a direct specialist referral without a source appointment/referral');
       }
 
-      const appointmentData = {
-        appointmentDate: selectedDate,
-        appointmentTime: selectedTime,
-        assignedSpecialistId: doctorId,
-        clinicAppointmentId: clinicAppointmentId, // Now properly validated
-        additionalNotes: reasonForReferral?.replace(/^Additional Notes:\s*/, '') || 'Specialist referral',
-        lastUpdated: new Date().toISOString(),
-        patientId: patientId,
-        practiceLocation: {
-          clinicId: referralData.assignedClinicId, // Use assigned specialist's clinic
-          roomOrUnit: referralData.roomOrUnit // Use room from schedule
-        },
-        referralTimestamp: new Date().toISOString(),
-        referringClinicId: referralData.referringClinicId, // Use referring specialist's clinic
-        referringClinicName: referralData.referringClinicName,
-        referringSpecialistId: user.uid,
-        referringSpecialistFirstName: referringSpecialistFirstName,
-        referringSpecialistLastName: referringSpecialistLastName,
-        sourceSystem: 'UniHealth_Specialist_App',
-        status: 'pending' as const,
-        specialistScheduleId: referralData.scheduleId, // Store the schedule ID for reference
-        // Add metadata for better tracking
-        referralSourceType: clinicAppointmentIdSource, // Track what type of source this referral came from
-        referralSourceId: clinicAppointmentId, // Track the source ID for debugging
-      };
+      // Check if this is a generalist referral (trace-back)
+      if (referralType === 'generalist' && isTraceBack === 'true') {
+        console.log('🔍 Creating appointment for generalist referral (trace-back)');
+        
+        // Create appointment data for generalist
+        const appointmentData = {
+          appointmentDate: selectedDate,
+          appointmentTime: selectedTime,
+          clinicId: referralData.assignedClinicId,
+          clinicName: clinicName,
+          createdAt: new Date().toISOString(),
+          doctorId: doctorId,
+          doctorFirstName: doctorData?.firstName || doctorData?.first_name || '',
+          doctorLastName: doctorData?.lastName || doctorData?.last_name || '',
+          doctorSpecialty: doctorData?.specialty || 'General Medicine',
+          lastUpdated: new Date().toISOString(),
+          appointmentPurpose: selectedPurpose,
+          additionalNotes: reasonForReferral?.replace(/^Additional Notes:\s*/, '') || 'Return to Generalist',
+          patientId: patientId,
+          patientFirstName: patientFirstName,
+          patientLastName: patientLastName,
+          sourceSystem: 'UniHealth_Specialist_App',
+          status: 'pending' as const,
+          type: 'general_consultation',
+          // Add trace-back metadata
+          isReferralFollowUp: true,
+          originalAppointmentId: originalAppointmentId,
+          // Add referring specialist information
+          referringSpecialistId: user.uid,
+          referringSpecialistFirstName: referringSpecialistFirstName,
+          referringSpecialistLastName: referringSpecialistLastName,
+          referringClinicId: referralData.referringClinicId,
+          referringClinicName: referralData.referringClinicName,
+          referralTimestamp: new Date().toISOString(),
+        };
 
-      // Save to database as referral
-      const referralId = await databaseService.createReferral(appointmentData);
-      console.log('Specialist referral created successfully with ID:', referralId);
-      setCreatedAppointmentId(referralId);
-      setReferralConfirmed(true);
+        // Save to database as appointment
+        const appointmentId = await databaseService.createAppointment(appointmentData);
+        console.log('Generalist appointment created successfully with ID:', appointmentId);
+        setCreatedAppointmentId(appointmentId);
+        setReferralConfirmed(true);
+        
+      } else {
+        console.log('🔍 Creating referral for specialist referral');
+        
+        // Create referral data for specialist
+        const specialistReferralData = {
+          appointmentDate: selectedDate,
+          appointmentTime: selectedTime,
+          assignedSpecialistId: doctorId,
+          clinicAppointmentId: clinicAppointmentId, // Now properly validated
+          additionalNotes: reasonForReferral?.replace(/^Additional Notes:\s*/, '') || 'Specialist referral',
+          lastUpdated: new Date().toISOString(),
+          patientId: patientId,
+          practiceLocation: {
+            clinicId: referralData.assignedClinicId, // Use assigned specialist's clinic
+            roomOrUnit: referralData.roomOrUnit // Use room from schedule
+          },
+          referralTimestamp: new Date().toISOString(),
+          referringClinicId: referralData.referringClinicId, // Use referring specialist's clinic
+          referringClinicName: referralData.referringClinicName,
+          referringSpecialistId: user.uid,
+          referringSpecialistFirstName: referringSpecialistFirstName,
+          referringSpecialistLastName: referringSpecialistLastName,
+          sourceSystem: 'UniHealth_Specialist_App',
+          status: 'pending' as const,
+          specialistScheduleId: referralData.scheduleId, // Store the schedule ID for reference
+          // Add metadata for better tracking
+          referralSourceType: clinicAppointmentIdSource, // Track what type of source this referral came from
+          referralSourceId: clinicAppointmentId, // Track the source ID for debugging
+        };
+
+        // Save to database as referral
+        const referralId = await databaseService.createReferral(specialistReferralData);
+        console.log('Specialist referral created successfully with ID:', referralId);
+        setCreatedAppointmentId(referralId);
+        setReferralConfirmed(true);
+      }
 
       // Send referral confirmation email (non-blocking for booking flow)
       try {
