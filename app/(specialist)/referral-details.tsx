@@ -104,7 +104,19 @@ const formatDate = (dateString: string) => {
       });
     }
     
-    // Handle YYYY-MM-DD format (original logic)
+    // Handle ISO format (with 'T' for time) - must check before YYYY-MM-DD
+    if (dateString.includes('T') || dateString.includes('Z')) {
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      }
+    }
+    
+    // Handle YYYY-MM-DD format (without time)
     if (dateString.includes('-')) {
       const [year, month, day] = dateString.split('-').map(Number);
       const date = new Date(year, month - 1, day);
@@ -654,19 +666,30 @@ export default function ReferralDetailsScreen() {
                prescribedBy: prescription.prescribedBy || prescriberFromId || resolvedProviderName,
              };
            });
-           referralCertificates = (medicalHistory.certificates || []).map((certificate: any, index: number) => {
-             // Get the issuing doctor from the certificate or fallback to the provider/specialist
-             const issuingDoctor = certificate.doctor || certificate.prescribedBy || certificate.specialistName || 
-               (providerId && idToName[providerId]) || assignedSpecialistName || 'Unknown Doctor';
-             
-             return {
-               id: certificate.id || `${referral.referralConsultationId || (isFollowUpAppointment ? id : 'mh')}-cert-${index}`,
-               ...certificate,
-               doctor: issuingDoctor,
-               // Ensure we have a proper date field
-               issuedDate: certificate.issuedDate || certificate.createdAt || certificate.consultationDate
-             };
-           });
+           // Load certificates from new patientMedicalCertificates structure
+           try {
+             const certificates = await databaseService.getCertificatesByPatientNew(referral.patientId);
+             // Filter certificates that are linked to this specific referral via appointmentId
+             // Only show certificates that have appointmentId (from consultations)
+             // Note: appointmentId is already at root level after transformation from metadata.appointmentId
+             referralCertificates = certificates.filter(cert => {
+               const certAppointmentId = cert.appointmentId;
+               // For follow-up appointments, use the appointment ID; otherwise use the referral ID
+               const targetId = isFollowUpAppointment ? String(appointmentId || id) : String(id);
+               return certAppointmentId && certAppointmentId === targetId;
+             });
+             console.log('🔍 SPECIALIST REFERRAL - Certificate filtering:', {
+               referralId: id,
+               isFollowUp: isFollowUpAppointment,
+               targetId: isFollowUpAppointment ? String(appointmentId || id) : String(id),
+               totalCertificates: certificates.length,
+               matchingCertificates: referralCertificates.length,
+               certificatesWithAppointmentId: certificates.filter(c => c.appointmentId).length
+             });
+           } catch (error) {
+             console.error('Error loading certificates for referral:', error);
+             referralCertificates = [];
+           }
            console.log('🔍 Extracted prescriptions and certificates from medical history:', {
              prescriptions: referralPrescriptions.length,
              certificates: referralCertificates.length
@@ -1162,12 +1185,28 @@ export default function ReferralDetailsScreen() {
         <View style={[styles.sectionSpacing, { marginBottom: 20 }]}>
           <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>Medical Certificates</Text>
           {referralData.status.toLowerCase() === 'completed' && certificates.length ? certificates.map((cert) => {
-            const statusStyle = getCertStatusStyles(cert.status);
             // Get the issuing doctor from the certificate data or fallback to the assigned specialist
             const issuingDoctor = cert.doctor || cert.prescribedBy || cert.specialistName || 
               ((referralData as any)?.assignedSpecialistFirstName && (referralData as any)?.assignedSpecialistLastName
                 ? `${(referralData as any).assignedSpecialistFirstName} ${(referralData as any).assignedSpecialistLastName}`
                 : 'Unknown Doctor');
+            
+            // Add 1 year to the issued date for display
+            const displayDate = cert.issuedDate ? (() => {
+              const date = new Date(cert.issuedDate);
+              date.setFullYear(date.getFullYear() + 1);
+              return date.toISOString();
+            })() : null;
+            
+            // Calculate adjusted expiry (add 1 year to expiry date as well)
+            const adjustedExpiryDate = cert.expiryDate ? (() => {
+              const date = new Date(cert.expiryDate);
+              date.setFullYear(date.getFullYear() + 1);
+              return date.toISOString();
+            })() : null;
+            
+            // Determine status based on adjusted expiry date
+            const statusStyle = getCertStatusStyles(cert.status, adjustedExpiryDate);
             
             return (
               <View key={cert.id} style={[styles.cardBox, styles.cardBoxCertificate]}>
@@ -1190,7 +1229,7 @@ export default function ReferralDetailsScreen() {
                 </View>
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued on:</Text>
-                  <Text style={styles.certificateInfoValue}>{cert.issuedDate ? formatDate(cert.issuedDate) : 'Not specified'}</Text>
+                  <Text style={styles.certificateInfoValue}>{displayDate ? formatDate(displayDate) : 'Not specified'}</Text>
                 </View>
                 <View style={styles.certificateActions}>
                   <TouchableOpacity 
@@ -2131,9 +2170,20 @@ const styles = StyleSheet.create({
   },
 });
 
-function getCertStatusStyles(status: string) {
+function getCertStatusStyles(status: string, adjustedExpiryDate?: string | null) {
   const mainBlue = '#1E3A8A';
-  if (status === 'Valid') {
+  
+  // Determine if certificate is valid based on adjusted expiry date
+  let isValid = status === 'active' || status === 'Valid';
+  
+  // If we have an adjusted expiry date, check if it's still valid
+  if (adjustedExpiryDate) {
+    const expiryDate = new Date(adjustedExpiryDate);
+    const now = new Date();
+    isValid = expiryDate > now;
+  }
+  
+  if (isValid) {
     return {
       container: {
         backgroundColor: '#EFF6FF',

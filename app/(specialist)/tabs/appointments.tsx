@@ -48,6 +48,7 @@ import { safeDataAccess } from '../../../src/utils/safeDataAccess';
 import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
+import { getChiefComplaint } from '../../../src/utils/chiefComplaintHelper';
 import { useDeepMemo } from '../../../src/utils/performance';
 import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
 import ReferralTypeModal from '../../../src/components/ReferralTypeModal';
@@ -1355,25 +1356,25 @@ export default function SpecialistAppointmentsScreen() {
           <View style={[styles.notesSection, { marginBottom: 10 }]}>
             <Text style={styles.notesLabel}>Additional Notes:</Text>
             <Text style={styles.notesText}>
-              {appointment.additionalNotes && appointment.additionalNotes.trim() !== '' 
-                ? appointment.additionalNotes 
-                : 'No additional notes'}
+              {getChiefComplaint(appointment) || 'No additional notes'}
             </Text>
           </View>
         ) : (
           // For regular appointments, show purpose and notes as before
           <>
-        {appointment.appointmentPurpose && (
+        {(appointment.appointmentPurpose || appointment.type === 'walk-in') && (
           <View style={styles.notesSection}>
             <Text style={styles.notesLabel}>Purpose:</Text>
-            <Text style={styles.notesText}>{appointment.appointmentPurpose}</Text>
+            <Text style={styles.notesText}>
+              {appointment.appointmentPurpose || (appointment.type === 'walk-in' ? 'Walk In' : '')}
+            </Text>
           </View>
         )}
 
-        {appointment.additionalNotes && (
+        {getChiefComplaint(appointment) && (
           <View style={styles.notesSection}>
             <Text style={styles.notesLabel}>Notes:</Text>
-            <Text style={styles.notesText}>{appointment.additionalNotes}</Text>
+            <Text style={styles.notesText}>{getChiefComplaint(appointment)}</Text>
           </View>
             )}
           </>

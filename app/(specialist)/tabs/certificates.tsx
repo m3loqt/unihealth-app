@@ -16,10 +16,11 @@ import {
   Modal,
 } from 'react-native';
 import {
-  FileText, Search, Download, Eye, ChevronDown, Check, Bell, RefreshCw, Trash2, CheckCircle, Filter
+  FileText, Search, Download, Eye, ChevronDown, Check, Bell, RefreshCw, Trash2, CheckCircle, Filter, Plus, X
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
+import { useCertificateSignature } from '../../../src/hooks/ui/useSignatureManager';
 import { useRealtimeNotificationContext } from '../../../src/contexts/RealtimeNotificationContext';
 import { getSafeNotifications, getSafeUnreadCount } from '../../../src/utils/notificationUtils';
 import { databaseService, Certificate } from '../../../src/services/database/firebase';
@@ -30,6 +31,7 @@ import { dataValidation } from '../../../src/utils/dataValidation';
 import { useDeepMemo } from '../../../src/utils/performance';
 import SpecialistHeader from '../../../src/components/navigation/SpecialistHeader';
 import { GlobalNotificationModal } from '../../../src/components/shared';
+import { BlurView } from 'expo-blur';
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = (screenWidth - 64) / 2;
@@ -62,7 +64,6 @@ export default function SpecialistCertificatesScreen() {
   const markAllAsRead = realtimeNotificationData.markAllAsRead;
   const deleteNotification = realtimeNotificationData.deleteNotification;
   const refreshNotifications = realtimeNotificationData.refresh;
-  const handleNotificationPress = realtimeNotificationData.handleNotificationPress;
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -76,6 +77,39 @@ export default function SpecialistCertificatesScreen() {
 
   // Notification Modal State
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  
+  // Certificate Type Selection Modal State
+  const [showCertificateTypeModal, setShowCertificateTypeModal] = useState(false);
+  const [selectedCertificateType, setSelectedCertificateType] = useState('');
+  const [showCertificateForm, setShowCertificateForm] = useState(false);
+  
+  // Certificate Form State
+  const [patients, setPatients] = useState<any[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [loadingPatients, setLoadingPatients] = useState(false);
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const [diagnosis, setDiagnosis] = useState('');
+  const [description, setDescription] = useState('');
+  const [examinationDate, setExaminationDate] = useState('');
+  const [medicalAdvice, setMedicalAdvice] = useState('');
+  
+  // Fit to Work fields
+  const [fitnessStatement, setFitnessStatement] = useState('');
+  const [workRestrictions, setWorkRestrictions] = useState('');
+  const [unfitPeriodStart, setUnfitPeriodStart] = useState('');
+  const [unfitPeriodEnd, setUnfitPeriodEnd] = useState('');
+  
+  // Medical/Sickness fields
+  const [reasonForUnfitness, setReasonForUnfitness] = useState('');
+  const [followUpDate, setFollowUpDate] = useState('');
+  
+  // Fit to Travel fields
+  const [travelFitnessStatement, setTravelFitnessStatement] = useState('');
+  const [travelMode, setTravelMode] = useState('');
+  const [destination, setDestination] = useState('');
+  const [travelDate, setTravelDate] = useState('');
+  const [specialConditions, setSpecialConditions] = useState('');
+  const [validityPeriod, setValidityPeriod] = useState('');
   
   // Notification Modal Actions
   const handleOpenNotifications = () => setShowNotificationModal(true);
@@ -94,6 +128,207 @@ export default function SpecialistCertificatesScreen() {
   // Handle marking all notifications as read
   const handleMarkAllAsRead = async () => {
     await markAllAsRead();
+  };
+  
+  // Handle certificate type selection
+  const handleCertificateTypeSelect = async (certificateType: string) => {
+    setSelectedCertificateType(certificateType);
+    setShowCertificateForm(true);
+    
+    // Load patients
+    await loadPatientsWithAppointments();
+  };
+  
+  // Load patients who have appointments with this doctor
+  const loadPatientsWithAppointments = async () => {
+    if (!user?.uid) return;
+    
+    try {
+      setLoadingPatients(true);
+      const appointments = await databaseService.getAppointmentsByDoctor(user.uid);
+      
+      // Extract unique patients (using Map to deduplicate by patient ID)
+      const uniquePatients = new Map();
+      appointments.forEach((apt: any) => {
+        if (apt.patientDetails && apt.patientDetails.id) {
+          // Only add if not already in map, or update with more complete data
+          const existingPatient = uniquePatients.get(apt.patientDetails.id);
+          if (!existingPatient || 
+              (apt.patientDetails.contactNumber && apt.patientDetails.contactNumber !== 'N/A')) {
+            uniquePatients.set(apt.patientDetails.id, apt.patientDetails);
+          }
+        }
+      });
+      
+      const patientList = Array.from(uniquePatients.values());
+      console.log(`🔍 Extracted ${patientList.length} unique patients from ${appointments.length} appointments/referrals`);
+      setPatients(patientList);
+    } catch (error) {
+      console.error('Error loading patients:', error);
+      Alert.alert('Error', 'Failed to load patients. Please try again.');
+    } finally {
+      setLoadingPatients(false);
+    }
+  };
+  
+  // Handle continue to signature
+  const handleContinueToSignature = async () => {
+    // Validate required fields
+    if (!selectedPatient) {
+      Alert.alert('Patient Required', 'Please select a patient.');
+      return;
+    }
+    if (!diagnosis.trim() || !description.trim()) {
+      Alert.alert('Required Fields', 'Please fill in diagnosis and description.');
+      return;
+    }
+    
+    // Type-specific validation
+    if (selectedCertificateType === 'Fit to Work Certificate' && !fitnessStatement.trim()) {
+      Alert.alert('Required Fields', 'Please fill in fitness statement.');
+      return;
+    }
+    if (selectedCertificateType === 'Medical/Sickness Certificate' && !reasonForUnfitness.trim()) {
+      Alert.alert('Required Fields', 'Please fill in reason for unfitness.');
+      return;
+    }
+    if (selectedCertificateType === 'Fit to Travel Certificate' && !travelFitnessStatement.trim()) {
+      Alert.alert('Required Fields', 'Please fill in travel fitness statement.');
+      return;
+    }
+    
+    // Build certificate data
+    const certificateData: any = {
+      type: selectedCertificateType,
+      diagnosis,
+      description,
+      examinationDate: examinationDate || new Date().toISOString().split('T')[0],
+      medicalAdvice,
+    };
+    
+    // Add type-specific fields
+    if (selectedCertificateType === 'Fit to Work Certificate') {
+      certificateData.fitnessStatement = fitnessStatement;
+      certificateData.workRestrictions = workRestrictions;
+      certificateData.unfitPeriodStart = unfitPeriodStart;
+      certificateData.unfitPeriodEnd = unfitPeriodEnd;
+    } else if (selectedCertificateType === 'Medical/Sickness Certificate') {
+      certificateData.reasonForUnfitness = reasonForUnfitness;
+      certificateData.unfitPeriodStart = unfitPeriodStart;
+      certificateData.unfitPeriodEnd = unfitPeriodEnd;
+      certificateData.medicalAdvice = medicalAdvice;
+      certificateData.followUpDate = followUpDate;
+    } else if (selectedCertificateType === 'Fit to Travel Certificate') {
+      certificateData.travelFitnessStatement = travelFitnessStatement;
+      certificateData.travelMode = travelMode;
+      certificateData.destination = destination;
+      certificateData.travelDate = travelDate;
+      certificateData.specialConditions = specialConditions;
+      certificateData.validityPeriod = validityPeriod;
+    }
+    
+    // Close modals
+    setShowCertificateTypeModal(false);
+    setShowCertificateForm(false);
+    
+    try {
+      // Check if doctor has a saved signature
+      if (user?.uid) {
+        const { signature: savedSignature, isSignatureSaved } = await databaseService.getDoctorSignature(user.uid);
+        
+        if (isSignatureSaved && savedSignature) {
+          // Auto-use saved signature, skip signature page
+          console.log('✅ Using saved signature, skipping signature page');
+          
+          const updatedCertificateData = {
+            ...certificateData,
+            digitalSignature: savedSignature,
+            signatureKey: `signature_${Date.now()}`,
+            signedAt: new Date().toISOString(),
+          };
+          
+          // Save certificate directly to database
+          const certificateId = await databaseService.createCertificateInNewStructure(
+            updatedCertificateData,
+            selectedPatient.id,
+            user.uid
+          );
+          
+          console.log('✅ Certificate saved successfully with ID (auto-signed):', certificateId);
+          
+          // Reset form
+          resetForm();
+          
+          // Show success confirmation
+          Alert.alert(
+            'Certificate Issued Successfully', 
+            'Your certificate has been created and signed automatically using your saved signature.',
+            [{ text: 'OK' }]
+          );
+          
+          // Refresh certificates
+          await loadCertificates();
+          
+          return;
+        }
+      }
+      
+      // No saved signature, navigate to signature page
+      router.push({
+        pathname: '/(patient)/signature-page',
+        params: {
+          certificateData: JSON.stringify(certificateData),
+          patientId: selectedPatient.id,
+          fromSpecialist: 'true',
+        }
+      } as any);
+      
+      // Reset form
+      resetForm();
+    } catch (error) {
+      console.error('❌ Error checking saved signature:', error);
+      // On error, default to showing signature page
+      router.push({
+        pathname: '/(patient)/signature-page',
+        params: {
+          certificateData: JSON.stringify(certificateData),
+          patientId: selectedPatient.id,
+          fromSpecialist: 'true',
+        }
+      } as any);
+      
+      // Reset form
+      resetForm();
+    }
+  };
+  
+  // Reset form
+  const resetForm = () => {
+    setSelectedCertificateType('');
+    setSelectedPatient(null);
+    setDiagnosis('');
+    setDescription('');
+    setExaminationDate('');
+    setMedicalAdvice('');
+    setFitnessStatement('');
+    setWorkRestrictions('');
+    setUnfitPeriodStart('');
+    setUnfitPeriodEnd('');
+    setReasonForUnfitness('');
+    setFollowUpDate('');
+    setTravelFitnessStatement('');
+    setTravelMode('');
+    setDestination('');
+    setTravelDate('');
+    setSpecialConditions('');
+    setValidityPeriod('');
+  };
+  
+  // Handle close modals
+  const handleCloseCertificateModal = () => {
+    setShowCertificateTypeModal(false);
+    setShowCertificateForm(false);
+    resetForm();
   };
 
   // Load certificates from Firebase
@@ -114,31 +349,12 @@ export default function SpecialistCertificatesScreen() {
       const specialistCertificates = await databaseService.getCertificatesBySpecialist(user.uid);
       console.log('📋 Raw certificates from database:', specialistCertificates);
       
-      // Enrich certificates with patient names
-      const enrichedCertificates = await Promise.all(
-        specialistCertificates.map(async (cert) => {
-          try {
-            const patientProfile = await databaseService.getPatientProfile(cert.patientId);
-            const patientName = patientProfile 
-              ? `${patientProfile.firstName || ''} ${patientProfile.lastName || ''}`.trim() || 'Unknown Patient'
-              : 'Unknown Patient';
-            
-            return {
-              ...cert,
-              patientName,
-              // Convert status for display
-              displayStatus: cert.status === 'active' ? 'Valid' : 'Expired'
-            };
-          } catch (error) {
-            console.error('Error fetching patient profile for certificate:', error);
-            return {
-              ...cert,
-              patientName: 'Unknown Patient',
-              displayStatus: cert.status === 'active' ? 'Valid' : 'Expired'
-            };
-          }
-        })
-      );
+      // Convert status for display (patient details are already included in the new structure)
+      const enrichedCertificates = specialistCertificates.map((cert) => ({
+        ...cert,
+        // Convert status for display
+        displayStatus: cert.status === 'active' ? 'Valid' : 'Expired'
+      }));
       
       console.log('👥 Enriched certificates:', enrichedCertificates);
       
@@ -169,9 +385,12 @@ export default function SpecialistCertificatesScreen() {
   const filteredCertificates = useDeepMemo(() => {
     return certificates
       .filter((cert) => {
+        const patientName = cert.patientDetails ? 
+          `${cert.patientDetails.firstName || ''} ${cert.patientDetails.lastName || ''}`.trim() :
+          (cert as any).patientName || '';
         const matchesSearch =
           cert.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (cert as any).patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           cert.description.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus =
           statusFilter === 'all' || (cert as any).displayStatus.toLowerCase() === statusFilter;
@@ -184,7 +403,13 @@ export default function SpecialistCertificatesScreen() {
           case 'type':
             return a.type.localeCompare(b.type);
           case 'patient':
-            return (a as any).patientName.localeCompare((b as any).patientName);
+            const aPatientName = a.patientDetails ? 
+              `${a.patientDetails.firstName || ''} ${a.patientDetails.lastName || ''}`.trim() :
+              (a as any).patientName || '';
+            const bPatientName = b.patientDetails ? 
+              `${b.patientDetails.firstName || ''} ${b.patientDetails.lastName || ''}`.trim() :
+              (b as any).patientName || '';
+            return aPatientName.localeCompare(bPatientName);
           case 'validUntil':
             return new Date(b.expiryDate || '').getTime() - new Date(a.expiryDate || '').getTime();
           default:
@@ -330,7 +555,10 @@ export default function SpecialistCertificatesScreen() {
             Patient
           </Text>
           <Text style={styles.doctorName} numberOfLines={1}>
-            {(certificate as any).patientName || 'Unknown Patient'}
+            {certificate.patientDetails ? 
+              `${certificate.patientDetails.firstName || ''} ${certificate.patientDetails.lastName || ''}`.trim() || 'Unknown Patient' :
+              (certificate as any).patientName || 'Unknown Patient'
+            }
           </Text>
           <Text style={styles.issuedDate}>
             {certificate.issueDate ? new Date(certificate.issueDate).toLocaleDateString() : 'Date not specified'}
@@ -344,7 +572,7 @@ export default function SpecialistCertificatesScreen() {
                 
                 if (certificate.type === 'Fit to Work Certificate') {
                   route = '/e-certificate-fit-to-work';
-                } else if (certificate.type === 'Medical/Sickness Certificate') {
+                } else if (certificate.type === 'Medical/Sickness Certificate' || certificate.type === 'Medical Certificate') {
                   route = '/e-certificate-medical-sickness';
                 } else if (certificate.type === 'Fit to Travel Certificate') {
                   route = '/e-certificate-fit-to-travel';
@@ -430,6 +658,12 @@ export default function SpecialistCertificatesScreen() {
             <Filter size={22} color="#6B7280" />
             <ChevronDown size={20} color="#6B7280" />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setShowCertificateTypeModal(true)}
+          >
+            <Plus size={22} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
         <View style={styles.filtersBarRow}>
           <ScrollView
@@ -499,6 +733,402 @@ export default function SpecialistCertificatesScreen() {
         onClose={handleCloseNotificationModal}
         userRole="specialist"
       />
+      
+      {/* === CERTIFICATE TYPE SELECTION MODAL === */}
+      <Modal
+        visible={showCertificateTypeModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowCertificateTypeModal(false)}
+      >
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <Pressable 
+          style={styles.modalBackdrop} 
+          onPress={() => setShowCertificateTypeModal(false)}
+        >
+          <BlurView intensity={22} style={styles.blurView}>
+            <View style={styles.modalBackdropOverlay} />
+          </BlurView>
+        </Pressable>
+        <View style={styles.bottomSheetContainer}>
+          <SafeAreaView style={styles.safeArea}>
+            <View style={styles.bottomSheetContent}>
+            {/* Header */}
+            <View style={styles.bottomSheetHeader}>
+              <View style={styles.bottomSheetHeaderLeft}>
+                <View style={styles.certificateAvatar}>
+                  <FileText size={20} color="#FFFFFF" />
+                </View>
+                <View>
+                  <Text style={styles.bottomSheetTitle}>
+                    {showCertificateForm ? selectedCertificateType : 'Create Certificate'}
+                  </Text>
+                  <Text style={styles.bottomSheetSubtitle}>
+                    {showCertificateForm ? 'Fill in certificate details' : 'Select certificate type'}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                style={styles.closeButton} 
+                onPress={handleCloseCertificateModal}
+              >
+                <X size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Divider */}
+            <View style={styles.bottomSheetDivider} />
+            
+            {/* Show either type selection or form */}
+            {!showCertificateForm ? (
+              /* Certificate Type Options */
+              <View style={styles.certificateOptionsContainer}>
+              <TouchableOpacity
+                style={styles.certificateOption}
+                onPress={() => handleCertificateTypeSelect('Fit to Work Certificate')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.certificateOptionContent}>
+                  <View style={styles.certificateIconContainer}>
+                    <FileText size={24} color="#1E40AF" />
+                  </View>
+                  <View style={styles.certificateTextContainer}>
+                    <Text style={styles.certificateOptionTitle}>Fit to Work Certificate</Text>
+                    <Text style={styles.certificateOptionDescription}>
+                      Certify that a person is fit to work
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.certificateOption}
+                onPress={() => handleCertificateTypeSelect('Medical/Sickness Certificate')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.certificateOptionContent}>
+                  <View style={styles.certificateIconContainer}>
+                    <FileText size={24} color="#1E40AF" />
+                  </View>
+                  <View style={styles.certificateTextContainer}>
+                    <Text style={styles.certificateOptionTitle}>Medical/Sickness Certificate</Text>
+                    <Text style={styles.certificateOptionDescription}>
+                      Certify medical condition or sickness
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.certificateOption}
+                onPress={() => handleCertificateTypeSelect('Fit to Travel Certificate')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.certificateOptionContent}>
+                  <View style={styles.certificateIconContainer}>
+                    <FileText size={24} color="#1E40AF" />
+                  </View>
+                  <View style={styles.certificateTextContainer}>
+                    <Text style={styles.certificateOptionTitle}>Fit to Travel Certificate</Text>
+                    <Text style={styles.certificateOptionDescription}>
+                      Certify that a person is fit to travel
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </View>
+            ) : (
+              /* Certificate Form */
+              <ScrollView 
+                style={styles.formContainer}
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Patient Selection */}
+                <View style={styles.formField}>
+                  <Text style={styles.formLabel}>Select Patient *</Text>
+                  {loadingPatients ? (
+                    <Text style={styles.loadingTextForm}>Loading patients...</Text>
+                  ) : patients.length === 0 ? (
+                    <TouchableOpacity style={styles.dropdownButton} disabled>
+                      <Text style={styles.dropdownPlaceholder}>
+                        No patients found. Patients must have appointments with you first.
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.dropdownButton}
+                      onPress={() => setShowPatientDropdown(!showPatientDropdown)}
+                    >
+                      <View style={styles.dropdownContent}>
+                        {selectedPatient ? (
+                          <View style={styles.selectedPatientInfo}>
+                            <Text style={styles.dropdownText}>
+                              {selectedPatient.firstName} {selectedPatient.lastName}
+                            </Text>
+                            <Text style={styles.dropdownSubtext}>
+                              {selectedPatient.age > 0 ? `${selectedPatient.age} yrs` : 'Age N/A'} • {selectedPatient.gender} • {selectedPatient.contactNumber}
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.dropdownPlaceholder}>Select a patient</Text>
+                        )}
+                        <ChevronDown size={20} color="#6B7280" />
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                  
+                  {/* Dropdown List */}
+                  {showPatientDropdown && patients.length > 0 && (
+                    <View style={styles.dropdownList}>
+                      <ScrollView style={styles.dropdownScrollView} nestedScrollEnabled>
+                        {patients.map((patient) => (
+                          <TouchableOpacity
+                            key={patient.id}
+                            style={[
+                              styles.dropdownItem,
+                              selectedPatient?.id === patient.id && styles.dropdownItemSelected
+                            ]}
+                            onPress={() => {
+                              setSelectedPatient(patient);
+                              setShowPatientDropdown(false);
+                            }}
+                          >
+                            <View style={styles.dropdownItemContent}>
+                              <Text style={styles.dropdownItemName}>
+                                {patient.firstName} {patient.lastName}
+                              </Text>
+                              <Text style={styles.dropdownItemDetails}>
+                                {patient.age > 0 ? `${patient.age} yrs` : 'Age N/A'} • {patient.gender} • {patient.contactNumber}
+                              </Text>
+                            </View>
+                            {selectedPatient?.id === patient.id && (
+                              <Check size={20} color="#1E40AF" />
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+
+                {/* Diagnosis */}
+                <View style={styles.formField}>
+                  <Text style={styles.formLabel}>Diagnosis *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Enter diagnosis"
+                    placeholderTextColor="#9CA3AF"
+                    value={diagnosis}
+                    onChangeText={setDiagnosis}
+                  />
+                </View>
+
+                {/* Description */}
+                <View style={styles.formField}>
+                  <Text style={styles.formLabel}>Medical Findings/Description *</Text>
+                  <TextInput
+                    style={[styles.formInput, styles.formTextArea]}
+                    placeholder="Enter medical findings or description"
+                    placeholderTextColor="#9CA3AF"
+                    value={description}
+                    onChangeText={setDescription}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                {/* Examination Date */}
+                <View style={styles.formField}>
+                  <Text style={styles.formLabel}>Examination Date</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="YYYY-MM-DD (optional)"
+                    placeholderTextColor="#9CA3AF"
+                    value={examinationDate}
+                    onChangeText={setExaminationDate}
+                  />
+                </View>
+
+                {/* Type-specific fields */}
+                {selectedCertificateType === 'Fit to Work Certificate' && (
+                  <>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Fitness Statement *</Text>
+                      <TextInput
+                        style={[styles.formInput, styles.formTextArea]}
+                        placeholder="e.g., Patient is medically fit to return to work"
+                        placeholderTextColor="#9CA3AF"
+                        value={fitnessStatement}
+                        onChangeText={setFitnessStatement}
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                      />
+                    </View>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Work Restrictions</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="e.g., None, Light duty only"
+                        placeholderTextColor="#9CA3AF"
+                        value={workRestrictions}
+                        onChangeText={setWorkRestrictions}
+                      />
+                    </View>
+                  </>
+                )}
+
+                {selectedCertificateType === 'Medical/Sickness Certificate' && (
+                  <>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Reason for Unfitness *</Text>
+                      <TextInput
+                        style={[styles.formInput, styles.formTextArea]}
+                        placeholder="Describe the reason for medical unfitness"
+                        placeholderTextColor="#9CA3AF"
+                        value={reasonForUnfitness}
+                        onChangeText={setReasonForUnfitness}
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                      />
+                    </View>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Unfit Period Start</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor="#9CA3AF"
+                        value={unfitPeriodStart}
+                        onChangeText={setUnfitPeriodStart}
+                      />
+                    </View>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Unfit Period End</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor="#9CA3AF"
+                        value={unfitPeriodEnd}
+                        onChangeText={setUnfitPeriodEnd}
+                      />
+                    </View>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Medical Advice</Text>
+                      <TextInput
+                        style={[styles.formInput, styles.formTextArea]}
+                        placeholder="Enter medical advice"
+                        placeholderTextColor="#9CA3AF"
+                        value={medicalAdvice}
+                        onChangeText={setMedicalAdvice}
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                      />
+                    </View>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Follow-up Date</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="YYYY-MM-DD (optional)"
+                        placeholderTextColor="#9CA3AF"
+                        value={followUpDate}
+                        onChangeText={setFollowUpDate}
+                      />
+                    </View>
+                  </>
+                )}
+
+                {selectedCertificateType === 'Fit to Travel Certificate' && (
+                  <>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Travel Fitness Statement *</Text>
+                      <TextInput
+                        style={[styles.formInput, styles.formTextArea]}
+                        placeholder="e.g., Patient is medically fit to travel"
+                        placeholderTextColor="#9CA3AF"
+                        value={travelFitnessStatement}
+                        onChangeText={setTravelFitnessStatement}
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                      />
+                    </View>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Mode of Travel</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="e.g., Air, Sea, Land"
+                        placeholderTextColor="#9CA3AF"
+                        value={travelMode}
+                        onChangeText={setTravelMode}
+                      />
+                    </View>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Destination</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="e.g., International, Domestic"
+                        placeholderTextColor="#9CA3AF"
+                        value={destination}
+                        onChangeText={setDestination}
+                      />
+                    </View>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Travel Date</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor="#9CA3AF"
+                        value={travelDate}
+                        onChangeText={setTravelDate}
+                      />
+                    </View>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Special Conditions</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="e.g., None, Wheelchair assistance"
+                        placeholderTextColor="#9CA3AF"
+                        value={specialConditions}
+                        onChangeText={setSpecialConditions}
+                      />
+                    </View>
+                    <View style={styles.formField}>
+                      <Text style={styles.formLabel}>Validity Period</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="e.g., 30 days from issue"
+                        placeholderTextColor="#9CA3AF"
+                        value={validityPeriod}
+                        onChangeText={setValidityPeriod}
+                      />
+                    </View>
+                  </>
+                )}
+
+                {/* Action Buttons */}
+                <View style={styles.formActions}>
+                  <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => setShowCertificateForm(false)}
+                  >
+                    <Text style={styles.backButtonText}>Back</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.continueButton}
+                    onPress={handleContinueToSignature}
+                  >
+                    <Text style={styles.continueButtonText}>Continue to Sign</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            )}
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
       </SafeAreaView>
     </ErrorBoundary>
   );
@@ -592,6 +1222,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 2,
     gap: 4,
+  },
+  addButton: {
+    height: 48,
+    width: 48,
+    borderRadius: 10,
+    backgroundColor: '#1E40AF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
   scrollView: {
     flex: 1,
@@ -857,6 +1496,266 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+  },
+  // Bottom Sheet Modal Styles
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  blurView: {
+    flex: 1,
+  },
+  modalBackdropOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.34)',
+  },
+  bottomSheetContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    zIndex: 2,
+  },
+  safeArea: {
+    width: '100%',
+  },
+  bottomSheetContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    minHeight: 400,
+  },
+  bottomSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  bottomSheetHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  certificateAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1E40AF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  bottomSheetTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  bottomSheetSubtitle: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  bottomSheetDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginBottom: 16,
+  },
+  certificateOptionsContainer: {
+    gap: 12,
+  },
+  certificateOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  certificateOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  certificateIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  certificateTextContainer: {
+    flex: 1,
+  },
+  certificateOptionTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  certificateOptionDescription: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    lineHeight: 18,
+  },
+  // Form styles
+  formContainer: {
+    maxHeight: 500,
+    paddingBottom: 20,
+  },
+  formField: {
+    marginBottom: 16,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  formInput: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+  },
+  formTextArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  dropdownButton: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  dropdownContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectedPatientInfo: {
+    flex: 1,
+  },
+  dropdownText: {
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  dropdownSubtext: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  dropdownPlaceholder: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+  },
+  dropdownList: {
+    marginTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    maxHeight: 250,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dropdownScrollView: {
+    maxHeight: 250,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#EFF6FF',
+  },
+  dropdownItemContent: {
+    flex: 1,
+  },
+  dropdownItemName: {
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  dropdownItemDetails: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  loadingTextForm: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    padding: 16,
+    textAlign: 'center',
+  },
+  formActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+    paddingBottom: 20,
+  },
+  backButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  backButtonText: {
+    color: '#374151',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+  continueButton: {
+    flex: 1,
+    backgroundColor: '#1E40AF',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  continueButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontFamily: 'Inter-SemiBold',
   },
 });

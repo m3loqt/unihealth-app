@@ -19,6 +19,7 @@ import {
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { useCertificateSignature } from '@/hooks/ui/useSignatureManager';
 import { databaseService, Certificate } from '@/services/database/firebase';
 import { safeDataAccess } from '@/utils/safeDataAccess';
 import LoadingState from '@/components/ui/LoadingState';
@@ -77,71 +78,17 @@ export default function CertificatesScreen() {
       setLoading(true);
       setError(null);
       
-      // Get certificates from patientMedicalHistory node
-      const medicalHistory = await databaseService.getMedicalHistoryByPatient(user.uid);
+      // Use the new certificate structure
+      const certificates = await databaseService.getCertificatesByPatientNew(user.uid);
       
-      // Extract all certificates from medical history entries
-      const allCertificates: any[] = [];
-      medicalHistory.forEach((entry) => {
-        if (entry.certificates && Array.isArray(entry.certificates)) {
-          entry.certificates.forEach((cert) => {
-            allCertificates.push({
-              ...cert,
-                             // Add consultation info for routing
-               consultationId: entry.id,
-               consultationDate: entry.consultationDate,
-               provider: entry.provider,
-               // Additional doctor details for enhanced display
-               doctorDetails: {
-                 id: entry.provider?.id,
-                 firstName: entry.provider?.firstName,
-                 lastName: entry.provider?.lastName,
-                 providerType: entry.provider?.providerType,
-                 sourceSystem: entry.provider?.sourceSystem,
-               },
-              // Map certificate fields to match the expected structure
-              id: cert.id || `${entry.id}_${cert.type}_${Date.now()}`,
-              issueDate: cert.createdAt || entry.consultationDate,
-              expiryDate: cert.validUntil || '',
-              status: (() => {
-                if (cert.validUntil) {
-                  return new Date(cert.validUntil) < new Date() ? 'Expired' : 'Valid';
-                }
-                // If no expiry date, check if it's older than 1 year
-                const issueDate = new Date(cert.createdAt || entry.consultationDate);
-                const oneYearAgo = new Date();
-                oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-                return issueDate < oneYearAgo ? 'Expired' : 'Valid';
-              })(),
-                             specialistId: (() => {
-                 // Try to get doctor name from multiple sources
-                 if (entry.provider?.firstName && entry.provider?.lastName) {
-                   return `Dr. ${entry.provider.firstName} ${entry.provider.lastName}`;
-                 }
-                 if (entry.provider?.firstName) {
-                   return `Dr. ${entry.provider.firstName}`;
-                 }
-                 if (entry.provider?.lastName) {
-                   return `Dr. ${entry.provider.lastName}`;
-                 }
-                 // Fallback to provider ID if available
-                 if (entry.provider?.id) {
-                   return `Dr. ${entry.provider.id}`;
-                 }
-                 return 'Dr. Unknown Doctor';
-               })(),
-              description: cert.description || cert.type,
-            });
-          });
-        }
-      });
+      console.log('📋 Loaded certificates:', certificates);
       
-      // Sort by issue date (newest first)
-      const sortedCertificates = allCertificates.sort((a, b) => 
-        new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()
-      );
+      // Validate certificates data
+      const validCertificates = dataValidation.validateArray(certificates, dataValidation.isValidCertificate);
       
-      setUserCertificates(sortedCertificates);
+      console.log('✅ Valid certificates:', validCertificates.length);
+      setUserCertificates(validCertificates);
+      
     } catch (error) {
       console.error('Error loading certificates:', error);
       setError('Failed to load certificates. Please try again.');
@@ -159,9 +106,12 @@ export default function CertificatesScreen() {
   const filteredCertificates = useDeepMemo(() => {
     return userCertificates
       .filter((cert) => {
+        const doctorName = cert.doctorDetails ? 
+          `Dr. ${cert.doctorDetails.firstName || ''} ${cert.doctorDetails.lastName || ''}`.trim() :
+          cert.specialistId || '';
         const matchesSearch =
           cert.type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          cert.specialistId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           cert.description?.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus =
           statusFilter === 'all' || cert.status?.toLowerCase() === statusFilter;
@@ -174,7 +124,13 @@ export default function CertificatesScreen() {
           case 'type':
             return (a.type || '').localeCompare(b.type || '');
           case 'doctor':
-            return (a.specialistId || '').localeCompare(b.specialistId || '');
+            const aDoctorName = a.doctorDetails ? 
+              `Dr. ${a.doctorDetails.firstName || ''} ${a.doctorDetails.lastName || ''}`.trim() :
+              a.specialistId || '';
+            const bDoctorName = b.doctorDetails ? 
+              `Dr. ${b.doctorDetails.firstName || ''} ${b.doctorDetails.lastName || ''}`.trim() :
+              b.specialistId || '';
+            return aDoctorName.localeCompare(bDoctorName);
           case 'validUntil':
             return new Date(b.expiryDate || '').getTime() - new Date(a.expiryDate || '').getTime();
           default:
@@ -304,7 +260,7 @@ export default function CertificatesScreen() {
         
         if (certificate.type === 'Fit to Work Certificate') {
           route = '/e-certificate-fit-to-work';
-        } else if (certificate.type === 'Medical/Sickness Certificate') {
+        } else if (certificate.type === 'Medical/Sickness Certificate' || certificate.type === 'Medical Certificate') {
           route = '/e-certificate-medical-sickness';
         } else if (certificate.type === 'Fit to Travel Certificate') {
           route = '/e-certificate-fit-to-travel';
@@ -322,7 +278,10 @@ export default function CertificatesScreen() {
           Issued by
         </Text>
         <Text style={styles.doctorName} numberOfLines={1}>
-          {certificate.specialistId || 'Dr. Unknown Doctor'}
+          {certificate.doctorDetails ? 
+            `Dr. ${certificate.doctorDetails.firstName || ''} ${certificate.doctorDetails.lastName || ''}`.trim() || 'Dr. Unknown Doctor' :
+            certificate.specialistId || 'Dr. Unknown Doctor'
+          }
         </Text>
         <Text style={styles.issuedDate}>
           {certificate.issueDate ? new Date(certificate.issueDate).toLocaleDateString() : 'Date not specified'}

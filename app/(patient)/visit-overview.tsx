@@ -37,6 +37,7 @@ import { safeDataAccess } from '../../src/utils/safeDataAccess';
 import { formatRoute, formatFrequency, formatFormula } from '../../src/utils/formatting';
 import { usePdfDownload } from '../../src/hooks/usePdfDownload';
 import { generateVisitRecordPdf } from '../../src/utils/pdfTemplate';
+import { getChiefComplaint } from '../../src/utils/chiefComplaintHelper';
 
 // Extended interface for visit data that includes additional properties
 interface VisitData extends Appointment {
@@ -108,7 +109,21 @@ const formatDate = (dateString: string) => {
       return result;
     }
     
-    // Handle YYYY-MM-DD format (original logic)
+    // Handle ISO format (with 'T' for time) - must check before YYYY-MM-DD
+    if (dateString.includes('T') || dateString.includes('Z')) {
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        const result = date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+        console.log('🔍 VISIT OVERVIEW - ISO format result:', result);
+        return result;
+      }
+    }
+    
+    // Handle YYYY-MM-DD format (without time)
     if (dateString.includes('-')) {
       const [year, month, day] = dateString.split('-').map(Number);
       const date = new Date(year, month - 1, day);
@@ -371,10 +386,7 @@ export default function VisitOverviewScreen() {
                 count: (medicalHistory as any).prescriptions.length,
                 medications: (medicalHistory as any).prescriptions.map((p: any) => p.medication)
               } : null,
-              certificates: (medicalHistory as any)?.certificates ? {
-                count: (medicalHistory as any).certificates.length,
-                types: (medicalHistory as any).certificates.map((c: any) => c.type)
-              } : null
+              certificates: null // Certificates loaded separately after this debug log
             });
           } else {
             console.log('🔍 VISIT OVERVIEW - Appointment not completed, skipping PMH fetch:', {
@@ -465,9 +477,29 @@ export default function VisitOverviewScreen() {
         let visitCertificates: any[] = [];
         
         if (medicalHistory) {
-          // Use prescriptions and certificates from medical history if available
+          // Use prescriptions from medical history if available
           const mhPrescriptions = (medicalHistory as any)?.prescriptions || [];
-          const mhCertificates = (medicalHistory as any)?.certificates || [];
+          
+          // Load certificates from new patientMedicalCertificates structure
+          let mhCertificates: any[] = [];
+          try {
+            const certificates = await databaseService.getCertificatesByPatientNew(appointment.patientId);
+            // Filter certificates that are linked to this specific visit via appointmentId
+            // Only show certificates that have appointmentId (from consultations)
+            // Note: appointmentId is already at root level after transformation from metadata.appointmentId
+            mhCertificates = certificates.filter(cert => {
+              const certAppointmentId = cert.appointmentId;
+              return certAppointmentId && certAppointmentId === id; // id is the appointment ID from params
+            });
+            console.log('🔍 VISIT OVERVIEW - Certificate filtering:', {
+              visitId: id,
+              totalCertificates: certificates.length,
+              matchingCertificates: mhCertificates.length,
+              certificatesWithAppointmentId: certificates.filter(c => c.appointmentId).length
+            });
+          } catch (error) {
+            console.error('Error loading certificates for visit overview:', error);
+          }
           
           // Process prescriptions to ensure they have proper prescribedBy field
           visitPrescriptions = mhPrescriptions.map((prescription: any, index: number) => ({
@@ -773,12 +805,14 @@ export default function VisitOverviewScreen() {
               </View>
               <View style={styles.consultDetailsRow}>
                 <Text style={styles.consultLabel}>Purpose</Text>
-                <Text style={styles.consultValue}>{visitData.appointmentPurpose || 'Not specified'}</Text>
+                <Text style={styles.consultValue}>
+                  {visitData.appointmentPurpose || (visitData.type === 'walk-in' ? 'Walk In' : 'Not specified')}
+                </Text>
               </View>
-              {visitData.additionalNotes && (
+              {getChiefComplaint(visitData) && (
                 <View style={styles.consultDetailsRowNoBorder}>
                   <Text style={styles.consultLabel}>Notes</Text>
-                  <Text style={styles.consultValue}>{visitData.additionalNotes}</Text>
+                  <Text style={styles.consultValue}>{getChiefComplaint(visitData)}</Text>
                 </View>
               )}
             </View>
@@ -1129,7 +1163,6 @@ export default function VisitOverviewScreen() {
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Medical Certificates</Text>
           {visitData.status.toLowerCase() === 'completed' && certificates.length ? certificates.map((cert) => {
-            const statusStyle = getCertStatusStyles(cert.status);
             const certData = cert as any;
             const issuingDoctor = certData.doctor || certData.prescribedBy || certData.specialistName || visitData?.doctorName;
             
@@ -1140,6 +1173,23 @@ export default function VisitOverviewScreen() {
                               certData.date ||
                               certData.validUntil ||
                               visitData?.date;
+            
+            // Add 1 year to the issued date for display
+            const displayDate = issuedDate ? (() => {
+              const date = new Date(issuedDate);
+              date.setFullYear(date.getFullYear() + 1);
+              return date.toISOString();
+            })() : null;
+            
+            // Calculate adjusted expiry (add 1 year to expiry date as well)
+            const adjustedExpiryDate = certData.expiryDate ? (() => {
+              const date = new Date(certData.expiryDate);
+              date.setFullYear(date.getFullYear() + 1);
+              return date.toISOString();
+            })() : null;
+            
+            // Determine status based on adjusted expiry date
+            const statusStyle = getCertStatusStyles(cert.status, adjustedExpiryDate);
             
             // Debug logging for certificate date
             console.log('🔍 VISIT OVERVIEW - Certificate date debug:', {
@@ -1152,6 +1202,7 @@ export default function VisitOverviewScreen() {
               certDataValidUntil: certData.validUntil,
               visitDataDate: visitData?.date,
               finalIssuedDate: issuedDate,
+              displayDate: displayDate,
               issuedDateType: typeof issuedDate,
               issuedDateValue: issuedDate,
               allCertDataKeys: Object.keys(certData)
@@ -1178,7 +1229,7 @@ export default function VisitOverviewScreen() {
                 </View>
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued on:</Text>
-                  <Text style={styles.certificateInfoValue}>{issuedDate ? formatDate(issuedDate) : 'Not specified'}</Text>
+                  <Text style={styles.certificateInfoValue}>{displayDate ? formatDate(displayDate) : 'Not specified'}</Text>
                 </View>
                 <View style={styles.certificateActions}>
                   <TouchableOpacity style={[styles.secondaryButton, { marginRight: 9 }]}>
@@ -1881,9 +1932,20 @@ const styles = StyleSheet.create({
   },
 });
 
-function getCertStatusStyles(status: string) {
+function getCertStatusStyles(status: string, adjustedExpiryDate?: string | null) {
   const mainBlue = '#1E3A8A';
-  if (status === 'Valid') {
+  
+  // Determine if certificate is valid based on adjusted expiry date
+  let isValid = status === 'active' || status === 'Valid';
+  
+  // If we have an adjusted expiry date, check if it's still valid
+  if (adjustedExpiryDate) {
+    const expiryDate = new Date(adjustedExpiryDate);
+    const now = new Date();
+    isValid = expiryDate > now;
+  }
+  
+  if (isValid) {
     return {
       container: {
         backgroundColor: '#EFF6FF',

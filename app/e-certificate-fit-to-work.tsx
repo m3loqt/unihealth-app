@@ -19,29 +19,9 @@ import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
 import { Modal, Button } from '../src/components/ui';
 import { COLORS } from '../src/constants/colors';
-import { databaseService } from '../src/services/database/firebase';
+import { databaseService, Certificate } from '../src/services/database/firebase';
 import { useAuth } from '../src/hooks/auth/useAuth';
-
-type CertificateData = {
-  id?: string;
-  type: string;
-  fitnessStatement?: string;
-  workRestrictions?: string;
-  nextReviewDate?: string;
-  unfitPeriodStart?: string;
-  unfitPeriodEnd?: string;
-  medicalAdvice?: string;
-  reasonForUnfitness?: string;
-  followUpDate?: string;
-  travelFitnessStatement?: string;
-  travelMode?: string;
-  destination?: string;
-  travelDate?: string;
-  specialConditions?: string;
-  validityPeriod?: string;
-  description: string;
-  createdAt: string;
-};
+import { useCertificateSignature } from '../src/hooks/ui/useSignatureManager';
 
 export default function FitToWorkCertificateScreen() {
   const { id, certificateId, patientId } = useLocalSearchParams(); // consultationId or referralId, certificateId, patientId
@@ -52,62 +32,114 @@ export default function FitToWorkCertificateScreen() {
   const [clinic, setClinic] = useState<any>(null);
   const [patient, setPatient] = useState<any>(null);
   const [provider, setProvider] = useState<any>(null);
-  const [certificate, setCertificate] = useState<CertificateData | null>(null);
+  const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [providerUser, setProviderUser] = useState<any>(null);
   const [logoDataUri, setLogoDataUri] = useState<string | null>(null);
+  const [currentUserDoctorProfile, setCurrentUserDoctorProfile] = useState<any>(null);
   const webViewRef = useRef<WebView>(null);
   const [downloadModalVisible, setDownloadModalVisible] = useState(false);
   const [downloadSavedPath, setDownloadSavedPath] = useState<string | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      if (!id) return;
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Load referral, appointment, or medical history data
-        let refData = null;
-        let appointmentData = null;
-        let medicalHistoryData = null;
-        
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Reset certificate state to ensure fresh loading
+      setCertificate(null);
+      
+      // If no id parameter, show error but don't crash
+      if (!id) {
+        setError('No consultation ID provided');
+        setLoading(false);
+        return;
+      }
+      
+      // Track if certificate was loaded successfully
+      let loadedCertificate: Certificate | null = null;
+      
+      // PRIORITY 1: Load certificate data first if certificateId is provided
+      if (certificateId) {
         try {
-          refData = await databaseService.getReferralById(String(id));
-        } catch {}
-        
-        if (!refData) {
-          try {
-            appointmentData = await databaseService.getAppointmentById(String(id));
-          } catch {}
-        }
-        
-        if (!refData && !appointmentData) {
-          // Try to load as medical history entry
-          try {
-            const patientIdToUse = patientId || user?.uid;
-            if (patientIdToUse) {
-              medicalHistoryData = await databaseService.getDocument(
-                `patientMedicalHistory/${patientIdToUse}/entries/${id}`
-              );
+          // Try direct lookup by certificate ID first (most efficient)
+          const directCertificate = await databaseService.getCertificateById(String(certificateId));
+          
+          if (directCertificate) {
+            loadedCertificate = directCertificate;
+            
+            // Batch all data loading in parallel for better performance
+            const doctorId = directCertificate.doctorDetails?.id;
+            const patientIdToUse = directCertificate.patientId;
+            
+            const [doctorData, doctorUserData, patientUserData, patientProfileData] = await Promise.all([
+              doctorId ? databaseService.getDocument(`doctors/${doctorId}`).catch(() => null) : null,
+              doctorId ? databaseService.getDocument(`users/${doctorId}`).catch(() => null) : null,
+              patientIdToUse ? databaseService.getDocument(`users/${patientIdToUse}`).catch(() => null) : null,
+              patientIdToUse ? databaseService.getDocument(`patients/${patientIdToUse}`).catch(() => null) : null,
+            ]);
+            
+            // Batch state updates to reduce re-renders
+            setCertificate(directCertificate);
+            if (doctorData || doctorUserData) {
+              setProvider(doctorData);
+              setProviderUser(doctorUserData);
             }
+            if (patientUserData || patientProfileData) {
+              setPatient({ ...(patientUserData || {}), ...(patientProfileData || {}) });
+            }
+            
+            // Early return - we have everything we need
+            setLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.error('Error loading certificate:', error);
+        }
+      }
+        
+        // Fallback to original consultation data loading if certificate not found
+        if (!loadedCertificate) {
+          // Load referral, appointment, or medical history data
+          let refData = null;
+          let appointmentData = null;
+          let medicalHistoryData = null;
+          
+          try {
+            refData = await databaseService.getReferralById(String(id));
           } catch {}
-        }
-        
-        const dataSource = refData || appointmentData || medicalHistoryData;
-        if (!dataSource) {
-          setError('Consultation not found');
-          setLoading(false);
-          return;
-        }
-        
-        setReferral(refData);
-        
-        // Related entities - Get doctor details from the correct source
-        let doctorId = null;
+          
+          if (!refData) {
+            try {
+              appointmentData = await databaseService.getAppointmentById(String(id));
+            } catch {}
+          }
+          
+          if (!refData && !appointmentData) {
+            // Try to load as medical history entry
+            try {
+              const patientIdToUse = patientId || user?.uid;
+              if (patientIdToUse) {
+                medicalHistoryData = await databaseService.getDocument(
+                  `patientMedicalHistory/${patientIdToUse}/entries/${id}`
+                );
+              }
+            } catch {}
+          }
+          
+          const dataSource = refData || appointmentData || medicalHistoryData;
+          if (!dataSource) {
+            // Don't set error, just continue without consultation data
+            // This allows the component to render with just certificate data
+          }
+          
+          setReferral(refData);
+          
+          // Related entities - Get doctor details from the correct source
+          let doctorId = null;
         let doctorData = null;
         let doctorUserData = null;
         
-        if (medicalHistoryData?.provider?.id) {
+        if (dataSource && medicalHistoryData?.provider?.id) {
           // If we have medical history data, use the provider from there
           doctorId = medicalHistoryData.provider.id;
           try {
@@ -115,14 +147,14 @@ export default function FitToWorkCertificateScreen() {
             doctorData = await databaseService.getDocument(`doctors/${doctorId}`);
             doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
           } catch {}
-        } else if (dataSource.assignedSpecialistId) {
+        } else if (dataSource?.assignedSpecialistId) {
           // Fallback to referral's assigned specialist
           doctorId = dataSource.assignedSpecialistId;
           try {
             doctorData = await databaseService.getDocument(`doctors/${doctorId}`);
             doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
           } catch {}
-        } else if (dataSource.doctorId) {
+        } else if (dataSource?.doctorId) {
           // Fallback to appointment's doctor
           doctorId = dataSource.doctorId;
           try {
@@ -130,68 +162,49 @@ export default function FitToWorkCertificateScreen() {
             doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
           } catch {}
         }
-         
-         const [clinicData, userData, patientProfileData] = await Promise.all([
-           dataSource.referringClinicId ? databaseService.getDocument(`clinics/${dataSource.referringClinicId}`) : null,
-           (patientId || dataSource.patientId) ? databaseService.getDocument(`users/${patientId || dataSource.patientId}`) : null,
-           (patientId || dataSource.patientId) ? databaseService.getDocument(`patients/${patientId || dataSource.patientId}`) : null,
+        
+        const [clinicData, userData, patientProfileData] = await Promise.all([
+           dataSource?.referringClinicId ? databaseService.getDocument(`clinics/${dataSource.referringClinicId}`) : null,
+           (patientId || dataSource?.patientId) ? databaseService.getDocument(`users/${patientId || dataSource.patientId}`) : null,
+           (patientId || dataSource?.patientId) ? databaseService.getDocument(`patients/${patientId || dataSource.patientId}`) : null,
          ]);
         
         // Debug logging
-        console.log('Data Source:', dataSource);
-        console.log('Doctor ID:', doctorId);
-        console.log('Doctor Data:', doctorData);
-        console.log('Doctor User Data:', doctorUserData);
-        
         setClinic(clinicData);
         setPatient({ ...(userData || {}), ...(patientProfileData || {}) });
         setProvider(doctorData);
         setProviderUser(doctorUserData);
-
-                 // Load certificate data if certificateId is provided
-         if (certificateId) {
-           try {
-             // If we have medical history data directly, use it
-             if (medicalHistoryData?.certificates) {
-               const foundCertificate = medicalHistoryData.certificates.find((c: any) => c.id === certificateId);
-               if (foundCertificate) {
-                 setCertificate(foundCertificate);
-               }
-             } else {
-               // Fallback to loading via appointment/referral
-               const medicalHistory = await databaseService.getMedicalHistoryByAppointment(String(id), patientId || dataSource.patientId);
-               if (medicalHistory?.certificates) {
-                 const foundCertificate = medicalHistory.certificates.find((c: any) => c.id === certificateId);
-                 if (foundCertificate) {
-                   setCertificate(foundCertificate);
-                 }
-               }
-             }
-           } catch {}
-         }
-
+        }
+        
         // If no certificate found, create a default one for preview
-        if (!certificate) {
-          const defaultCertificate: CertificateData = {
+        // BUT ONLY if we don't already have a certificate with signature data
+        if (!loadedCertificate) {
+          const defaultCertificate: Certificate = {
+            id: `FTW-${Date.now()}`,
+            patientId: String(patientId || user?.uid || ''),
+            specialistId: user?.uid || '',
             type: 'Fit to Work Certificate',
-            fitnessStatement: 'The patient has been examined and is found to be medically fit to return to work.',
-            workRestrictions: 'None',
-            nextReviewDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-            unfitPeriodStart: '',
-            unfitPeriodEnd: '',
-            medicalAdvice: '',
-            reasonForUnfitness: '',
-            followUpDate: '',
-            travelFitnessStatement: '',
-            travelMode: '',
-            destination: '',
-            travelDate: '',
-            specialConditions: '',
-            validityPeriod: '',
+            issueDate: new Date().toISOString(),
+            status: 'active',
             description: 'Fit to Work Certificate',
-            createdAt: new Date().toISOString(),
+            consultationId: String(id),
+            medicalDetails: {
+              dateFrom: '',
+              dateTo: '',
+              diagnosis: '',
+              recommendations: 'The patient has been examined and is found to be medically fit to return to work.',
+              restrictions: 'None',
+              followUpDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+              restDays: 0
+            },
+            digitalSignature: '',
+            signedDate: '',
+            isSigned: false
           };
-          setCertificate(defaultCertificate);
+          // Only set default if we don't have a loaded certificate with signature
+          if (!loadedCertificate?.digitalSignature) {
+            setCertificate(defaultCertificate);
+          }
         }
         
       } catch (e) {
@@ -200,7 +213,10 @@ export default function FitToWorkCertificateScreen() {
         setLoading(false);
       }
     };
-    load();
+
+  useEffect(() => {
+    loadData();
+    // Only reload when certificateId or id changes, not patientId (reduces unnecessary reloads)
   }, [id, certificateId]);
 
   // Load logo for watermark/brand
@@ -217,6 +233,23 @@ export default function FitToWorkCertificateScreen() {
       } catch {}
     })();
   }, []);
+
+  // Load current user's doctor profile for PRC ID fallback
+  useEffect(() => {
+    const loadCurrentUserDoctorProfile = async () => {
+      const doctorPrcId = provider?.prcId || (certificate as any)?.doctorDetails?.prcId || '';
+      if (!doctorPrcId && user?.uid && !provider) {
+        try {
+          const doctorProfile = await databaseService.getDocument(`doctors/${user.uid}`);
+          setCurrentUserDoctorProfile(doctorProfile);
+        } catch (error) {
+          console.log('Could not load current user doctor profile:', error);
+        }
+      }
+    };
+    
+    loadCurrentUserDoctorProfile();
+  }, [user?.uid, provider, certificate]);
 
   const safe = (val?: any) => {
     if (val === undefined || val === null) return '—';
@@ -296,9 +329,12 @@ export default function FitToWorkCertificateScreen() {
     }
   };
 
+  // Get signature from context
+  const { signature: contextSignature } = useCertificateSignature(certificate);
+
   const html = useMemo(() => {
-    // Don't generate HTML if still loading or missing critical data
-    if (loading || !provider || !patient) {
+    // Don't generate HTML if still loading
+    if (loading) {
       return '';
     }
 
@@ -320,11 +356,12 @@ export default function FitToWorkCertificateScreen() {
     ].filter(Boolean);
     const clinicAddress = safe(addressParts.join(', '));
     const clinicContact = safe((clinic?.contactNumber || clinic?.phone || clinic?.telephone || '') as any);
-    const patientName = safe(fullName(patient, 'Unknown Patient'));
+    const patientName = safe(fullName(patient, certificate?.patientDetails ? `${certificate.patientDetails.firstName} ${certificate.patientDetails.lastName}`.trim() : 'Unknown Patient'));
     const dob = safe(formatDateFlexible((patient?.dateOfBirth || patient?.dob || patient?.birthDate) as any));
     const age = computeAgeFromInput(patient?.dateOfBirth || patient?.dob || patient?.birthDate);
     const gender = safe((patient?.gender || patient?.sex || '') as any);
     const doctorName = safe(fullName(provider, 
+      certificate?.doctorDetails ? `${certificate.doctorDetails.firstName} ${certificate.doctorDetails.lastName}`.trim() :
       (() => {
         // Try to get doctor name from multiple sources
         if (provider?.firstName && provider?.lastName) {
@@ -346,15 +383,72 @@ export default function FitToWorkCertificateScreen() {
             });
           } catch {}
         }
+        // Try to get from certificate doctor field
+        if (certificate?.doctor) {
+          return certificate.doctor;
+        }
         return 'Unknown Doctor';
       })()
     ));
-            const dateIssued = safe(formatDateFlexible(certificate?.createdAt));
-    const examinationDate = safe(formatDateFlexible(certificate?.createdAt));
-    const certificateId = safe(certificate?.id || `FTW-${Date.now()}`);
-    const fitnessStatement = safe(certificate?.fitnessStatement || 'The patient has been examined and is found to be medically fit to return to work.');
-    const workRestrictions = safe(certificate?.workRestrictions || 'None');
-    const nextReviewDate = safe(formatDateFlexible(certificate?.nextReviewDate));
+    
+    // Get doctor details from certificate and loaded provider data
+    const doctorId = (certificate as any)?.doctor?.id || (certificate as any)?.doctorDetails?.id;
+    const doctorFirstName = (certificate as any)?.doctorDetails?.firstName || provider?.firstName || providerUser?.firstName || user?.firstName || '';
+    const doctorMiddleName = (certificate as any)?.doctorDetails?.middleName || (provider as any)?.middleName || providerUser?.middleName || user?.middleName || '';
+    const doctorLastName = (certificate as any)?.doctorDetails?.lastName || provider?.lastName || providerUser?.lastName || user?.lastName || '';
+    const doctorEmail = providerUser?.email || (certificate as any)?.doctorDetails?.email || (provider as any)?.email || user?.email || '';
+    const doctorPrcId = provider?.prcId || (certificate as any)?.doctorDetails?.prcId || '';
+    
+    // Use current user doctor profile PRC ID if available
+    const finalDoctorPrcId = doctorPrcId || currentUserDoctorProfile?.prcId || '';
+    
+    // Construct full doctor name
+    const fullDoctorName = [doctorFirstName, doctorMiddleName, doctorLastName].filter(Boolean).join(' ');
+    
+    // Simple date formatting - matching the certificates tab approach that works correctly
+    const formatCertificateDate = (dateString: string) => {
+      if (!dateString) return '—';
+      try {
+        // Use the same simple approach as certificates tab
+        return new Date(dateString).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric'
+        });
+      } catch {
+        return '—';
+      }
+    };
+    
+    // Debug: Log the actual date values we're receiving
+    console.log('🔍 Certificate date debug:', {
+      certificateIssueDate: certificate?.issueDate,
+      certificateMetadataIssuedDate: (certificate as any)?.metadata?.issuedDate,
+      certificateObject: certificate
+    });
+    
+    const dateIssued = safe(formatCertificateDate(certificate?.issueDate || (certificate as any)?.metadata?.issuedDate || ''));
+    const examinationDate = safe(formatCertificateDate(certificate?.issueDate || (certificate as any)?.metadata?.issuedDate || ''));
+    
+    // Calculate Valid Until date (1 year from issued date)
+    const calculateValidUntil = () => {
+      try {
+        const issuedDateString = certificate?.issueDate || (certificate as any)?.metadata?.issuedDate;
+        if (issuedDateString) {
+          const issuedDate = new Date(issuedDateString);
+          const validUntil = new Date(issuedDate);
+          validUntil.setFullYear(validUntil.getFullYear() + 1);
+          return formatCertificateDate(validUntil.toISOString());
+        }
+        return '—';
+      } catch {
+        return '—';
+      }
+    };
+    const validUntil = safe(calculateValidUntil());
+    const fitnessStatement = safe(certificate?.medicalDetails?.recommendations || 'The patient has been examined and is found to be medically fit to return to work.');
+    const workRestrictions = safe(certificate?.medicalDetails?.restrictions || 'None');
+    const nextReviewDate = safe(formatDateFlexible(certificate?.medicalDetails?.followUpDate));
 
     const ageText = age && age !== '—' ? `${age} years old` : '—';
 
@@ -437,11 +531,27 @@ export default function FitToWorkCertificateScreen() {
     .certificate-statement-text { font-size: 16px; line-height: 1.7; color: #1F2937; }
     
     .signature-section { margin-top: 30px; text-align: right; }
-    .signature-wrap { text-align: left; display: inline-block; }
-    .signature-line { height: 1px; background: ${border}; margin: 4px 0 6px 0; width: 200px; }
     .signature-name { color: #374151; font-size: 14px; font-weight: 700; }
     .signature-caption { color: ${subtle}; font-size: 12px; margin-top: 6px; }
     .signature-label { color: ${subtle}; font-size: 11px; margin-top: 6px; }
+    
+    /* Reset any default image styling */
+    img { border: none !important; outline: none !important; box-shadow: none !important; background: transparent !important; }
+    
+    /* Prevent loading states and intermediate rendering */
+    img[src*="data:image"] { 
+      opacity: 1 !important; 
+      visibility: visible !important; 
+      display: block !important;
+    }
+    
+    /* Signature container styling */
+    .signature-image-container {
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+      background-color: transparent !important;
+    }
     
     .disclaimer { text-align: center; padding: 16px 0; }
 
@@ -476,37 +586,11 @@ export default function FitToWorkCertificateScreen() {
              <p class="label">Certificate ID</p>
              <div class="value strong">${certificateId}</div>
              <p class="label">Date Issued</p>
-             <div class="value strong">${(() => {
-               if (certificate?.createdAt) {
-                 try {
-                   const issuedDate = new Date(certificate.createdAt);
-                   if (!isNaN(issuedDate.getTime())) {
-                     return issuedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                   }
-                 } catch {}
-               }
-               return new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-             })()}</div>
+             <div class="value strong">${dateIssued}</div>
            </div>
            <div class="cell" style="text-align:right">
              <p class="label">Valid Until</p>
-             <div class="value strong">${(() => {
-               try {
-                 let issuedDate;
-                 if (certificate?.createdAt) {
-                   issuedDate = new Date(certificate.createdAt);
-                 } else {
-                   issuedDate = new Date();
-                 }
-                 
-                 if (!isNaN(issuedDate.getTime())) {
-                   const validUntil = new Date(issuedDate);
-                   validUntil.setFullYear(validUntil.getFullYear() + 1);
-                   return validUntil.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                 }
-               } catch {}
-               return '—';
-             })()}</div>
+             <div class="value strong">${validUntil}</div>
            </div>
          </div>
        </div>
@@ -516,6 +600,8 @@ export default function FitToWorkCertificateScreen() {
       <div class="body">
         <h1 class="certificate-title">FIT TO WORK CERTIFICATE</h1>
         
+        
+        
                  <div class="certificate-content">
            <p style="text-indent: 20px;">This is to certify that <strong>${patientName}</strong>, ${ageText}, ${gender}, was examined on <strong>${examinationDate}</strong> and is found to be medically fit to return to work.</p>
            
@@ -523,12 +609,18 @@ export default function FitToWorkCertificateScreen() {
          </div>
 
         <div class="signature-section">
-          <div class="signature-wrap">
-            <div class="signature-label">Issuing Doctor</div>
-            <div class="signature-name">Dr. ${doctorName}</div>
-            <div class="signature-line"></div>
-            <div class="signature-caption">PRC #: ${safe(provider?.prcId || 'Not Available')}</div>
-            <div class="signature-caption">Email: ${safe(providerUser?.email || provider?.email || 'Not Available')}</div>
+          <div style="position: relative; width: 100%;">
+            <div style="text-align: left; display: inline-block;">
+              <div class="signature-label">Issuing Doctor</div>
+              <div class="signature-name" style="position: relative;">
+                ${contextSignature ? `
+                  <div class="signature-image-container" style="position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background-image: url('${contextSignature}'); background-size: contain; background-repeat: no-repeat; background-position: center; width: 150px; height: 60px; z-index: 10;"></div>
+                ` : ''}
+                Dr. ${fullDoctorName || doctorName}
+              </div>
+              <div class="signature-caption">PRC #: ${finalDoctorPrcId || 'Not Available'}</div>
+              <div class="signature-caption">Email: ${doctorEmail || 'Not Available'}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -561,7 +653,7 @@ export default function FitToWorkCertificateScreen() {
   </script>
 </body>
 </html>`;
-  }, [clinic, patient, provider, referral, certificate, logoDataUri]);
+  }, [clinic, patient, provider, referral, certificate, logoDataUri, contextSignature]);
 
   const handleGeneratePdf = async () => {
     try {
@@ -635,8 +727,13 @@ export default function FitToWorkCertificateScreen() {
         {!error && (
           <>
             {loading || !html ? (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3F4F6' }}>
-                <Text style={{ fontSize: 16, color: '#6B7280' }}>Loading certificate...</Text>
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F3F4F6', padding: 20 }}>
+                <Text style={{ fontSize: 16, color: '#6B7280', marginBottom: 10 }}>Loading certificate...</Text>
+                {/* <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 5 }}>ID: {id || 'None'}</Text>
+                <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 5 }}>Certificate ID: {certificateId || 'None'}</Text>
+                <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 5 }}>Patient ID: {patientId || 'None'}</Text>
+                <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 5 }}>Has Certificate: {certificate ? 'Yes' : 'No'}</Text>
+                <Text style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 5 }}>Has Signature: {contextSignature ? 'Yes' : 'No'}</Text> */}
               </View>
             ) : (
               <WebView

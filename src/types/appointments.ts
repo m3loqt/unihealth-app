@@ -9,6 +9,7 @@ export interface Appointment {
   lastUpdated: string;
   appointmentPurpose?: string; // Changed from patientComplaint to appointmentPurpose
   additionalNotes?: string; // Changed from notes
+  chiefComplaint?: string[]; // Array of chief complaints (legacy field)
   patientId: string;
   patientFirstName?: string; // Added back for UI display
   patientLastName?: string; // Added back for UI display
@@ -45,6 +46,7 @@ export interface CreateAppointmentData {
   doctorId: string;
   appointmentPurpose: string;
   additionalNotes?: string;
+  chiefComplaint?: string[]; // Array of chief complaints (legacy field)
   patientId: string;
   sourceSystem: string;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
@@ -62,6 +64,7 @@ export interface WalkInAppointment {
   lastUpdated: string;
   appointmentPurpose?: string;
   additionalNotes?: string;
+  chiefComplaint?: string[]; // Array of chief complaints (legacy field)
   patientId: string;
   sourceSystem?: string;
   status: 'confirmed' | 'completed' | 'cancelled';

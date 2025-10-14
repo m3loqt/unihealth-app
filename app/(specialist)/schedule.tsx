@@ -600,9 +600,9 @@ export default function SpecialistScheduleScreen() {
                   }
                 </Text> */}
                 
-                {booking.type === 'appointment' && (booking as any).appointmentPurpose && (
+                {booking.type === 'appointment' && ((booking as any).appointmentPurpose || (booking as any).type === 'walk-in') && (
                   <Text style={styles.appointmentPurpose}>
-                    {(booking as any).appointmentPurpose}
+                    {(booking as any).appointmentPurpose || ((booking as any).type === 'walk-in' ? 'Walk In' : '')}
                   </Text>
                 )}
                 

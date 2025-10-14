@@ -53,27 +53,5 @@ export interface PatientMedicalHistory {
   };
   treatmentPlan?: string;
   type: string;
-  certificates?: Array<{
-    id: string;
-    type: string;
-    examinationDate: string;
-    fitnessStatement?: string;
-    workRestrictions?: string;
-    nextReviewDate?: string;
-    unfitPeriodStart?: string;
-    unfitPeriodEnd?: string;
-    medicalAdvice?: string;
-    reasonForUnfitness?: string;
-    followUpDate?: string;
-    travelFitnessStatement?: string;
-    travelMode?: string;
-    destination?: string;
-    travelDate?: string;
-    specialConditions?: string;
-    validityPeriod?: string;
-    description: string;
-    validUntil: string;
-    restrictions: string;
-    createdAt: string;
-  }>;
+  // certificates removed - now stored separately in patientMedicalCertificates
 } 

@@ -117,7 +117,19 @@ const formatDate = (dateString: string) => {
       });
     }
     
-    // Handle YYYY-MM-DD format (original logic)
+    // Handle ISO format (with 'T' for time) - must check before YYYY-MM-DD
+    if (dateString.includes('T') || dateString.includes('Z')) {
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      }
+    }
+    
+    // Handle YYYY-MM-DD format (without time)
     if (dateString.includes('-')) {
       const [year, month, day] = dateString.split('-').map(Number);
       const date = new Date(year, month - 1, day);
@@ -408,7 +420,26 @@ export default function PatientReferralDetailsScreen() {
               prescribedBy: prescription.prescribedBy || prescriberFromId || resolvedProviderName,
             };
           });
-          referralCertificates = (medicalHistory as any).certificates || [];
+          // Load certificates from new patientMedicalCertificates structure
+          try {
+            const certificates = await databaseService.getCertificatesByPatientNew(referral.patientId);
+            // Filter certificates that are linked to this specific referral via appointmentId
+            // Only show certificates that have appointmentId (from consultations)
+            // Note: appointmentId is already at root level after transformation from metadata.appointmentId
+            referralCertificates = certificates.filter(cert => {
+              const certAppointmentId = cert.appointmentId;
+              return certAppointmentId && certAppointmentId === id; // id is the referral ID from params
+            });
+            console.log('🔍 PATIENT REFERRAL - Certificate filtering:', {
+              referralId: id,
+              totalCertificates: certificates.length,
+              matchingCertificates: referralCertificates.length,
+              certificatesWithAppointmentId: certificates.filter(c => c.appointmentId).length
+            });
+          } catch (error) {
+            console.error('Error loading certificates for referral:', error);
+            referralCertificates = [];
+          }
         } else {
           try {
             [referralPrescriptions, referralCertificates] = await Promise.all([
@@ -959,7 +990,6 @@ export default function PatientReferralDetailsScreen() {
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Medical Certificates</Text>
           {referralData.status.toLowerCase() === 'completed' && certificates.length ? certificates.map((cert) => {
-            const statusStyle = getCertStatusStyles(cert.status);
             const issuingDoctor = cert.doctor || cert.prescribedBy || cert.specialistName || 
               ((referralData as any)?.assignedSpecialistFirstName && (referralData as any)?.assignedSpecialistLastName
                 ? `${(referralData as any).assignedSpecialistFirstName} ${(referralData as any).assignedSpecialistLastName}`
@@ -967,6 +997,23 @@ export default function PatientReferralDetailsScreen() {
             
             // Enhanced date handling with fallbacks
             const issuedDate = cert.issuedDate;
+            
+            // Add 1 year to the issued date for display
+            const displayDate = issuedDate ? (() => {
+              const date = new Date(issuedDate);
+              date.setFullYear(date.getFullYear() + 1);
+              return date.toISOString();
+            })() : null;
+            
+            // Calculate adjusted expiry (add 1 year to expiry date as well)
+            const adjustedExpiryDate = cert.expiryDate ? (() => {
+              const date = new Date(cert.expiryDate);
+              date.setFullYear(date.getFullYear() + 1);
+              return date.toISOString();
+            })() : null;
+            
+            // Determine status based on adjusted expiry date
+            const statusStyle = getCertStatusStyles(cert.status, adjustedExpiryDate);
 
             console.log("HATDOG", cert.issuedDate)
             
@@ -991,7 +1038,7 @@ export default function PatientReferralDetailsScreen() {
                 </View>
                 <View style={styles.certificateInfoRow}>
                   <Text style={styles.certificateLabel}>Issued on:</Text>
-                  <Text style={styles.certificateInfoValue}>{issuedDate ? formatDate(issuedDate) : 'Not specified'}</Text>
+                  <Text style={styles.certificateInfoValue}>{displayDate ? formatDate(displayDate) : 'Not specified'}</Text>
                 </View>
                 <View style={styles.certificateActions}>
                 <TouchableOpacity 
@@ -1714,9 +1761,20 @@ const styles = StyleSheet.create({
   },
 });
 
-function getCertStatusStyles(status: string) {
+function getCertStatusStyles(status: string, adjustedExpiryDate?: string | null) {
   const mainBlue = '#1E3A8A';
-  if (status === 'Valid') {
+  
+  // Determine if certificate is valid based on adjusted expiry date
+  let isValid = status === 'active' || status === 'Valid';
+  
+  // If we have an adjusted expiry date, check if it's still valid
+  if (adjustedExpiryDate) {
+    const expiryDate = new Date(adjustedExpiryDate);
+    const now = new Date();
+    isValid = expiryDate > now;
+  }
+  
+  if (isValid) {
     return {
       container: {
         backgroundColor: '#EFF6FF',

@@ -63,6 +63,7 @@ import { performanceUtils } from '@/utils/performance';
 import { consentService } from '@/services/consentService';
 // import RealtimeNotificationTest from '@/components/shared/RealtimeNotificationTest';
 import { getSafeNotifications, getSafeUnreadCount } from '@/utils/notificationUtils';
+import { GlobalNotificationModal } from '@/components/shared';
 import { aiService, ChatMessage } from '@/services/aiService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -1154,7 +1155,7 @@ export default function HomeScreen() {
                       numberOfLines={2}
                       ellipsizeMode="tail"
                     >
-                      {appt.appointmentPurpose || 'Consultation'}
+                      {appt.appointmentPurpose || (appt.type === 'walk-in' ? 'Walk In' : 'Consultation')}
                     </Text>
                   </View>
                   <View style={styles.appointmentFooter}>
@@ -1745,6 +1746,12 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
+      {/* Global Notification Modal */}
+      <GlobalNotificationModal
+        visible={showNotificationModal}
+        onClose={handleCloseNotificationModal}
+        userRole="patient"
+      />
 
       {/* Floating Debug Button */}
       {/* <TouchableOpacity

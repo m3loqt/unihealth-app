@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -15,6 +16,7 @@ import {
   Pressable,
   Dimensions,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import {
   ChevronLeft,
   Mic,
@@ -28,11 +30,14 @@ import {
   User,
   Search,
   Edit,
+  X,
+  AlertTriangle,
   Wallet,
   ChevronDown,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+
 import { useVoiceToText } from '../../src/hooks/useVoiceToText';
 import { useAuth } from '../../src/hooks/auth/useAuth';
 import { databaseService } from '../../src/services/database/firebase';
@@ -44,11 +49,13 @@ import { DynamicUnitInput, PrescriptionUnitInputs, KeyboardAvoidingScrollView } 
 import { formatFrequency, formatRoute, formatFormula, determineUnit } from '../../src/utils/formatting';
 
 export default function PatientConsultationScreen() {
-  const { patientId, consultationId, referralId, isFollowUp, originalReferralId } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const { patientId, consultationId, referralId, isFollowUp, originalReferralId } = params;
   const { user } = useAuth();
   
   // Convert consultationId to string if it's an array
   const consultationIdString = Array.isArray(consultationId) ? consultationId[0] : consultationId;
+  const patientIdString = Array.isArray(patientId) ? patientId[0] : patientId;
   // Convert referralId to string if it's an array
   const referralIdString = Array.isArray(referralId) ? referralId[0] : referralId;
   // Convert isFollowUp to boolean
@@ -163,9 +170,25 @@ export default function PatientConsultationScreen() {
   // Load consultation data from Firebase
   useEffect(() => {
     if (consultationIdString || referralIdString) {
+      // Don't load from Firebase if we're returning from signature page
+      if (params.signatureAdded === 'true') {
+        console.log('🔍 Skipping Firebase load - returning from signature page');
+        return;
+      }
+      
+      // Also don't load if we already have data in the form
+      const hasExistingData = formData.diagnoses.length > 0 || 
+                             formData.presentIllnessHistory.trim() !== '' ||
+                             formData.reviewOfSymptoms.trim() !== '';
+      
+      if (hasExistingData) {
+        console.log('🔍 Skipping Firebase load - already have consultation data');
+        return;
+      }
+      
       loadConsultationData();
     }
-  }, [consultationIdString, referralIdString]);
+  }, [consultationIdString, referralIdString, params.signatureAdded]);
 
   const loadConsultationData = async () => {
     if (!consultationIdString && !referralIdString) return;
@@ -235,10 +258,45 @@ export default function PatientConsultationScreen() {
       }
 
       console.log('🔍 Loading medical history:', medicalHistory);
-      console.log('🔍 Medical history diagnosis field:', medicalHistory?.diagnosis);
-      console.log('🔍 Number of diagnoses in medical history:', medicalHistory?.diagnosis?.length || 0);
+      console.log('🔍 Medical history diagnosis field:', medicalHistory?.diagnoses);
+      console.log('🔍 Number of diagnoses in medical history:', medicalHistory?.diagnoses?.length || 0);
+      console.log('🔍 Medical history certificates:', medicalHistory?.certificates);
+      console.log('🔍 Number of certificates in medical history:', medicalHistory?.certificates?.length || 0);
+      console.log('🔍 Medical history keys:', medicalHistory ? Object.keys(medicalHistory) : 'No medical history');
+      console.log('🔍 Full medical history object:', JSON.stringify(medicalHistory, null, 2));
       
-      setFormData({
+      // Load certificates from PMC that are associated with this appointment/referral
+      let certificatesForConsultation: any[] = [];
+      if (patientIdString) {
+        try {
+          const appointmentOrReferralId = consultationIdString || referralIdString;
+          console.log('🔍 Loading certificates for appointment/referral:', appointmentOrReferralId);
+          
+          // Get all certificates for this patient from PMC
+          const allPatientCertificates = await databaseService.getCertificatesByPatientNew(patientIdString);
+          console.log('🔍 All patient certificates:', allPatientCertificates.length);
+          
+          // Filter certificates that belong to this specific appointment/referral
+          certificatesForConsultation = allPatientCertificates.filter(cert => {
+            // Check if certificate has appointmentId matching our consultation/referral
+            const certAppointmentId = (cert as any).appointmentId;
+            const matches = certAppointmentId === appointmentOrReferralId;
+            console.log('🔍 Certificate check:', {
+              certId: cert.id,
+              certAppointmentId,
+              appointmentOrReferralId,
+              matches
+            });
+            return matches;
+          });
+          
+          console.log('🔍 Certificates for this consultation:', certificatesForConsultation.length);
+        } catch (error) {
+          console.error('Error loading certificates for consultation:', error);
+        }
+      }
+      
+      setFormData(prevFormData => ({
         // Step 1: Patient History
         presentIllnessHistory: medicalHistory?.presentIllnessHistory || '',
         reviewOfSymptoms: medicalHistory?.reviewOfSymptoms || '',
@@ -248,7 +306,7 @@ export default function PatientConsultationScreen() {
         medications: medicalHistory?.medications || '',
         
         // Step 3: Diagnoses
-        diagnoses: medicalHistory?.diagnosis || [],
+        diagnoses: medicalHistory?.diagnoses || [],
         differentialDiagnosis: medicalHistory?.differentialDiagnosis || '',
         
         // Step 4: SOAP Notes
@@ -262,12 +320,13 @@ export default function PatientConsultationScreen() {
         clinicalSummary: medicalHistory?.clinicalSummary || '',
         
         prescriptions: medicalHistory?.prescriptions || [],
-        certificates: medicalHistory?.certificates || [],
-
-      });
+        certificates: certificatesForConsultation.length > 0 ? certificatesForConsultation : (prevFormData.certificates || []), // Load certificates from PMC or preserve existing ones
+      }));
       
-      console.log('🔍 Form data set with diagnoses:', medicalHistory?.diagnosis || []);
-      console.log('🔍 Number of diagnoses in form data after setting:', (medicalHistory?.diagnosis || []).length);
+      console.log('🔍 Form data set with diagnoses:', medicalHistory?.diagnoses || []);
+      console.log('🔍 Number of diagnoses in form data after setting:', (medicalHistory?.diagnoses || []).length);
+      console.log('🔍 Form data certificates loaded:', medicalHistory?.certificates || []);
+      console.log('🔍 Number of certificates in form data after setting:', (medicalHistory?.certificates || []).length);
     } catch (error) {
       console.error('Error loading consultation data:', error);
       Alert.alert('Error', 'Failed to load consultation data. Please try again.');
@@ -375,6 +434,161 @@ export default function PatientConsultationScreen() {
   const [professionalFee, setProfessionalFee] = useState<number | null>(null);
   const [loadingFee, setLoadingFee] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+  
+  // Unsaved forms modal state
+  const [showUnsavedFormsModal, setShowUnsavedFormsModal] = useState(false);
+  
+  // Exit confirmation modal state
+  const [showExitConfirmationModal, setShowExitConfirmationModal] = useState(false);
+
+  // Handle signature data when returning from signature page
+  useEffect(() => {
+    const signatureAdded = params.signatureAdded;
+    const certificateDataParam = params.certificateData;
+    
+    if (signatureAdded === 'true' && certificateDataParam) {
+      // Restore consultation data from AsyncStorage and add certificate
+      const timeoutId = setTimeout(async () => {
+        try {
+          const certificateData = JSON.parse(certificateDataParam as string);
+          
+          // Debug: Log the certificate data to understand what's being passed
+          console.log('Processing signature data:', {
+            hasDigitalSignature: !!certificateData.digitalSignature,
+            signatureLength: certificateData.digitalSignature ? certificateData.digitalSignature.length : 0,
+            signatureStart: certificateData.digitalSignature ? certificateData.digitalSignature.substring(0, 50) : 'none',
+            certificateType: certificateData.type,
+            fullCertificateData: certificateData
+          });
+          
+          // Try to restore consultation data from AsyncStorage
+          const consultationDataKey = `consultation_data_${consultationIdString || referralIdString || 'temp'}`;
+          try {
+            const storedData = await AsyncStorage.getItem(consultationDataKey);
+            if (storedData) {
+              const restoredFormData = JSON.parse(storedData);
+              console.log('🔍 Restored consultation data from AsyncStorage:', {
+                diagnosesCount: restoredFormData.diagnoses?.length || 0,
+                hasPresentIllnessHistory: !!restoredFormData.presentIllnessHistory,
+                hasReviewOfSymptoms: !!restoredFormData.reviewOfSymptoms,
+                certificatesCount: restoredFormData.certificates?.length || 0
+              });
+              
+              // Restore the consultation data and add the new certificate
+              setFormData({
+                ...restoredFormData,
+                certificates: [...(restoredFormData.certificates || []), certificateData]
+              });
+              
+              // Save the certificate with signature to database immediately
+              try {
+                console.log('🔍 Saving certificate with signature to database immediately');
+                const appointmentOrReferralId = consultationIdString || referralIdString;
+                const certificateId = await databaseService.createCertificateInNewStructure(
+                  certificateData,
+                  patientIdString || user?.uid || '',
+                  user?.uid || '',
+                  appointmentOrReferralId  // Pass appointmentId (from appointment) or referralId (from referral)
+                );
+                console.log('🔍 Certificate saved to database with ID and appointmentId:', certificateId);
+                
+                // Update the certificate data with the database ID and appointmentId
+                setFormData(prev => ({
+                  ...prev,
+                  certificates: prev.certificates.map(cert => 
+                    cert.id === certificateData.id 
+                      ? { ...cert, id: certificateId, appointmentId: appointmentOrReferralId }
+                      : cert
+                  )
+                }));
+              } catch (error) {
+                console.error('Error saving certificate to database:', error);
+                // Continue with the flow even if database save fails
+              }
+              
+              // Clean up the stored data
+              await AsyncStorage.removeItem(consultationDataKey);
+              console.log('🔍 Cleaned up AsyncStorage data');
+            } else {
+              console.log('🔍 No stored consultation data found, adding certificate to current formData');
+              // Fallback: add certificate to current formData
+              setFormData(prev => ({
+                ...prev,
+                certificates: [...prev.certificates, certificateData]
+              }));
+              
+              // Save the certificate with signature to database immediately
+              try {
+                console.log('🔍 Saving certificate with signature to database immediately (fallback)');
+                const appointmentOrReferralId = consultationIdString || referralIdString;
+                const certificateId = await databaseService.createCertificateInNewStructure(
+                  certificateData,
+                  patientIdString || user?.uid || '',
+                  user?.uid || '',
+                  appointmentOrReferralId  // Pass appointmentId (from appointment) or referralId (from referral)
+                );
+                console.log('🔍 Certificate saved to database with ID and appointmentId:', certificateId);
+                
+                // Update the certificate data with the database ID and appointmentId
+                setFormData(prev => ({
+                  ...prev,
+                  certificates: prev.certificates.map(cert => 
+                    cert.id === certificateData.id 
+                      ? { ...cert, id: certificateId, appointmentId: appointmentOrReferralId }
+                      : cert
+                  )
+                }));
+              } catch (error) {
+                console.error('Error saving certificate to database (fallback):', error);
+                // Continue with the flow even if database save fails
+              }
+            }
+          } catch (storageError) {
+            console.error('Error restoring consultation data from AsyncStorage:', storageError);
+            // Fallback: add certificate to current formData
+            setFormData(prev => ({
+              ...prev,
+              certificates: [...prev.certificates, certificateData]
+            }));
+          }
+          
+          // Clear the certificate form
+          setNewCertificate({
+            type: '', description: '', fitnessStatement: '', workRestrictions: '', nextReviewDate: '',
+            unfitPeriodStart: '', unfitPeriodEnd: '', medicalAdvice: '', reasonForUnfitness: '',
+            followUpDate: '', travelFitnessStatement: '', travelMode: '', destination: '',
+            travelDate: '', specialConditions: '', validityPeriod: '',
+          });
+          
+          // Hide the form
+          setShowAddCertificate(false);
+          setHasChanges(true);
+          
+          // Debug: Log what's happening after signature is added
+          console.log('After signature processing:', {
+            certificatesCount: formData.certificates.length + 1, // +1 because we're adding one
+            hasChanges: true,
+            progressPercent: progressPercent,
+            isCompleteEnabled: isCompleteEnabled
+          });
+          
+          // Show success message
+          Alert.alert(
+            'Certificate Signed', 
+            'Your certificate has been signed and added to the consultation. You can continue adding more certificates or complete the consultation when ready.',
+            [{ text: 'OK', style: 'default' }]
+          );
+          
+          // Clear the params to prevent re-processing
+          router.setParams({ signatureAdded: undefined, certificateData: undefined });
+        } catch (error) {
+          console.error('Error parsing certificate data:', error);
+        }
+      }, 100); // Small delay to ensure consultation data is loaded first
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [params.signatureAdded, params.certificateData]);
 
   // Update completion status when appointment or referral data changes
   useEffect(() => {
@@ -397,7 +611,11 @@ export default function PatientConsultationScreen() {
   useEffect(() => {
     console.log('🔍 FormData diagnoses changed:', formData.diagnoses);
     console.log('🔍 Number of diagnoses in formData:', formData.diagnoses.length);
-  }, [formData.diagnoses]);
+    console.log('🔍 FormData presentIllnessHistory:', formData.presentIllnessHistory);
+    console.log('🔍 FormData reviewOfSymptoms:', formData.reviewOfSymptoms);
+    console.log('🔍 FormData certificates:', formData.certificates.length);
+    console.log('🔍 Full formData:', JSON.stringify(formData, null, 2));
+  }, [formData]);
 
   // Animation for pulsing mic
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -751,6 +969,53 @@ export default function PatientConsultationScreen() {
   };
 
   const handleOpenFeeModal = async () => {
+    // First check for unsaved forms (validation step)
+    const { hasUnsavedPrescription, hasUnsavedCertificate } = hasUnsavedForms();
+    
+    if (hasUnsavedPrescription || hasUnsavedCertificate) {
+      // Show the unsaved forms modal first
+      setShowUnsavedFormsModal(true);
+      return;
+    }
+
+    // Check for certificates without signatures
+    const certificatesWithoutSignatures = formData.certificates.filter((cert: any) => {
+      // Debug: Log signature data to understand the issue
+      console.log('Checking certificate signature:', {
+        type: cert.type,
+        hasDigitalSignature: !!cert.digitalSignature,
+        signatureLength: cert.digitalSignature ? cert.digitalSignature.length : 0,
+        signatureStart: cert.digitalSignature ? cert.digitalSignature.substring(0, 50) : 'none'
+      });
+      
+      // Check if digitalSignature exists and is not empty
+      if (!cert.digitalSignature) return true;
+      
+      // Handle base64 signature strings - they should start with 'data:image' or be a valid base64 string
+      const signature = cert.digitalSignature.trim();
+      if (signature === '') return true;
+      
+      // Check if it's a valid base64 image string (starts with 'data:image')
+      if (signature.startsWith('data:image')) return false;
+      
+      // Check if it's a valid base64 string (at least 100 characters for a meaningful signature)
+      if (signature.length < 100) return true;
+      
+      return false;
+    });
+
+    if (certificatesWithoutSignatures.length > 0) {
+      Alert.alert(
+        'Missing Signatures',
+        `You have ${certificatesWithoutSignatures.length} certificate(s) without digital signatures. Please sign all certificates before completing the consultation.`,
+        [
+          { text: 'OK', style: 'default' }
+        ]
+      );
+      return;
+    }
+
+    // No unsaved forms and all certificates are signed, proceed to fee modal
     setFeeChecked(false);
     await loadProfessionalFee();
     setShowFeeModal(true);
@@ -864,43 +1129,37 @@ export default function PatientConsultationScreen() {
       return;
     }
     
-    const certificate = {
+    // Navigate to signature page with certificate data
+    const certificateData = {
       id: Date.now(),
       ...newCertificate,
       issuedDate: new Date().toLocaleDateString(),
       issuedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'Valid',
     };
+
+    // Store consultation data in AsyncStorage before navigating to signature page
+    const storeData = async () => {
+      try {
+        const consultationDataKey = `consultation_data_${consultationIdString || referralIdString || 'temp'}`;
+        await AsyncStorage.setItem(consultationDataKey, JSON.stringify(formData));
+        console.log('🔍 Stored consultation data in AsyncStorage:', consultationDataKey);
+      } catch (error) {
+        console.error('Error storing consultation data:', error);
+      }
+    };
     
-    setFormData((prev) => ({
-      ...prev,
-      certificates: [...prev.certificates, certificate],
-    }));
-    
-            setNewCertificate({
-          type: '',
-          description: '',
-          // Fit to Work specific fields
-          fitnessStatement: '',
-          workRestrictions: '',
-          nextReviewDate: '',
-          // Medical/Sickness specific fields
-          unfitPeriodStart: '',
-          unfitPeriodEnd: '',
-          medicalAdvice: '',
-          reasonForUnfitness: '',
-          followUpDate: '',
-          // Fit to Travel specific fields
-          travelFitnessStatement: '',
-          travelMode: '',
-          destination: '',
-          travelDate: '',
-          specialConditions: '',
-          validityPeriod: '',
-        });
-    
-    setShowAddCertificate(false);
-    setHasChanges(true);
+    storeData();
+
+    router.push({
+      pathname: '/(patient)/signature-page',
+      params: {
+        certificateData: JSON.stringify(certificateData),
+        ...(consultationIdString && { consultationId: consultationIdString }),
+        ...(referralIdString && { referralId: referralIdString }),
+        ...(patientId && { patientId: Array.isArray(patientId) ? patientId[0] : patientId }),
+      },
+    });
   };
 
   const handleRemoveCertificate = (id: number) => {
@@ -1011,24 +1270,33 @@ export default function PatientConsultationScreen() {
     console.log('Using patientIdString for save:', patientIdString);
 
     try {
-      // Prepare consultation data (same structure as complete consultation)
+      // Prepare consultation data WITHOUT certificates (they're saved separately to pmc)
+      const { certificates, ...consultationDataWithoutCertificates } = formData;
+      
+      // Debug: Check if certificates are properly excluded
+      console.log('🔍 Destructuring check (handleSaveChanges):', {
+        originalFormDataHasCertificates: !!formData.certificates,
+        originalCertificatesCount: formData.certificates?.length || 0,
+        consultationDataWithoutCertificatesHasCertificates: !!(consultationDataWithoutCertificates as any).certificates,
+        consultationDataWithoutCertificatesCertificatesCount: (consultationDataWithoutCertificates as any).certificates?.length || 0,
+        consultationDataWithoutCertificatesKeys: Object.keys(consultationDataWithoutCertificates),
+        // Debug diagnoses specifically
+        originalFormDataHasDiagnoses: !!formData.diagnoses,
+        originalDiagnosesCount: formData.diagnoses?.length || 0,
+        originalDiagnoses: formData.diagnoses,
+        consultationDataWithoutCertificatesHasDiagnoses: !!(consultationDataWithoutCertificates as any).diagnoses,
+        consultationDataWithoutCertificatesDiagnosesCount: (consultationDataWithoutCertificates as any).diagnoses?.length || 0,
+        consultationDataWithoutCertificatesDiagnoses: (consultationDataWithoutCertificates as any).diagnoses
+      });
+      
       const consultationData = {
-        diagnosis: formData.diagnoses,
-        differentialDiagnosis: formData.differentialDiagnosis,
-        reviewOfSymptoms: formData.reviewOfSymptoms,
-        presentIllnessHistory: formData.presentIllnessHistory,
+        ...consultationDataWithoutCertificates,
         soapNotes: {
           subjective: formData.subjective,
           objective: formData.objective,
           assessment: formData.assessment,
           plan: formData.plan,
         },
-        labResults: formData.labResults,
-        medications: formData.medications,
-        prescriptions: formData.prescriptions,
-        certificates: formData.certificates,
-        clinicalSummary: formData.clinicalSummary,
-        treatmentPlan: formData.treatmentPlan,
         provider: {
           id: user?.uid || '',
           firstName: user?.firstName || '',
@@ -1038,6 +1306,55 @@ export default function PatientConsultationScreen() {
         },
         type: 'General Consultation',
       };
+      
+      // Debug: Verify certificates are excluded from consultation data
+      console.log('🔍 Consultation data verification (handleSaveChanges):', {
+        hasCertificates: !!(consultationData as any).certificates,
+        certificatesCount: (consultationData as any).certificates ? (consultationData as any).certificates.length : 0,
+        consultationDataKeys: Object.keys(consultationData),
+        hasDiagnoses: !!consultationData.diagnoses,
+        diagnosesCount: consultationData.diagnoses ? consultationData.diagnoses.length : 0,
+        diagnoses: consultationData.diagnoses
+      });
+
+      // Save certificates to new structure if they exist (same as complete consultation)
+      if (formData.certificates && formData.certificates.length > 0) {
+        console.log('🔍 About to save certificates to new structure (handleSaveChanges):', formData.certificates.length);
+        console.log('🔍 Certificate data (handleSaveChanges):', formData.certificates.map(cert => ({
+          id: cert.id,
+          type: cert.type,
+          hasDigitalSignature: !!cert.digitalSignature,
+          signatureLength: cert.digitalSignature ? cert.digitalSignature.length : 0
+        })));
+        try {
+          // Pre-validate all data before creating certificates
+          const validation = await databaseService.validateCertificateCreationData(patientIdString, user.uid);
+          
+          if (!validation.isValid) {
+            const errorMessage = `Cannot save certificates due to data issues:\n\n${validation.errors.join('\n')}\n\nPlease resolve these issues before saving.`;
+            Alert.alert('Data Validation Error', errorMessage);
+            return;
+          }
+          
+          // All data is valid, proceed with certificate creation
+          const appointmentOrReferralId = consultationIdString || referralIdString;
+          await Promise.all(
+            formData.certificates.map(cert => 
+              databaseService.createCertificateInNewStructure(
+                cert,
+                patientIdString,
+                user.uid,
+                appointmentOrReferralId  // Pass appointmentId (from appointment) or referralId (from referral)
+              )
+            )
+          );
+          console.log('✅ Certificates saved to new structure successfully in handleSaveChanges with appointmentId:', appointmentOrReferralId);
+        } catch (error) {
+          console.error('❌ Error saving certificates to new structure in handleSaveChanges:', error);
+          Alert.alert('Error', `Failed to save certificates: ${error.message || 'Unknown error'}. Consultation cannot be saved.`);
+          return;
+        }
+      }
 
       // Handle consultation - prioritize referral if both exist (same logic as complete consultation)
       if (referralIdString) {
@@ -1171,7 +1488,202 @@ export default function PatientConsultationScreen() {
     setShowFeeModal(true);
   };
 
+  // Check for unsaved forms (filled but not added)
+  const hasUnsavedForms = () => {
+    const hasUnsavedPrescription = newPrescription.medication?.trim() || 
+                                  newPrescription.dosage?.trim() || 
+                                  newPrescription.frequency?.trim() || 
+                                  newPrescription.route?.trim() || 
+                                  newPrescription.durationNumber?.trim() || 
+                                  newPrescription.durationUnit?.trim() || 
+                                  newPrescription.description?.trim() || 
+                                  newPrescription.formula?.trim() || 
+                                  newPrescription.take?.trim() || 
+                                  newPrescription.totalQuantity?.trim();
+
+    const hasUnsavedCertificate = newCertificate.type?.trim() || 
+                                 newCertificate.description?.trim() || 
+                                 newCertificate.fitnessStatement?.trim() || 
+                                 newCertificate.workRestrictions?.trim() || 
+                                 newCertificate.nextReviewDate?.trim() || 
+                                 newCertificate.unfitPeriodStart?.trim() || 
+                                 newCertificate.unfitPeriodEnd?.trim() || 
+                                 newCertificate.medicalAdvice?.trim() || 
+                                 newCertificate.reasonForUnfitness?.trim() || 
+                                 newCertificate.followUpDate?.trim() || 
+                                 newCertificate.travelFitnessStatement?.trim() || 
+                                 newCertificate.travelMode?.trim() || 
+                                 newCertificate.destination?.trim() || 
+                                 newCertificate.travelDate?.trim() || 
+                                 newCertificate.specialConditions?.trim() || 
+                                 newCertificate.validityPeriod?.trim();
+
+    return { hasUnsavedPrescription, hasUnsavedCertificate };
+  };
+
+  // Get unsaved forms status for UI indicators
+  const unsavedFormsStatus = hasUnsavedForms();
+
   const confirmCompleteConsultation = async () => {
+    if (!patientId) {
+      Alert.alert('Error', 'No patient ID found.');
+      return;
+    }
+
+    const patientIdString = Array.isArray(patientId) ? patientId[0] : patientId;
+    console.log('Using patientIdString:', patientIdString);
+
+    // Proceed directly to completion (unsaved forms already checked in handleOpenFeeModal)
+    proceedWithCompletion();
+  };
+
+  // Modal handlers
+  const handleCloseUnsavedFormsModal = () => {
+    setShowUnsavedFormsModal(false);
+  };
+
+  // Exit confirmation handlers
+  const handleBackPress = () => {
+    console.log('Back button pressed');
+    // Check if there's any unsaved data
+    const { hasUnsavedPrescription, hasUnsavedCertificate } = hasUnsavedForms();
+    const hasUnsavedFormData = hasChanges; // Use existing hasChanges logic
+
+    console.log('Unsaved data check:', { hasUnsavedPrescription, hasUnsavedCertificate, hasUnsavedFormData });
+
+    if (hasUnsavedPrescription || hasUnsavedCertificate || hasUnsavedFormData) {
+      console.log('Showing exit confirmation modal');
+      setShowExitConfirmationModal(true);
+    } else {
+      console.log('No unsaved data, navigating back');
+      // Navigate back based on how we got here
+      if (referralIdString) {
+        console.log('Navigating to referral details:', referralIdString);
+        router.replace(`/(specialist)/referral-details?id=${referralIdString}`);
+      } else if (consultationIdString) {
+        console.log('Navigating to visit overview:', consultationIdString);
+        router.replace(`/visit-overview?id=${consultationIdString}`);
+      } else {
+        console.log('Using router.back()');
+        router.back();
+      }
+    }
+  };
+
+  const handleConfirmExit = () => {
+    console.log('Exit anyway button pressed');
+    
+    // Close modal first
+    setShowExitConfirmationModal(false);
+    
+    // Use a longer timeout to ensure modal is fully closed
+    setTimeout(() => {
+      console.log('Navigating after modal close');
+      try {
+        if (referralIdString) {
+          console.log('Navigating to referral details:', referralIdString);
+          router.replace(`/(specialist)/referral-details?id=${referralIdString}`);
+        } else if (consultationIdString) {
+          console.log('Navigating to visit overview:', consultationIdString);
+          router.replace(`/visit-overview?id=${consultationIdString}`);
+        } else {
+          console.log('Using router.back()');
+          router.back();
+        }
+      } catch (error) {
+        console.error('Navigation error:', error);
+        // Try alternative navigation methods
+        try {
+          router.dismiss();
+        } catch (dismissError) {
+          console.error('Dismiss error:', dismissError);
+        }
+      }
+    }, 300); // Increased timeout
+  };
+
+  const handleCancelExit = () => {
+    setShowExitConfirmationModal(false);
+  };
+
+
+  const handleSaveAndComplete = async () => {
+    setShowUnsavedFormsModal(false);
+    
+    // Auto-save prescriptions if they exist, discard certificates
+    await autoSaveFormsAndComplete();
+    
+    // Then proceed to fee modal
+    setFeeChecked(false);
+    await loadProfessionalFee();
+    setShowFeeModal(true);
+  };
+
+  const autoSaveFormsAndComplete = async () => {
+    try {
+      // Auto-add prescription if filled
+      if (newPrescription.medication?.trim() || 
+          newPrescription.dosage?.trim() || 
+          newPrescription.frequency?.trim() || 
+          newPrescription.route?.trim() || 
+          newPrescription.durationNumber?.trim() || 
+          newPrescription.durationUnit?.trim() || 
+          newPrescription.description?.trim() || 
+          newPrescription.formula?.trim() || 
+          newPrescription.take?.trim() || 
+          newPrescription.totalQuantity?.trim()) {
+        
+        const prescription = {
+          id: Date.now(),
+          ...newPrescription,
+          issuedDate: new Date().toLocaleDateString(),
+          issuedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'Active',
+        };
+        
+        setFormData(prev => ({
+          ...prev,
+          prescriptions: [...prev.prescriptions, prescription]
+        }));
+        
+        // Clear prescription form
+        setNewPrescription({
+          medication: '',
+          dosage: '',
+          frequency: '',
+          route: '',
+          durationNumber: '',
+          durationUnit: '',
+          description: '',
+          formula: '',
+          take: '',
+          totalQuantity: '',
+        });
+      }
+
+      // NOTE: Certificates are NOT auto-saved because they require signatures
+      // Users must click "Issue Certificate" to go through the signature process
+      // This prevents incomplete certificates from being added to the list
+
+      // Clear certificate form if there are unsaved certificates (discard them)
+      const { hasUnsavedCertificate } = hasUnsavedForms();
+      if (hasUnsavedCertificate) {
+        setNewCertificate({
+          type: '', description: '', fitnessStatement: '', workRestrictions: '', nextReviewDate: '',
+          unfitPeriodStart: '', unfitPeriodEnd: '', medicalAdvice: '', reasonForUnfitness: '',
+          followUpDate: '', travelFitnessStatement: '', travelMode: '', destination: '',
+          travelDate: '', specialConditions: '', validityPeriod: '',
+        });
+      }
+
+      // Forms are now saved, fee modal will handle completion
+    } catch (error) {
+      console.error('Error auto-saving forms:', error);
+      Alert.alert('Error', 'Failed to auto-save forms. Please try again.');
+    }
+  };
+
+  const proceedWithCompletion = async () => {
     if (!patientId) {
       Alert.alert('Error', 'No patient ID found.');
       return;
@@ -1188,23 +1700,33 @@ export default function PatientConsultationScreen() {
       console.log('Form data diagnoses before saving:', formData.diagnoses);
       console.log('Number of diagnoses:', formData.diagnoses.length);
 
+      // Create consultation data WITHOUT certificates (they're saved separately to pmc)
+      const { certificates, ...consultationDataWithoutCertificates } = formData;
+      
+      // Debug: Check if certificates are properly excluded
+      console.log('🔍 Destructuring check:', {
+        originalFormDataHasCertificates: !!formData.certificates,
+        originalCertificatesCount: formData.certificates?.length || 0,
+        consultationDataWithoutCertificatesHasCertificates: !!(consultationDataWithoutCertificates as any).certificates,
+        consultationDataWithoutCertificatesCertificatesCount: (consultationDataWithoutCertificates as any).certificates?.length || 0,
+        consultationDataWithoutCertificatesKeys: Object.keys(consultationDataWithoutCertificates),
+        // Debug diagnoses specifically
+        originalFormDataHasDiagnoses: !!formData.diagnoses,
+        originalDiagnosesCount: formData.diagnoses?.length || 0,
+        originalDiagnoses: formData.diagnoses,
+        consultationDataWithoutCertificatesHasDiagnoses: !!(consultationDataWithoutCertificates as any).diagnoses,
+        consultationDataWithoutCertificatesDiagnosesCount: (consultationDataWithoutCertificates as any).diagnoses?.length || 0,
+        consultationDataWithoutCertificatesDiagnoses: (consultationDataWithoutCertificates as any).diagnoses
+      });
+      
       const consultationData = {
-        diagnosis: formData.diagnoses,
-        differentialDiagnosis: formData.differentialDiagnosis,
-        reviewOfSymptoms: formData.reviewOfSymptoms,
-        presentIllnessHistory: formData.presentIllnessHistory,
+        ...consultationDataWithoutCertificates,
         soapNotes: {
           subjective: formData.subjective,
           objective: formData.objective,
           assessment: formData.assessment,
           plan: formData.plan,
         },
-        labResults: formData.labResults,
-        medications: formData.medications,
-        prescriptions: formData.prescriptions,
-        certificates: formData.certificates,
-        clinicalSummary: formData.clinicalSummary,
-        treatmentPlan: formData.treatmentPlan,
         provider: {
           id: user?.uid || '',
           firstName: user?.firstName || '',
@@ -1214,6 +1736,75 @@ export default function PatientConsultationScreen() {
         },
         type: 'General Consultation',
       };
+      
+      // Debug: Verify certificates are excluded from consultation data
+      console.log('🔍 Consultation data verification:', {
+        hasCertificates: !!(consultationData as any).certificates,
+        certificatesCount: (consultationData as any).certificates ? (consultationData as any).certificates.length : 0,
+        consultationDataKeys: Object.keys(consultationData),
+        hasDiagnoses: !!consultationData.diagnoses,
+        diagnosesCount: consultationData.diagnoses ? consultationData.diagnoses.length : 0,
+        diagnoses: consultationData.diagnoses
+      });
+
+      // Save certificates to new structure if they exist
+      if (formData.certificates && formData.certificates.length > 0) {
+        console.log('🔍 About to save certificates to new structure:', formData.certificates.length);
+        console.log('🔍 Certificate data:', formData.certificates.map(cert => ({
+          id: cert.id,
+          type: cert.type,
+          hasDigitalSignature: !!cert.digitalSignature,
+          signatureLength: cert.digitalSignature ? cert.digitalSignature.length : 0
+        })));
+        
+        // Validate required data before saving certificates
+        if (!user?.uid) {
+          Alert.alert('Error', 'User authentication required. Cannot create certificates.');
+          setIsCompleting(false);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!patientIdString) {
+          Alert.alert('Error', 'Patient ID required. Cannot create certificates.');
+          setIsCompleting(false);
+          setIsLoading(false);
+          return;
+        }
+        
+        try {
+          // Pre-validate all data before creating certificates
+          const validation = await databaseService.validateCertificateCreationData(patientIdString, user.uid);
+          
+          if (!validation.isValid) {
+            const errorMessage = `Cannot create certificates due to data issues:\n\n${validation.errors.join('\n')}\n\nPlease resolve these issues before completing the consultation.`;
+            Alert.alert('Data Validation Error', errorMessage);
+            setIsCompleting(false);
+            setIsLoading(false);
+            return;
+          }
+          
+          // All data is valid, proceed with certificate creation
+          const appointmentOrReferralId = consultationIdString || referralIdString;
+          await Promise.all(
+            formData.certificates.map(cert => 
+              databaseService.createCertificateInNewStructure(
+                cert,
+                patientIdString,
+                user.uid,
+                appointmentOrReferralId  // Pass appointmentId (from appointment) or referralId (from referral)
+              )
+            )
+          );
+          console.log('✅ Certificates saved to new structure successfully with appointmentId:', appointmentOrReferralId);
+        } catch (error) {
+          console.error('❌ Error saving certificates to new structure:', error);
+          Alert.alert('Error', `Failed to save certificates: ${error.message || 'Unknown error'}. Consultation cannot be completed.`);
+          setIsCompleting(false);
+          setIsLoading(false);
+          return; // Stop consultation completion
+        }
+      }
 
       // Handle consultation - prioritize referral if both exist
       if (referralIdString) {
@@ -1930,13 +2521,34 @@ export default function PatientConsultationScreen() {
               {/* Add Prescription Form */}
               {showAddPrescription && (
                 <View style={styles.addForm}>
-                  <Text style={styles.addFormTitle}>Add New Prescription</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={styles.addFormTitle}>Add New Prescription</Text>
+                    {unsavedFormsStatus.hasUnsavedPrescription && (
+                      <View style={{ 
+                        backgroundColor: '#FFE4B5', 
+                        paddingHorizontal: 8, 
+                        paddingVertical: 4, 
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: '#FFA500'
+                      }}>
+                        <Text style={{ 
+                          fontSize: 12, 
+                          color: '#FF8C00', 
+                          fontWeight: 'bold' 
+                        }}>
+                          ⚠️ UNSAVED
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.requiredFieldsLegend}><Text style={styles.requiredAsterisk}>*</Text> required fields</Text>
                   <View style={styles.fieldContainer}>
                     <Text style={styles.fieldLabel}>Medication name <Text style={styles.requiredAsterisk}>*</Text></Text>
                     <TextInput
                       style={styles.addFormInput}
                       placeholder="Enter medication name"
+                      placeholderTextColor="#9CA3AF"
                       value={newPrescription.medication}
                       onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, medication: value }))}
                     />
@@ -1949,6 +2561,7 @@ export default function PatientConsultationScreen() {
                       <TextInput
                         style={[styles.addFormInput, styles.addFormInputHalf]}
                         placeholder="e.g., 10mg"
+                        placeholderTextColor="#9CA3AF"
                         value={newPrescription.dosage}
                         onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, dosage: value }))}
                       />
@@ -2020,6 +2633,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={[styles.addFormInput, { flex: 1, marginBottom: 0 }]}
                           placeholder="Enter duration"
+                          placeholderTextColor="#9CA3AF"
                           value={newPrescription.durationNumber}
                           onChangeText={(value) => {
                             // Only allow numbers 1-30
@@ -2050,6 +2664,7 @@ export default function PatientConsultationScreen() {
                     <TextInput
                       style={[styles.addFormInput, styles.addFormTextArea]}
                       placeholder="Enter description or instructions"
+                      placeholderTextColor="#9CA3AF"
                       value={newPrescription.description}
                       onChangeText={(value) => setNewPrescription((prev) => ({ ...prev, description: value }))}
                       multiline
@@ -2127,7 +2742,20 @@ export default function PatientConsultationScreen() {
                         <FileText size={20} color="#1E40AF" />
                       </View>
                       <View style={styles.certificateDetails}>
-                        <Text style={styles.certificateType}>{certificate.type}</Text>
+                        <View style={styles.certificateTitleRow}>
+                          <Text style={styles.certificateType}>{certificate.type}</Text>
+                          {certificate.digitalSignature ? (
+                            <View style={styles.signatureIndicator}>
+                              <CheckCircle size={16} color="#10B981" />
+                              <Text style={styles.signatureText}>Signed</Text>
+                            </View>
+                          ) : (
+                            <View style={styles.signatureIndicator}>
+                              <AlertTriangle size={16} color="#F59E0B" />
+                              <Text style={[styles.signatureText, { color: '#F59E0B' }]}>Needs Signature</Text>
+                            </View>
+                          )}
+                        </View>
                         <Text style={styles.certificateDescription}>{certificate.description}</Text>
                       </View>
                       <View style={styles.certificateActions}>
@@ -2170,7 +2798,27 @@ export default function PatientConsultationScreen() {
               {/* Add Certificate Form */}
               {showAddCertificate && (
                 <View style={styles.addForm}>
-                  <Text style={styles.addFormTitle}>Issue New Certificate</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={styles.addFormTitle}>Issue New Certificate</Text>
+                    {unsavedFormsStatus.hasUnsavedCertificate && (
+                      <View style={{ 
+                        backgroundColor: '#FFE4B5', 
+                        paddingHorizontal: 8, 
+                        paddingVertical: 4, 
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: '#FFA500'
+                      }}>
+                        <Text style={{ 
+                          fontSize: 12, 
+                          color: '#FF8C00', 
+                          fontWeight: 'bold' 
+                        }}>
+                          ⚠️ UNSAVED
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.requiredFieldsLegend}><Text style={styles.requiredAsterisk}>*</Text> required fields</Text>
                   <View style={styles.addFormInput}>
                     <Text style={styles.addFormLabel}>Certificate Type <Text style={styles.requiredAsterisk}>*</Text></Text>
@@ -2199,6 +2847,7 @@ export default function PatientConsultationScreen() {
                     <TextInput
                       style={[styles.addFormInput, styles.addFormTextArea]}
                       placeholder="Enter description or medical findings"
+                      placeholderTextColor="#9CA3AF"
                       value={newCertificate.description}
                       onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, description: value }))}
                       multiline
@@ -2216,6 +2865,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={[styles.addFormInput, styles.addFormTextArea]}
                           placeholder="e.g., Patient is medically fit to return to work"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.fitnessStatement}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, fitnessStatement: value }))}
                           multiline
@@ -2228,6 +2878,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={styles.addFormInput}
                           placeholder="e.g., None, Light duty only"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.workRestrictions}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, workRestrictions: value }))}
                         />
@@ -2237,6 +2888,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={styles.addFormInput}
                           placeholder="Optional - e.g., Aug 30, 2025"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.nextReviewDate}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, nextReviewDate: value }))}
                         />
@@ -2251,6 +2903,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={styles.addFormInput}
                           placeholder="e.g., Aug 20, 2025"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.unfitPeriodStart}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, unfitPeriodStart: value }))}
                         />
@@ -2260,6 +2913,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={styles.addFormInput}
                           placeholder="e.g., Aug 22, 2025"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.unfitPeriodEnd}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, unfitPeriodEnd: value }))}
                         />
@@ -2269,6 +2923,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={[styles.addFormInput, styles.addFormTextArea]}
                           placeholder="e.g., Medical condition requiring rest"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.reasonForUnfitness}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, reasonForUnfitness: value }))}
                           multiline
@@ -2281,6 +2936,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={[styles.addFormInput, styles.addFormTextArea]}
                           placeholder="e.g., Patient is advised to rest and refrain from work"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.medicalAdvice}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, medicalAdvice: value }))}
                           multiline
@@ -2293,6 +2949,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={styles.addFormInput}
                           placeholder="Optional - e.g., Aug 25, 2025"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.followUpDate}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, followUpDate: value }))}
                         />
@@ -2307,6 +2964,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={[styles.addFormInput, styles.addFormTextArea]}
                           placeholder="e.g., Patient is medically fit to travel"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.travelFitnessStatement}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, travelFitnessStatement: value }))}
                           multiline
@@ -2319,6 +2977,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={styles.addFormInput}
                           placeholder="e.g., Air, Sea, Land"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.travelMode}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, travelMode: value }))}
                         />
@@ -2328,6 +2987,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={styles.addFormInput}
                           placeholder="e.g., International, Domestic"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.destination}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, destination: value }))}
                         />
@@ -2337,6 +2997,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={styles.addFormInput}
                           placeholder="e.g., Aug 25, 2025"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.travelDate}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, travelDate: value }))}
                         />
@@ -2346,6 +3007,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={styles.addFormInput}
                           placeholder="e.g., None, Wheelchair assistance"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.specialConditions}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, specialConditions: value }))}
                         />
@@ -2355,6 +3017,7 @@ export default function PatientConsultationScreen() {
                         <TextInput
                           style={styles.addFormInput}
                           placeholder="e.g., 30 days from issue"
+                          placeholderTextColor="#9CA3AF"
                           value={newCertificate.validityPeriod}
                           onChangeText={(value) => setNewCertificate((prev) => ({ ...prev, validityPeriod: value }))}
                         />
@@ -2430,7 +3093,13 @@ export default function PatientConsultationScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => {
+            console.log('Back button TouchableOpacity pressed');
+            handleBackPress();
+          }}
+        >
           <ChevronLeft size={24} color="#1E40AF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Patient Consultation</Text>
@@ -2461,14 +3130,34 @@ export default function PatientConsultationScreen() {
 
       {/* Bottom Action Buttons */}
       <View style={styles.bottomContainer}>
-        {/* Save Consultation Button - Show on all steps, disabled when no changes */}
-        <TouchableOpacity
-          style={[styles.saveButton, !hasChanges && styles.saveButtonDisabled]}
-          onPress={handleSaveChanges}
-          disabled={!hasChanges}
-        >
-          <Text style={[styles.saveButtonText, !hasChanges && styles.saveButtonTextDisabled]}>Save Consultation</Text>
-        </TouchableOpacity>
+        {/* Save/Complete Consultation Button - Show both when at 100% progress */}
+        {progressPercent < 100 ? (
+          <TouchableOpacity
+            style={[styles.saveButton, !hasChanges && styles.saveButtonDisabled]}
+            onPress={handleSaveChanges}
+            disabled={!hasChanges}
+          >
+            <Text style={[styles.saveButtonText, !hasChanges && styles.saveButtonTextDisabled]}>Save Consultation</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[styles.saveButton, !hasChanges && styles.saveButtonDisabled]}
+              onPress={handleSaveChanges}
+              disabled={!hasChanges}
+            >
+              <Text style={[styles.saveButtonText, !hasChanges && styles.saveButtonTextDisabled]}>Save Consultation</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.completeButton, !isCompleteEnabled && styles.saveButtonDisabled]}
+              onPress={handleOpenFeeModal}
+              disabled={!isCompleteEnabled}
+            >
+              <CheckCircle size={18} color="#FFFFFF" />
+              <Text style={styles.completeButtonText}>Complete Consultation</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
         {/* Step Navigation (only for steps 1-4) */}
         {currentStep < totalSteps && (
@@ -2493,17 +3182,6 @@ export default function PatientConsultationScreen() {
           </View>
         )}
 
-        {/* Last step (5): show Complete Consultation */}
-        {currentStep === totalSteps && (
-          <TouchableOpacity
-            style={[styles.completeButton, !isCompleteEnabled && styles.completeButtonDisabled]}
-            onPress={handleOpenFeeModal}
-            disabled={!isCompleteEnabled}
-          >
-            <CheckCircle size={18} color="#FFFFFF" />
-            <Text style={styles.completeButtonText}>Complete Consultation</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Medical History Modal */}
@@ -2648,21 +3326,47 @@ export default function PatientConsultationScreen() {
                   </View>
                 )}
 
-                {/* Certificates */}
-                {medicalHistory.certificates && medicalHistory.certificates.length > 0 && (
-                  <View style={styles.medicalHistorySection}>
-                    <Text style={styles.medicalHistorySectionTitle}>Medical Certificates</Text>
-                    <View style={styles.medicalHistoryCard}>
-                      {medicalHistory.certificates.map((certificate: any, index: number) => (
-                        <View key={index} style={styles.certificateItem}>
-                          <Text style={styles.certificateTypeText}>{certificate.type}</Text>
-                          <Text style={styles.certificateDescriptionText}>{certificate.description}</Text>
-
-                        </View>
-                      ))}
+                {/* Certificates - Loaded from new patientMedicalCertificates structure */}
+                {(() => {
+                  // Load certificates from new structure for this consultation
+                  const [consultationCertificates, setConsultationCertificates] = React.useState<any[]>([]);
+                  
+                  React.useEffect(() => {
+                    const loadCertificates = async () => {
+                      if (patientId && consultationIdString) {
+                        try {
+                          const certificates = await databaseService.getCertificatesByPatientNew(patientId as string);
+                          // Filter certificates that might be related to this consultation
+                          const relatedCertificates = certificates.filter(cert => {
+                            const certDate = new Date(cert.issueDate);
+                            const consultationDate = new Date(medicalHistory?.consultationDate || '');
+                            // Include certificates issued on the same date as the consultation
+                            return certDate.toDateString() === consultationDate.toDateString();
+                          });
+                          setConsultationCertificates(relatedCertificates);
+                        } catch (error) {
+                          console.error('Error loading certificates for consultation:', error);
+                        }
+                      }
+                    };
+                    
+                    loadCertificates();
+                  }, [patientId, consultationIdString, medicalHistory?.consultationDate]);
+                  
+                  return consultationCertificates.length > 0 ? (
+                    <View style={styles.medicalHistorySection}>
+                      <Text style={styles.medicalHistorySectionTitle}>Medical Certificates</Text>
+                      <View style={styles.medicalHistoryCard}>
+                        {consultationCertificates.map((certificate: any, index: number) => (
+                          <View key={index} style={styles.certificateItem}>
+                            <Text style={styles.certificateTypeText}>{certificate.type}</Text>
+                            <Text style={styles.certificateDescriptionText}>{certificate.description}</Text>
+                          </View>
+                        ))}
+                      </View>
                     </View>
-                  </View>
-                )}
+                  ) : null;
+                })()}
 
                 {/* Consultation Details */}
                 <View style={styles.medicalHistorySection}>
@@ -2757,6 +3461,183 @@ export default function PatientConsultationScreen() {
                   confirmCompleteConsultation();
                 }}>
                   <Text style={feeModalStyles.primaryButtonText}>Confirm & Complete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
+
+      {/* Unsaved Forms Modal */}
+      <Modal
+        visible={showUnsavedFormsModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCloseUnsavedFormsModal}
+      >
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <Pressable style={unsavedFormsModalStyles.backdrop} onPress={handleCloseUnsavedFormsModal}>
+          <BlurView intensity={22} style={unsavedFormsModalStyles.blurView}>
+            <View style={unsavedFormsModalStyles.overlay} />
+          </BlurView>
+        </Pressable>
+        <View style={unsavedFormsModalStyles.modalContainer}>
+          <SafeAreaView style={unsavedFormsModalStyles.safeArea}>
+            <View style={unsavedFormsModalStyles.modalContent}>
+              {/* Header */}
+              <View style={unsavedFormsModalStyles.header}>
+                <View style={unsavedFormsModalStyles.headerLeft}>
+                  <View style={unsavedFormsModalStyles.warningIcon}>
+                    <AlertTriangle size={24} color="#FFFFFF" />
+                  </View>
+                  <View>
+                    <Text style={unsavedFormsModalStyles.headerTitle}>Unsaved Forms Detected</Text>
+                    <Text style={unsavedFormsModalStyles.headerSubtitle}>You have forms with data that haven't been saved</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={unsavedFormsModalStyles.closeButton} onPress={handleCloseUnsavedFormsModal}>
+                  <X size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Divider */}
+              <View style={unsavedFormsModalStyles.divider} />
+              
+              {/* Content */}
+              <View style={unsavedFormsModalStyles.content}>
+                <Text style={unsavedFormsModalStyles.warningText}>
+                  You have filled out forms but haven't clicked the save buttons yet:
+                </Text>
+                
+                {/* {unsavedFormsStatus.hasUnsavedCertificate && (
+                  <View style={unsavedFormsModalStyles.certificateWarning}>
+                    <Text style={unsavedFormsModalStyles.certificateWarningText}>
+                      ⚠️ Certificate forms will be lost if you choose "Save & Complete" because certificates require digital signatures.
+                    </Text>
+                  </View>
+                )} */}
+                
+                <View style={unsavedFormsModalStyles.formsList}>
+                  {unsavedFormsStatus.hasUnsavedPrescription && (
+                    <View style={unsavedFormsModalStyles.formItem}>
+                      <View style={unsavedFormsModalStyles.formIcon}>
+                        <Pill size={20} color="#1E40AF" />
+                      </View>
+                      <View style={unsavedFormsModalStyles.formDetails}>
+                        <Text style={unsavedFormsModalStyles.formTitle}>Prescription Form</Text>
+                        <Text style={unsavedFormsModalStyles.formDescription}>
+                          To save: Click "Add Prescription" button in the prescription section
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                  
+                  {unsavedFormsStatus.hasUnsavedCertificate && (
+                    <View style={unsavedFormsModalStyles.formItem}>
+                      <View style={unsavedFormsModalStyles.formIcon}>
+                        <FileText size={20} color="#1E40AF" />
+                      </View>
+                      <View style={unsavedFormsModalStyles.formDetails}>
+                        <Text style={unsavedFormsModalStyles.formTitle}>Certificate Form</Text>
+                        <Text style={unsavedFormsModalStyles.formDescription}>
+                          To save: Click "Issue Certificate" button in the certificate section
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+                
+                <Text style={unsavedFormsModalStyles.instructionText}>
+                  What would you like to do with these unsaved forms?
+                </Text>
+              </View>
+              
+              {/* Actions */}
+              <View style={unsavedFormsModalStyles.actions}>
+                <TouchableOpacity 
+                  style={unsavedFormsModalStyles.saveButton} 
+                  onPress={handleSaveAndComplete}
+                >
+                  <Text style={unsavedFormsModalStyles.saveButtonText}>
+                    {unsavedFormsStatus.hasUnsavedPrescription 
+                      ? 'Save Prescriptions & Complete' 
+                      : 'Complete Without Saving'
+                    }
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+      </Modal>
+
+      {/* Exit Confirmation Modal */}
+      <Modal
+        visible={showExitConfirmationModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCancelExit}
+        statusBarTranslucent={true}
+      >
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+        <Pressable style={exitConfirmationModalStyles.backdrop} onPress={handleCancelExit}>
+          <BlurView intensity={22} style={exitConfirmationModalStyles.blurView}>
+            <View style={exitConfirmationModalStyles.overlay} />
+          </BlurView>
+        </Pressable>
+        <View style={exitConfirmationModalStyles.modalContainer}>
+          <SafeAreaView style={exitConfirmationModalStyles.safeArea}>
+            <View style={exitConfirmationModalStyles.modalContent}>
+              {/* Header */}
+              <View style={exitConfirmationModalStyles.header}>
+                <View style={exitConfirmationModalStyles.headerLeft}>
+                  <View style={exitConfirmationModalStyles.warningIcon}>
+                    <AlertTriangle size={24} color="#FFFFFF" />
+                  </View>
+                  <View>
+                    <Text style={exitConfirmationModalStyles.headerTitle}>Unsaved Changes</Text>
+                    <Text style={exitConfirmationModalStyles.headerSubtitle}>You have unsaved data that will be lost</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={exitConfirmationModalStyles.closeButton} onPress={handleCancelExit}>
+                  <X size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Divider */}
+              <View style={exitConfirmationModalStyles.divider} />
+              
+              {/* Content */}
+              <View style={exitConfirmationModalStyles.content}>
+                <Text style={exitConfirmationModalStyles.warningText}>
+                  Are you sure you want to exit this page? You have unsaved changes that will be lost.
+                </Text>
+                
+                <Text style={exitConfirmationModalStyles.instructionText}>
+                  {progressPercent < 100 
+                    ? 'If you want to continue later, please click "Save Consultation" to save your progress.'
+                    : 'If you want to continue later, please click "Complete Consultation" to save your progress.'
+                  }
+                </Text>
+              </View>
+              
+              {/* Actions */}
+              <View style={exitConfirmationModalStyles.actions}>
+                <TouchableOpacity 
+                  style={exitConfirmationModalStyles.cancelButton} 
+                  onPress={handleCancelExit}
+                >
+                  <Text style={exitConfirmationModalStyles.cancelButtonText}>Stay on Page</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={exitConfirmationModalStyles.exitButton} 
+                  onPress={() => {
+                    console.log('Exit Anyway button TouchableOpacity pressed');
+                    handleConfirmExit();
+                  }}
+                >
+                  <Text style={exitConfirmationModalStyles.exitButtonText}>Exit Anyway</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -3010,10 +3891,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
     paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingTop: Platform.OS === 'ios' ? 34 : 16,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     flexDirection: 'column',
-    gap: 12,
+    gap: 8,
   },
   saveButton: {
     width: '100%',
@@ -3044,16 +3925,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
-  },
-  completeButtonDisabled: {
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    marginBottom: 8,
   },
   completeButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
+  },
+  completeButtonDisabled: {
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   // Section Header with Button
   sectionHeaderWithButton: {
@@ -3187,6 +4069,26 @@ const styles = StyleSheet.create({
   },
   certificateDetails: {
     flex: 1,
+  },
+  certificateTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  signatureIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  signatureText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#10B981',
   },
   certificateType: {
     fontSize: 16,
@@ -3946,4 +4848,315 @@ const feeModalStyles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 12, marginTop: 24 },
   primaryButton: { flex: 1, backgroundColor: '#1E40AF', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontFamily: 'Inter-SemiBold' },
+});
+
+// Unsaved Forms Modal Styles
+const unsavedFormsModalStyles = StyleSheet.create({
+  backdrop: {
+    position: 'absolute', 
+    top: 0, 
+    left: 0, 
+    right: 0, 
+    bottom: 0, 
+    zIndex: 1,
+  },
+  blurView: { 
+    flex: 1 
+  },
+  overlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.34)' 
+  },
+  modalContainer: {
+    flex: 1, 
+    justifyContent: 'flex-end', 
+    zIndex: 2,
+  },
+  safeArea: { 
+    width: '100%' 
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    alignItems: 'stretch',
+    minHeight: SCREEN_HEIGHT * 0.4,
+    maxHeight: SCREEN_HEIGHT * 0.8,
+  },
+  header: {
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 16,
+  },
+  headerLeft: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1 
+  },
+  warningIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  headerTitle: {
+    fontSize: 20, 
+    fontFamily: 'Inter-Bold', 
+    color: '#1F2937', 
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14, 
+    fontFamily: 'Inter-Regular', 
+    color: '#6B7280',
+  },
+  closeButton: {
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    borderWidth: 1, 
+    borderColor: '#E5E7EB', 
+    marginLeft: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginBottom: 16,
+  },
+  content: {
+    marginBottom: 24,
+  },
+  warningText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 20,
+    lineHeight: 24,
+  },
+  formsList: {
+    marginBottom: 20,
+  },
+  formItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  formIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EBF4FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  formDetails: {
+    flex: 1,
+  },
+  formTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  formDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  instructionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  discardButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  discardButtonText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#1E40AF',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+  certificateWarning: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  certificateWarningText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#92400E',
+    lineHeight: 20,
+  },
+});
+
+// Exit Confirmation Modal Styles
+const exitConfirmationModalStyles = StyleSheet.create({
+  backdrop: {
+    position: 'absolute', 
+    top: 0, 
+    left: 0, 
+    right: 0, 
+    bottom: 0, 
+    zIndex: 1,
+  },
+  blurView: { 
+    flex: 1 
+  },
+  overlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.34)' 
+  },
+  modalContainer: {
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    zIndex: 2,
+  },
+  safeArea: { 
+    width: SCREEN_WIDTH * 0.92, 
+    maxWidth: 410 
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 26,
+    alignItems: 'stretch',
+  },
+  header: {
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 16,
+  },
+  headerLeft: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1 
+  },
+  warningIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  headerTitle: {
+    fontSize: 20, 
+    fontFamily: 'Inter-Bold', 
+    color: '#1F2937', 
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14, 
+    fontFamily: 'Inter-Regular', 
+    color: '#6B7280',
+  },
+  closeButton: {
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    borderWidth: 1, 
+    borderColor: '#E5E7EB', 
+    marginLeft: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginBottom: 16,
+  },
+  content: {
+    marginBottom: 24,
+  },
+  warningText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 16,
+    lineHeight: 24,
+  },
+  instructionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#1E40AF',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+  exitButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  exitButtonText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
 });
