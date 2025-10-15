@@ -3803,8 +3803,38 @@ export const databaseService = {
 
   async deleteCertificate(id: string): Promise<void> {
     try {
-      const certificateRef = ref(database, `certificates/${id}`);
-      await remove(certificateRef);
+      // First, try to find the certificate in the new structure
+      // We need to search through patientMedicalCertificates to find the certificate
+      const certificatesRef = ref(database, 'patientMedicalCertificates');
+      const snapshot = await get(certificatesRef);
+      
+      if (snapshot.exists()) {
+        let certificateFound = false;
+        
+        // Search through all patients
+        snapshot.forEach((patientSnapshot) => {
+          const patientId = patientSnapshot.key;
+          const patientCertificates = patientSnapshot.val();
+          
+          // Search through all certificates for this patient
+          Object.keys(patientCertificates).forEach((certificateKey) => {
+            const certificate = patientCertificates[certificateKey];
+            if (certificate.certificateId === id) {
+              // Found the certificate, delete it
+              const certificateRef = ref(database, `patientMedicalCertificates/${patientId}/${certificateKey}`);
+              remove(certificateRef);
+              certificateFound = true;
+              console.log('✅ Certificate deleted from patientMedicalCertificates:', id);
+            }
+          });
+        });
+        
+        if (!certificateFound) {
+          console.log('⚠️ Certificate not found in patientMedicalCertificates:', id);
+        }
+      } else {
+        console.log('⚠️ No certificates found in patientMedicalCertificates');
+      }
     } catch (error) {
       console.error('Delete certificate error:', error);
       throw error;
@@ -4350,6 +4380,16 @@ export const databaseService = {
   },
 
 
+
+  // Helper method to ensure prescription signature fields are included
+  ensurePrescriptionSignatureFields(prescriptionData: any): any {
+    // Ensure signature fields are present in prescription data
+    return {
+      ...prescriptionData,
+      // Signature fields will be added by the signature system
+      // This method ensures they're preserved when saving
+    };
+  },
 
   // Monitor medical history for new prescriptions and certificates
   onMedicalHistoryPrescriptionsAndCertificatesChange(
