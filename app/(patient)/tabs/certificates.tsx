@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import {
   FileText, Search, Shield, Activity, Syringe, Heart, Stethoscope,
-  Filter, ChevronDown, Check, X, Clock, CheckCircle
+  Filter, ChevronDown, Check, X, Clock, CheckCircle, FileSignature
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -43,6 +43,11 @@ const SORT_OPTIONS = [
   { key: 'validUntil', label: 'Valid Until' },
 ];
 
+const VIEW_OPTIONS = [
+  { key: 'certificates', label: 'Medical Certificates', icon: FileText },
+  { key: 'prescriptions', label: 'E-Prescriptions', icon: FileSignature },
+];
+
 export default function CertificatesScreen() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,6 +59,11 @@ export default function CertificatesScreen() {
   const [userCertificates, setUserCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<'certificates' | 'prescriptions'>('certificates');
+  const [showViewDropdown, setShowViewDropdown] = useState(false);
+  const [viewDropdownPos, setViewDropdownPos] = useState({ top: 0, right: 0 });
+  const viewBtnRef = useRef<View>(null);
+  const [ePrescriptions, setEPrescriptions] = useState<any[]>([]);
 
   // Header initials for logged in user
   const userInitials = (() => {
@@ -66,10 +76,11 @@ export default function CertificatesScreen() {
       .join('') || 'U';
   })();
 
-  // Load certificates from database
+  // Load certificates and e-prescriptions from database
   useEffect(() => {
     if (user && user.uid) {
       loadCertificates();
+      loadEPrescriptions();
     }
   }, [user]);
 
@@ -97,24 +108,146 @@ export default function CertificatesScreen() {
     }
   };
 
+  const loadEPrescriptions = async () => {
+    try {
+      // Get all appointments and referrals for the patient
+      const [appointments, referrals] = await Promise.all([
+        databaseService.getAppointmentsByPatient(user.uid),
+        databaseService.getReferralsByPatient(user.uid)
+      ]);
+      
+      const ePrescriptionData = [];
+      
+      // Process appointments
+      for (const appointment of appointments) {
+        // Only process completed appointments
+        if (appointment.status?.toLowerCase() === 'completed') {
+          try {
+            // Try to get medical history for this appointment
+            let medicalHistory = null;
+            let prescriptions = [];
+            
+            if (appointment.appointmentConsultationId) {
+              // Try to get medical history by consultation ID
+              medicalHistory = await databaseService.getDocument(
+                `patientMedicalHistory/${user.uid}/entries/${appointment.appointmentConsultationId}`
+              );
+              prescriptions = medicalHistory?.prescriptions || [];
+            }
+            
+            // If no prescriptions from medical history, try to get prescriptions by appointment ID
+            if (!prescriptions.length && appointment.id) {
+              prescriptions = await databaseService.getPrescriptionsByAppointment(appointment.id);
+            }
+            
+            // If we found prescriptions, create an e-prescription entry
+            if (prescriptions.length > 0) {
+              ePrescriptionData.push({
+                id: `eprescription_appt_${appointment.id}`,
+                type: 'E-Prescription',
+                consultationId: appointment.appointmentConsultationId || appointment.id,
+                issueDate: appointment.appointmentDate,
+                status: 'Valid',
+                doctorDetails: {
+                  firstName: appointment.doctorFirstName || 'Dr.',
+                  lastName: appointment.doctorLastName || 'Unknown'
+                },
+                specialistId: appointment.doctorId,
+                description: `Prescription from ${appointment.clinicName || 'Clinic'}`,
+                prescriptions: prescriptions,
+                appointmentId: appointment.id,
+                clinicName: appointment.clinicName,
+                source: 'appointment'
+              });
+            }
+          } catch (error) {
+            console.log(`Could not load prescriptions for appointment ${appointment.id}:`, error);
+          }
+        }
+      }
+      
+      // Process referrals
+      for (const referral of referrals) {
+        // Only process completed referrals
+        if (referral.status?.toLowerCase() === 'completed') {
+          try {
+            let prescriptions = [];
+            
+            // Try to get prescriptions from referral consultation ID
+            if (referral.referralConsultationId) {
+              try {
+                const medicalHistory = await databaseService.getDocument(
+                  `patientMedicalHistory/${user.uid}/entries/${referral.referralConsultationId}`
+                );
+                prescriptions = medicalHistory?.prescriptions || [];
+              } catch (error) {
+                console.log(`Could not load medical history for referral ${referral.id}:`, error);
+              }
+            }
+            
+            // If no prescriptions from medical history, try to get prescriptions by clinic appointment ID
+            if (!prescriptions.length && referral.clinicAppointmentId) {
+              try {
+                prescriptions = await databaseService.getPrescriptionsByAppointment(referral.clinicAppointmentId);
+              } catch (error) {
+                console.log(`Could not load prescriptions by appointment ID for referral ${referral.id}:`, error);
+              }
+            }
+            
+            // If we found prescriptions, create an e-prescription entry
+            if (prescriptions.length > 0) {
+              ePrescriptionData.push({
+                id: `eprescription_ref_${referral.id}`,
+                type: 'E-Prescription',
+                consultationId: referral.referralConsultationId || referral.clinicAppointmentId || referral.id,
+                issueDate: referral.appointmentDate,
+                status: 'Valid',
+                doctorDetails: {
+                  firstName: referral.assignedSpecialistFirstName || 'Dr.',
+                  lastName: referral.assignedSpecialistLastName || 'Unknown'
+                },
+                specialistId: referral.assignedSpecialistId,
+                description: `Prescription from referral to ${referral.assignedSpecialistFirstName || ''} ${referral.assignedSpecialistLastName || ''}`.trim() || 'Specialist',
+                prescriptions: prescriptions,
+                referralId: referral.id,
+                clinicName: referral.referringClinicName,
+                source: 'referral'
+              });
+            }
+          } catch (error) {
+            console.log(`Could not load prescriptions for referral ${referral.id}:`, error);
+          }
+        }
+      }
+      
+      console.log('💊 Loaded e-prescriptions from appointments and referrals:', ePrescriptionData);
+      setEPrescriptions(ePrescriptionData);
+      
+    } catch (error) {
+      console.error('Error loading e-prescriptions:', error);
+    }
+  };
+
   const handleRetry = () => {
     setError(null);
     loadCertificates();
   };
 
-  // Performance optimization: memoize filtered and sorted certificates
-  const filteredCertificates = useDeepMemo(() => {
-    return userCertificates
-      .filter((cert) => {
-        const doctorName = cert.doctorDetails ? 
-          `Dr. ${cert.doctorDetails.firstName || ''} ${cert.doctorDetails.lastName || ''}`.trim() :
-          cert.specialistId || '';
+  // Performance optimization: memoize filtered and sorted certificates/e-prescriptions
+  const filteredData = useDeepMemo(() => {
+    const data = currentView === 'certificates' ? userCertificates : ePrescriptions;
+    
+    return data
+      .filter((item) => {
+        const doctorName = item.doctorDetails ? 
+          `Dr. ${item.doctorDetails.firstName || ''} ${item.doctorDetails.lastName || ''}`.trim() :
+          item.specialistId || '';
         const matchesSearch =
-          cert.type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          cert.description?.toLowerCase().includes(searchQuery.toLowerCase());
+          item.description?.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus =
-          statusFilter === 'all' || cert.status?.toLowerCase() === statusFilter;
+          statusFilter === 'all' || item.status?.toLowerCase() === statusFilter;
         return matchesSearch && matchesStatus;
       })
       .sort((a, b) => {
@@ -137,7 +270,7 @@ export default function CertificatesScreen() {
             return 0;
         }
       });
-  }, [userCertificates, searchQuery, statusFilter, sortBy]);
+  }, [userCertificates, ePrescriptions, currentView, searchQuery, statusFilter, sortBy]);
 
   const getStatusColors = (status: string) => {
     return {
@@ -189,6 +322,52 @@ export default function CertificatesScreen() {
     );
   };
 
+  // --- View Dropdown ---
+  const renderViewDropdown = () => {
+    if (!showViewDropdown) return null;
+    return (
+      <Pressable
+        style={styles.dropdownBackdrop}
+        onPress={() => setShowViewDropdown(false)}
+      >
+        <View style={[styles.viewDropdown, {
+          top: viewDropdownPos.top,
+          right: viewDropdownPos.right
+        }]}>
+          {VIEW_OPTIONS.map((option) => {
+            const IconComponent = option.icon;
+            return (
+              <TouchableOpacity
+                key={option.key}
+                style={[
+                  styles.viewDropdownItem,
+                  currentView === option.key && styles.viewDropdownActiveItem,
+                ]}
+                onPress={() => {
+                  setCurrentView(option.key as 'certificates' | 'prescriptions');
+                  setShowViewDropdown(false);
+                }}
+              >
+                <IconComponent size={18} color={currentView === option.key ? "#1E40AF" : "#6B7280"} />
+                <Text
+                  style={[
+                    styles.viewDropdownText,
+                    currentView === option.key && styles.viewDropdownActiveText,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+                {currentView === option.key && (
+                  <Check size={16} color="#1E40AF" style={{ marginLeft: 6 }} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </Pressable>
+    );
+  };
+
   // Handle dropdown position calculation
   const handleShowSort = () => {
     if (sortBtnRef.current) {
@@ -201,6 +380,20 @@ export default function CertificatesScreen() {
       });
     } else {
       setShowSort(true);
+    }
+  };
+
+  const handleShowViewDropdown = () => {
+    if (viewBtnRef.current) {
+      viewBtnRef.current.measureInWindow((x, y, w, h) => {
+        setViewDropdownPos({
+          top: y + h - 50,
+          right: screenWidth - (x + w),
+        });
+        setShowViewDropdown(true);
+      });
+    } else {
+      setShowViewDropdown(true);
     }
   };
 
@@ -249,69 +442,87 @@ export default function CertificatesScreen() {
     );
   };
 
-  const renderCertificateCard = (certificate: any) => (
+  const renderCertificateCard = (item: any) => (
     <TouchableOpacity
-      key={certificate.id}
+      key={item.id}
       style={[styles.certificateCard, { width: cardWidth }]}
       activeOpacity={0.7}
       onPress={() => {
-        // Route to the appropriate e-certificate based on type
-        let route = '/e-certificate-fit-to-work'; // default fallback
-        
-        if (certificate.type === 'Fit to Work Certificate') {
-          route = '/e-certificate-fit-to-work';
-        } else if (certificate.type === 'Medical/Sickness Certificate' || certificate.type === 'Medical Certificate') {
-          route = '/e-certificate-medical-sickness';
-        } else if (certificate.type === 'Fit to Travel Certificate') {
-          route = '/e-certificate-fit-to-travel';
+        if (currentView === 'prescriptions') {
+          // Route to e-prescription page using the appropriate ID based on source
+          let ePrescriptionId = item.consultationId;
+          
+          if (item.source === 'appointment' && item.appointmentId) {
+            ePrescriptionId = item.appointmentId;
+          } else if (item.source === 'referral' && item.referralId) {
+            ePrescriptionId = item.referralId;
+          }
+          
+          router.push(`/e-prescription?id=${ePrescriptionId}` as any);
+        } else {
+          // Route to the appropriate e-certificate based on type
+          let route = '/e-certificate-fit-to-work'; // default fallback
+          
+          if (item.type === 'Fit to Work Certificate') {
+            route = '/e-certificate-fit-to-work';
+          } else if (item.type === 'Medical/Sickness Certificate' || item.type === 'Medical Certificate') {
+            route = '/e-certificate-medical-sickness';
+          } else if (item.type === 'Fit to Travel Certificate') {
+            route = '/e-certificate-fit-to-travel';
+          }
+          // Pass the consultation ID and certificate ID for proper data loading
+          router.push(route + `?id=${item.consultationId}&certificateId=${item.id}` as any);
         }
-        // Pass the consultation ID and certificate ID for proper data loading
-        router.push(route + `?id=${certificate.consultationId}&certificateId=${certificate.id}` as any);
       }}
     >
-      {renderPDFThumbnail(certificate)}
+      {renderPDFThumbnail(item)}
       <View style={styles.cardContent}>
         <Text style={styles.certificateType} numberOfLines={2}>
-          {certificate.type || 'Medical Certificate'}
+          {item.type || 'Medical Certificate'}
         </Text>
         <Text style={styles.issuedByLabel} numberOfLines={1}>
           Issued by
         </Text>
         <Text style={styles.doctorName} numberOfLines={1}>
-          {certificate.doctorDetails ? 
-            `Dr. ${certificate.doctorDetails.firstName || ''} ${certificate.doctorDetails.lastName || ''}`.trim() || 'Dr. Unknown Doctor' :
-            certificate.specialistId || 'Dr. Unknown Doctor'
+          {item.doctorDetails ? 
+            `Dr. ${item.doctorDetails.firstName || ''} ${item.doctorDetails.lastName || ''}`.trim() || 'Dr. Unknown Doctor' :
+            item.specialistId || 'Dr. Unknown Doctor'
           }
         </Text>
         <Text style={styles.issuedDate}>
-          {certificate.issueDate ? new Date(certificate.issueDate).toLocaleDateString() : 'Date not specified'}
+          {item.issueDate ? new Date(item.issueDate).toLocaleDateString() : 'Date not specified'}
         </Text>
       </View>
     </TouchableOpacity>
   );
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <View style={styles.emptyIcon}>
-        <FileText size={48} color="#9CA3AF" />
+  const renderEmptyState = () => {
+    const isPrescriptions = currentView === 'prescriptions';
+    const IconComponent = isPrescriptions ? FileSignature : FileText;
+    
+    return (
+      <View style={styles.emptyState}>
+        <View style={styles.emptyIcon}>
+          <IconComponent size={48} color="#9CA3AF" />
+        </View>
+        <Text style={styles.emptyTitle}>
+          {loading ? `Loading ${isPrescriptions ? 'e-prescriptions' : 'certificates'}...` : `No ${isPrescriptions ? 'e-prescriptions' : 'certificates'} found`}
+        </Text>
+        <Text style={styles.emptyDescription}>
+          {loading 
+            ? `Please wait while we load your ${isPrescriptions ? 'e-prescriptions' : 'certificates'}...`
+            : `Your ${isPrescriptions ? 'e-prescriptions' : 'medical certificates'} will appear here once they're issued by healthcare providers.`
+          }
+        </Text>
       </View>
-      <Text style={styles.emptyTitle}>
-        {loading ? 'Loading certificates...' : 'No certificates found'}
-      </Text>
-      <Text style={styles.emptyDescription}>
-        {loading 
-          ? 'Please wait while we load your certificates...'
-          : 'Your medical certificates will appear here once they\'re issued by healthcare providers.'
-        }
-      </Text>
-    </View>
-  );
+    );
+  };
 
   const renderGrid = () => {
     const rows = [];
-    for (let i = 0; i < filteredCertificates.length; i += 2) {
-      const leftCard = filteredCertificates[i];
-      const rightCard = filteredCertificates[i + 1];
+    for (let i = 0; i < filteredData.length; i += 2) {
+      const leftCard = filteredData[i];
+      const rightCard = filteredData[i + 1];
       rows.push(
         <View key={i} style={styles.gridRow}>
           {renderCertificateCard(leftCard)}
@@ -331,7 +542,18 @@ export default function CertificatesScreen() {
       />
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Medical Certificates</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity 
+            style={styles.titleDropdown}
+            onPress={handleShowViewDropdown}
+            ref={viewBtnRef}
+          >
+            <Text style={styles.headerTitle}>
+              {currentView === 'certificates' ? 'Medical Certificates' : 'E-Prescriptions'}
+            </Text>
+            <ChevronDown size={20} color="#1F2937" style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
+        </View>
         <TouchableOpacity 
           style={styles.profileButton}
           onPress={() => router.push('/(patient)/tabs/profile')}
@@ -347,7 +569,7 @@ export default function CertificatesScreen() {
             <Search size={18} color="#9CA3AF" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search certificates"
+              placeholder={`Search ${currentView === 'certificates' ? 'certificates' : 'e-prescriptions'}`}
               placeholderTextColor="#9CA3AF"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -410,6 +632,7 @@ export default function CertificatesScreen() {
           </ScrollView>
         </View>
         {renderSortDropdown()}
+        {renderViewDropdown()}
       </View>
 
       {/* Certificates List */}
@@ -421,7 +644,7 @@ export default function CertificatesScreen() {
         <View style={styles.certificatesList}>
           {loading && error ? (
             <LoadingState message={error} />
-          ) : filteredCertificates.length === 0 ? renderEmptyState() : renderGrid()}
+          ) : filteredData.length === 0 ? renderEmptyState() : renderGrid()}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -443,9 +666,18 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: '#FFFFFF',
   },
+  headerLeft: {
+    flex: 1,
+  },
+  titleDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+  },
   headerTitle: {
     fontSize: 24,
     color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
   },
   profileButton: {
     width: 40,
@@ -749,6 +981,41 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   sortDropdownActiveText: {
+    color: '#1E40AF',
+    fontFamily: 'Inter-Medium',
+  },
+  // View Dropdown Styles
+  viewDropdown: {
+    position: 'absolute',
+    minWidth: 200,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 8,
+    zIndex: 1100,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  viewDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  viewDropdownText: {
+    fontSize: 15,
+    color: '#374151',
+    flex: 1,
+  },
+  viewDropdownActiveItem: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+  },
+  viewDropdownActiveText: {
     color: '#1E40AF',
     fontFamily: 'Inter-Medium',
   },
