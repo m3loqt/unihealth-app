@@ -23,7 +23,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function SignaturePage() {
   const params = useLocalSearchParams();
-  const { certificateData, consultationId, referralId, patientId, fromSpecialist } = params;
+  const { certificateData, prescriptionData, consultationId, referralId, patientId, fromSpecialist } = params;
   
   const signatureRef = useRef<any>(null);
   const [isSigning, setIsSigning] = useState(false);
@@ -44,8 +44,12 @@ export default function SignaturePage() {
     addSignatureToCertificate,
   } = useSignaturePage();
 
-  // Parse certificate data from params
-  const parsedCertificateData = certificateData ? JSON.parse(certificateData as string) : {};
+  // Parse document data from params
+  const parsedDocumentData = certificateData 
+    ? JSON.parse(certificateData as string) 
+    : prescriptionData 
+    ? JSON.parse(prescriptionData as string) 
+    : {};
 
   // Clear signature and reset state on mount for fresh start
   useEffect(() => {
@@ -169,23 +173,40 @@ export default function SignaturePage() {
         return; // Error handling is done in the hook
       }
       
-      // Add signature to certificate data using the hook
-      const updatedCertificateData = addSignatureToCertificate(parsedCertificateData);
+      // Add signature to document data using the hook
+      const updatedDocumentData = addSignatureToCertificate(parsedDocumentData);
       
-      console.log('Updated certificate data:', {
-        hasDigitalSignature: !!updatedCertificateData.digitalSignature,
-        signatureLength: updatedCertificateData.digitalSignature ? updatedCertificateData.digitalSignature.length : 0,
-        certificateType: updatedCertificateData.type
+      console.log('Updated document data:', {
+        hasDigitalSignature: !!updatedDocumentData.digitalSignature,
+        signatureLength: updatedDocumentData.digitalSignature ? updatedDocumentData.digitalSignature.length : 0,
+        documentType: updatedDocumentData.type || 'prescription'
       });
 
-      // Check if this is from specialist certificate creation
-      if (fromSpecialist === 'true' && user?.uid && patientId) {
+      // Check if this is a prescription or certificate
+      if (prescriptionData) {
+        // Handle prescription flow - return to consultation with signed prescription
+        console.log('Returning prescription with signature to consultation...');
+        
+        // Navigate back to consultation with signed prescription
+        router.replace({
+          pathname: '/(patient)/patient-consultation',
+          params: {
+            prescriptionData: JSON.stringify(updatedDocumentData),
+            ...(consultationId && { consultationId }),
+            ...(referralId && { referralId }),
+            ...(patientId && { patientId }),
+            signatureAdded: 'true',
+          },
+        });
+        
+      } else if (fromSpecialist === 'true' && user?.uid && patientId) {
+        // Handle specialist certificate creation (standalone)
         console.log('Saving certificate directly to database from specialist flow (no appointmentId)');
         
         // Save certificate directly to database WITHOUT appointmentId
         // This is a standalone certificate, not linked to any consultation
         const certificateId = await databaseService.createCertificateInNewStructure(
-          updatedCertificateData,
+          updatedDocumentData,
           patientId as string,
           user.uid
           // No appointmentId parameter - this is standalone
@@ -203,9 +224,9 @@ export default function SignaturePage() {
           [{ text: 'OK' }]
         );
       } else {
-        // Original flow - navigate back to consultation
+        // Handle consultation certificate flow - navigate back to consultation
         const navigationParams = {
-          certificateData: JSON.stringify(updatedCertificateData),
+          certificateData: JSON.stringify(updatedDocumentData),
           ...(consultationId && { consultationId }),
           ...(referralId && { referralId }),
           ...(patientId && { patientId }),
