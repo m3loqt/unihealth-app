@@ -1052,7 +1052,7 @@ export default function PatientReferralDetailsScreen() {
                           params: { 
                             certificateId: cert.id,
                             consultationId: referralData.referralConsultationId || '',
-                            referralId: String(id),
+                            id: String(id),
                             patientId: referralData.patientId || ''
                           }
                         });
@@ -1062,7 +1062,7 @@ export default function PatientReferralDetailsScreen() {
                           params: { 
                             certificateId: cert.id,
                             consultationId: referralData.referralConsultationId || '',
-                            referralId: String(id),
+                            id: String(id),
                             patientId: referralData.patientId || ''
                           }
                         });
@@ -1072,7 +1072,7 @@ export default function PatientReferralDetailsScreen() {
                           params: { 
                             certificateId: cert.id,
                             consultationId: referralData.referralConsultationId || '',
-                            referralId: String(id),
+                            id: String(id),
                             patientId: referralData.patientId || ''
                           }
                         });
@@ -1083,7 +1083,7 @@ export default function PatientReferralDetailsScreen() {
                           params: { 
                             certificateId: cert.id,
                             consultationId: referralData.referralConsultationId || '',
-                            referralId: String(id),
+                            id: String(id),
                             patientId: referralData.patientId || ''
                           }
                         });

@@ -33,6 +33,7 @@ import { usePatientChatDoctors } from '@/hooks/data/usePatientChatDoctors';
 import { chatService } from '@/services/chatService';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { OnlineStatusIndicator } from '@/components/OnlineStatusIndicator';
 
 interface ChatParticipant {
   uid: string;
@@ -397,6 +398,11 @@ export default function PatientChatsScreen() {
               </Text>
             </View>
           )}
+          <OnlineStatusIndicator 
+            userId={participant.uid} 
+            size="small" 
+            style={styles.onlineStatusIndicator}
+          />
         </View>
 
         <View style={styles.chatContent}>
@@ -469,6 +475,7 @@ export default function PatientChatsScreen() {
     <ErrorBoundary>
       <SafeAreaView style={styles.container}>
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        
         
         {/* Header */}
         <View style={styles.header}>
@@ -591,6 +598,12 @@ const styles = StyleSheet.create({
   },
   chatAvatar: {
     marginRight: 16,
+    position: 'relative',
+  },
+  onlineStatusIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
   },
   avatarImage: {
     width: 48,

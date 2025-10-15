@@ -1232,11 +1232,62 @@ export default function VisitOverviewScreen() {
                   <Text style={styles.certificateInfoValue}>{displayDate ? formatDate(displayDate) : 'Not specified'}</Text>
                 </View>
                 <View style={styles.certificateActions}>
-                  <TouchableOpacity style={[styles.secondaryButton, { marginRight: 9 }]}>
+                  <TouchableOpacity 
+                    style={[styles.secondaryButton, { marginRight: 9 }]}
+                    onPress={() => {
+                      // Route to the corresponding certificate screen based on type
+                      const certificateType = cert.type?.toLowerCase();
+                      if (certificateType?.includes('fit to work')) {
+                        router.push({
+                          pathname: '/e-certificate-fit-to-work',
+                          params: { 
+                            certificateId: cert.id,
+                            consultationId: visitData.appointmentConsultationId || visitData.consultationId || '',
+                            id: String(id),
+                            patientId: visitData.patientId || ''
+                          }
+                        });
+                      } else if (certificateType?.includes('medical') || certificateType?.includes('sickness')) {
+                        router.push({
+                          pathname: '/e-certificate-medical-sickness',
+                          params: { 
+                            certificateId: cert.id,
+                            consultationId: visitData.appointmentConsultationId || visitData.consultationId || '',
+                            id: String(id),
+                            patientId: visitData.patientId || ''
+                          }
+                        });
+                      } else if (certificateType?.includes('fit to travel')) {
+                        router.push({
+                          pathname: '/e-certificate-fit-to-travel',
+                          params: { 
+                            certificateId: cert.id,
+                            consultationId: visitData.appointmentConsultationId || visitData.consultationId || '',
+                            id: String(id),
+                            patientId: visitData.patientId || ''
+                          }
+                        });
+                      } else {
+                        // Fallback for unknown certificate types
+                        router.push({
+                          pathname: '/e-certificate-fit-to-work',
+                          params: { 
+                            certificateId: cert.id,
+                            consultationId: visitData.appointmentConsultationId || visitData.consultationId || '',
+                            id: String(id),
+                            patientId: visitData.patientId || ''
+                          }
+                        });
+                      }
+                    }}
+                  >
                     <Eye size={18} color="#374151" />
                     <Text style={styles.secondaryButtonText}>View</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.primaryButton}>
+                  <TouchableOpacity 
+                    style={styles.primaryButton}
+                    onPress={handleDownloadPdf}
+                  >
                     <Download size={18} color="#FFFFFF" />
                     <Text style={styles.primaryButtonText}>Download</Text>
                   </TouchableOpacity>

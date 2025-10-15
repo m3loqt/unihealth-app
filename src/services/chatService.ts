@@ -367,17 +367,24 @@ class ChatService {
 
       const snapshot = await get(messagesQuery);
       if (snapshot.exists()) {
-        const updates: { [key: string]: any } = {};
+        const updatePromises: Promise<void>[] = [];
         
         snapshot.forEach((childSnapshot) => {
           const messageData = childSnapshot.val();
           if (messageData && messageData.seenBy && !messageData.seenBy[userId]) {
-            updates[`${childSnapshot.key}/seenBy/${userId}`] = true;
+            const messageId = childSnapshot.key;
+            const seenByPath = `messages/${threadId}/${messageId}/seenBy/${userId}`;
+            console.log(`🔍 Marking message as seen: ${seenByPath}`);
+            
+            const seenByRef = ref(database, seenByPath);
+            updatePromises.push(set(seenByRef, true));
           }
         });
 
-        if (Object.keys(updates).length > 0) {
-          await update(ref(database), updates);
+        if (updatePromises.length > 0) {
+          console.log(`📝 Updating ${updatePromises.length} messages as seen by user ${userId}`);
+          await Promise.all(updatePromises);
+          console.log(`✅ Successfully marked messages as seen`);
         }
       }
     } catch (error) {

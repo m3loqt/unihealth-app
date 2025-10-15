@@ -33,6 +33,7 @@ import { useSpecialistChatPatients } from '@/hooks/data/useSpecialistChatPatient
 import { chatService } from '@/services/chatService';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { OnlineStatusIndicator } from '@/components/OnlineStatusIndicator';
 
 interface ChatParticipant {
   uid: string;
@@ -385,6 +386,11 @@ export default function SpecialistChatsScreen() {
               </Text>
             </View>
           )}
+          <OnlineStatusIndicator 
+            userId={participant.uid} 
+            size="small" 
+            style={styles.onlineStatusIndicator}
+          />
         </View>
 
         <View style={styles.chatContent}>
@@ -579,6 +585,12 @@ const styles = StyleSheet.create({
   },
   chatAvatar: {
     marginRight: 16,
+    position: 'relative',
+  },
+  onlineStatusIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
   },
   avatarImage: {
     width: 48,
