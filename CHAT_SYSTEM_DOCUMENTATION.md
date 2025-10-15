@@ -2,7 +2,7 @@
 
 ## Overview
 
-The chat system enables real-time messaging between patients and healthcare providers (specialists/generalists) in the UniHealth app. It supports both direct messaging and referral-based conversations with real-time updates and message status tracking.
+The chat system enables real-time messaging between patients and healthcare providers (specialists/generalists) in the UniHealth app. It supports both direct messaging and referral-based conversations with real-time updates, message status tracking, voice messages, typing indicators, and online status monitoring.
 
 ## Table of Contents
 
@@ -12,8 +12,12 @@ The chat system enables real-time messaging between patients and healthcare prov
 4. [Hooks and Data Management](#hooks-and-data-management)
 5. [UI Components](#ui-components)
 6. [Real-time Updates](#real-time-updates)
-7. [Security Rules](#security-rules)
-8. [Usage Examples](#usage-examples)
+7. [Voice Messages](#voice-messages)
+8. [Typing Indicators](#typing-indicators)
+9. [Online Status System](#online-status-system)
+10. [Generalist Chat Support](#generalist-chat-support)
+11. [Security Rules](#security-rules)
+12. [Usage Examples](#usage-examples)
 
 ## Data Models
 
@@ -25,7 +29,7 @@ interface ChatParticipant {
   firstName: string;
   lastName: string;
   email: string;
-  role: 'patient' | 'specialist' | 'admin';
+  role: 'patient' | 'specialist' | 'generalist' | 'admin';
   specialty?: string;
   avatar?: string;
 }
@@ -63,6 +67,11 @@ interface ChatMessage {
   attachmentUrl?: string;
   at: number;
   seenBy: { [uid: string]: boolean };
+  voiceMessage?: {
+    audioUrl: string;
+    duration: number;
+    waveform?: number[];
+  };
 }
 ```
 
@@ -110,13 +119,21 @@ firebase-realtime-database/
 │           ├── text: string
 │           ├── attachmentUrl?: string
 │           ├── at: timestamp
-│           └── seenBy: { [uid: string]: boolean }
+│           ├── seenBy: { [uid: string]: boolean }
+│           └── voiceMessage?: { audioUrl, duration, waveform? }
+├── typing/
+│   └── {threadId}/
+│       └── {userId}: boolean
+├── status/
+│   └── {userId}/
+│       ├── online: boolean
+│       └── lastSeen: timestamp
 └── users/
     └── {uid}/
         ├── firstName: string
         ├── lastName: string
         ├── email: string
-        ├── role: 'patient' | 'specialist' | 'admin'
+        ├── role: 'patient' | 'specialist' | 'generalist' | 'admin'
         └── specialty?: string
 ```
 
@@ -124,6 +141,8 @@ firebase-realtime-database/
 
 - **Chat Threads**: `/chatThreads/{threadId}`
 - **Messages**: `/messages/{threadId}/{messageId}`
+- **Typing Status**: `/typing/{threadId}/{userId}`
+- **User Status**: `/status/{userId}`
 - **User Data**: `/users/{uid}`
 
 ## Core Services
@@ -172,6 +191,39 @@ firebase-realtime-database/
 ##### `getThreadById(threadId: string)`
 - Retrieves specific thread by ID
 - Returns thread data
+
+##### `sendVoiceMessage(threadId: string, senderId: string, audioUrl: string, duration: number, waveform?: number[])`
+- Sends a voice message to a thread
+- Updates thread's lastMessage and unread counts
+- Returns message ID
+
+##### `setTypingStatus(threadId: string, userId: string, isTyping: boolean)`
+- Sets typing status for a user in a thread
+- Auto-clears typing status after 5 seconds
+- Used for typing indicators
+
+##### `listenToTypingStatus(threadId: string, callback: (typingUsers: string[]) => void)`
+- Listens to typing status changes in a thread
+- Returns array of currently typing user IDs
+- Returns unsubscribe function
+
+##### `setUserStatus(userId: string, isOnline: boolean)`
+- Sets user's online status
+- Updates lastSeen timestamp
+- Used for online status indicators
+
+##### `listenToUserStatus(userId: string, callback: (isOnline: boolean, lastSeen: number) => void)`
+- Listens to user's online status changes
+- Returns online status and last seen timestamp
+- Returns unsubscribe function
+
+##### `deleteMessage(threadId: string, messageId: string)`
+- Deletes a specific message from a thread
+- Removes message from Firebase
+
+##### `deleteThread(threadId: string)`
+- Deletes entire thread and all messages
+- Removes thread and messages from Firebase
 
 ## Hooks and Data Management
 
@@ -281,6 +333,162 @@ const { patients, loading, error, refresh } = useSpecialistChatPatients();
 - Updates in real-time
 - Resets when thread is marked as read
 
+## Voice Messages
+
+### Overview
+The chat system supports voice messages with audio recording, playback, and waveform visualization.
+
+### Voice Message Features
+- **Audio Recording**: Record voice messages directly in chat
+- **Audio Playback**: Play voice messages with progress controls
+- **Waveform Visualization**: Visual representation of audio waveform
+- **Duration Display**: Shows message duration
+- **Fallback Text**: Displays "🎤 Voice message" as placeholder text
+
+### Implementation
+```typescript
+// Send voice message
+const messageId = await chatService.sendVoiceMessage(
+  threadId,
+  senderId,
+  audioUrl,
+  duration,
+  waveform
+);
+
+// Voice message structure
+interface VoiceMessage {
+  audioUrl: string;
+  duration: number;
+  waveform?: number[];
+}
+```
+
+### Database Structure
+Voice messages are stored in the `voiceMessage` field of `ChatMessage`:
+```json
+{
+  "voiceMessage": {
+    "audioUrl": "https://storage.url/audio.mp3",
+    "duration": 15.5,
+    "waveform": [0.1, 0.3, 0.8, 0.5, ...]
+  }
+}
+```
+
+## Typing Indicators
+
+### Overview
+Real-time typing indicators show when other participants are typing messages.
+
+### Features
+- **Real-time Updates**: Shows typing status instantly
+- **Auto-clear**: Automatically clears typing status after 5 seconds
+- **Multiple Users**: Supports multiple users typing simultaneously
+- **Thread-specific**: Typing status is per thread
+
+### Implementation
+```typescript
+// Set typing status
+await chatService.setTypingStatus(threadId, userId, true);
+
+// Listen to typing status
+const unsubscribe = chatService.listenToTypingStatus(
+  threadId,
+  (typingUsers) => {
+    console.log('Users typing:', typingUsers);
+  }
+);
+```
+
+### Database Structure
+Typing status is stored in `/typing/{threadId}/{userId}`:
+```json
+{
+  "typing": {
+    "threadId": {
+      "userId1": true,
+      "userId2": false
+    }
+  }
+}
+```
+
+## Online Status System
+
+### Overview
+Tracks user online/offline status and last seen timestamps for better user experience.
+
+### Features
+- **Online Status**: Real-time online/offline indicators
+- **Last Seen**: Timestamp of when user was last active
+- **Automatic Updates**: Status updates when app state changes
+- **Visual Indicators**: Green dots for online users
+
+### Implementation
+```typescript
+// Set user status
+await chatService.setUserStatus(userId, true);
+
+// Listen to user status
+const unsubscribe = chatService.listenToUserStatus(
+  userId,
+  (isOnline, lastSeen) => {
+    console.log('User online:', isOnline, 'Last seen:', lastSeen);
+  }
+);
+```
+
+### Database Structure
+User status is stored in `/status/{userId}`:
+```json
+{
+  "status": {
+    "userId": {
+      "online": true,
+      "lastSeen": 1703123456789
+    }
+  }
+}
+```
+
+## Generalist Chat Support
+
+### Overview
+The chat system supports generalist doctors who can communicate with both patients and specialists.
+
+### Generalist Chat Capabilities
+- **Patient Communication**: Chat with patients from appointments
+- **Specialist Communication**: Chat with specialists from referrals
+- **Mixed Contact List**: Single interface showing both patients and specialists
+- **Role-based Styling**: Visual distinction between patient and specialist contacts
+
+### Data Sources
+- **Patients**: From appointments where generalist is the doctor
+- **Specialists**: From referrals where generalist is the referring doctor
+
+### Implementation
+```typescript
+// Generalist chat hook (similar to existing hooks)
+const { contacts, loading, error, refresh } = useGeneralistChatContacts();
+
+// Contact types
+interface GeneralistContact {
+  uid: string;
+  firstName: string;
+  lastName: string;
+  role: 'patient' | 'specialist';
+  source: 'appointment' | 'referral';
+  // ... other fields
+}
+```
+
+### UI Considerations
+- **Role Badges**: Display "Patient" or "Specialist" badges
+- **Source Indicators**: Show if contact is from appointment or referral
+- **Mixed Sorting**: Sort by last interaction regardless of role
+- **Unified Interface**: Same chat interface for all contact types
+
 ## Security Rules
 
 ### Firebase Realtime Database Rules
@@ -304,6 +512,22 @@ const { patients, loading, error, refresh } = useSpecialistChatPatients();
       "$threadId": {
         ".read": "auth != null && root.child('chatThreads').child($threadId).child('participants').child(auth.uid).exists()",
         ".write": "auth != null && root.child('chatThreads').child($threadId).child('participants').child(auth.uid).exists()"
+      }
+    },
+    "typing": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$threadId": {
+        ".read": "auth != null && root.child('chatThreads').child($threadId).child('participants').child(auth.uid).exists()",
+        ".write": "auth != null && root.child('chatThreads').child($threadId).child('participants').child(auth.uid).exists()"
+      }
+    },
+    "status": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$userId": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid == $userId"
       }
     }
   }
@@ -373,6 +597,59 @@ const { doctors, loading, error, refresh } = usePatientChatDoctors();
 
 // Specialist side
 const { patients, loading, error, refresh } = useSpecialistChatPatients();
+
+// Generalist side (if implemented)
+const { contacts, loading, error, refresh } = useGeneralistChatContacts();
+```
+
+### Voice Message Usage
+
+```typescript
+// Send voice message
+const messageId = await chatService.sendVoiceMessage(
+  threadId,
+  senderId,
+  audioUrl,
+  duration,
+  waveform
+);
+```
+
+### Typing Indicators Usage
+
+```typescript
+// Set typing status when user starts typing
+await chatService.setTypingStatus(threadId, userId, true);
+
+// Clear typing status when user stops typing
+await chatService.setTypingStatus(threadId, userId, false);
+
+// Listen to typing status
+const unsubscribe = chatService.listenToTypingStatus(
+  threadId,
+  (typingUsers) => {
+    setTypingUsers(typingUsers);
+  }
+);
+```
+
+### Online Status Usage
+
+```typescript
+// Set user online when app becomes active
+await chatService.setUserStatus(userId, true);
+
+// Set user offline when app becomes inactive
+await chatService.setUserStatus(userId, false);
+
+// Listen to user status
+const unsubscribe = chatService.listenToUserStatus(
+  userId,
+  (isOnline, lastSeen) => {
+    setUserOnline(isOnline);
+    setLastSeen(lastSeen);
+  }
+);
 ```
 
 ## Error Handling
@@ -426,19 +703,31 @@ const { patients, loading, error, refresh } = useSpecialistChatPatients();
 
 1. **Message Status Indicators**
    - Delivered status
-   - Read receipts
-   - Typing indicators
+   - Enhanced read receipts
+   - Message reactions
 
 2. **Message Types**
    - File attachments
    - Image messages
    - System messages
+   - Document sharing
 
 3. **Advanced Features**
    - Message search
-   - Message reactions
    - Thread archiving
    - Message forwarding
+   - Chat history export
+   - Message encryption
+
+4. **Enhanced Voice Features**
+   - Voice message transcription
+   - Voice message search
+   - Voice message compression
+
+5. **Group Chat Support**
+   - Multi-participant threads
+   - Group management
+   - Broadcast messages
 
 ## Troubleshooting
 
@@ -468,4 +757,4 @@ const { patients, loading, error, refresh } = useSpecialistChatPatients();
 
 ---
 
-*This documentation covers the core chat system functionality. For voice message features, refer to the Voice Message Documentation.*
+*This documentation covers the complete chat system functionality including voice messages, typing indicators, online status, and generalist support. For detailed generalist implementation, refer to the Generalist Chat System Implementation Guide.*
