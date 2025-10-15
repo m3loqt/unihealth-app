@@ -47,6 +47,7 @@ export default function EPrescriptionScreen() {
   const [providerUser, setProviderUser] = useState<any>(null);
   const [logoDataUri, setLogoDataUri] = useState<string | null>(null);
   const [rxDataUri, setRxDataUri] = useState<string | null>(null);
+  const [doctorSignature, setDoctorSignature] = useState<string | null>(null);
   const webViewRef = useRef<WebView>(null);
   const [downloadModalVisible, setDownloadModalVisible] = useState(false);
   const [downloadSavedPath, setDownloadSavedPath] = useState<string | null>(null);
@@ -57,12 +58,55 @@ export default function EPrescriptionScreen() {
       try {
         setLoading(true);
         setError(null);
-        const refData = await databaseService.getReferralById(String(id));
+        
+        // Try to load as referral first
+        console.log('🔍 E-Prescription: Attempting to load data for ID:', id);
+        let refData = await databaseService.getReferralById(String(id));
+        let isAppointment = false;
+        
+        if (refData) {
+          console.log('✅ E-Prescription: Found as referral');
+        } else {
+          console.log('ℹ️ E-Prescription: Not found as referral, trying as appointment');
+        }
+        
+        // If not found as referral, try as appointment
         if (!refData) {
-          setError('Referral not found');
+          try {
+            const appointmentData = await databaseService.getAppointmentById(String(id));
+            if (appointmentData) {
+              // Convert appointment to referral-like structure for e-prescription
+              refData = {
+                id: appointmentData.id,
+                patientId: appointmentData.patientId,
+                assignedSpecialistId: appointmentData.doctorId,
+                assignedSpecialistFirstName: appointmentData.doctorFirstName,
+                assignedSpecialistLastName: appointmentData.doctorLastName,
+                referringClinicId: appointmentData.clinicId,
+                referringClinicName: appointmentData.clinicName,
+                appointmentDate: appointmentData.appointmentDate,
+                appointmentTime: appointmentData.appointmentTime,
+                referralConsultationId: appointmentData.appointmentConsultationId,
+                clinicAppointmentId: appointmentData.id,
+                status: appointmentData.status,
+                // Add appointment-specific fields as any to avoid type conflicts
+                appointmentPurpose: appointmentData.appointmentPurpose,
+                type: appointmentData.type,
+              } as any;
+              isAppointment = true;
+              console.log('✅ Loaded appointment data for e-prescription:', appointmentData.id);
+            }
+          } catch (appointmentError) {
+            console.log('Could not load as appointment:', appointmentError);
+          }
+        }
+        
+        if (!refData) {
+          setError(`No data found for ID: ${id}. Please check if this is a valid referral or appointment.`);
           setLoading(false);
           return;
         }
+        
         setReferral(refData);
 
         // Related entities
@@ -101,6 +145,21 @@ export default function EPrescriptionScreen() {
         setPrescriptions(loadedPrescriptions || []);
         const dx = Array.isArray(mhData?.diagnosis) ? mhData.diagnosis : [];
         setDiagnoses(dx);
+
+        // Load doctor signature if provider is available
+        if (refData.assignedSpecialistId) {
+          try {
+            const { signature, isSignatureSaved } = await databaseService.getDoctorSignature(refData.assignedSpecialistId);
+            if (isSignatureSaved && signature) {
+              setDoctorSignature(signature);
+              console.log('✅ Loaded doctor signature for e-prescription');
+            } else {
+              console.log('ℹ️ No saved signature found for doctor');
+            }
+          } catch (error) {
+            console.log('Could not load doctor signature:', error);
+          }
+        }
       } catch (e) {
         setError('Failed to load e-prescription');
       } finally {
@@ -443,7 +502,12 @@ export default function EPrescriptionScreen() {
           <div style="display:flex; justify-content:flex-end; margin-top: 20px;">
             <div class="signature-wrap">
               <div class="signature-label">Prescribing Doctor</div>
-              <div class="signature-name" id="sig-name">Dr. ${doctorName}</div>
+              <div class="signature-name" id="sig-name" style="position: relative;">
+                ${doctorSignature ? `
+                  <div class="signature-image-container" style="position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background-image: url('${doctorSignature}'); background-size: contain; background-repeat: no-repeat; background-position: center; width: 150px; height: 60px; z-index: 10;"></div>
+                ` : ''}
+                Dr. ${doctorName}
+              </div>
               <div class="signature-line" id="sig-line"></div>
               ${provider?.prcId ? `<div class="signature-caption">PRC ID: ${safe(provider.prcId)}</div>` : ''}
               ${provider?.phone || provider?.contactNumber ? `<div class="signature-caption">Phone: ${safe(provider.phone || provider.contactNumber)}</div>` : ''}
@@ -476,7 +540,7 @@ export default function EPrescriptionScreen() {
   </script>
 </body>
 </html>`;
-  }, [clinic, patient, provider, referral, prescriptions, logoDataUri, user?.role]);
+  }, [clinic, patient, provider, referral, prescriptions, logoDataUri, user?.role, doctorSignature]);
 
   const handleGeneratePdf = async () => {
     try {
