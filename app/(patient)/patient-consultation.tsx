@@ -590,6 +590,109 @@ export default function PatientConsultationScreen() {
     }
   }, [params.signatureAdded, params.certificateData]);
 
+  // Handle prescription signature data when returning from signature page
+  useEffect(() => {
+    const signatureAdded = params.signatureAdded;
+    const prescriptionDataParam = params.prescriptionData;
+    
+    if (signatureAdded === 'true' && prescriptionDataParam) {
+      // Restore consultation data from AsyncStorage and add prescription
+      const timeoutId = setTimeout(async () => {
+        try {
+          const prescriptionData = JSON.parse(prescriptionDataParam as string);
+          
+          // Debug: Log the prescription data to understand what's being passed
+          console.log('Processing prescription signature data:', {
+            hasDigitalSignature: !!prescriptionData.digitalSignature,
+            signatureLength: prescriptionData.digitalSignature ? prescriptionData.digitalSignature.length : 0,
+            signatureStart: prescriptionData.digitalSignature ? prescriptionData.digitalSignature.substring(0, 50) : 'none',
+            medication: prescriptionData.medication,
+            fullPrescriptionData: prescriptionData
+          });
+          
+          // Try to restore consultation data from AsyncStorage
+          const consultationDataKey = `consultation_data_${consultationIdString || referralIdString || 'temp'}`;
+          try {
+            const storedData = await AsyncStorage.getItem(consultationDataKey);
+            if (storedData) {
+              const restoredFormData = JSON.parse(storedData);
+              console.log('🔍 Restored consultation data from AsyncStorage for prescription:', {
+                diagnosesCount: restoredFormData.diagnoses?.length || 0,
+                hasPresentIllnessHistory: !!restoredFormData.presentIllnessHistory,
+                hasReviewOfSymptoms: !!restoredFormData.reviewOfSymptoms,
+                prescriptionsCount: restoredFormData.prescriptions?.length || 0
+              });
+              
+              // Restore the consultation data and add the new prescription
+              setFormData({
+                ...restoredFormData,
+                prescriptions: [...(restoredFormData.prescriptions || []), prescriptionData]
+              });
+              
+              // Clean up the stored data
+              await AsyncStorage.removeItem(consultationDataKey);
+              console.log('🔍 Cleaned up AsyncStorage data for prescription');
+            } else {
+              console.log('🔍 No stored consultation data found, adding prescription to current formData');
+              // Fallback: add prescription to current formData
+              setFormData(prev => ({
+                ...prev,
+                prescriptions: [...prev.prescriptions, prescriptionData]
+              }));
+            }
+          } catch (storageError) {
+            console.error('Error restoring consultation data from AsyncStorage for prescription:', storageError);
+            // Fallback: add prescription to current formData
+            setFormData(prev => ({
+              ...prev,
+              prescriptions: [...prev.prescriptions, prescriptionData]
+            }));
+          }
+          
+          // Clear the prescription form
+          setNewPrescription({
+            medication: '',
+            dosage: '',
+            frequency: '',
+            route: '',
+            durationNumber: '',
+            durationUnit: '',
+            description: '',
+            formula: '',
+            take: '',
+            totalQuantity: '',
+          });
+          
+          // Hide the form
+          setShowAddPrescription(false);
+          setHasChanges(true);
+          
+          // Debug: Log what's happening after signature is added
+          console.log('After prescription signature processing:', {
+            prescriptionsCount: formData.prescriptions.length + 1, // +1 because we're adding one
+            hasChanges: true,
+            progressPercent: progressPercent,
+            isCompleteEnabled: isCompleteEnabled
+          });
+          
+          // Show success message
+          Alert.alert(
+            'Prescription Signed', 
+            'Your prescription has been signed and added to the consultation. You can continue adding more prescriptions or complete the consultation when ready.',
+            [{ text: 'OK', style: 'default' }]
+          );
+          
+          // Clear the params to prevent re-processing
+          router.setParams({ signatureAdded: undefined, prescriptionData: undefined });
+        } catch (error) {
+          console.error('Error parsing prescription data:', error);
+        }
+      }, 100); // Small delay to ensure consultation data is loaded first
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [params.signatureAdded, params.prescriptionData]);
+
   // Update completion status when appointment or referral data changes
   useEffect(() => {
     const checkCompletionStatus = () => {
@@ -1036,7 +1139,7 @@ export default function PatientConsultationScreen() {
   };
 
   // --- PRESCRIPTION HANDLERS ---
-  const handleAddPrescription = () => {
+  const handleAddPrescription = async () => {
     if (!newPrescription.medication?.trim() || !newPrescription.dosage?.trim() || !newPrescription.frequency?.trim()) {
       Alert.alert('Error', 'Please fill in medication, dosage, and frequency fields.');
       return;
@@ -1058,14 +1161,8 @@ export default function PatientConsultationScreen() {
       ? `${newPrescription.durationNumber} ${newPrescription.durationUnit}`
       : '';
     
-    // const prescription = {
-    //   id: Date.now(),
-    //   ...newPrescription,
-    //   duration,
-    //   prescribedDate: new Date().toLocaleDateString(),
-    // };
-
-    const prescription = {
+    // Create prescription data for signature flow
+    const prescriptionData = {
       id: Date.now(),
       medication: newPrescription.medication,
       dosage: newPrescription.dosage,
@@ -1076,29 +1173,92 @@ export default function PatientConsultationScreen() {
       formula: newPrescription.formula,
       take: newPrescription.take,
       totalQuantity: newPrescription.totalQuantity,
-      prescribedDate: new Date().toLocaleDateString(),
+      issuedDate: new Date().toLocaleDateString(),
+      issuedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'Active',
     };
-    
-    setFormData((prev) => ({
-      ...prev,
-      prescriptions: [...prev.prescriptions, prescription],
-    }));
-    
-    setNewPrescription({
-      medication: '',
-      dosage: '',
-      frequency: '',
-      route: '',
-      durationNumber: '',
-      durationUnit: '',
-      description: '',
-      formula: '',
-      take: '',
-      totalQuantity: '',
-    });
-    
-    setShowAddPrescription(false);
-    setHasChanges(true);
+
+    try {
+      // Check if doctor has a saved signature
+      if (user?.uid) {
+        const { signature: savedSignature, isSignatureSaved } = await databaseService.getDoctorSignature(user.uid);
+        
+        if (isSignatureSaved && savedSignature) {
+          // Auto-use saved signature, skip signature page
+          console.log('✅ Using saved signature for prescription, skipping signature page');
+          
+          const signedPrescription = {
+            ...prescriptionData,
+            digitalSignature: savedSignature,
+            signatureKey: `signature_${Date.now()}`,
+            signedAt: new Date().toISOString(),
+          };
+          
+          // Add signed prescription to form data
+          setFormData((prev) => ({
+            ...prev,
+            prescriptions: [...prev.prescriptions, signedPrescription],
+          }));
+          
+          // Clear prescription form
+          setNewPrescription({
+            medication: '',
+            dosage: '',
+            frequency: '',
+            route: '',
+            durationNumber: '',
+            durationUnit: '',
+            description: '',
+            formula: '',
+            take: '',
+            totalQuantity: '',
+          });
+          
+          setShowAddPrescription(false);
+          setHasChanges(true);
+          
+          console.log('✅ Prescription added with saved signature');
+          return;
+        }
+      }
+      
+      // No saved signature, navigate to signature page
+      // Store consultation data in AsyncStorage before navigating to signature page
+      const storeData = async () => {
+        try {
+          const consultationDataKey = `consultation_data_${consultationIdString || referralIdString || 'temp'}`;
+          await AsyncStorage.setItem(consultationDataKey, JSON.stringify(formData));
+          console.log('🔍 Stored consultation data in AsyncStorage:', consultationDataKey);
+        } catch (error) {
+          console.error('Error storing consultation data:', error);
+        }
+      };
+      
+      storeData();
+
+      router.push({
+        pathname: '/(patient)/signature-page',
+        params: {
+          prescriptionData: JSON.stringify(prescriptionData),
+          ...(consultationIdString && { consultationId: consultationIdString }),
+          ...(referralIdString && { referralId: referralIdString }),
+          ...(patientId && { patientId: Array.isArray(patientId) ? patientId[0] : patientId }),
+        },
+      });
+      
+    } catch (error) {
+      console.error('❌ Error checking saved signature for prescription:', error);
+      // Fallback: navigate to signature page
+      router.push({
+        pathname: '/(patient)/signature-page',
+        params: {
+          prescriptionData: JSON.stringify(prescriptionData),
+          ...(consultationIdString && { consultationId: consultationIdString }),
+          ...(referralIdString && { referralId: referralIdString }),
+          ...(patientId && { patientId: Array.isArray(patientId) ? patientId[0] : patientId }),
+        },
+      });
+    }
   };
 
   const handleRemovePrescription = (id: number) => {
@@ -1123,13 +1283,13 @@ export default function PatientConsultationScreen() {
   };
 
   // --- CERTIFICATE HANDLERS ---
-  const handleAddCertificate = () => {
+  const handleAddCertificate = async () => {
     if (!newCertificate.type?.trim() || !newCertificate.description?.trim()) {
       Alert.alert('Error', 'Please fill in certificate type and description fields.');
       return;
     }
     
-    // Navigate to signature page with certificate data
+    // Create certificate data for signature flow
     const certificateData = {
       id: Date.now(),
       ...newCertificate,
@@ -1138,31 +1298,96 @@ export default function PatientConsultationScreen() {
       status: 'Valid',
     };
 
-    // Store consultation data in AsyncStorage before navigating to signature page
-    const storeData = async () => {
-      try {
-        const consultationDataKey = `consultation_data_${consultationIdString || referralIdString || 'temp'}`;
-        await AsyncStorage.setItem(consultationDataKey, JSON.stringify(formData));
-        console.log('🔍 Stored consultation data in AsyncStorage:', consultationDataKey);
-      } catch (error) {
-        console.error('Error storing consultation data:', error);
+    try {
+      // Check if doctor has a saved signature
+      if (user?.uid) {
+        const { signature: savedSignature, isSignatureSaved } = await databaseService.getDoctorSignature(user.uid);
+        
+        if (isSignatureSaved && savedSignature) {
+          // Auto-use saved signature, skip signature page
+          console.log('✅ Using saved signature for certificate, skipping signature page');
+          
+          const signedCertificate = {
+            ...certificateData,
+            digitalSignature: savedSignature,
+            signatureKey: `signature_${Date.now()}`,
+            signedAt: new Date().toISOString(),
+          };
+          
+          // Add signed certificate to form data
+          setFormData((prev) => ({
+            ...prev,
+            certificates: [...prev.certificates, signedCertificate],
+          }));
+          
+          // Clear certificate form
+          setNewCertificate({
+            type: '',
+            description: '',
+            fitnessStatement: '',
+            workRestrictions: '',
+            nextReviewDate: '',
+            unfitPeriodStart: '',
+            unfitPeriodEnd: '',
+            medicalAdvice: '',
+            reasonForUnfitness: '',
+            followUpDate: '',
+            travelFitnessStatement: '',
+            travelMode: '',
+            destination: '',
+            travelDate: '',
+            specialConditions: '',
+            validityPeriod: '',
+          });
+          
+          setShowAddCertificate(false);
+          setHasChanges(true);
+          
+          console.log('✅ Certificate added with saved signature');
+          return;
+        }
       }
-    };
-    
-    storeData();
+      
+      // No saved signature, navigate to signature page
+      // Store consultation data in AsyncStorage before navigating to signature page
+      const storeData = async () => {
+        try {
+          const consultationDataKey = `consultation_data_${consultationIdString || referralIdString || 'temp'}`;
+          await AsyncStorage.setItem(consultationDataKey, JSON.stringify(formData));
+          console.log('🔍 Stored consultation data in AsyncStorage:', consultationDataKey);
+        } catch (error) {
+          console.error('Error storing consultation data:', error);
+        }
+      };
+      
+      storeData();
 
-    router.push({
-      pathname: '/(patient)/signature-page',
-      params: {
-        certificateData: JSON.stringify(certificateData),
-        ...(consultationIdString && { consultationId: consultationIdString }),
-        ...(referralIdString && { referralId: referralIdString }),
-        ...(patientId && { patientId: Array.isArray(patientId) ? patientId[0] : patientId }),
-      },
-    });
+      router.push({
+        pathname: '/(patient)/signature-page',
+        params: {
+          certificateData: JSON.stringify(certificateData),
+          ...(consultationIdString && { consultationId: consultationIdString }),
+          ...(referralIdString && { referralId: referralIdString }),
+          ...(patientId && { patientId: Array.isArray(patientId) ? patientId[0] : patientId }),
+        },
+      });
+      
+    } catch (error) {
+      console.error('❌ Error checking saved signature for certificate:', error);
+      // Fallback: navigate to signature page
+      router.push({
+        pathname: '/(patient)/signature-page',
+        params: {
+          certificateData: JSON.stringify(certificateData),
+          ...(consultationIdString && { consultationId: consultationIdString }),
+          ...(referralIdString && { referralId: referralIdString }),
+          ...(patientId && { patientId: Array.isArray(patientId) ? patientId[0] : patientId }),
+        },
+      });
+    }
   };
 
-  const handleRemoveCertificate = (id: number) => {
+  const handleRemoveCertificate = (id: number | string) => {
     Alert.alert(
       'Remove Certificate',
       'Are you sure you want to remove this certificate?',
@@ -1171,11 +1396,27 @@ export default function PatientConsultationScreen() {
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            // Remove from local state
             setFormData((prev) => ({
               ...prev,
               certificates: prev.certificates.filter((c) => c.id !== id),
             }));
+            
+            // Also delete from database if it exists there
+            try {
+              // Check if this is a database ID (starts with MC-) or a temporary ID (number)
+              if (typeof id === 'string' && id.startsWith('MC-')) {
+                await databaseService.deleteCertificate(id);
+                console.log('✅ Certificate deleted from database:', id);
+              } else {
+                console.log('ℹ️ Certificate was not yet saved to database, only removed from local state. ID:', id, 'Type:', typeof id);
+              }
+            } catch (error) {
+              console.error('Error deleting certificate from database:', error);
+              // Continue anyway - local removal is more important
+            }
+            
             setHasChanges(true);
           },
         },
@@ -1338,17 +1579,32 @@ export default function PatientConsultationScreen() {
           
           // All data is valid, proceed with certificate creation
           const appointmentOrReferralId = consultationIdString || referralIdString;
-          await Promise.all(
-            formData.certificates.map(cert => 
-              databaseService.createCertificateInNewStructure(
-                cert,
-                patientIdString,
-                user.uid,
-                appointmentOrReferralId  // Pass appointmentId (from appointment) or referralId (from referral)
+          
+          // Only save certificates that haven't been saved to database yet
+          const certificatesToSave = formData.certificates.filter(cert => {
+            // Check if certificate already has a database ID (starts with MC-)
+            const hasDatabaseId = typeof cert.id === 'string' && cert.id.startsWith('MC-');
+            if (hasDatabaseId) {
+              console.log('ℹ️ Certificate already saved to database, skipping:', cert.id);
+            }
+            return !hasDatabaseId;
+          });
+          
+          if (certificatesToSave.length > 0) {
+            await Promise.all(
+              certificatesToSave.map(cert => 
+                databaseService.createCertificateInNewStructure(
+                  cert,
+                  patientIdString,
+                  user.uid,
+                  appointmentOrReferralId  // Pass appointmentId (from appointment) or referralId (from referral)
+                )
               )
-            )
-          );
-          console.log('✅ Certificates saved to new structure successfully in handleSaveChanges with appointmentId:', appointmentOrReferralId);
+            );
+            console.log('✅ New certificates saved to new structure successfully in handleSaveChanges with appointmentId:', appointmentOrReferralId);
+          } else {
+            console.log('ℹ️ All certificates already saved to database, skipping certificate creation in handleSaveChanges');
+          }
         } catch (error) {
           console.error('❌ Error saving certificates to new structure in handleSaveChanges:', error);
           Alert.alert('Error', `Failed to save certificates: ${error.message || 'Unknown error'}. Consultation cannot be saved.`);
@@ -1786,17 +2042,32 @@ export default function PatientConsultationScreen() {
           
           // All data is valid, proceed with certificate creation
           const appointmentOrReferralId = consultationIdString || referralIdString;
-          await Promise.all(
-            formData.certificates.map(cert => 
-              databaseService.createCertificateInNewStructure(
-                cert,
-                patientIdString,
-                user.uid,
-                appointmentOrReferralId  // Pass appointmentId (from appointment) or referralId (from referral)
+          
+          // Only save certificates that haven't been saved to database yet
+          const certificatesToSave = formData.certificates.filter(cert => {
+            // Check if certificate already has a database ID (starts with MC-)
+            const hasDatabaseId = typeof cert.id === 'string' && cert.id.startsWith('MC-');
+            if (hasDatabaseId) {
+              console.log('ℹ️ Certificate already saved to database, skipping:', cert.id);
+            }
+            return !hasDatabaseId;
+          });
+          
+          if (certificatesToSave.length > 0) {
+            await Promise.all(
+              certificatesToSave.map(cert => 
+                databaseService.createCertificateInNewStructure(
+                  cert,
+                  patientIdString,
+                  user.uid,
+                  appointmentOrReferralId  // Pass appointmentId (from appointment) or referralId (from referral)
+                )
               )
-            )
-          );
-          console.log('✅ Certificates saved to new structure successfully with appointmentId:', appointmentOrReferralId);
+            );
+            console.log('✅ New certificates saved to new structure successfully with appointmentId:', appointmentOrReferralId);
+          } else {
+            console.log('ℹ️ All certificates already saved to database, skipping certificate creation in completion');
+          }
         } catch (error) {
           console.error('❌ Error saving certificates to new structure:', error);
           Alert.alert('Error', `Failed to save certificates: ${error.message || 'Unknown error'}. Consultation cannot be completed.`);
