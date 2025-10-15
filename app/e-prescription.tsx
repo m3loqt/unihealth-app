@@ -504,7 +504,7 @@ export default function EPrescriptionScreen() {
               <div class="signature-label">Prescribing Doctor</div>
               <div class="signature-name" id="sig-name" style="position: relative;">
                 ${doctorSignature ? `
-                  <div class="signature-image-container" style="position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background-image: url('${doctorSignature}'); background-size: contain; background-repeat: no-repeat; background-position: center; width: 150px; height: 60px; z-index: 10;"></div>
+                  <div class="signature-image-container" style="position: absolute; top: -28px; left: 35%; transform: translateX(-50%); background-image: url('${doctorSignature}'); background-size: contain; background-repeat: no-repeat; background-position: center; width: 150px; height: 60px; z-index: 10;"></div>
                 ` : ''}
                 Dr. ${doctorName}
               </div>
