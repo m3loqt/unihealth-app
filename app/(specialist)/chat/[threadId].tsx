@@ -31,6 +31,7 @@ import { voiceMessageService } from '@/services/voiceMessageService';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { Audio } from 'expo-av';
+import { useUserOnlineStatus } from '@/hooks/useOnlineStatus';
 
 interface ChatParticipant {
   uid: string;
@@ -72,8 +73,8 @@ export default function SpecialistChatScreen() {
   const [sending, setSending] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
-  const [isOnline, setIsOnline] = useState(false);
-  const [lastSeen, setLastSeen] = useState(0);
+  // Get online status for the participant
+  const { isOnline, formattedLastSeen } = useUserOnlineStatus(participant?.uid || '');
   const [currentThread, setCurrentThread] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
@@ -215,19 +216,7 @@ export default function SpecialistChatScreen() {
     // Mock implementation - no database calls
   }, [threadId, user, participant]);
 
-  // Listen to participant's online status
-  useEffect(() => {
-    if (!participant) return;
-
-    // Mock online status for UI testing
-    setIsOnline(true);
-    setLastSeen(Date.now() - 300000); // 5 minutes ago
-  }, [participant]);
-
-  // Set user online status
-  useEffect(() => {
-    // Mock implementation - no database calls
-  }, [user]);
+  // Online status is now handled by useUserOnlineStatus hook
 
   // Load data
   useEffect(() => {
@@ -565,7 +554,7 @@ export default function SpecialistChatScreen() {
                 {participant.firstName} {participant.lastName}
               </Text>
               <Text style={styles.headerStatus}>
-                {isOnline ? 'Online' : formatLastSeen(lastSeen)}
+                {isOnline ? 'Online' : formattedLastSeen}
               </Text>
             </View>
           </View>

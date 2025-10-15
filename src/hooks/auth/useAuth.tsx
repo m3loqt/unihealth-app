@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { UserProfile, authService } from '@/services/api/auth';
+import { onlineStatusService } from '@/services/onlineStatusService';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -24,7 +25,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userProfile = await authService.getCompleteUserProfile(firebaseUser.uid);
         setUser(userProfile);
         setEmailVerified(firebaseUser.emailVerified);
+        
+        // Initialize online status when user logs in
+        try {
+          await onlineStatusService.initializeUserStatus(firebaseUser.uid);
+          console.log('✅ Online status initialized for user:', firebaseUser.uid);
+        } catch (error) {
+          console.error('❌ Failed to initialize online status:', error);
+        }
       } else {
+        // Clean up online status when user logs out
+        if (user?.uid) {
+          try {
+            await onlineStatusService.cleanupUserStatus(user.uid);
+            console.log('✅ Online status cleaned up for user:', user.uid);
+          } catch (error) {
+            console.error('❌ Failed to cleanup online status:', error);
+          }
+        }
+        
         setUser(null);
         setEmailVerified(false);
       }
@@ -32,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return unsubscribe;
-  }, []);
+  }, [user?.uid]);
 
   const signIn = async (email: string, password: string) => {
     const result = await authService.signIn(email, password);
@@ -55,6 +74,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // Clean up online status before signing out
+    if (user?.uid) {
+      try {
+        await onlineStatusService.cleanupUserStatus(user.uid);
+        console.log('✅ Online status cleaned up during sign out for user:', user.uid);
+      } catch (error) {
+        console.error('❌ Failed to cleanup online status during sign out:', error);
+      }
+    }
+    
     await authService.signOut();
     setUser(null);
   };

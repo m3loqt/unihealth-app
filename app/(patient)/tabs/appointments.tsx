@@ -42,6 +42,7 @@ import LoadingState from '../../../src/components/ui/LoadingState';
 import ErrorBoundary from '../../../src/components/ui/ErrorBoundary';
 import { dataValidation } from '../../../src/utils/dataValidation';
 import { performanceUtils, useDeepMemo } from '../../../src/utils/performance';
+import { getChiefComplaint } from '../../../src/utils/chiefComplaintHelper';
 
 export default function AppointmentsScreen() {
   const { filter } = useLocalSearchParams();
@@ -632,7 +633,7 @@ export default function AppointmentsScreen() {
         const clinicName = (appointment.clinicName || '').toLowerCase();
         const specialty = (appointment.specialty || appointment.doctorSpecialty || '').toLowerCase();
         const purpose = (appointment.appointmentPurpose || '').toLowerCase();
-        const notes = (appointment.additionalNotes || '').toLowerCase();
+        const notes = (getChiefComplaint(appointment) || '').toLowerCase();
         
         // Check if ALL search words are found in the same field
         const searchableFields = [
@@ -1299,16 +1300,18 @@ export default function AppointmentsScreen() {
         </View>
 
         {/* Purpose (same style as referral reason) */}
-        {appointment.appointmentPurpose && (
+        {(appointment.appointmentPurpose || appointment.type === 'walk-in') && (
           <View style={styles.notesSection}>
             <Text style={styles.notesLabel}>Purpose:</Text>
-            <Text style={styles.notesText}>{appointment.appointmentPurpose}</Text>
+            <Text style={styles.notesText}>
+              {appointment.appointmentPurpose || (appointment.type === 'walk-in' ? 'Walk In' : '')}
+            </Text>
           </View>
         )}
-        {appointment.additionalNotes && (
+        {getChiefComplaint(appointment) && (
           <View style={styles.notesSection}>
             <Text style={styles.notesLabel}>Additional Notes:</Text>
-            <Text style={styles.notesText}>{appointment.additionalNotes}</Text>
+            <Text style={styles.notesText}>{getChiefComplaint(appointment)}</Text>
           </View>
         )}
 

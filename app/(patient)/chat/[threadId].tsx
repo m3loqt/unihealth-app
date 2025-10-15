@@ -32,6 +32,7 @@ import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { Audio } from 'expo-av';
 import { testSupabaseConnection } from '@/utils/testSupabase';
+import { useUserOnlineStatus } from '@/hooks/useOnlineStatus';
 
 interface ChatParticipant {
   uid: string;
@@ -73,8 +74,9 @@ export default function PatientChatScreen() {
   const [sending, setSending] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
-  const [isOnline, setIsOnline] = useState(false);
-  const [lastSeen, setLastSeen] = useState(0);
+  // Get online status for the participant
+  const { isOnline, formattedLastSeen, loading: statusLoading, error: statusError } = useUserOnlineStatus(participant?.uid || '');
+  
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
@@ -103,10 +105,14 @@ export default function PatientChatScreen() {
         );
         
         if (otherParticipantId) {
+          console.log('🔍 Loading participant from database:', otherParticipantId);
           // Get participant info from the database
           const participantInfo = await chatService.getParticipantInfo(otherParticipantId);
           if (participantInfo) {
+            console.log('🔍 Participant loaded from database:', participantInfo);
             setParticipant(participantInfo);
+          } else {
+            console.log('🔍 No participant info found in database for:', otherParticipantId);
           }
         }
       } else {
@@ -122,10 +128,10 @@ export default function PatientChatScreen() {
             specialty: doctorSpecialty || 'General Medicine',
             avatar: '',
           };
+          console.log('🔍 Using fallback participant data:', fallbackParticipant);
           setParticipant(fallbackParticipant);
-          console.log('Using fallback participant data for new chat');
         } else {
-          console.log('Thread not found and no fallback data available');
+          console.log('🔍 Thread not found and no fallback data available');
         }
       }
     } catch (error) {
@@ -218,19 +224,7 @@ export default function PatientChatScreen() {
     // Mock implementation - no database calls
   }, [threadId, user, participant]);
 
-  // Listen to participant's online status
-  useEffect(() => {
-    if (!participant) return;
-
-    // Mock online status for UI testing
-    setIsOnline(true);
-    setLastSeen(Date.now() - 300000); // 5 minutes ago
-  }, [participant]);
-
-  // Set user online status
-  useEffect(() => {
-    // Mock implementation - no database calls
-  }, [user]);
+  // Online status is now handled by useUserOnlineStatus hook
 
   // Load data
   useEffect(() => {
@@ -570,6 +564,7 @@ export default function PatientChatScreen() {
       <SafeAreaView style={styles.container}>
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
         
+        
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -601,7 +596,7 @@ export default function PatientChatScreen() {
                 Dr. {participant.firstName} {participant.lastName}
               </Text>
               <Text style={styles.headerStatus}>
-                {isOnline ? 'Online' : formatLastSeen(lastSeen)}
+                {statusLoading ? 'Loading...' : statusError ? 'Status unavailable' : (isOnline ? 'Online' : formattedLastSeen || 'Offline')}
               </Text>
             </View>
           </View>

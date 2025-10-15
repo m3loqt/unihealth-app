@@ -13,7 +13,9 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '../src/hooks/auth/useAuth';
 import { RealtimeNotificationProvider } from '../src/contexts/RealtimeNotificationContext';
+import { SignatureProvider } from '../src/contexts/SignatureContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppStateManager } from '../src/components/AppStateManager';
 
 // Keep the splash screen visible while we fetch the initial state
 SplashScreen.preventAutoHideAsync();
@@ -41,7 +43,9 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
+      <AppStateManager />
       <RealtimeNotificationProvider>
+        <SignatureProvider>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="splash" />
             <Stack.Screen name="index" />
@@ -59,6 +63,7 @@ export default function RootLayout() {
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="dark" />
+        </SignatureProvider>
       </RealtimeNotificationProvider>
     </AuthProvider>
   );

@@ -19,29 +19,9 @@ import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
 import { Modal, Button } from '../src/components/ui';
 import { COLORS } from '../src/constants/colors';
-import { databaseService } from '../src/services/database/firebase';
+import { databaseService, Certificate } from '../src/services/database/firebase';
 import { useAuth } from '../src/hooks/auth/useAuth';
-
-type CertificateData = {
-  id?: string;
-  type: string;
-  fitnessStatement?: string;
-  workRestrictions?: string;
-  nextReviewDate?: string;
-  unfitPeriodStart?: string;
-  unfitPeriodEnd?: string;
-  medicalAdvice?: string;
-  reasonForUnfitness?: string;
-  followUpDate?: string;
-  travelFitnessStatement?: string;
-  travelMode?: string;
-  destination?: string;
-  travelDate?: string;
-  specialConditions?: string;
-  validityPeriod?: string;
-  description: string;
-  createdAt: string;
-};
+import { useCertificateSignature } from '../src/hooks/ui/useSignatureManager';
 
 export default function MedicalSicknessCertificateScreen() {
   const { id, certificateId, patientId } = useLocalSearchParams(); // consultationId or referralId, certificateId, patientId
@@ -52,153 +32,187 @@ export default function MedicalSicknessCertificateScreen() {
   const [clinic, setClinic] = useState<any>(null);
   const [patient, setPatient] = useState<any>(null);
   const [provider, setProvider] = useState<any>(null);
-  const [certificate, setCertificate] = useState<CertificateData | null>(null);
+  const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [providerUser, setProviderUser] = useState<any>(null);
   const [logoDataUri, setLogoDataUri] = useState<string | null>(null);
+  const [currentUserDoctorProfile, setCurrentUserDoctorProfile] = useState<any>(null);
   const webViewRef = useRef<WebView>(null);
   const [downloadModalVisible, setDownloadModalVisible] = useState(false);
   const [downloadSavedPath, setDownloadSavedPath] = useState<string | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      if (!id) return;
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Load referral, appointment, or medical history data
-        let refData = null;
-        let appointmentData = null;
-        let medicalHistoryData = null;
-        
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Reset certificate state to ensure fresh loading
+      setCertificate(null);
+      
+      // If no id parameter, show error but don't crash
+      if (!id) {
+        setError('No consultation ID provided');
+        setLoading(false);
+        return;
+      }
+      
+      // Track if certificate was loaded successfully
+      let loadedCertificate: Certificate | null = null;
+      
+      // PRIORITY 1: Load certificate data first if certificateId is provided
+      if (certificateId) {
         try {
-          refData = await databaseService.getReferralById(String(id));
-        } catch {}
-        
-        if (!refData) {
-          try {
-            appointmentData = await databaseService.getAppointmentById(String(id));
-          } catch {}
-        }
-        
-        if (!refData && !appointmentData) {
-          // Try to load as medical history entry
-          try {
-            const patientIdToUse = patientId || user?.uid;
-            if (patientIdToUse) {
-              medicalHistoryData = await databaseService.getDocument(
-                `patientMedicalHistory/${patientIdToUse}/entries/${id}`
-              );
+          // Try direct lookup by certificate ID first (most efficient)
+          const directCertificate = await databaseService.getCertificateById(String(certificateId));
+          
+          if (directCertificate) {
+            loadedCertificate = directCertificate;
+            
+            // Batch all data loading in parallel for better performance
+            const doctorId = directCertificate.doctorDetails?.id;
+            const patientIdToUse = directCertificate.patientId;
+            
+            const [doctorData, doctorUserData, patientUserData, patientProfileData] = await Promise.all([
+              doctorId ? databaseService.getDocument(`doctors/${doctorId}`).catch(() => null) : null,
+              doctorId ? databaseService.getDocument(`users/${doctorId}`).catch(() => null) : null,
+              patientIdToUse ? databaseService.getDocument(`users/${patientIdToUse}`).catch(() => null) : null,
+              patientIdToUse ? databaseService.getDocument(`patients/${patientIdToUse}`).catch(() => null) : null,
+            ]);
+            
+            // Batch state updates to reduce re-renders
+            setCertificate(directCertificate);
+            if (doctorData || doctorUserData) {
+              setProvider(doctorData);
+              setProviderUser(doctorUserData);
             }
-          } catch {}
+            if (patientUserData || patientProfileData) {
+              setPatient({ ...(patientUserData || {}), ...(patientProfileData || {}) });
+            }
+            
+            // Early return - we have everything we need
+            setLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.error('Error loading certificate:', error);
         }
+      }
         
-        const dataSource = refData || appointmentData || medicalHistoryData;
-        if (!dataSource) {
-          setError('Consultation not found');
-          setLoading(false);
-          return;
-        }
-        
-        setReferral(refData);
-        
-        // Related entities - Get doctor details from the correct source
-        let doctorId = null;
-        let doctorData = null;
-        let doctorUserData = null;
-        
-        if (medicalHistoryData?.provider?.id) {
-          // If we have medical history data, use the provider from there
-          doctorId = medicalHistoryData.provider.id;
+        // Fallback to original consultation data loading if certificate not found
+        if (!loadedCertificate) {
+          // Load referral, appointment, or medical history data
+          let refData = null;
+          let appointmentData = null;
+          let medicalHistoryData = null;
+          
           try {
-            // Always get the full doctor profile from doctors collection for PRC info
-            doctorData = await databaseService.getDocument(`doctors/${doctorId}`);
-            doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
+            refData = await databaseService.getReferralById(String(id));
           } catch {}
-        } else if (dataSource.assignedSpecialistId) {
-          // Fallback to referral's assigned specialist
-          doctorId = dataSource.assignedSpecialistId;
-          try {
-            doctorData = await databaseService.getDocument(`doctors/${doctorId}`);
-            doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
-          } catch {}
-        } else if (dataSource.doctorId) {
-          // Fallback to appointment's doctor
-          doctorId = dataSource.doctorId;
-          try {
-            doctorData = await databaseService.getDocument(`doctors/${doctorId}`);
-            doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
-          } catch {}
-        }
-        
-        const [clinicData, userData, patientProfileData] = await Promise.all([
-          dataSource.referringClinicId ? databaseService.getDocument(`clinics/${dataSource.referringClinicId}`) : null,
-          (patientId || dataSource.patientId) ? databaseService.getDocument(`users/${patientId || dataSource.patientId}`) : null,
-          (patientId || dataSource.patientId) ? databaseService.getDocument(`patients/${patientId || dataSource.patientId}`) : null,
-        ]);
-        
-        // Debug logging
-        console.log('Data Source:', dataSource);
-        console.log('Doctor ID:', doctorId);
-        console.log('Doctor Data:', doctorData);
-        console.log('Doctor User Data:', doctorUserData);
-        
-        setClinic(clinicData);
-        setPatient({ ...(userData || {}), ...(patientProfileData || {}) });
-        setProvider(doctorData);
-        setProviderUser(doctorUserData);
-
-                 // Load certificate data if certificateId is provided
-         if (certificateId) {
-           try {
-             // If we have medical history data directly, use it
-             if (medicalHistoryData?.certificates) {
-               const foundCertificate = medicalHistoryData.certificates.find((c: any) => c.id === certificateId);
-               if (foundCertificate) {
-                 setCertificate(foundCertificate);
-               }
-             } else {
-               // Fallback to loading via appointment/referral
-               const medicalHistory = await databaseService.getMedicalHistoryByAppointment(String(id), patientId || dataSource.patientId);
-               if (medicalHistory?.certificates) {
-                 const foundCertificate = medicalHistory.certificates.find((c: any) => c.id === certificateId);
-                 if (foundCertificate) {
-                   setCertificate(foundCertificate);
-               }
-             }
-           }
-         } catch {}
-         }
+          
+          if (!refData) {
+            try {
+              appointmentData = await databaseService.getAppointmentById(String(id));
+            } catch {}
+          }
+          
+          if (!refData && !appointmentData) {
+            // Try to load as medical history entry
+            try {
+              const patientIdToUse = patientId || user?.uid;
+              if (patientIdToUse) {
+                medicalHistoryData = await databaseService.getDocument(
+                  `patientMedicalHistory/${patientIdToUse}/entries/${id}`
+                );
+              }
+            } catch {}
+          }
+          
+          const dataSource = refData || appointmentData || medicalHistoryData;
+          if (!dataSource) {
+            // Don't set error, just continue without consultation data
+            // This allows the component to render with just certificate data
+          }
+          
+          setReferral(refData);
+          
+          // Related entities - Get doctor details from the correct source
+          let doctorId = null;
+          let doctorData = null;
+          let doctorUserData = null;
+          
+          if (medicalHistoryData?.provider?.id) {
+            // If we have medical history data, use the provider from there
+            doctorId = medicalHistoryData.provider.id;
+            try {
+              // Always get the full doctor profile from doctors collection for PRC info
+              doctorData = await databaseService.getDocument(`doctors/${doctorId}`);
+              doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
+            } catch {}
+          } else if (dataSource?.assignedSpecialistId) {
+            // Fallback to referral's assigned specialist
+            doctorId = dataSource.assignedSpecialistId;
+            try {
+              doctorData = await databaseService.getDocument(`doctors/${doctorId}`);
+              doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
+            } catch {}
+          } else if (dataSource?.doctorId) {
+            // Fallback to appointment's doctor
+            doctorId = dataSource.doctorId;
+            try {
+              doctorData = await databaseService.getDocument(`doctors/${doctorId}`);
+              doctorUserData = await databaseService.getDocument(`users/${doctorId}`);
+            } catch {}
+          }
+          
+          const [clinicData, userData, patientProfileData] = await Promise.all([
+            dataSource?.referringClinicId ? databaseService.getDocument(`clinics/${dataSource.referringClinicId}`) : null,
+            (patientId || dataSource.patientId) ? databaseService.getDocument(`users/${patientId || dataSource.patientId}`) : null,
+            (patientId || dataSource.patientId) ? databaseService.getDocument(`patients/${patientId || dataSource.patientId}`) : null,
+          ]);
+          
+          // Debug logging
+          console.log('Data Source:', dataSource);
+          console.log('Doctor ID:', doctorId);
+          console.log('Doctor Data:', doctorData);
+          console.log('Doctor User Data:', doctorUserData);
+          
+          setClinic(clinicData);
+          setPatient({ ...(userData || {}), ...(patientProfileData || {}) });
+          setProvider(doctorData);
+          setProviderUser(doctorUserData);
 
         // If no certificate found, create a default one for preview
-        if (!certificate) {
+        if (!loadedCertificate) {
           const today = new Date();
           const tomorrow = new Date(today);
           tomorrow.setDate(tomorrow.getDate() + 1);
           const dayAfterTomorrow = new Date(today);
           dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
           
-          const defaultCertificate: CertificateData = {
+          const defaultCertificate: Certificate = {
+            id: `MSC-${Date.now()}`,
+            patientId: String(patientId || user?.uid || ''),
+            specialistId: user?.uid || '',
             type: 'Medical/Sickness Certificate',
-            unfitPeriodStart: tomorrow.toLocaleDateString(),
-            unfitPeriodEnd: dayAfterTomorrow.toLocaleDateString(),
-            medicalAdvice: 'The patient is advised to rest and refrain from work/school activities.',
-            reasonForUnfitness: 'Medical condition requiring rest and recovery.',
-            followUpDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-            fitnessStatement: '',
-            workRestrictions: '',
-            nextReviewDate: '',
-            travelFitnessStatement: '',
-            travelMode: '',
-            destination: '',
-            travelDate: '',
-            specialConditions: '',
-            validityPeriod: '',
+            issueDate: today.toISOString(),
+            status: 'active',
             description: 'Medical/Sickness Certificate',
-            createdAt: today.toISOString(),
+            consultationId: String(id),
+            medicalDetails: {
+              dateFrom: tomorrow.toLocaleDateString(),
+              dateTo: dayAfterTomorrow.toLocaleDateString(),
+              diagnosis: 'Medical condition requiring rest and recovery.',
+              recommendations: 'The patient is advised to rest and refrain from work/school activities.',
+              restrictions: '',
+              followUpDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+              restDays: 2
+            },
+            digitalSignature: '',
+            signedDate: '',
+            isSigned: false
           };
           setCertificate(defaultCertificate);
         }
+      }
         
       } catch (e) {
         setError('Failed to load certificate data');
@@ -206,8 +220,11 @@ export default function MedicalSicknessCertificateScreen() {
         setLoading(false);
       }
     };
-    load();
-  }, [id, certificateId]);
+
+    useEffect(() => {
+      loadData();
+      // Only reload when certificateId or id changes, not patientId (reduces unnecessary reloads)
+    }, [id, certificateId]);
 
   // Load logo for watermark/brand
   useEffect(() => {
@@ -223,6 +240,23 @@ export default function MedicalSicknessCertificateScreen() {
       } catch {}
     })();
   }, []);
+
+  // Load current user's doctor profile for PRC ID fallback
+  useEffect(() => {
+    const loadCurrentUserDoctorProfile = async () => {
+      const doctorPrcId = provider?.prcId || (certificate as any)?.doctorDetails?.prcId || '';
+      if (!doctorPrcId && user?.uid && !provider) {
+        try {
+          const doctorProfile = await databaseService.getDocument(`doctors/${user.uid}`);
+          setCurrentUserDoctorProfile(doctorProfile);
+        } catch (error) {
+          console.log('Could not load current user doctor profile:', error);
+        }
+      }
+    };
+    
+    loadCurrentUserDoctorProfile();
+  }, [user?.uid, provider, certificate]);
 
   const safe = (val?: any) => {
     if (val === undefined || val === null) return '—';
@@ -302,9 +336,12 @@ export default function MedicalSicknessCertificateScreen() {
     }
   };
 
+  // Get signature from context
+  const { signature: contextSignature } = useCertificateSignature(certificate);
+
   const html = useMemo(() => {
-    // Don't generate HTML if still loading or missing critical data
-    if (loading || !provider || !patient) {
+    // Don't generate HTML if still loading
+    if (loading) {
       return '';
     }
 
@@ -326,19 +363,89 @@ export default function MedicalSicknessCertificateScreen() {
     ].filter(Boolean);
     const clinicAddress = safe(addressParts.join(', '));
     const clinicContact = safe((clinic?.contactNumber || clinic?.phone || clinic?.telephone || '') as any);
-    const patientName = safe(fullName(patient, 'Unknown Patient'));
+    const patientName = safe(fullName(patient, certificate?.patientDetails ? `${certificate.patientDetails.firstName} ${certificate.patientDetails.lastName}`.trim() : 'Unknown Patient'));
     const dob = safe(formatDateFlexible((patient?.dateOfBirth || patient?.dob || patient?.birthDate) as any));
     const age = computeAgeFromInput(patient?.dateOfBirth || patient?.dob || patient?.birthDate);
     const gender = safe((patient?.gender || patient?.sex || '') as any);
-    const doctorName = safe(fullName(provider, (`${referral?.assignedSpecialistFirstName || ''} ${referral?.assignedSpecialistLastName || ''}`).trim() || 'Unknown'));
-            const dateIssued = safe(formatDateFlexible(certificate?.createdAt));
-    const examinationDate = safe(formatDateFlexible(certificate?.createdAt));
-    const certificateId = safe(certificate?.id || `MSC-${Date.now()}`);
-    const unfitPeriodStart = safe(formatDateFlexible(certificate?.unfitPeriodStart));
-    const unfitPeriodEnd = safe(formatDateFlexible(certificate?.unfitPeriodEnd));
-    const medicalAdvice = safe(certificate?.medicalAdvice || 'The patient is advised to rest and refrain from work/school activities.');
-    const reasonForUnfitness = safe(certificate?.reasonForUnfitness || 'Medical condition requiring rest and recovery.');
-    const followUpDate = safe(formatDateFlexible(certificate?.followUpDate));
+    const doctorName = safe(fullName(provider, 
+      certificate?.doctorDetails ? `${certificate.doctorDetails.firstName} ${certificate.doctorDetails.lastName}`.trim() :
+      (() => {
+        // Try to get doctor name from multiple sources
+        if (provider?.firstName && provider?.lastName) {
+          return `${provider.firstName} ${provider.lastName}`;
+        }
+        if (referral?.assignedSpecialistFirstName && referral?.assignedSpecialistLastName) {
+          return `${referral.assignedSpecialistFirstName} ${referral.assignedSpecialistLastName}`;
+        }
+        // Try to get from certificate doctor field
+        if (certificate?.doctor) {
+          return certificate.doctor;
+        }
+        return 'Unknown Doctor';
+      })()
+    ));
+    
+    // Get doctor details from certificate and loaded provider data
+    const doctorId = (certificate as any)?.doctor?.id || (certificate as any)?.doctorDetails?.id;
+    const doctorFirstName = (certificate as any)?.doctorDetails?.firstName || provider?.firstName || providerUser?.firstName || user?.firstName || '';
+    const doctorMiddleName = (certificate as any)?.doctorDetails?.middleName || (provider as any)?.middleName || providerUser?.middleName || user?.middleName || '';
+    const doctorLastName = (certificate as any)?.doctorDetails?.lastName || provider?.lastName || providerUser?.lastName || user?.lastName || '';
+    const doctorEmail = providerUser?.email || (certificate as any)?.doctorDetails?.email || (provider as any)?.email || user?.email || '';
+    const doctorPrcId = provider?.prcId || (certificate as any)?.doctorDetails?.prcId || '';
+    
+    // Use current user doctor profile PRC ID if available
+    const finalDoctorPrcId = doctorPrcId || currentUserDoctorProfile?.prcId || '';
+    
+    // Construct full doctor name
+    const fullDoctorName = [doctorFirstName, doctorMiddleName, doctorLastName].filter(Boolean).join(' ');
+    
+    // Simple date formatting - matching the certificates tab approach that works correctly
+    const formatCertificateDate = (dateString: string) => {
+      if (!dateString) return '—';
+      try {
+        // Use the same simple approach as certificates tab
+        return new Date(dateString).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric'
+        });
+      } catch {
+        return '—';
+      }
+    };
+    
+    // Debug: Log the actual date values we're receiving
+    console.log('🔍 Certificate date debug:', {
+      certificateIssueDate: certificate?.issueDate,
+      certificateMetadataIssuedDate: (certificate as any)?.metadata?.issuedDate,
+      certificateObject: certificate
+    });
+    
+    const dateIssued = safe(formatCertificateDate(certificate?.issueDate || (certificate as any)?.metadata?.issuedDate || ''));
+    const examinationDate = safe(formatCertificateDate(certificate?.issueDate || (certificate as any)?.metadata?.issuedDate || ''));
+    
+    // Calculate Valid Until date (1 year from issued date)
+    const calculateValidUntil = () => {
+      try {
+        const issuedDateString = certificate?.issueDate || (certificate as any)?.metadata?.issuedDate;
+        if (issuedDateString) {
+          const issuedDate = new Date(issuedDateString);
+          const validUntil = new Date(issuedDate);
+          validUntil.setFullYear(validUntil.getFullYear() + 1);
+          return formatCertificateDate(validUntil.toISOString());
+        }
+        return '—';
+      } catch {
+        return '—';
+      }
+    };
+    const validUntil = safe(calculateValidUntil());
+    // Use the URL parameter certificateId directly
+    const unfitPeriodStart = safe(formatDateFlexible(certificate?.medicalDetails?.dateFrom));
+    const unfitPeriodEnd = safe(formatDateFlexible(certificate?.medicalDetails?.dateTo));
+    const medicalAdvice = safe(certificate?.medicalDetails?.recommendations || 'The patient is advised to rest and refrain from work/school activities.');
+    const reasonForUnfitness = safe(certificate?.medicalDetails?.diagnosis || 'Medical condition requiring rest and recovery.');
+    const followUpDate = safe(formatDateFlexible(certificate?.medicalDetails?.followUpDate));
 
     const ageText = age && age !== '—' ? `${age} years old` : '—';
 
@@ -431,6 +538,24 @@ export default function MedicalSicknessCertificateScreen() {
     .signature-caption { color: ${subtle}; font-size: 12px; margin-top: 6px; }
     .signature-label { color: ${subtle}; font-size: 11px; margin-top: 6px; }
     
+    /* Reset any default image styling */
+    img { border: none !important; outline: none !important; box-shadow: none !important; background: transparent !important; }
+    
+    /* Prevent loading states and intermediate rendering */
+    img[src*="data:image"] { 
+      opacity: 1 !important; 
+      visibility: visible !important; 
+      display: block !important;
+    }
+    
+    /* Signature container styling */
+    .signature-image-container {
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+      background-color: transparent !important;
+    }
+    
     .disclaimer { text-align: center; padding: 16px 0; }
 
     @media screen and (max-width: 640px) { .certificate-content { font-size: 14px; } }
@@ -464,37 +589,11 @@ export default function MedicalSicknessCertificateScreen() {
              <p class="label">Certificate ID</p>
              <div class="value strong">${certificateId}</div>
              <p class="label">Date Issued</p>
-             <div class="value strong">${(() => {
-               if (certificate?.createdAt) {
-                 try {
-                   const issuedDate = new Date(certificate.createdAt);
-                   if (!isNaN(issuedDate.getTime())) {
-                     return issuedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                   }
-                 } catch {}
-               }
-               return new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-             })()}</div>
+             <div class="value strong">${dateIssued}</div>
            </div>
            <div class="cell" style="text-align:right">
              <p class="label">Valid Until</p>
-             <div class="value strong">${(() => {
-               try {
-                 let issuedDate;
-                 if (certificate?.createdAt) {
-                   issuedDate = new Date(certificate.createdAt);
-                 } else {
-                   issuedDate = new Date();
-                 }
-                 
-                 if (!isNaN(issuedDate.getTime())) {
-                   const validUntil = new Date(issuedDate);
-                   validUntil.setFullYear(validUntil.getFullYear() + 1);
-                   return validUntil.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                 }
-               } catch {}
-               return '—';
-             })()}</div>
+             <div class="value strong">${validUntil}</div>
            </div>
          </div>
        </div>
@@ -503,6 +602,8 @@ export default function MedicalSicknessCertificateScreen() {
 
       <div class="body">
         <h1 class="certificate-title">MEDICAL/SICKNESS CERTIFICATE</h1>
+        
+        
         
                  <div class="certificate-content">
            <p style="text-indent: 20px;">This is to certify that <strong>${patientName}</strong>, ${ageText}, ${gender}, was seen and treated on <strong>${examinationDate}</strong> and is advised to rest and refrain from work/school activities.</p>
@@ -519,12 +620,19 @@ export default function MedicalSicknessCertificateScreen() {
          </div>
 
         <div class="signature-section">
-          <div class="signature-wrap">
-            <div class="signature-label">Issuing Doctor</div>
-            <div class="signature-name">Dr. ${doctorName}</div>
-            <div class="signature-line"></div>
-            <div class="signature-caption">PRC #: ${safe(provider?.prcId || 'Not Available')}</div>
-            <div class="signature-caption">Email: ${safe(providerUser?.email || provider?.email || 'Not Available')}</div>
+          <div style="position: relative; width: 100%;">
+            <div style="text-align: left; display: inline-block;">
+              <div class="signature-label">Issuing Doctor</div>
+              <div class="signature-name" style="position: relative;">
+                ${contextSignature ? `
+                  <div class="signature-image-container" style="position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background-image: url('${contextSignature}'); background-size: contain; background-repeat: no-repeat; background-position: center; width: 150px; height: 60px; z-index: 10;"></div>
+                ` : ''}
+                Dr. ${fullDoctorName || doctorName}
+              </div>
+              <div class="signature-line"></div>
+              <div class="signature-caption">PRC #: ${finalDoctorPrcId || 'Not Available'}</div>
+              <div class="signature-caption">Email: ${doctorEmail || 'Not Available'}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -557,7 +665,7 @@ export default function MedicalSicknessCertificateScreen() {
   </script>
 </body>
 </html>`;
-  }, [clinic, patient, provider, referral, certificate, logoDataUri]);
+  }, [clinic, patient, provider, referral, certificate, logoDataUri, contextSignature]);
 
   const handleGeneratePdf = async () => {
     try {

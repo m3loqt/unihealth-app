@@ -33,6 +33,7 @@ import { useSpecialistChatPatients } from '@/hooks/data/useSpecialistChatPatient
 import { chatService } from '@/services/chatService';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { OnlineStatusIndicator } from '@/components/OnlineStatusIndicator';
 
 interface ChatParticipant {
   uid: string;
@@ -80,9 +81,11 @@ export default function SpecialistChatsScreen() {
   const { user } = useAuth();
   const { patients, loading: patientsLoading, error: patientsError, loadPatients, refresh: refreshPatients } = useSpecialistChatPatients();
   const [chats, setChats] = useState<ChatListItem[]>([]);
+  const [filteredChats, setFilteredChats] = useState<ChatListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Load chat threads
   const loadChats = useCallback(async () => {
@@ -187,6 +190,7 @@ export default function SpecialistChatsScreen() {
         console.log('📋 Chat item:', chat.patient.firstName, chat.patient.lastName, 'has lastMessage:', !!chat.thread.lastMessage, 'text:', chat.thread.lastMessage?.text || 'N/A');
       });
       setChats(chatList);
+      setFilteredChats(chatList);
     } catch (error) {
       console.error('Error loading chats:', error);
       setError('Failed to load chats. Please try again.');
@@ -246,11 +250,14 @@ export default function SpecialistChatsScreen() {
         });
         
         // Sort by last message time or creation time (most recent first)
-        return updatedChats.sort((a, b) => {
+        const sortedChats = updatedChats.sort((a, b) => {
           const timeA = a.thread.lastMessage?.at || a.thread.createdAt;
           const timeB = b.thread.lastMessage?.at || b.thread.createdAt;
           return timeB - timeA;
         });
+        
+        setFilteredChats(sortedChats);
+        return sortedChats;
       });
     });
 
@@ -273,6 +280,49 @@ export default function SpecialistChatsScreen() {
       loadChats();
     }, [loadChats])
   );
+
+  // Handle search functionality
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setFilteredChats(chats);
+      return;
+    }
+
+    const searchWords = query.toLowerCase().trim().split(' ').filter(word => word.length > 0);
+    
+    const filtered = chats.filter(chatItem => {
+      const { participant, patient, thread } = chatItem;
+      
+      // Searchable fields
+      const patientName = `${participant.firstName} ${participant.lastName}`.toLowerCase();
+      const patientFirstName = participant.firstName.toLowerCase();
+      const patientLastName = participant.lastName.toLowerCase();
+      const specialty = (patient.specialty || '').toLowerCase();
+      const lastMessage = (thread.lastMessage?.text || '').toLowerCase();
+      
+      const searchableFields = [
+        patientName,
+        patientFirstName,
+        patientLastName,
+        specialty,
+        lastMessage
+      ];
+      
+      // Check if ALL search words are found in any field
+      return searchWords.every(word => 
+        searchableFields.some(field => field.includes(word))
+      );
+    });
+    
+    setFilteredChats(filtered);
+  }, [chats]);
+
+  // Update filtered chats when chats or search query changes
+  useEffect(() => {
+    handleSearch(searchQuery);
+  }, [chats, handleSearch, searchQuery]);
 
   // Format message time
   const formatMessageTime = (timestamp: number): string => {
@@ -385,6 +435,11 @@ export default function SpecialistChatsScreen() {
               </Text>
             </View>
           )}
+          <OnlineStatusIndicator 
+            userId={participant.uid} 
+            size="small" 
+            style={styles.onlineStatusIndicator}
+          />
         </View>
 
         <View style={styles.chatContent}>
@@ -473,6 +528,8 @@ export default function SpecialistChatsScreen() {
               placeholderTextColor="#9CA3AF"
               returnKeyType="search"
               blurOnSubmit={true}
+              value={searchQuery}
+              onChangeText={handleSearch}
             />
           </View>
           <View style={styles.divider} />
@@ -486,11 +543,22 @@ export default function SpecialistChatsScreen() {
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
           </View>
-        ) : chats.length === 0 ? (
-          renderEmptyState()
+        ) : filteredChats.length === 0 ? (
+          searchQuery.trim() ? (
+            <View style={styles.emptyState}>
+              <Search size={64} color="#D1D5DB" />
+              <Text style={styles.emptyTitle}>No Results Found</Text>
+              <Text style={styles.emptyDescription}>
+                No chats match your search for "{searchQuery}".{'\n'}
+                Try searching with different keywords.
+              </Text>
+            </View>
+          ) : (
+            renderEmptyState()
+          )
         ) : (
           <FlatList
-            data={chats}
+            data={filteredChats}
             keyExtractor={(item) => item.thread.id}
             renderItem={renderChatItem}
             contentContainerStyle={styles.chatList}
@@ -579,6 +647,12 @@ const styles = StyleSheet.create({
   },
   chatAvatar: {
     marginRight: 16,
+    position: 'relative',
+  },
+  onlineStatusIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
   },
   avatarImage: {
     width: 48,

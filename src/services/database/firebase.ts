@@ -56,6 +56,7 @@ export interface MutableSpecialistData {
   dateOfBirth?: string;
   civilStatus?: string;
   lastUpdated: string;
+  clinicAffiliations?: string[];
 }
 
 export interface StandardizedPatientData extends ImmutableUserData, MutablePatientData {
@@ -150,29 +151,7 @@ export interface MedicalHistory {
   };
   treatmentPlan?: string;
   type: string;
-  certificates?: Array<{
-    id: string;
-    type: string;
-    examinationDate: string;
-    fitnessStatement?: string;
-    workRestrictions?: string;
-    nextReviewDate?: string;
-    unfitPeriodStart?: string;
-    unfitPeriodEnd?: string;
-    medicalAdvice?: string;
-    reasonForUnfitness?: string;
-    followUpDate?: string;
-    travelFitnessStatement?: string;
-    travelMode?: string;
-    destination?: string;
-    travelDate?: string;
-    specialConditions?: string;
-    validityPeriod?: string;
-    description: string;
-    validUntil: string;
-    restrictions: string;
-    createdAt: string;
-  }>;
+  // certificates removed - now stored separately in patientMedicalCertificates
 }
 
 export interface Prescription {
@@ -213,6 +192,51 @@ export interface Certificate {
   medicalFindings?: string;
   restrictions?: string;
   consultationId?: string; // Add consultation ID for routing
+  appointmentId?: string; // Add appointment/referral ID for linking certificates
+  
+  // Enhanced fields from patientMedicalCertificates structure
+  digitalSignature?: string;
+  issueLocation?: string;
+  signedDate?: string;
+  isSigned?: boolean;
+  version?: string;
+  
+  // Enhanced nested data (optional for backward compatibility)
+  doctorDetails?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    specialty: string;
+  };
+  clinicDetails?: {
+    id: string;
+    name: string;
+    address: string;
+    city: string;
+    province: string;
+  };
+  patientDetails?: {
+    firstName: string;
+    lastName: string;
+    age: number;
+    contactNumber: string;
+  };
+  medicalDetails?: {
+    dateFrom: string;
+    dateTo: string;
+    diagnosis: string;
+    recommendations: string;
+    restrictions: string;
+    followUpDate?: string;
+    restDays?: number;
+    // Travel certificate specific fields
+    travelMode?: string;
+    destination?: string;
+    travelDate?: string;
+    specialConditions?: string;
+    validityPeriod?: string;
+  };
 }
 
 export interface Patient {
@@ -359,6 +383,8 @@ export interface Doctor {
   specialization?: string;
   clinicName?: string;
   clinicAddress?: string;
+  signature?: string; // Base64 signature data
+  isSignatureSaved?: boolean; // Whether signature is saved for future use
   availability: {
     lastUpdated: string;
     weeklySchedule: {
@@ -477,6 +503,193 @@ export const databaseService = {
       } else {
         console.error('Get appointments error:', error);
       }
+      return [];
+    }
+  },
+
+  // Get all appointments for a specific doctor (for patient selection in certificate creation)
+  async getAppointmentsByDoctor(doctorId: string): Promise<any[]> {
+    try {
+      console.log(`🔍 getAppointmentsByDoctor called for doctor: ${doctorId}`);
+      const appointmentsRef = ref(database, 'appointments');
+      const snapshot = await get(appointmentsRef);
+      
+      if (snapshot.exists()) {
+        const appointments: any[] = [];
+        
+        // Process appointments
+        const promises: Promise<any>[] = [];
+        snapshot.forEach((childSnapshot) => {
+          const appointmentData = childSnapshot.val();
+          // Filter appointments for this doctor (check both doctorId and specialistId for backwards compatibility)
+          const appointmentDoctorId = appointmentData.doctorId || appointmentData.specialistId;
+          if (appointmentDoctorId === doctorId) {
+            const promise = (async () => {
+              const enrichedAppointment = await this.enrichAppointmentData(appointmentData);
+              
+              // Create patientDetails object from enriched data
+              const patientDetails = enrichedAppointment.patientId ? {
+                id: enrichedAppointment.patientId,
+                firstName: enrichedAppointment.patientFirstName || 'Unknown',
+                lastName: enrichedAppointment.patientLastName || 'Patient',
+                age: 0, // Will be fetched separately if needed
+                gender: 'Unknown',
+                contactNumber: 'N/A',
+              } : null;
+              
+              // Fetch full patient data if available
+              if (enrichedAppointment.patientId) {
+                try {
+                  // Try to fetch from patients node first
+                  const patientsRef = ref(database, `patients/${enrichedAppointment.patientId}`);
+                  const patientSnapshot = await get(patientsRef);
+                  
+                  if (patientSnapshot.exists()) {
+                    const fullPatientData = patientSnapshot.val();
+                    console.log('🔍 Full patient data:', {
+                      patientId: enrichedAppointment.patientId,
+                      hasDateOfBirth: !!fullPatientData.dateOfBirth,
+                      dateOfBirth: fullPatientData.dateOfBirth,
+                      hasAge: !!fullPatientData.age,
+                      age: fullPatientData.age,
+                      gender: fullPatientData.gender,
+                      contactNumber: fullPatientData.contactNumber,
+                    });
+                    
+                    // Try to use existing age field first, then calculate from dateOfBirth
+                    if (fullPatientData.age && fullPatientData.age > 0) {
+                      patientDetails.age = fullPatientData.age;
+                    } else if (fullPatientData.dateOfBirth) {
+                      // Parse date - handle MM/DD/YYYY format
+                      let birthDate: Date;
+                      if (fullPatientData.dateOfBirth.includes('/')) {
+                        // Format: MM/DD/YYYY or DD/MM/YYYY
+                        const parts = fullPatientData.dateOfBirth.split('/');
+                        // Assume MM/DD/YYYY format
+                        birthDate = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+                      } else {
+                        birthDate = new Date(fullPatientData.dateOfBirth);
+                      }
+                      
+                      const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                      patientDetails.age = age > 0 ? age : 0;
+                      console.log('🔍 Calculated age:', age, 'from birthDate:', birthDate);
+                    }
+                    patientDetails.gender = fullPatientData.gender || 'Unknown';
+                    patientDetails.contactNumber = fullPatientData.contactNumber || 'N/A';
+                  }
+                } catch (err) {
+                  console.error('Error fetching full patient data:', err);
+                }
+              }
+              
+              return {
+                id: childSnapshot.key,
+                ...enrichedAppointment,
+                patientDetails,
+              };
+            })();
+            promises.push(promise);
+          }
+        });
+        
+        const resolvedAppointments = await Promise.all(promises);
+        appointments.push(...resolvedAppointments);
+        console.log(`🔍 Found ${resolvedAppointments.length} appointments for doctor ${doctorId}`);
+        
+        // Also fetch referrals for this specialist
+        try {
+          const referralsRef = ref(database, 'referrals');
+          const referralsSnapshot = await get(referralsRef);
+          
+          if (referralsSnapshot.exists()) {
+            const referralPromises: Promise<any>[] = [];
+            referralsSnapshot.forEach((referralSnapshot) => {
+              const referralData = referralSnapshot.val();
+              // Check if this referral is for this specialist
+              if (referralData.assignedSpecialistId === doctorId) {
+                const referralPromise = (async () => {
+                  // Create patientDetails from referral data
+                  const patientDetails = referralData.patientId ? {
+                    id: referralData.patientId,
+                    firstName: referralData.patientFirstName || 'Unknown',
+                    lastName: referralData.patientLastName || 'Patient',
+                    age: 0,
+                    gender: 'Unknown',
+                    contactNumber: 'N/A',
+                  } : null;
+                  
+                  // Fetch full patient data
+                  if (referralData.patientId) {
+                    try {
+                      const patientsRef = ref(database, `patients/${referralData.patientId}`);
+                      const patientSnapshot = await get(patientsRef);
+                      
+                      if (patientSnapshot.exists()) {
+                        const fullPatientData = patientSnapshot.val();
+                        console.log('🔍 Full patient data (referral):', {
+                          patientId: referralData.patientId,
+                          hasDateOfBirth: !!fullPatientData.dateOfBirth,
+                          dateOfBirth: fullPatientData.dateOfBirth,
+                          hasAge: !!fullPatientData.age,
+                          age: fullPatientData.age,
+                          gender: fullPatientData.gender,
+                          contactNumber: fullPatientData.contactNumber,
+                        });
+                        
+                        // Try to use existing age field first, then calculate from dateOfBirth
+                        if (fullPatientData.age && fullPatientData.age > 0) {
+                          patientDetails.age = fullPatientData.age;
+                        } else if (fullPatientData.dateOfBirth) {
+                          // Parse date - handle MM/DD/YYYY format
+                          let birthDate: Date;
+                          if (fullPatientData.dateOfBirth.includes('/')) {
+                            // Format: MM/DD/YYYY or DD/MM/YYYY
+                            const parts = fullPatientData.dateOfBirth.split('/');
+                            // Assume MM/DD/YYYY format
+                            birthDate = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
+                          } else {
+                            birthDate = new Date(fullPatientData.dateOfBirth);
+                          }
+                          
+                          const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                          patientDetails.age = age > 0 ? age : 0;
+                          console.log('🔍 Calculated age (referral):', age, 'from birthDate:', birthDate);
+                        }
+                        patientDetails.gender = fullPatientData.gender || 'Unknown';
+                        patientDetails.contactNumber = fullPatientData.contactNumber || 'N/A';
+                      }
+                    } catch (err) {
+                      console.error('Error fetching patient data from referral:', err);
+                    }
+                  }
+                  
+                  return {
+                    id: referralSnapshot.key,
+                    patientDetails,
+                    appointmentDate: referralData.appointmentDate,
+                    status: referralData.status,
+                  };
+                })();
+                referralPromises.push(referralPromise);
+              }
+            });
+            
+            const resolvedReferrals = await Promise.all(referralPromises);
+            appointments.push(...resolvedReferrals);
+            console.log(`🔍 Found ${resolvedReferrals.length} referrals for specialist ${doctorId}`);
+          }
+        } catch (referralError) {
+          console.error('Error fetching referrals:', referralError);
+        }
+        
+        console.log(`🔍 Total appointments + referrals: ${appointments.length}`);
+        return appointments;
+      }
+      console.log('🔍 No appointments found in database');
+      return [];
+    } catch (error) {
+      console.error('Get appointments by doctor error:', error);
       return [];
     }
   },
@@ -2293,97 +2506,178 @@ export const databaseService = {
     }
   },
 
-  async getCertificatesBySpecialist(specialistId: string): Promise<Certificate[]> {
+  // New certificate retrieval functions for patientMedicalCertificates structure
+  async getCertificatesByPatientNew(patientId: string): Promise<Certificate[]> {
     try {
-      console.log('🔍 Searching for certificates by specialist ID:', specialistId);
-      
-      // Get certificates from patientMedicalHistory entries
-      const medicalHistoryRef = ref(database, 'patientMedicalHistory');
-      const snapshot = await get(medicalHistoryRef);
+      console.log('🔍 Loading certificates for patient:', patientId);
+      const certificatesRef = ref(database, `patientMedicalCertificates/${patientId}`);
+      const snapshot = await get(certificatesRef);
       
       if (snapshot.exists()) {
         const certificates: Certificate[] = [];
-        let totalEntries = 0;
-        let matchingEntries = 0;
-        
-        snapshot.forEach((patientSnapshot) => {
-          const patientHistory = patientSnapshot.val();
-          if (patientHistory.entries) {
-            Object.keys(patientHistory.entries).forEach((entryKey) => {
-              const entry = patientHistory.entries[entryKey];
-              totalEntries++;
-              
-              console.log('📋 Checking entry:', entryKey);
-              console.log('👨‍⚕️ Entry provider ID:', entry.provider?.id);
-              console.log('🎯 Looking for specialist ID:', specialistId);
-              console.log('✅ Match?', entry.provider?.id === specialistId);
-              
-              // Check if this entry was created by the specialist (provider.id matches specialist UID)
-              if (entry.provider && entry.provider.id === specialistId) {
-                matchingEntries++;
-                console.log('🎉 Found matching entry! Provider:', entry.provider);
-                
-                // Check for certificates node under this PMH entry
-                if (entry.certificates && Array.isArray(entry.certificates)) {
-                  console.log('📜 Found certificates array with', entry.certificates.length, 'certificates');
-                  
-                  entry.certificates.forEach((cert: any, certIndex: number) => {
-                    console.log('📄 Processing certificate:', certIndex, cert);
-                    
-                    // Create a unique ID for the certificate
-                    const certificateId = String(cert.id || `${entryKey}_cert_${certIndex}`);
-                    
-                    // Determine certificate status
-                    let status: 'active' | 'expired' = 'active';
-                    if (cert.validUntil) {
-                      status = new Date(cert.validUntil) < new Date() ? 'expired' : 'active';
-                    } else {
-                      // If no expiry date, check if it's older than 1 year
-                      const issueDate = new Date(cert.createdAt || entry.consultationDate);
-                      const oneYearAgo = new Date();
-                      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-                      status = issueDate < oneYearAgo ? 'expired' : 'active';
-                    }
-                    
-                    const certificateData = {
-                      id: certificateId,
-                      patientId: entry.patientId,
-                      specialistId: entry.provider.id,
-                      type: cert.type || 'Medical Certificate',
-                      issueDate: cert.createdAt || entry.consultationDate,
-                      expiryDate: cert.validUntil || '',
-                      status: status,
-                      description: cert.description || cert.type || 'Medical certificate issued',
-                      medicalFindings: cert.medicalFindings,
-                      restrictions: cert.restrictions,
-                      documentUrl: cert.documentUrl,
-                      consultationId: entryKey, // Add consultation ID for routing
-                    };
-                    
-                    console.log('✅ Adding certificate:', certificateData);
-                    certificates.push(certificateData);
-                  });
-                } else {
-                  console.log('❌ No certificates array found in entry');
-                }
-              }
-            });
-          }
+        snapshot.forEach((childSnapshot) => {
+          const certData = childSnapshot.val();
+          console.log('📋 Raw certificate data:', {
+            key: childSnapshot.key,
+            certData: certData,
+            hasCertificateId: !!certData.certificateId,
+            hasId: !!certData.id
+          });
+          
+          // Pass the certificate key as consultation ID if not explicitly stored
+          const consultationId = certData.metadata?.consultationId || childSnapshot.key;
+          const enrichedCertData = {
+            ...certData,
+            consultationId: consultationId,
+            // IMPORTANT: Ensure the certificate ID is available for transformation
+            certificateId: certData.certificateId || childSnapshot.key,
+            id: certData.id || childSnapshot.key
+          };
+          const transformedCert = this.transformNewCertificateToLegacy(enrichedCertData, patientId);
+          console.log('✅ Transformed certificate:', transformedCert);
+          certificates.push(transformedCert);
         });
-        
-        console.log('📊 Summary:');
-        console.log('   Total entries checked:', totalEntries);
-        console.log('   Matching entries found:', matchingEntries);
-        console.log('   Certificates found:', certificates.length);
-        
-        return certificates.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+        console.log('📋 Total certificates found:', certificates.length);
+        return certificates;
       }
-      console.log('❌ No patientMedicalHistory data found');
+      console.log('❌ No certificates found for patient:', patientId);
       return [];
     } catch (error) {
-      console.error('Get certificates by specialist error:', error);
-      return [];
+      console.error('Get certificates by patient (new structure) error:', error);
+      throw error;
     }
+  },
+
+  async getCertificatesBySpecialistNew(specialistId: string): Promise<Certificate[]> {
+    try {
+      const certificatesRef = ref(database, 'patientMedicalCertificates');
+      const snapshot = await get(certificatesRef);
+      
+      if (snapshot.exists()) {
+        const certificates: Certificate[] = [];
+        snapshot.forEach((patientSnapshot) => {
+          patientSnapshot.forEach((certSnapshot) => {
+            const certData = certSnapshot.val();
+            if (certData.doctor.id === specialistId) {
+              // Pass the certificate key as consultation ID if not explicitly stored
+              const consultationId = certData.metadata?.consultationId || certSnapshot.key;
+              const enrichedCertData = {
+                ...certData,
+                consultationId: consultationId,
+                // IMPORTANT: Ensure the certificate ID is available for transformation
+                certificateId: certData.certificateId || certSnapshot.key,
+                id: certData.id || certSnapshot.key
+              };
+              certificates.push(this.transformNewCertificateToLegacy(enrichedCertData, patientSnapshot.key!));
+            }
+          });
+        });
+        return certificates;
+      }
+      return [];
+    } catch (error) {
+      console.error('Get certificates by specialist (new structure) error:', error);
+      throw error;
+    }
+  },
+
+  // Helper function to transform new certificate structure to legacy format
+  transformNewCertificateToLegacy(certData: any, patientId: string): Certificate {
+    // Add safe access with fallbacks
+    const safeGet = (obj: any, path: string, fallback: any = '') => {
+      return path.split('.').reduce((current, key) => current?.[key], obj) || fallback;
+    };
+    
+    // DEBUG: Log the certificate data structure
+    console.log('🔍 transformNewCertificateToLegacy - Raw certData:', {
+      certificateId: certData.certificateId,
+      id: certData.id,
+      key: certData.key,
+      hasCertificateId: !!certData.certificateId,
+      hasId: !!certData.id,
+      certDataKeys: Object.keys(certData),
+      metadata: certData.metadata,
+      digitalSignature: certData.metadata?.digitalSignature ? 'Present' : 'Missing'
+    });
+    
+    const transformedCert = {
+      id: certData.certificateId || certData.id || '',
+      patientId: patientId,
+      specialistId: safeGet(certData, 'doctor.id', ''),
+      type: safeGet(certData, 'metadata.certificateType', certData.type || ''),
+      issueDate: safeGet(certData, 'metadata.issuedDate', certData.issueDate || ''),
+      expiryDate: safeGet(certData, 'medicalDetails.dateTo', certData.expiryDate || ''),
+      status: (safeGet(certData, 'metadata.status', certData.status || 'active') === 'active' ? 'active' : 'expired') as 'active' | 'expired',
+      description: safeGet(certData, 'medicalDetails.remarks', certData.description || ''),
+      documentUrl: safeGet(certData, 'metadata.documentUrl', certData.documentUrl || ''),
+      certificateNumber: certData.certificateNumber || '',
+      doctor: safeGet(certData, 'doctor.fullName', certData.doctor || ''),
+      issuedDate: safeGet(certData, 'metadata.issuedDate', certData.issuedDate || ''),
+      clinicName: safeGet(certData, 'clinic.name', certData.clinicName || ''),
+      medicalFindings: safeGet(certData, 'medicalDetails.diagnosis', certData.medicalFindings || ''),
+      restrictions: safeGet(certData, 'medicalDetails.restrictions', certData.restrictions || ''),
+      
+      // FIXED: Add missing consultation ID
+      consultationId: certData.consultationId || certData.metadata?.consultationId,
+      
+      // NEW: Add appointmentId from metadata (for linking certificates to appointments/referrals)
+      appointmentId: certData.metadata?.appointmentId || certData.appointmentId || '',
+      
+      // NEW: Add enhanced fields
+      digitalSignature: certData.metadata?.digitalSignature || certData.digitalSignature || '',
+      issueLocation: certData.metadata?.issueLocation || '',
+      signedDate: certData.metadata?.signedDate || certData.signedAt || '',
+      isSigned: certData.metadata?.isSigned || !!certData.digitalSignature,
+      version: certData.version || '1.0',
+      
+      // NEW: Add nested details for richer data access
+      doctorDetails: {
+        id: safeGet(certData, 'doctor.id', ''),
+        firstName: safeGet(certData, 'doctor.firstName', ''),
+        lastName: safeGet(certData, 'doctor.lastName', ''),
+        fullName: safeGet(certData, 'doctor.fullName', ''),
+        specialty: safeGet(certData, 'doctor.specialty', '')
+      },
+      clinicDetails: {
+        id: safeGet(certData, 'clinic.id', ''),
+        name: safeGet(certData, 'clinic.name', ''),
+        address: safeGet(certData, 'clinic.address', ''),
+        city: safeGet(certData, 'clinic.city', ''),
+        province: safeGet(certData, 'clinic.province', '')
+      },
+      patientDetails: {
+        firstName: safeGet(certData, 'patient.firstName', ''),
+        lastName: safeGet(certData, 'patient.lastName', ''),
+        age: safeGet(certData, 'patient.age', 0),
+        contactNumber: safeGet(certData, 'patient.contactNumber', '')
+      },
+      medicalDetails: {
+        dateFrom: safeGet(certData, 'medicalDetails.dateFrom', ''),
+        dateTo: safeGet(certData, 'medicalDetails.dateTo', ''),
+        diagnosis: safeGet(certData, 'medicalDetails.diagnosis', ''),
+        recommendations: safeGet(certData, 'medicalDetails.recommendations', ''),
+        restrictions: safeGet(certData, 'medicalDetails.restrictions', ''),
+        followUpDate: safeGet(certData, 'medicalDetails.followUpDate', ''),
+        restDays: safeGet(certData, 'medicalDetails.restDays', 0)
+      }
+    };
+    
+    console.log('🔍 transformNewCertificateToLegacy - Transformed cert:', {
+      id: transformedCert.id,
+      type: transformedCert.type,
+      doctor: transformedCert.doctor,
+      digitalSignature: transformedCert.digitalSignature ? 'Present' : 'Missing',
+      documentUrl: transformedCert.documentUrl ? 'Present' : 'Missing',
+      doctorDetails: transformedCert.doctorDetails,
+      certificateNumber: transformedCert.certificateNumber
+    });
+    
+    return transformedCert;
+  },
+
+  async getCertificatesBySpecialist(specialistId: string): Promise<Certificate[]> {
+    // Use the new structure instead of the old one
+    return this.getCertificatesBySpecialistNew(specialistId);
   },
 
   async getSpecialistProfile(specialistId: string): Promise<any> {
@@ -2810,6 +3104,7 @@ export const databaseService = {
         dateOfBirth: doctorData?.dateOfBirth || doctorData?.date_of_birth || userData?.dateOfBirth || userData?.date_of_birth || '',
         civilStatus: doctorData?.civilStatus || doctorData?.civil_status || '',
         lastUpdated: doctorData?.lastUpdated || doctorData?.last_updated || getCurrentLocalTimestamp(),
+        clinicAffiliations: doctorData?.clinicAffiliations || [],
         
         // Computed fields
         fullName: `${userData?.firstName || userData?.first_name || userData?.givenName || ''} ${userData?.lastName || userData?.last_name || userData?.familyName || ''}`.trim() || 'Unknown Specialist',
@@ -2951,22 +3246,33 @@ export const databaseService = {
   },
 
   async getCertificatesByAppointment(appointmentId: string): Promise<Certificate[]> {
+    // Use new structure - get appointment to find patient, then filter by appointmentId
     try {
-      const certificatesRef = ref(database, 'certificates');
-      const snapshot = await get(certificatesRef);
+      const appointmentRef = ref(database, `appointments/${appointmentId}`);
+      const appointmentSnapshot = await get(appointmentRef);
       
-      if (snapshot.exists()) {
-        const certificates: Certificate[] = [];
-        snapshot.forEach((childSnapshot) => {
-          const certificate = childSnapshot.val();
-          if (certificate.appointmentId === appointmentId) {
-            certificates.push({
-              id: childSnapshot.key,
-              ...certificate
-            });
-          }
-        });
-        return certificates;
+      if (appointmentSnapshot.exists()) {
+        const appointmentData = appointmentSnapshot.val();
+        const patientId = appointmentData.patientId;
+        
+        if (patientId) {
+          // Get all certificates for this patient from PMC
+          const allCertificates = await this.getCertificatesByPatientNew(patientId);
+          
+          // Filter certificates that are linked to this specific appointment via appointmentId
+          const appointmentCertificates = allCertificates.filter(cert => {
+            const certAppointmentId = (cert as any).appointmentId;
+            return certAppointmentId === appointmentId;
+          });
+          
+          console.log('🔍 getCertificatesByAppointment - Found certificates:', {
+            appointmentId,
+            totalCertificates: allCertificates.length,
+            matchingCertificates: appointmentCertificates.length
+          });
+          
+          return appointmentCertificates;
+        }
       }
       return [];
     } catch (error) {
@@ -2976,10 +3282,48 @@ export const databaseService = {
   },
 
   async getCertificateById(certificateId: string): Promise<Certificate | null> {
+    // Use new structure - search through patientMedicalCertificates
     try {
-      const certificateRef = ref(database, `certificates/${certificateId}`);
-      const snapshot = await get(certificateRef);
-      return snapshot.exists() ? { id: certificateId, ...snapshot.val() } : null;
+      console.log('🔍 Searching for certificate ID:', certificateId);
+      const certificatesRef = ref(database, 'patientMedicalCertificates');
+      const snapshot = await get(certificatesRef);
+      
+      if (snapshot.exists()) {
+        let foundCertificate = null;
+        snapshot.forEach((patientSnapshot) => {
+          patientSnapshot.forEach((certSnapshot) => {
+            const certData = certSnapshot.val();
+            console.log('📋 Checking certificate:', {
+              certId: certData.certificateId,
+              certDataId: certData.id,
+              snapshotKey: certSnapshot.key,
+              searchId: certificateId
+            });
+            
+            // Check multiple possible ID fields
+            if (certData.certificateId === certificateId || 
+                certData.id === certificateId || 
+                certSnapshot.key === certificateId) {
+              console.log('✅ Found matching certificate!');
+              // Pass the certificate key as consultation ID if not explicitly stored
+              const consultationId = certData.metadata?.consultationId || certSnapshot.key;
+              const enrichedCertData = {
+                ...certData,
+                consultationId: consultationId,
+                // IMPORTANT: Ensure the certificate ID is available for transformation
+                certificateId: certData.certificateId || certSnapshot.key,
+                id: certData.id || certSnapshot.key
+              };
+              
+              foundCertificate = this.transformNewCertificateToLegacy(enrichedCertData, patientSnapshot.key!);
+            }
+          });
+        });
+        console.log('🎯 Final result:', foundCertificate ? 'Found' : 'Not found');
+        return foundCertificate;
+      }
+      console.log('❌ No patientMedicalCertificates data found');
+      return null;
     } catch (error) {
       console.error('Get certificate by ID error:', error);
       return null;
@@ -3024,34 +3368,8 @@ export const databaseService = {
 
   // Certificates
   async getCertificates(userId: string): Promise<Certificate[]> {
-    try {
-      const certificatesRef = ref(database, 'certificates');
-      const snapshot = await get(certificatesRef);
-      
-      if (snapshot.exists()) {
-        const certificates: Certificate[] = [];
-        snapshot.forEach((childSnapshot) => {
-          const certificate = childSnapshot.val();
-          // Filter client-side by patientId
-          if (certificate.patientId === userId) {
-            certificates.push({
-              id: childSnapshot.key,
-              ...certificate
-            });
-          }
-        });
-        return certificates.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
-      }
-      return [];
-    } catch (error) {
-      // Suppress Firebase indexing errors
-      if (error instanceof Error && error.message.includes('indexOn')) {
-        console.log('Firebase indexing not configured, using client-side filtering');
-      } else {
-        console.error('Get certificates error:', error);
-      }
-      return [];
-    }
+    // Use the new structure instead of the old one
+    return this.getCertificatesByPatientNew(userId);
   },
 
   async createCertificate(certificate: Omit<Certificate, 'id'>): Promise<string> {
@@ -3072,6 +3390,404 @@ export const databaseService = {
     }
   },
 
+  // Helper function to build medical details object with only non-empty fields
+  buildMedicalDetails(certificateData: any): any {
+    const medicalDetails: any = {};
+    
+    // Helper function to add field only if it has a value
+    const addField = (key: string, value: any) => {
+      if (value && value !== '' && value !== null && value !== undefined) {
+        medicalDetails[key] = value;
+      }
+    };
+    
+    // Core fields that are always needed
+    medicalDetails.dateFrom = certificateData.unfitPeriodStart || certificateData.examinationDate || new Date().toISOString().split('T')[0];
+    medicalDetails.diagnosis = certificateData.diagnosis || certificateData.reasonForUnfitness || 'Not specified';
+    medicalDetails.recommendations = certificateData.medicalAdvice || certificateData.fitnessStatement || certificateData.travelFitnessStatement || 'Follow medical advice';
+    medicalDetails.remarks = certificateData.description || certificateData.type || 'Medical certificate issued';
+    
+    // Optional fields - only add if they have values
+    addField('dateTo', certificateData.unfitPeriodEnd || certificateData.validUntil || certificateData.validityPeriod);
+    addField('followUpDate', certificateData.followUpDate || certificateData.nextReviewDate);
+    addField('restDays', this.calculateRestDays(certificateData.unfitPeriodStart, certificateData.unfitPeriodEnd));
+    addField('restrictions', certificateData.restrictions || certificateData.workRestrictions || certificateData.specialConditions);
+    
+    // Travel certificate specific fields
+    addField('travelMode', certificateData.travelMode);
+    addField('destination', certificateData.destination);
+    addField('travelDate', certificateData.travelDate);
+    addField('specialConditions', certificateData.specialConditions);
+    addField('validityPeriod', certificateData.validityPeriod || certificateData.validUntil);
+    
+    // Additional fields for comprehensive data capture
+    addField('examinationDate', certificateData.examinationDate);
+    addField('validUntil', certificateData.validUntil || certificateData.validityPeriod);
+    addField('fitnessStatement', certificateData.fitnessStatement || certificateData.travelFitnessStatement);
+    addField('nextReviewDate', certificateData.nextReviewDate);
+    
+    return medicalDetails;
+  },
+
+  // New certificate creation function for patientMedicalCertificates structure
+  async createCertificateInNewStructure(
+    certificateData: any,
+    patientId: string,
+    specialistId: string,
+    appointmentId?: string  // Optional - only included when created from consultation
+  ): Promise<string> {
+    try {
+      // Validate required parameters
+      if (!patientId || !specialistId) {
+        throw new Error('Patient ID and Specialist ID are required for certificate creation');
+      }
+      
+      if (!certificateData || !certificateData.type) {
+        throw new Error('Certificate data and type are required');
+      }
+      
+      const certificateId = `MC-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      
+      // Get patient, doctor, and clinic data with proper validation
+      const [patientProfile, doctorProfile] = await Promise.all([
+        this.getPatientProfile(patientId),
+        this.getSpecialistData(specialistId)
+      ]);
+      
+      // Validate essential data with specific error messages
+      if (!patientProfile) {
+        // Check if patient exists in users node
+        const userExists = await this.getDocument(`users/${patientId}`);
+        const patientExists = await this.getDocument(`patients/${patientId}`);
+        
+        if (!userExists && !patientExists) {
+          throw new Error(`Patient ${patientId} does not exist in the system. Please ensure the patient has completed registration.`);
+        } else if (!userExists) {
+          throw new Error(`Patient ${patientId} exists in patients node but not in users node. Data inconsistency detected.`);
+        } else if (!patientExists) {
+          throw new Error(`Patient ${patientId} exists in users node but not in patients node. Patient profile incomplete.`);
+        } else {
+          throw new Error(`Failed to fetch patient profile for ${patientId}. Please try again.`);
+        }
+      }
+      
+      if (!doctorProfile) {
+        // Check if specialist exists in users and doctors nodes
+        const userExists = await this.getDocument(`users/${specialistId}`);
+        const doctorExists = await this.getDocument(`doctors/${specialistId}`);
+        
+        if (!userExists && !doctorExists) {
+          throw new Error(`Specialist ${specialistId} does not exist in the system. Please ensure the specialist has completed registration.`);
+        } else if (!userExists) {
+          throw new Error(`Specialist ${specialistId} exists in doctors node but not in users node. Data inconsistency detected.`);
+        } else if (!doctorExists) {
+          throw new Error(`Specialist ${specialistId} exists in users node but has not completed doctor profile setup.`);
+        } else {
+          throw new Error(`Failed to fetch specialist profile for ${specialistId}. Please try again.`);
+        }
+      }
+      
+      // Get clinic data from doctor's primary clinic affiliation with proper validation
+      let clinicData = null;
+      if (doctorProfile.clinicAffiliations && doctorProfile.clinicAffiliations.length > 0) {
+        const primaryClinicId = doctorProfile.clinicAffiliations[0];
+        
+        try {
+          clinicData = await this.getClinicById(primaryClinicId);
+          
+          if (!clinicData) {
+            // Check why clinic data is null
+            const clinicExists = await this.getDocument(`clinics/${primaryClinicId}`);
+            
+            if (!clinicExists) {
+              throw new Error(`Clinic ${primaryClinicId} does not exist. Specialist ${specialistId} has invalid clinic affiliation.`);
+            } else if (!clinicExists.isActive) {
+              throw new Error(`Clinic ${primaryClinicId} is inactive. Please contact administrator to activate the clinic.`);
+            } else if (!this.hasValidAddress(clinicExists)) {
+              throw new Error(`Clinic ${primaryClinicId} has invalid address data. Please update clinic information.`);
+            } else {
+              throw new Error(`Failed to load clinic ${primaryClinicId} data. Please try again.`);
+            }
+          }
+        } catch (error) {
+          console.error('Clinic data validation error:', error);
+          throw error; // Re-throw with specific error message
+        }
+      } else {
+        throw new Error(`Specialist ${specialistId} has no clinic affiliations. Cannot create certificate without clinic information.`);
+      }
+      
+      // Extract location from clinic with better fallback logic
+      const issueLocation = (() => {
+        if (clinicData?.city && clinicData?.province) {
+          return `${clinicData.city}, ${clinicData.province}`;
+        }
+        if (doctorProfile?.address) {
+          // Try to extract city from doctor's address
+          const addressParts = doctorProfile.address.split(',');
+          if (addressParts.length >= 2) {
+            return addressParts[addressParts.length - 2].trim() + ', Philippines';
+          }
+        }
+        return 'Cebu City, Philippines'; // Final fallback
+      })();
+
+      const certRef = push(ref(database, `patientMedicalCertificates/${patientId}`));
+      const certificateNumber = certRef.key;
+      
+      const newCertificate = {
+        certificateId,
+        certificateNumber,
+        clinic: {
+          address: clinicData?.address || clinicData?.addressLine || 'Address not available',
+          contact: clinicData?.phone ? `Tel: ${clinicData.phone}` + (clinicData.email ? ` | Email: ${clinicData.email}` : '') : 'Contact not available',
+          name: clinicData?.name || 'Clinic not specified'
+        },
+        createdAt: Date.now(),
+        doctor: {
+          contactNumber: doctorProfile.contactNumber || '',
+          department: doctorProfile.specialty || 'doctor',
+          firstName: doctorProfile.firstName || '',
+          fullName: `${doctorProfile.firstName || ''} ${doctorProfile.lastName || ''}`.trim(),
+          id: specialistId,
+          lastName: doctorProfile.lastName || '',
+          prcId: doctorProfile.medicalLicenseNumber || '',
+          specialty: doctorProfile.specialty || 'Generalist'
+        },
+        medicalDetails: this.buildMedicalDetails(certificateData),
+        metadata: {
+          certificateType: certificateData.type,
+          digitalSignature: certificateData.digitalSignature || '',
+          isSigned: true,
+          issueLocation: issueLocation,
+          issuedDate: new Date().toISOString(),
+          signedDate: new Date().toISOString(),
+          status: 'active',
+          // Only include appointmentId if it exists (from consultation)
+          ...(appointmentId && { appointmentId: appointmentId })
+        },
+        patient: {
+          address: patientProfile.address || '',
+          age: this.calculateAge(patientProfile.dateOfBirth),
+          contactNumber: patientProfile.contactNumber || '',
+          dateOfBirth: patientProfile.dateOfBirth || '',
+          firstName: patientProfile.firstName || '',
+          gender: patientProfile.gender || '',
+          id: patientId,
+          lastName: patientProfile.lastName || '',
+          middleName: patientProfile.middleName || '',
+          name: `${patientProfile.firstName || ''} ${patientProfile.middleName || ''} ${patientProfile.lastName || ''}`.trim()
+        },
+        updatedAt: Date.now(),
+        version: "1.0"
+      };
+      
+      // Save to new structure
+      // await this.setDocument(
+      //   `patientMedicalCertificates/${patientId}/${certificateId}`,
+      //   newCertificate
+      // );
+
+      await set(certRef, newCertificate);
+      
+      return certificateNumber;
+    } catch (error) {
+      console.error('Create certificate in new structure error:', error);
+      throw error;
+    }
+  },
+
+  // Helper function to calculate age with comprehensive date format handling
+  calculateAge(dateOfBirth: string): number {
+    if (!dateOfBirth) return 0;
+    
+    try {
+      // Handle different date formats commonly found in the database
+      let birthDate: Date | null = null;
+      
+      // Try direct parsing first
+      const directParse = new Date(dateOfBirth);
+      if (!isNaN(directParse.getTime())) {
+        birthDate = directParse;
+      } else {
+        // Handle string formats
+        const cleaned = dateOfBirth.replace(/[-\.]/g, '/').trim();
+        const parts = cleaned.split('/').map(p => p.trim());
+        
+        if (parts.length === 3) {
+          let day: number, month: number, year: number;
+          
+          if (parts[0].length === 4) {
+            // YYYY/MM/DD format (ISO-like)
+            year = Number(parts[0]);
+            month = Number(parts[1]);
+            day = Number(parts[2]);
+          } else if (Number(parts[0]) > 12) {
+            // DD/MM/YYYY format
+            day = Number(parts[0]);
+            month = Number(parts[1]);
+            year = Number(parts[2]);
+          } else {
+            // MM/DD/YYYY format (US format - most common in our data)
+            month = Number(parts[0]);
+            day = Number(parts[1]);
+            year = Number(parts[2]);
+          }
+          
+          // Validate the parsed values
+          if (year && month && day && 
+              year > 1900 && year < 2100 && 
+              month >= 1 && month <= 12 && 
+              day >= 1 && day <= 31) {
+            birthDate = new Date(year, month - 1, day);
+            
+            // Check if the date is valid (handles invalid dates like Feb 30)
+            if (birthDate.getFullYear() !== year || 
+                birthDate.getMonth() !== month - 1 || 
+                birthDate.getDate() !== day) {
+              birthDate = null;
+            }
+          }
+        }
+      }
+      
+      if (!birthDate || isNaN(birthDate.getTime())) {
+        console.warn('Invalid date of birth:', dateOfBirth);
+        return 0;
+      }
+      
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      // Ensure age is reasonable
+      if (age < 0 || age > 150) {
+        console.warn('Invalid age calculated:', age, 'for date of birth:', dateOfBirth);
+        return 0;
+      }
+      
+      return age;
+    } catch (error) {
+      console.error('Error calculating age:', error, 'for date of birth:', dateOfBirth);
+      return 0;
+    }
+  },
+
+  // Helper function to calculate rest days
+  calculateRestDays(startDate: string, endDate: string): string {
+    if (!startDate || !endDate) return '';
+    
+    try {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return '';
+      
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end days
+      
+      return diffDays.toString();
+    } catch (error) {
+      console.error('Error calculating rest days:', error);
+      return '';
+    }
+  },
+
+  // Helper function to validate data completeness before certificate creation
+  async validateCertificateCreationData(patientId: string, specialistId: string): Promise<{
+    isValid: boolean;
+    errors: string[];
+    patientProfile?: StandardizedPatientData;
+    doctorProfile?: StandardizedSpecialistData;
+    clinicData?: Clinic;
+  }> {
+    const errors: string[] = [];
+    let patientProfile: StandardizedPatientData | undefined;
+    let doctorProfile: StandardizedSpecialistData | undefined;
+    let clinicData: Clinic | undefined;
+
+    try {
+      // Validate patient data
+      patientProfile = await this.getPatientProfile(patientId);
+      if (!patientProfile) {
+        const userExists = await this.getDocument(`users/${patientId}`);
+        const patientExists = await this.getDocument(`patients/${patientId}`);
+        
+        if (!userExists && !patientExists) {
+          errors.push(`Patient ${patientId} does not exist in the system`);
+        } else if (!userExists) {
+          errors.push(`Patient ${patientId} missing from users node`);
+        } else if (!patientExists) {
+          errors.push(`Patient ${patientId} missing from patients node`);
+        } else {
+          errors.push(`Failed to fetch patient profile for ${patientId}`);
+        }
+      }
+
+      // Validate specialist data
+      doctorProfile = await this.getSpecialistData(specialistId);
+      if (!doctorProfile) {
+        const userExists = await this.getDocument(`users/${specialistId}`);
+        const doctorExists = await this.getDocument(`doctors/${specialistId}`);
+        
+        if (!userExists && !doctorExists) {
+          errors.push(`Specialist ${specialistId} does not exist in the system`);
+        } else if (!userExists) {
+          errors.push(`Specialist ${specialistId} missing from users node`);
+        } else if (!doctorExists) {
+          errors.push(`Specialist ${specialistId} missing from doctors node`);
+        } else {
+          errors.push(`Failed to fetch specialist profile for ${specialistId}`);
+        }
+      }
+
+      // Validate clinic data if specialist exists
+      if (doctorProfile) {
+        if (!doctorProfile.clinicAffiliations || doctorProfile.clinicAffiliations.length === 0) {
+          errors.push(`Specialist ${specialistId} has no clinic affiliations`);
+        } else {
+          const primaryClinicId = doctorProfile.clinicAffiliations[0];
+          clinicData = await this.getClinicById(primaryClinicId);
+          
+          if (!clinicData) {
+            const clinicExists = await this.getDocument(`clinics/${primaryClinicId}`);
+            
+            if (!clinicExists) {
+              errors.push(`Clinic ${primaryClinicId} does not exist`);
+            } else if (!clinicExists.isActive) {
+              errors.push(`Clinic ${primaryClinicId} is inactive`);
+            } else if (!this.hasValidAddress(clinicExists)) {
+              errors.push(`Clinic ${primaryClinicId} has invalid address data`);
+            } else {
+              errors.push(`Failed to load clinic ${primaryClinicId} data`);
+            }
+          }
+        }
+      }
+
+      return {
+        isValid: errors.length === 0,
+        errors,
+        patientProfile,
+        doctorProfile,
+        clinicData
+      };
+    } catch (error) {
+      errors.push(`Validation error: ${error.message}`);
+      return {
+        isValid: false,
+        errors,
+        patientProfile,
+        doctorProfile,
+        clinicData
+      };
+    }
+  },
+
   async updateCertificate(id: string, updates: Partial<Certificate>): Promise<void> {
     try {
       const certificateRef = ref(database, `certificates/${id}`);
@@ -3087,8 +3803,38 @@ export const databaseService = {
 
   async deleteCertificate(id: string): Promise<void> {
     try {
-      const certificateRef = ref(database, `certificates/${id}`);
-      await remove(certificateRef);
+      // First, try to find the certificate in the new structure
+      // We need to search through patientMedicalCertificates to find the certificate
+      const certificatesRef = ref(database, 'patientMedicalCertificates');
+      const snapshot = await get(certificatesRef);
+      
+      if (snapshot.exists()) {
+        let certificateFound = false;
+        
+        // Search through all patients
+        snapshot.forEach((patientSnapshot) => {
+          const patientId = patientSnapshot.key;
+          const patientCertificates = patientSnapshot.val();
+          
+          // Search through all certificates for this patient
+          Object.keys(patientCertificates).forEach((certificateKey) => {
+            const certificate = patientCertificates[certificateKey];
+            if (certificate.certificateId === id) {
+              // Found the certificate, delete it
+              const certificateRef = ref(database, `patientMedicalCertificates/${patientId}/${certificateKey}`);
+              remove(certificateRef);
+              certificateFound = true;
+              console.log('✅ Certificate deleted from patientMedicalCertificates:', id);
+            }
+          });
+        });
+        
+        if (!certificateFound) {
+          console.log('⚠️ Certificate not found in patientMedicalCertificates:', id);
+        }
+      } else {
+        console.log('⚠️ No certificates found in patientMedicalCertificates');
+      }
     } catch (error) {
       console.error('Delete certificate error:', error);
       throw error;
@@ -3574,34 +4320,76 @@ export const databaseService = {
     return unsubscribe;
   },
 
-  onCertificatesChange(patientId: string, callback: (certificates: Certificate[]) => void) {
-    const certificatesRef = ref(database, 'certificates');
+  // New real-time listeners for patientMedicalCertificates structure
+  onCertificatesChangeNew(patientId: string, callback: (certificates: Certificate[]) => void) {
+    const certificatesRef = ref(database, `patientMedicalCertificates/${patientId}`);
     
-    const unsubscribe = onValue(certificatesRef, (snapshot) => {
+    return onValue(certificatesRef, async (snapshot) => {
       if (snapshot.exists()) {
         const certificates: Certificate[] = [];
-        
         snapshot.forEach((childSnapshot) => {
-          const certificateData = childSnapshot.val();
-          // Filter certificates by patientId
-          if (certificateData.patientId === patientId) {
-            certificates.push({
-              id: childSnapshot.key,
-              ...certificateData
-            });
-          }
+          const certData = childSnapshot.val();
+          // Pass the certificate key as consultation ID if not explicitly stored
+          const consultationId = certData.metadata?.consultationId || childSnapshot.key;
+          const enrichedCertData = {
+            ...certData,
+            consultationId: consultationId
+          };
+          certificates.push(this.transformNewCertificateToLegacy(enrichedCertData, patientId));
         });
-        
-        callback(certificates.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime()));
+        callback(certificates);
       } else {
         callback([]);
       }
     });
+  },
+
+  onCertificatesBySpecialistChangeNew(specialistId: string, callback: (certificates: Certificate[]) => void) {
+    const certificatesRef = ref(database, 'patientMedicalCertificates');
     
-    return unsubscribe;
+    return onValue(certificatesRef, async (snapshot) => {
+      if (snapshot.exists()) {
+        const certificates: Certificate[] = [];
+        snapshot.forEach((patientSnapshot) => {
+          patientSnapshot.forEach((certSnapshot) => {
+            const certData = certSnapshot.val();
+            if (certData.doctor.id === specialistId) {
+              // Pass the certificate key as consultation ID if not explicitly stored
+              const consultationId = certData.metadata?.consultationId || certSnapshot.key;
+              const enrichedCertData = {
+                ...certData,
+                consultationId: consultationId,
+                // IMPORTANT: Ensure the certificate ID is available for transformation
+                certificateId: certData.certificateId || certSnapshot.key,
+                id: certData.id || certSnapshot.key
+              };
+              certificates.push(this.transformNewCertificateToLegacy(enrichedCertData, patientSnapshot.key!));
+            }
+          });
+        });
+        callback(certificates);
+      } else {
+        callback([]);
+      }
+    });
+  },
+
+  onCertificatesChange(patientId: string, callback: (certificates: Certificate[]) => void) {
+    // Use new structure instead of old one
+    return this.onCertificatesChangeNew(patientId, callback);
   },
 
 
+
+  // Helper method to ensure prescription signature fields are included
+  ensurePrescriptionSignatureFields(prescriptionData: any): any {
+    // Ensure signature fields are present in prescription data
+    return {
+      ...prescriptionData,
+      // Signature fields will be added by the signature system
+      // This method ensures they're preserved when saving
+    };
+  },
 
   // Monitor medical history for new prescriptions and certificates
   onMedicalHistoryPrescriptionsAndCertificatesChange(
@@ -3610,7 +4398,7 @@ export const databaseService = {
   ) {
     const medicalHistoryRef = ref(database, `patientMedicalHistory/${patientId}/entries`);
     
-    const unsubscribe = onValue(medicalHistoryRef, async (snapshot) => {
+    const unsubscribe = onValue(medicalHistoryRef, (snapshot) => {
       if (snapshot.exists()) {
         const prescriptions: any[] = [];
         const certificates: any[] = [];
@@ -3640,38 +4428,14 @@ export const databaseService = {
             });
           }
           
-          // Extract certificates
-          if (entryData.certificates && Array.isArray(entryData.certificates)) {
-            entryData.certificates.forEach((certificate: any, index: number) => {
-              certificates.push({
-                id: certificate.id || `${entryId}_certificate_${index}`,
-                entryId,
-                patientId,
-                type: certificate.type,
-                fitnessStatement: certificate.fitnessStatement,
-                workRestrictions: certificate.workRestrictions,
-                issuedDate: certificate.issuedDate,
-                issuedTime: certificate.issuedTime,
-                status: certificate.status,
-                description: certificate.description,
-                destination: certificate.destination,
-                followUpDate: certificate.followUpDate,
-                medicalAdvice: certificate.medicalAdvice,
-                nextReviewDate: certificate.nextReviewDate,
-                reasonForUnfitness: certificate.reasonForUnfitness,
-                specialConditions: certificate.specialConditions,
-                travelDate: certificate.travelDate,
-                travelFitnessStatement: certificate.travelFitnessStatement,
-                travelMode: certificate.travelMode,
-                unfitPeriodEnd: certificate.unfitPeriodEnd,
-                unfitPeriodStart: certificate.unfitPeriodStart,
-                validityPeriod: certificate.validityPeriod,
-                doctorId: entryData.provider?.id,
-                doctorName: `${entryData.provider?.firstName || ''} ${entryData.provider?.lastName || ''}`.trim(),
-                consultationDate: entryData.consultationDate
-              });
+          // Load certificates from new patientMedicalCertificates structure
+          this.getCertificatesByPatientNew(patientId)
+            .then(patientCertificates => {
+              certificates.push(...patientCertificates);
+            })
+            .catch(error => {
+              console.error('Error loading certificates for real-time listener:', error);
             });
-          }
         });
         
         callback({ prescriptions, certificates });
@@ -4619,6 +5383,54 @@ export const databaseService = {
     }
   },
 
+  // Doctor Signature Management
+  async saveDoctorSignature(doctorId: string, signature: string): Promise<void> {
+    try {
+      const doctorRef = ref(database, `doctors/${doctorId}`);
+      await update(doctorRef, {
+        signature: signature,
+        isSignatureSaved: true,
+      });
+      console.log('✅ Doctor signature saved successfully');
+    } catch (error) {
+      console.error('❌ Error saving doctor signature:', error);
+      throw new Error('Failed to save doctor signature');
+    }
+  },
+
+  async getDoctorSignature(doctorId: string): Promise<{ signature: string | null; isSignatureSaved: boolean }> {
+    try {
+      const doctorRef = ref(database, `doctors/${doctorId}`);
+      const snapshot = await get(doctorRef);
+      
+      if (snapshot.exists()) {
+        const doctorData = snapshot.val();
+        return {
+          signature: doctorData.signature || null,
+          isSignatureSaved: doctorData.isSignatureSaved === true,
+        };
+      }
+      
+      return { signature: null, isSignatureSaved: false };
+    } catch (error) {
+      console.error('❌ Error getting doctor signature:', error);
+      throw new Error('Failed to get doctor signature');
+    }
+  },
+
+  async clearDoctorSignature(doctorId: string): Promise<void> {
+    try {
+      const doctorRef = ref(database, `doctors/${doctorId}`);
+      await update(doctorRef, {
+        signature: null,
+        isSignatureSaved: false,
+      });
+      console.log('✅ Doctor signature cleared successfully');
+    } catch (error) {
+      console.error('❌ Error clearing doctor signature:', error);
+      throw new Error('Failed to clear doctor signature');
+    }
+  },
 
 };  
 

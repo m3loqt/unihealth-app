@@ -7,7 +7,7 @@ export interface UseCertificatesReturn {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  createCertificate: (certificateData: any) => Promise<string | null>;
+  createCertificate: (certificateData: any, patientId: string, appointmentId?: string) => Promise<string | null>;
   updateCertificate: (id: string, updates: Partial<Certificate>) => Promise<void>;
   deleteCertificate: (id: string) => Promise<void>;
   getCertificateById: (certificateId: string) => Promise<Certificate | null>;
@@ -25,7 +25,7 @@ export const useCertificates = (): UseCertificatesReturn => {
     try {
       setLoading(true);
       setError(null);
-      const userCertificates = await databaseService.getCertificates(user.uid);
+      const userCertificates = await databaseService.getCertificatesByPatientNew(user.uid);
       setCertificates(userCertificates);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load certificates');
@@ -39,12 +39,21 @@ export const useCertificates = (): UseCertificatesReturn => {
     await loadCertificates();
   }, [loadCertificates]);
 
-  const createCertificate = useCallback(async (certificateData: any): Promise<string | null> => {
+  const createCertificate = useCallback(async (
+    certificateData: any, 
+    patientId: string,
+    appointmentId?: string  // Optional - only for certificates from consultations
+  ): Promise<string | null> => {
     if (!user) return null;
 
     try {
       setError(null);
-      const certificateId = await databaseService.createCertificate(certificateData);
+      const certificateId = await databaseService.createCertificateInNewStructure(
+        certificateData,
+        patientId,
+        user.uid,
+        appointmentId  // Will be undefined for standalone certificates
+      );
       // No need to manually refresh - real-time listener will handle this
       return certificateId;
     } catch (err) {

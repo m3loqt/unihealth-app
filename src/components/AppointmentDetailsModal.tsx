@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import { Appointment, MedicalHistory } from '../services/database/firebase';
 import ConsultationDisplay from './ConsultationDisplay';
+import { getChiefComplaint } from '../utils/chiefComplaintHelper';
 
 interface AppointmentDetailsModalProps {
   visible: boolean;
@@ -189,16 +190,18 @@ export default function AppointmentDetailsModal({
             <Text style={styles.detailLabel}>Type</Text>
             <Text style={styles.detailValue}>{appointment.type}</Text>
           </View>
-          {appointment.appointmentPurpose && (
+          {(appointment.appointmentPurpose || appointment.type === 'walk-in') && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Purpose</Text>
-              <Text style={styles.detailValue}>{appointment.appointmentPurpose}</Text>
+              <Text style={styles.detailValue}>
+                {appointment.appointmentPurpose || (appointment.type === 'walk-in' ? 'Walk In' : '')}
+              </Text>
             </View>
           )}
-          {appointment.additionalNotes && (
+          {getChiefComplaint(appointment) && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Notes</Text>
-              <Text style={styles.detailValue}>{appointment.additionalNotes}</Text>
+              <Text style={styles.detailValue}>{getChiefComplaint(appointment)}</Text>
             </View>
           )}
         </View>

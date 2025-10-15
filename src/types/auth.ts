@@ -97,6 +97,8 @@ export interface DoctorNode {
   specialty?: string;
   status?: string;
   userId: string;
+  signature?: string; // Base64 signature data
+  isSignatureSaved?: boolean; // Whether signature is saved for future use
 }
 
 export interface BiometricCredentials {

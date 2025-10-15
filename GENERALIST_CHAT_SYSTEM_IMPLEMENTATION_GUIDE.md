@@ -1,5 +1,8 @@
 # Generalist Chat System Implementation Guide
 
+> **⚠️ STATUS: PLANNED FEATURE**  
+> This is a comprehensive implementation guide for a planned feature. The generalist chat system is not yet implemented in the codebase. This guide serves as a roadmap for future development.
+
 ## Overview
 
 This guide provides comprehensive documentation for implementing a chat system for **generalist doctors** in the UniHealth app. The generalist chat system allows generalist doctors to communicate with:
@@ -7,6 +10,9 @@ This guide provides comprehensive documentation for implementing a chat system f
 2. **Specialists** to whom they have referred patients
 
 This documentation is based on the existing patient-specialist chat system implementation and provides specific guidance for adapting it to generalist doctors.
+
+> **📚 Related Documentation**  
+> This guide extends the main [Chat System Documentation](./CHAT_SYSTEM_DOCUMENTATION.md) which covers the complete chat system including voice messages, typing indicators, online status, and generalist support.
 
 ## Table of Contents
 
@@ -53,10 +59,16 @@ Generalist Doctor
 
 ## Data Models & Interfaces
 
+> **📖 Reference**: For complete interface definitions, see the [Chat System Documentation](./CHAT_SYSTEM_DOCUMENTATION.md#data-models)
+
 ### Core Interfaces (Reuse Existing)
 
+The generalist chat system reuses all existing interfaces from the main chat system:
+
 ```typescript
-// Reuse these interfaces from the existing system
+// All interfaces are already defined in the main chat system
+// See CHAT_SYSTEM_DOCUMENTATION.md for complete definitions
+
 interface ChatThread {
   id: string;
   participants: { [uid: string]: boolean };
@@ -94,7 +106,7 @@ interface ChatParticipant {
   firstName: string;
   lastName: string;
   email: string;
-  role: 'patient' | 'specialist' | 'generalist';
+  role: 'patient' | 'specialist' | 'generalist' | 'admin';
   specialty?: string;
   avatar?: string;
 }
@@ -155,9 +167,16 @@ interface GeneralistChatSpecialist {
 
 ## Database Structure
 
+> **📖 Reference**: For complete database structure, see the [Chat System Documentation](./CHAT_SYSTEM_DOCUMENTATION.md#firebase-database-structure)
+
 ### Firebase Database Structure (Reuse Existing)
 
-The existing Firebase structure supports generalist chats without modification:
+The existing Firebase structure supports generalist chats without modification. The main chat system already includes support for:
+
+- **Voice Messages**: `voiceMessage` field in messages
+- **Typing Indicators**: `/typing/{threadId}/{userId}` paths
+- **Online Status**: `/status/{userId}` paths
+- **Generalist Role**: `'generalist'` role in user data
 
 ```
 firebase-realtime-database/
@@ -178,12 +197,19 @@ firebase-realtime-database/
 │           ├── at: timestamp
 │           ├── seenBy: { [uid: string]: boolean }
 │           └── voiceMessage?: { audioUrl, duration, waveform }
+├── typing/
+│   └── {threadId}/
+│       └── {userId}: boolean
+├── status/
+│   └── {userId}/
+│       ├── online: boolean
+│       └── lastSeen: timestamp
 └── users/
     └── {uid}/
         ├── firstName: string
         ├── lastName: string
         ├── email: string
-        ├── role: 'patient' | 'specialist' | 'generalist'
+        ├── role: 'patient' | 'specialist' | 'generalist' | 'admin'
         └── specialty?: string
 ```
 
@@ -199,9 +225,18 @@ The existing deterministic thread ID generation works for generalist chats:
 
 ## Core Services Implementation
 
+> **📖 Reference**: For complete service documentation, see the [Chat System Documentation](./CHAT_SYSTEM_DOCUMENTATION.md#core-services)
+
 ### Reuse Existing ChatService
 
-The existing `ChatService` (`src/services/chatService.ts`) supports generalist chats without modification. Key methods:
+The existing `ChatService` (`src/services/chatService.ts`) supports generalist chats without modification. The service already includes all necessary methods for:
+
+- **Voice Messages**: `sendVoiceMessage()`
+- **Typing Indicators**: `setTypingStatus()`, `listenToTypingStatus()`
+- **Online Status**: `setUserStatus()`, `listenToUserStatus()`
+- **Message Management**: `deleteMessage()`, `deleteThread()`
+
+Key methods for generalist implementation:
 
 ```typescript
 // These methods work for generalist chats
@@ -1125,9 +1160,11 @@ const contactRole = isPatientChat ? 'patient' : 'specialist';
 
 ## Real-time Features
 
+> **📖 Reference**: For complete real-time features documentation, see the [Chat System Documentation](./CHAT_SYSTEM_DOCUMENTATION.md#real-time-updates)
+
 ### Reuse Existing Real-time System
 
-The existing real-time notification system works for generalist chats:
+The existing real-time notification system works for generalist chats and includes all advanced features:
 
 ```typescript
 // Real-time thread updates
@@ -1149,9 +1186,11 @@ const unsubscribe = chatService.listenToTypingStatus(threadId, (typingUsers) => 
 
 ## Voice Messages
 
+> **📖 Reference**: For complete voice message documentation, see the [Chat System Documentation](./CHAT_SYSTEM_DOCUMENTATION.md#voice-messages)
+
 ### Reuse Existing Voice Message System
 
-The existing voice message system works for generalist chats:
+The existing voice message system works for generalist chats and includes all features:
 
 ```typescript
 // Voice recording
@@ -1168,9 +1207,11 @@ const sound = await voiceMessageService.playVoiceMessage(audioUrl);
 
 ## Security & Permissions
 
+> **📖 Reference**: For complete security rules, see the [Chat System Documentation](./CHAT_SYSTEM_DOCUMENTATION.md#security-rules)
+
 ### Firebase Rules (Reuse Existing)
 
-The existing Firebase rules support generalist chats:
+The existing Firebase rules support generalist chats and include all new features:
 
 ```json
 {
@@ -1317,6 +1358,29 @@ The generalist chat system builds upon the existing patient-specialist chat infr
 2. **Enhanced UI** to handle mixed contact types
 3. **Database service extensions** for generalist-specific queries
 4. **Role-based styling** to distinguish between patients and specialists
+
+### Integration with Main Chat System
+
+The generalist chat system leverages all existing features from the main chat system:
+
+- ✅ **Voice Messages**: Full voice recording and playback support
+- ✅ **Typing Indicators**: Real-time typing status updates
+- ✅ **Online Status**: User presence tracking with last seen timestamps
+- ✅ **Real-time Updates**: Live message and thread synchronization
+- ✅ **Security**: Complete Firebase rules for all chat features
+- ✅ **Message Management**: Delete messages and threads functionality
+
+### Next Steps for Implementation
+
+1. **Review the main [Chat System Documentation](./CHAT_SYSTEM_DOCUMENTATION.md)** for complete feature reference
+2. **Follow this implementation guide** for generalist-specific adaptations
+3. **Implement the missing components** as outlined in the Implementation Steps section
+4. **Test thoroughly** using the provided testing guidelines
+
+> **📚 Related Documentation**  
+> - [Chat System Documentation](./CHAT_SYSTEM_DOCUMENTATION.md) - Complete chat system reference
+> - [Voice Message Setup Guide](./guide/VOICE_TO_TEXT_GUIDE.md) - Voice message implementation
+> - [Online Status Implementation](./REAL_ONLINE_STATUS_IMPLEMENTATION.md) - Online status system
 
 The existing chat service, real-time system, voice messages, and security rules work without modification, making this implementation efficient and maintainable.
 
