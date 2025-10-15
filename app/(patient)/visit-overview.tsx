@@ -14,6 +14,9 @@ import {
   UIManager,
   Alert,
   RefreshControl,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import {
   Pill,
@@ -29,6 +32,9 @@ import {
   MoreHorizontal,
   Stethoscope,
   Hourglass,
+  MessageCircle,
+  Star,
+  X,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
@@ -269,6 +275,22 @@ export default function VisitOverviewScreen() {
     certificates: true,
   });
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  
+  // Feedback modal state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackStars, setFeedbackStars] = useState(0);
+  const [feedbackReason, setFeedbackReason] = useState('');
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [hasExistingFeedback, setHasExistingFeedback] = useState(false);
+  
+  // Available tags for feedback
+  const availableTags = [
+    'excellent', 'good', 'satisfied', 'professional', 'knowledgeable', 
+    'friendly', 'helpful', 'caring', 'efficient', 'thorough', 
+    'needs_improvement', 'long_wait', 'communication_issues'
+  ];
   
   // PDF download functionality
   const { downloadModalVisible, setDownloadModalVisible, downloadSavedPath, logoDataUri, handleDownload } = usePdfDownload();
@@ -718,6 +740,102 @@ export default function VisitOverviewScreen() {
       isReferralFollowUp: 'false',
     } as any;
     router.push({ pathname: '/(patient)/book-visit/select-datetime', params });
+  };
+
+  // Check for existing feedback when visit data loads
+  useEffect(() => {
+    const checkExistingFeedback = async () => {
+      if (visitData?.id && visitData?.status === 'completed') {
+        try {
+          const feedbackExists = await databaseService.checkFeedbackExists(visitData.id);
+          setHasExistingFeedback(feedbackExists);
+        } catch (error) {
+          console.error('Error checking existing feedback:', error);
+          setHasExistingFeedback(false);
+        }
+      }
+    };
+
+    checkExistingFeedback();
+  }, [visitData]);
+
+  // Handle tag selection
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags(prev => {
+      if (prev.includes(tag)) {
+        return prev.filter(t => t !== tag);
+      } else {
+        return [...prev, tag];
+      }
+    });
+  };
+
+  // Submit feedback function
+  const handleSubmitFeedback = async () => {
+    if (!visitData?.id || !feedbackStars) return;
+    
+    // Ensure at least one tag is selected
+    if (selectedTags.length === 0) {
+      Alert.alert('Please select at least one tag to describe your experience.');
+      return;
+    }
+
+    try {
+      setSubmittingFeedback(true);
+      
+      // Get patient data
+      const patientData = await databaseService.getDocument(`users/${user?.uid}`);
+      const patientName = patientData ? `${patientData.firstName || patientData.first_name || ''} ${patientData.lastName || patientData.last_name || ''}`.trim() : 'Unknown Patient';
+      const patientEmail = user?.email || '';
+
+      // Get doctor data
+      const doctorData = await databaseService.getDoctorById(visitData.doctorId);
+      const doctorName = doctorData ? `${doctorData.firstName || ''} ${doctorData.lastName || ''}`.trim() : 'Unknown Doctor';
+      
+      // Get clinic data
+      const clinicData = await databaseService.getClinicByIdForDisplay(visitData.clinicId);
+      const clinicName = clinicData?.name || 'Unknown Clinic';
+
+      const feedbackData = {
+        appointmentId: visitData.id,
+        patientId: visitData.patientId,
+        patientName,
+        patientEmail,
+        doctorId: visitData.doctorId,
+        doctorName,
+        clinicId: visitData.clinicId,
+        clinicName,
+        appointmentDate: visitData.appointmentDate,
+        serviceType: visitData.relatedReferralId ? 'referral' : 'appointment',
+        treatmentType: visitData.appointmentPurpose || 'General Consultation',
+        rating: feedbackStars,
+        comment: feedbackReason,
+        tags: selectedTags,
+        isAnonymous: false,
+      };
+
+      await databaseService.submitFeedback(feedbackData);
+      
+      setHasExistingFeedback(true);
+      setFeedbackSubmitted(true);
+      setTimeout(() => {
+        setShowFeedbackModal(false);
+        setFeedbackSubmitted(false);
+        setFeedbackStars(0);
+        setFeedbackReason('');
+        setSelectedTags([]);
+        setSubmittingFeedback(false);
+      }, 1200);
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      Alert.alert(
+        'Error',
+        error.message === 'Rating already submitted for this appointment' 
+          ? 'You have already submitted a rating for this appointment.'
+          : 'Failed to submit a rating. Please try again.'
+      );
+      setSubmittingFeedback(false);
+    }
   };
 
   if (loading) {
@@ -1366,6 +1484,23 @@ export default function VisitOverviewScreen() {
               <Stethoscope size={18} color="#1E40AF" style={{ marginRight: 12 }} />
               <Text style={styles.moreMenuItemText}>Book Follow-up</Text>
             </TouchableOpacity>
+            {visitData?.status === 'completed' && !hasExistingFeedback && (
+              <TouchableOpacity
+                style={styles.moreMenuItem}
+                onPress={() => {
+                  setShowMoreMenu(false);
+                  setFeedbackStars(0);
+                  setFeedbackReason('');
+                  setFeedbackSubmitted(false);
+                  setSelectedTags([]);
+                  setShowFeedbackModal(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <MessageCircle size={18} color="#1E40AF" style={{ marginRight: 12 }} />
+                <Text style={styles.moreMenuItemText}>Give Feedback</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={styles.moreMenuItem}
               onPress={() => {
@@ -1427,6 +1562,130 @@ export default function VisitOverviewScreen() {
             </TouchableOpacity>
           </View>
         </View>
+      )}
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && (
+        <Modal
+          visible={showFeedbackModal}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setShowFeedbackModal(false)}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalBackdrop}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={styles.modalCard}>
+              {/* Modal header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Give Rating</Text>
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setShowFeedbackModal(false)}
+                >
+                  <X size={20} color="#1E40AF" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalDivider} />
+
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 14 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View style={styles.modalSection}>
+                  <Text style={[styles.modalSectionLabel, { marginBottom: 10 }]}>
+                    How would you rate your visit?
+                  </Text>
+                  <View style={styles.starsRow}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <TouchableOpacity
+                        key={n}
+                        onPress={() => setFeedbackStars(n)}
+                        activeOpacity={0.7}
+                      >
+                        <Star
+                          size={40}
+                          color={n <= feedbackStars ? '#F59E42' : '#E5E7EB'}
+                          fill={n <= feedbackStars ? '#F59E42' : 'none'}
+                          strokeWidth={2}
+                          style={styles.starIcon}
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionLabel}>
+                    Tell us a bit more (optional)
+                  </Text>
+                  <TextInput
+                    style={styles.feedbackInput}
+                    placeholder="Share your experience..."
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                    numberOfLines={4}
+                    value={feedbackReason}
+                    onChangeText={setFeedbackReason}
+                    maxLength={500}
+                    textAlignVertical="top"
+                    returnKeyType="done"
+                  />
+                </View>
+                
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionLabel}>
+                    Select tags that describe your experience
+                  </Text>
+                  <View style={styles.tagsContainer}>
+                    {availableTags.map((tag) => (
+                      <TouchableOpacity
+                        key={tag}
+                        style={[
+                          styles.tagButton,
+                          selectedTags.includes(tag) && styles.tagButtonSelected
+                        ]}
+                        onPress={() => handleTagToggle(tag)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.tagText,
+                          selectedTags.includes(tag) && styles.tagTextSelected
+                        ]}>
+                          {tag.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+                {feedbackSubmitted ? (
+                  <View style={{ alignItems: 'center', marginTop: 16 }}>
+                    <Text style={{ fontSize: 16, color: '#1E40AF', fontWeight: '600' }}>
+                      Thank you for your feedback!
+                    </Text>
+                  </View>
+                ) : (
+                 <View style={styles.feedbackModalButtonContainer}>
+    <TouchableOpacity
+      style={[
+        styles.feedbackModalButton,
+        (!feedbackStars || selectedTags.length === 0 || feedbackSubmitted || submittingFeedback) && { opacity: 0.5 },
+      ]}
+      disabled={!feedbackStars || selectedTags.length === 0 || feedbackSubmitted || submittingFeedback}
+      onPress={handleSubmitFeedback}
+    >
+      <Text style={styles.feedbackModalButtonText}>
+        {submittingFeedback ? 'Submitting...' : 'Submit Rating'}
+      </Text>
+    </TouchableOpacity>
+</View>
+
+                )}
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       )}
     </SafeAreaView>
   );
@@ -1980,6 +2239,137 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     fontSize: 15,
     fontFamily: 'Inter-Medium',
+  },
+
+  // Feedback Modal Styles
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.17)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    width: '89%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingBottom: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.09,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    position: 'relative',
+    maxHeight: '84%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    position: 'relative',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    textAlign: 'center',
+    flex: 1,
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 10,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalDivider: {
+    height: 1.5,
+    backgroundColor: '#DBEAFE',
+    marginBottom: 8,
+  },
+  modalSection: {
+    paddingHorizontal: 18,
+    paddingTop: 13,
+    paddingBottom: 7,
+  },
+  modalSectionLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+    marginBottom: 4,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 8,
+    marginTop: 3,
+  },
+  starIcon: {
+    marginHorizontal: 2,
+  },
+  feedbackInput: {
+    marginTop: 7,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#1F2937',
+    backgroundColor: '#F9FAFB',
+    minHeight: 85,
+    maxHeight: 120,
+    fontFamily: 'Inter-Regular',
+  },
+  feedbackModalButtonContainer: {
+    paddingHorizontal: 18,
+    marginTop: 15,
+  },
+  feedbackModalButton: {
+    backgroundColor: '#1E40AF',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feedbackModalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    letterSpacing: 0.2,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  tagButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  tagButtonSelected: {
+    backgroundColor: '#1E40AF',
+    borderColor: '#1E40AF',
+  },
+  tagText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+  },
+  tagTextSelected: {
+    color: '#FFFFFF',
   },
 });
 

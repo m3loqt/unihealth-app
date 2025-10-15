@@ -456,9 +456,14 @@ export default function PatientChatsScreen() {
 
         <View style={styles.chatContent}>
           <View style={styles.chatHeader}>
-            <Text style={styles.chatName}>
-              Dr. {participant.firstName} {participant.lastName}
-            </Text>
+            <View style={styles.nameAndSpecialty}>
+              <Text style={styles.chatName}>
+                Dr. {participant.firstName} {participant.lastName}
+              </Text>
+              <Text style={styles.specialtyText}>
+                {doctor.specialty}
+              </Text>
+            </View>
             <View style={styles.chatTimeContainer}>
               <Text style={styles.chatTime}>{lastMessageTime}</Text>
               {thread.lastMessage && (
@@ -487,13 +492,6 @@ export default function PatientChatsScreen() {
                 </Text>
               </View>
             )}
-          </View>
-          
-          {/* Show specialty info */}
-          <View style={styles.sourceInfo}>
-            <Text style={styles.sourceText}>
-              {doctor.specialty}
-            </Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -611,6 +609,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     color: '#1F2937',
+    fontFamily: 'Inter-Bold',
+    fontWeight: '700',
   },
   searchSection: {
     paddingBottom: 8,
@@ -694,11 +694,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  chatName: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
+  nameAndSpecialty: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chatName: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+  },
+  specialtyText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
   },
   chatTimeContainer: {
     flexDirection: 'row',
@@ -725,14 +735,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     flex: 1,
     marginRight: 8,
-  },
-  sourceInfo: {
-    marginTop: 2,
-  },
-  sourceText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
   },
   unreadBadge: {
     backgroundColor: '#1E40AF',

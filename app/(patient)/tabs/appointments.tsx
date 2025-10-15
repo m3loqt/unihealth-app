@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Alert,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -998,12 +999,6 @@ export default function AppointmentsScreen() {
               })()}
             </Text>
           </View>
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Referred by:</Text>
-            <Text style={styles.metaValue}>
-              {referringDoctorName.includes('Unknown') ? referringDoctorName : `Dr. ${referringDoctorName}`}
-            </Text>
-          </View>
         </View>
 
         {referral?.initialReasonForReferral && (
@@ -1021,124 +1016,12 @@ export default function AppointmentsScreen() {
           </View>
         )}
 
-        {/* Feedback buttons for completed referrals */}
-        {referral?.status === 'completed' && (
-          <View style={styles.appointmentActions}>
-            {(() => {
-              const hasFeedback = existingReferralFeedback[referral.id!];
-
-              return !hasFeedback ? (
-                <View style={styles.completedActionsContainer}>
-                  <TouchableOpacity
-                    style={styles.followUpButton}
-                    onPress={async () => {
-                      // For referrals, we need to pass the specialist and clinic information
-                      // Navigate directly to select-datetime with referral data for follow-up
-                      const specialistId = referral.assignedSpecialistId;
-                      const clinicId = referral.practiceLocation?.clinicId;
-                      
-                      if (!specialistId || !clinicId) {
-                        Alert.alert('Error', 'Unable to book follow-up. Missing specialist or clinic information.');
-                        return;
-                      }
-                      
-                      try {
-                        // Fetch specialist name from users node using assignedSpecialistId as single source of truth
-                        const specialistData = await databaseService.getDocument(`users/${specialistId}`);
-                        const specialistName = specialistData ? 
-                          `${specialistData.firstName || specialistData.first_name || ''} ${specialistData.middleName || specialistData.middle_name || ''} ${specialistData.lastName || specialistData.last_name || ''}`.trim() :
-                          'Unknown Specialist';
-                        
-                        router.push({
-                          pathname: '/(patient)/book-visit/select-datetime',
-                          params: {
-                            doctorId: specialistId,
-                            clinicId: clinicId,
-                            clinicName: '', // Will be fetched from clinic data in select-datetime screen
-                            doctorName: specialistName,
-                            doctorSpecialty: 'Specialist Consultation', // Will be fetched from doctor data in select-datetime screen
-                            isFollowUp: 'true',
-                            originalAppointmentId: referral.id!,
-                            isReferralFollowUp: 'true', // Flag to indicate this is a referral follow-up
-                          }
-                        });
-                      } catch (error) {
-                        console.error('Error fetching specialist data for follow-up:', error);
-                        Alert.alert('Error', 'Unable to fetch specialist information. Please try again.');
-                      }
-                    }}
-                  >
-                    <Repeat size={16} color="#FFFFFF" />
-                    <Text style={styles.followUpButtonText}>Follow-up</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.secondaryButton}
-                    onPress={() => {
-                      setFeedbackReferral(referral);
-                      setFeedbackAppointment(null);
-                      setFeedbackStars(0);
-                      setFeedbackReason('');
-                      setFeedbackSubmitted(false);
-                      setShowFeedbackModal(true);
-                    }}
-                  >
-                    <MessageCircle size={16} color="#1E40AF" />
-                    <Text style={styles.secondaryButtonText}>Give Feedback</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.completedActionsContainer}>
-                  <TouchableOpacity
-                    style={styles.followUpButton}
-                    onPress={async () => {
-                      // For referrals, we need to pass the specialist and clinic information
-                      // Navigate directly to select-datetime with referral data for follow-up
-                      const specialistId = referral.assignedSpecialistId;
-                      const clinicId = referral.practiceLocation?.clinicId;
-                      
-                      if (!specialistId || !clinicId) {
-                        Alert.alert('Error', 'Unable to book follow-up. Missing specialist or clinic information.');
-                        return;
-                      }
-                      
-                      try {
-                        // Fetch specialist name from users node using assignedSpecialistId as single source of truth
-                        const specialistData = await databaseService.getDocument(`users/${specialistId}`);
-                        const specialistName = specialistData ? 
-                          `${specialistData.firstName || specialistData.first_name || ''} ${specialistData.middleName || specialistData.middle_name || ''} ${specialistData.lastName || specialistData.last_name || ''}`.trim() :
-                          'Unknown Specialist';
-                        
-                        router.push({
-                          pathname: '/(patient)/book-visit/select-datetime',
-                          params: {
-                            doctorId: specialistId,
-                            clinicId: clinicId,
-                            clinicName: '', // Will be fetched from clinic data in select-datetime screen
-                            doctorName: specialistName,
-                            doctorSpecialty: 'Specialist Consultation', // Will be fetched from doctor data in select-datetime screen
-                            isFollowUp: 'true',
-                            originalAppointmentId: referral.id!,
-                            isReferralFollowUp: 'true', // Flag to indicate this is a referral follow-up
-                          }
-                        });
-                      } catch (error) {
-                        console.error('Error fetching specialist data for follow-up:', error);
-                        Alert.alert('Error', 'Unable to fetch specialist information. Please try again.');
-                      }
-                    }}
-                  >
-                    <Repeat size={16} color="#FFFFFF" />
-                    <Text style={styles.followUpButtonText}>Follow-up</Text>
-                  </TouchableOpacity>
-                  <View style={styles.feedbackSubmittedContainer}>
-                    <MessageCircle size={16} color="#6B7280" />
-                    <Text style={styles.feedbackSubmittedText}>Give Feedback</Text>
-                  </View>
-                </View>
-              );
-            })()}
-          </View>
-        )}
+        {/* Wand Background Image */}
+        <Image
+          source={require('../../../assets/images/wand.png')}
+          style={styles.wandBackgroundImage}
+          resizeMode="contain"
+        />
 
       </TouchableOpacity>
     );
@@ -1308,62 +1191,14 @@ export default function AppointmentsScreen() {
             </Text>
           </View>
         )}
-        {getChiefComplaint(appointment) && (
-          <View style={styles.notesSection}>
-            <Text style={styles.notesLabel}>Additional Notes:</Text>
-            <Text style={styles.notesText}>{getChiefComplaint(appointment)}</Text>
-          </View>
-        )}
 
-        <View style={styles.appointmentActions}>
-          {(() => {
-            if (!isCompleted) return null;
-            const hasFeedback = existingFeedback[appointment.id!];
+        {/* Wand Background Image */}
+        <Image
+          source={require('../../../assets/images/wand.png')}
+          style={styles.wandBackgroundImage}
+          resizeMode="contain"
+        />
 
-            return !hasFeedback ? (
-              <View style={styles.completedActionsContainer}>
-                <TouchableOpacity
-                  style={styles.followUpButton}
-                  onPress={() => {
-                    handleFollowUp(appointment);
-                  }}
-                >
-                    <Repeat size={16} color="#FFFFFF" />
-                    <Text style={styles.followUpButtonText}>Follow-up</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.secondaryButton}
-                  onPress={() => {
-                    setFeedbackAppointment(appointment);
-                    setFeedbackStars(0);
-                    setFeedbackReason('');
-                    setFeedbackSubmitted(false);
-                    setShowFeedbackModal(true);
-                  }}
-                >
-                  <MessageCircle size={16} color="#1E40AF" />
-                  <Text style={styles.secondaryButtonText}>Give Feedback</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.completedActionsContainer}>
-                <TouchableOpacity
-                  style={styles.followUpButton}
-                  onPress={() => {
-                    handleFollowUp(appointment);
-                  }}
-                >
-                    <Repeat size={16} color="#FFFFFF" />
-                    <Text style={styles.followUpButtonText}>Follow-up</Text>
-                </TouchableOpacity>
-                <View style={styles.feedbackSubmittedContainer}>
-                  <MessageCircle size={16} color="#6B7280" />
-                  <Text style={styles.feedbackSubmittedText}>Give Feedback</Text>
-                </View>
-              </View>
-            );
-          })()}
-        </View>
       </TouchableOpacity>
     );
   };
@@ -1839,12 +1674,16 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    position: 'relative',
+    overflow: 'hidden',
   },
   appointmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12,
+    zIndex: 1,
+    position: 'relative',
   },
   appointmentHeaderRight: {
     flexDirection: 'row',
@@ -1902,7 +1741,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#D1D5DB',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
   },
 
   statusText: {
@@ -2009,7 +1848,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   metaText: {
     fontSize: 14,
@@ -2032,8 +1871,7 @@ const styles = StyleSheet.create({
   },
   // Notes Section
   notesSection: {
-    marginBottom: 16,
-
+    marginBottom: 0,
   },
   notesLabel: {
     fontSize: 14,
@@ -2391,7 +2229,8 @@ feedbackModalButton: {
     padding: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 16,
+    position: 'relative',
+    overflow: 'hidden',
   },
   referralCardHeader: {
     flexDirection: 'row',
@@ -2645,5 +2484,16 @@ feedbackModalButton: {
   sortDropdownActiveText: {
     color: '#1E40AF',
     fontFamily: 'Inter-Medium',
+  },
+
+  // Wand Background Image Styles
+  wandBackgroundImage: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    width: 40,
+    height: 40,
+    opacity: 0.4,
+    zIndex: 0,
   },
 });

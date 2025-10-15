@@ -1012,7 +1012,7 @@ export default function HomeScreen() {
                     style={styles.tipGradient}
                   />
                   <View style={styles.tipTextContent}>
-                    <View style={styles.tipTitleContainer}>
+                    <View style={styles.tipTitleRow}>
                       <Info size={14} color="#FFFFFF" />
                       <Text style={styles.tipCarouselTitle}>{tip.title}</Text>
                     </View>
@@ -1161,7 +1161,7 @@ export default function HomeScreen() {
                   <View style={styles.appointmentFooter}>
                     <View style={styles.appointmentTimeInfo}>
                       <View style={styles.appointmentTimePill}>
-                        <Calendar size={10} color="#FFFFFF" />
+                        <Calendar size={10} color="#6B7280" />
                         <Text style={styles.appointmentDate}>
                           {appt.appointmentDate ? (() => {
                             try {
@@ -1180,7 +1180,7 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                       <View style={styles.appointmentTimePill}>
-                        <Clock size={10} color="#FFFFFF" />
+                        <Clock size={10} color="#6B7280" />
                         <Text style={styles.appointmentDate}>
                           {(() => {
                             const timeString = appt.appointmentTime;
@@ -1226,6 +1226,15 @@ export default function HomeScreen() {
             ) : (
               filteredPrescriptions.map((prescription) => (
                 <View key={prescription.id} style={styles.prescriptionCard}>
+                  {/* DNA image background */}
+                  <View style={styles.dnaImageContainer}>
+                    <Image 
+                      source={require('../../../assets/images/dna.png')} 
+                      style={styles.dnaBackgroundImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  
                   <View style={styles.prescriptionHeader}>
                     <View style={[styles.medicationIcon, { backgroundColor: '#1E3A8A15' }]}>
                       <Pill size={20} color="#1E3A8A" />
@@ -1843,7 +1852,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    backgroundColor: '#EF4444',
+    backgroundColor: '#DC2626',
     borderRadius: 8,
     paddingHorizontal: 4,
     paddingVertical: 1,
@@ -1914,24 +1923,11 @@ const styles = StyleSheet.create({
     right: 16,
     zIndex: 10,
   },
-  tipTitleContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 8,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-    backdropFilter: 'blur(10px)',
+  tipTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    marginBottom: 8,
   },
   tipCarouselTitle: {
     fontSize: 14,
@@ -1997,10 +1993,10 @@ const styles = StyleSheet.create({
   
   appointmentCard: {
     padding: 16,
-    backgroundColor: '#1E40AF',
+    backgroundColor: '#F9FAFB',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1E40AF',
+    borderColor: '#E5E7EB',
     marginBottom: 12,
     position: 'relative',
     overflow: 'hidden',
@@ -2011,7 +2007,7 @@ const styles = StyleSheet.create({
     right: 0,
     width: 40,
     height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(30, 64, 175, 0.08)',
     borderTopRightRadius: 12,
     borderBottomLeftRadius: 20,
   },
@@ -2021,7 +2017,7 @@ const styles = StyleSheet.create({
     right: 0,
     width: 60,
     height: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(30, 64, 175, 0.05)',
     borderTopRightRadius: 12,
     borderBottomLeftRadius: 30,
   },
@@ -2034,28 +2030,28 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E40AF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   doctorInitial: { 
-    color: '#1E40AF', 
+    color: '#FFFFFF', 
     fontSize: 14 
   },
   appointmentDetails: { flex: 1 },
   doctorName: { 
     fontSize: 16, 
-    color: '#FFFFFF' 
+    color: '#1F2937' 
   },
   doctorSpecialty: { 
     fontSize: 14, 
-    color: '#E5E7EB', 
+    color: '#6B7280', 
     marginTop: 2 
   },
   appointmentPurpose: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: '#6B7280',
     textAlign: 'right',
     maxWidth: 120,
     lineHeight: 16,
@@ -2066,14 +2062,14 @@ const styles = StyleSheet.create({
      paddingHorizontal: 8,
      paddingVertical: 4,
      borderRadius: 12,
-     backgroundColor: 'rgba(255, 255, 255, 0.2)',
+     backgroundColor: '#FFFFFF',
      borderWidth: 1,
-     borderColor: 'rgba(255, 255, 255, 0.3)',
+     borderColor: '#D1D5DB',
      gap: 4,
    },
    appointmentDate: { 
      fontSize: 12, 
-     color: '#FFFFFF',
+     color: '#6B7280',
      textAlign: 'center',
      fontFamily: 'Inter-Regular',
    },
@@ -2092,13 +2088,13 @@ const styles = StyleSheet.create({
   joinButton: { 
     paddingHorizontal: 16, 
     paddingVertical: 8, 
-    backgroundColor: '#FFFFFF', 
+    backgroundColor: '#1E40AF', 
     borderRadius: 8,
     minWidth: 100,
     alignItems: 'center',
   },
   joinButtonText: { 
-    color: '#1E40AF', 
+    color: '#FFFFFF', 
     fontSize: 14 
   },
   prescriptionsContainer: { gap: 12 },
@@ -2107,11 +2103,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB', 
     borderRadius: 12, 
     borderWidth: 1, 
-    borderColor: '#E5E7EB' 
+    borderColor: '#E5E7EB',
+    position: 'relative',
+    overflow: 'hidden',
   },
   prescriptionHeader: { 
     flexDirection: 'row', 
-    alignItems: 'flex-start' 
+    alignItems: 'flex-start',
+    zIndex: 1,
+    position: 'relative',
   },
   medicationIcon: { 
     width: 40, 
@@ -2145,7 +2145,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#D1D5DB',
     gap: 4,
@@ -2166,6 +2166,27 @@ const styles = StyleSheet.create({
   prescriptionStatus: { 
     alignItems: 'flex-end',
     gap: 8,
+  },
+  
+  // DNA image background design
+  dnaImageContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 100,
+    overflow: 'hidden',
+    zIndex: 0,
+    opacity: 0.06,
+  },
+  dnaBackgroundImage: {
+    position: 'absolute',
+    right: -20,
+    top: '50%',
+    width: 120,
+    height: 120,
+    transform: [{ translateY: -60 }],
+    tintColor: '#1E40AF',
   },
 
   // Empty state styles

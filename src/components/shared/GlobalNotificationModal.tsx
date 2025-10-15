@@ -9,7 +9,7 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import { Bell, RefreshCw, Check, Trash2 } from 'lucide-react-native';
+import { Bell, RefreshCw, Check, Trash2, Info } from 'lucide-react-native';
 import { useRealtimeNotificationContext } from '../../contexts/RealtimeNotificationContext';
 import { getSafeNotifications, getSafeUnreadCount } from '../../utils/notificationUtils';
 import { router } from 'expo-router';
@@ -140,6 +140,114 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
     }
   };
 
+  // Format notification time to show relative time (X days ago)
+  const formatNotificationTime = (timestamp: number): string => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    
+    const date = new Date(timestamp);
+    return date.toLocaleDateString();
+  };
+
+  // Generate logical title for notification based on type and content
+  const getNotificationTitle = (notification: any): string => {
+    const type = notification.type?.toLowerCase();
+    const message = notification.message?.toLowerCase() || '';
+    
+    // Appointment related notifications
+    if (type === 'appointment') {
+      if (message.includes('scheduled') || message.includes('booked')) {
+        return 'Appointment Scheduled';
+      } else if (message.includes('cancelled') || message.includes('canceled')) {
+        return 'Appointment Cancelled';
+      } else if (message.includes('rescheduled') || message.includes('reschedule')) {
+        return 'Appointment Rescheduled';
+      } else if (message.includes('reminder')) {
+        return 'Appointment Reminder';
+      } else if (message.includes('completed') || message.includes('finished')) {
+        return 'Appointment Completed';
+      } else {
+        return 'Appointment Update';
+      }
+    }
+    
+    // Prescription related notifications
+    if (type === 'prescription') {
+      if (message.includes('prescribed') || message.includes('new prescription')) {
+        return 'New Prescription';
+      } else if (message.includes('refill') || message.includes('renew')) {
+        return 'Prescription Refill';
+      } else if (message.includes('expired') || message.includes('expire')) {
+        return 'Prescription Expired';
+      } else if (message.includes('ready') || message.includes('pickup')) {
+        return 'Prescription Ready';
+      } else {
+        return 'Prescription Update';
+      }
+    }
+    
+    // Referral related notifications
+    if (type === 'referral') {
+      if (message.includes('referred') || message.includes('referral')) {
+        return 'New Referral';
+      } else if (message.includes('accepted') || message.includes('accept')) {
+        return 'Referral Accepted';
+      } else if (message.includes('rejected') || message.includes('reject')) {
+        return 'Referral Rejected';
+      } else {
+        return 'Referral Update';
+      }
+    }
+    
+    // Chat/Message related notifications
+    if (type === 'message' || type === 'chat') {
+      return 'New Message';
+    }
+    
+    // System/General notifications
+    if (message.includes('welcome') || message.includes('account')) {
+      return 'Account Update';
+    } else if (message.includes('payment') || message.includes('billing')) {
+      return 'Payment Update';
+    } else if (message.includes('security') || message.includes('login')) {
+      return 'Security Alert';
+    } else if (message.includes('maintenance') || message.includes('system')) {
+      return 'System Update';
+    } else if (message.includes('verification') || message.includes('verify')) {
+      return 'Verification Required';
+    } else if (message.includes('error') || message.includes('failed')) {
+      return 'Action Failed';
+    } else if (message.includes('success') || message.includes('completed')) {
+      return 'Action Completed';
+    }
+    
+    // Default fallback
+    return 'Notification';
+  };
+
+  // Handle clear all notifications
+  const handleClearAll = async () => {
+    try {
+      console.log('🔔 Clearing all notifications');
+      // Delete all notifications
+      for (const notification of realtimeNotifications) {
+        await deleteRealtimeNotification(notification.id);
+      }
+      console.log('🔔 Successfully cleared all notifications');
+    } catch (error) {
+      console.error('🔔 Error clearing all notifications:', error);
+      Alert.alert('Error', 'Failed to clear all notifications. Please try again.');
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -174,6 +282,13 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
                 <Check size={20} color="#1E40AF" />
                 <Text style={styles.modalActionButtonText}>Mark All Read</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.clearAllButton}
+                onPress={handleClearAll}
+              >
+                <Trash2 size={20} color="#DC2626" />
+                <Text style={styles.clearAllButtonText}>Clear</Text>
+              </TouchableOpacity>
             </View>
 
             {realtimeNotifications.length === 0 ? (
@@ -193,36 +308,37 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
                     onPress={() => handleNotificationPress(notification, onClose)}
                     activeOpacity={0.7}
                   >
+                    {/* Notification Icon */}
+                    <View style={styles.notificationIconContainer}>
+                      <Info size={20} color="#9CA3AF" />
+                    </View>
+                    
                     <View style={styles.notificationContent}>
+                      <View style={styles.notificationHeader}>
+                        <Text style={[styles.notificationTitle, !notification.read && styles.unreadTitle]}>
+                          {getNotificationTitle(notification)}
+                        </Text>
+                        <Text style={styles.notificationTime}>
+                          {formatNotificationTime(notification.timestamp)}
+                        </Text>
+                      </View>
                       <Text style={[styles.notificationText, !notification.read && styles.unreadText]}>
                         {notification.message}
                       </Text>
-                      <Text style={styles.notificationTime}>
-                        {new Date(notification.timestamp).toLocaleString()}
-                      </Text>
                     </View>
-                    <View style={styles.notificationActions}>
-                      {!notification.read && (
-                        <TouchableOpacity
-                          style={styles.notificationActionButton}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleMarkAsRead(notification.id);
-                          }}
-                        >
-                          <Check size={16} color="#1E40AF" />
-                        </TouchableOpacity>
-                      )}
+                    
+                    {/* Mark as read button for unread notifications */}
+                    {!notification.read && (
                       <TouchableOpacity
-                        style={styles.notificationActionButton}
+                        style={styles.markReadButton}
                         onPress={(e) => {
                           e.stopPropagation();
-                          handleDeleteNotification(notification.id);
+                          handleMarkAsRead(notification.id);
                         }}
                       >
-                        <Trash2 size={16} color="#DC2626" />
+                        <Check size={16} color="#1E40AF" />
                       </TouchableOpacity>
-                    </View>
+                    )}
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -298,6 +414,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  clearAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DC2626',
+  },
+  clearAllButtonText: {
+    color: '#DC2626',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    marginLeft: 8,
+  },
   modalActionButtonText: {
     color: '#1E40AF',
     fontSize: 14,
@@ -328,46 +460,63 @@ const styles = StyleSheet.create({
   },
   notificationItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-    backgroundColor: '#F3F4F6',
+    alignItems: 'flex-start',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   unreadNotification: {
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#F8FAFC',
     borderColor: '#1E40AF',
-    borderWidth: 1,
+    borderWidth: 1.5,
+  },
+  notificationIconContainer: {
+    marginRight: 12,
+    marginTop: 2,
   },
   notificationContent: {
     flex: 1,
-    marginRight: 10,
-    maxWidth: '85%',
+    marginRight: 8,
+  },
+  notificationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  notificationTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+    flex: 1,
+  },
+  unreadTitle: {
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
   },
   notificationText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#374151',
+    color: '#6B7280',
     lineHeight: 20,
   },
   unreadText: {
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
   },
   notificationTime: {
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#9CA3AF',
-    marginTop: 4,
   },
-  notificationActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  notificationActionButton: {
-    padding: 4,
+  markReadButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#F3F4F6',
   },
   emptyNotificationText: {
     fontSize: 14,

@@ -10,6 +10,7 @@ import {
   StatusBar,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import {
   Pill,
@@ -478,6 +479,15 @@ export default function PrescriptionsScreen() {
 
   const renderActivePrescription = (prescription: Prescription) => (
     <View key={prescription.id} style={styles.prescriptionCard}>
+      {/* DNA image background */}
+      <View style={styles.dnaImageContainer}>
+        <Image 
+          source={require('../../../assets/images/dna.png')} 
+          style={styles.dnaBackgroundImage}
+          resizeMode="contain"
+        />
+      </View>
+      
       <View style={styles.prescriptionHeader}>
         <View style={[styles.medicationIcon, { backgroundColor: '#1E3A8A15' }]}> 
           <Pill size={20} color="#1E3A8A" />
@@ -576,19 +586,20 @@ export default function PrescriptionsScreen() {
           })()}
         </View>
       </View>
-      <View style={styles.prescriptionMeta}>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Prescribed on:</Text>
-          <Text style={styles.metaValue}>
-            {prescription.prescribedDate ? formatDate(prescription.prescribedDate, 'prescription') : 'Date not available'}
-          </Text>
-        </View>
-      </View>
     </View>
   );
 
   const renderPastPrescription = (prescription: Prescription) => (
     <View key={prescription.id} style={styles.prescriptionCard}>
+      {/* DNA image background */}
+      <View style={styles.dnaImageContainer}>
+        <Image 
+          source={require('../../../assets/images/dna.png')} 
+          style={styles.dnaBackgroundImage}
+          resizeMode="contain"
+        />
+      </View>
+      
       <View style={styles.prescriptionHeader}>
         <View style={[styles.medicationIcon, { backgroundColor: '#1E3A8A15' }]}> 
           <Pill size={20} color="#1E3A8A" />
@@ -673,14 +684,6 @@ export default function PrescriptionsScreen() {
               {prescription.status === 'completed' ? 'Completed' : 'Discontinued'}
             </Text>
           </View>
-        </View>
-      </View>
-      <View style={styles.prescriptionMeta}>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaLabel}>Prescribed on:</Text>
-          <Text style={styles.metaValue}>
-            {prescription.prescribedDate ? formatDate(prescription.prescribedDate, 'prescription') : 'Date not available'}
-          </Text>
         </View>
       </View>
     </View>
@@ -867,6 +870,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     color: '#1F2937',
+    fontFamily: 'Inter-Bold',
+    fontWeight: '700',
   },
   profileButton: {
     width: 40,
@@ -977,11 +982,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     marginBottom: 4,
+    position: 'relative',
+    overflow: 'hidden',
   },
   prescriptionHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 8,
+    zIndex: 1,
+    position: 'relative',
   },
   medicationIcon: {
     width: 40,
@@ -1038,7 +1047,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#D1D5DB',
     gap: 4,
@@ -1205,5 +1214,26 @@ const styles = StyleSheet.create({
   sortDropdownActiveText: {
     color: '#1E40AF',
     fontFamily: 'Inter-Medium',
+  },
+  
+  // DNA image background design
+  dnaImageContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 100,
+    overflow: 'hidden',
+    zIndex: 0,
+    opacity: 0.06,
+  },
+  dnaBackgroundImage: {
+    position: 'absolute',
+    right: -20,
+    top: '50%',
+    width: 120,
+    height: 120,
+    transform: [{ translateY: -60 }],
+    tintColor: '#1E40AF',
   },
 });

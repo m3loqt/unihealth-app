@@ -10,7 +10,7 @@ import {
   StatusBar,
   Platform,
 } from 'react-native';
-import * as ScreenOrientation from 'expo-screen-orientation';
+import { lockAsync, OrientationLock } from 'expo-screen-orientation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Check, RotateCcw, Trash2 } from 'lucide-react-native';
@@ -62,11 +62,11 @@ export default function SignaturePage() {
   // Set landscape orientation on mount and restore on unmount
   useEffect(() => {
     // Lock to landscape orientation
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+    lockAsync(OrientationLock.LANDSCAPE);
     
     // Cleanup: restore to portrait when component unmounts
     return () => {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+      lockAsync(OrientationLock.PORTRAIT);
     };
   }, []);
 
