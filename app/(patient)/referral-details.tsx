@@ -634,7 +634,7 @@ export default function PatientReferralDetailsScreen() {
         clinicId: referralData.referringClinicId,
         clinicName,
         appointmentDate: referralData.appointmentDate,
-        serviceType: 'referral',
+        serviceType: 'referral' as const,
         treatmentType: referralData.initialReasonForReferral || 'General Consultation',
         rating: feedbackStars,
         comment: feedbackReason,

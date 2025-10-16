@@ -15,6 +15,7 @@ import {
   RefreshControl,
   Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Calendar,
@@ -957,10 +958,15 @@ export default function AppointmentsScreen() {
     return (
       <TouchableOpacity
         key={referralData.id}
-        style={styles.referralCard}
         activeOpacity={0.8}
         onPress={() => router.push(`/referral-details?id=${appointment.relatedReferralId}`)}
       >
+        <LinearGradient
+          colors={['#F9FAFB', '#F3F4F6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.referralCard}
+        >
         <View style={styles.appointmentHeader}>
           <View style={styles.doctorInfo}>
             <View style={styles.doctorAvatar}>
@@ -1016,13 +1022,7 @@ export default function AppointmentsScreen() {
           </View>
         )}
 
-        {/* Wand Background Image */}
-        <Image
-          source={require('../../../assets/images/wand.png')}
-          style={styles.wandBackgroundImage}
-          resizeMode="contain"
-        />
-
+        </LinearGradient>
       </TouchableOpacity>
     );
   };
@@ -1124,7 +1124,6 @@ export default function AppointmentsScreen() {
     return (
       <TouchableOpacity
         key={appointment.id}
-        style={styles.appointmentCard}
         activeOpacity={0.8}
         onPress={() => {
           if (appointment.type === 'specialist_referral') {
@@ -1138,6 +1137,14 @@ export default function AppointmentsScreen() {
           }
         }}
       >
+        <LinearGradient
+          colors={['#F9FAFB', '#F3F4F6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.appointmentCard}
+        >
+          {/* Blue Corner Design */}
+          <View style={styles.blueCorner} />
         <View style={styles.appointmentHeader}>
           <View style={styles.doctorInfo}>
             <View style={styles.doctorAvatar}>
@@ -1192,13 +1199,7 @@ export default function AppointmentsScreen() {
           </View>
         )}
 
-        {/* Wand Background Image */}
-        <Image
-          source={require('../../../assets/images/wand.png')}
-          style={styles.wandBackgroundImage}
-          resizeMode="contain"
-        />
-
+        </LinearGradient>
       </TouchableOpacity>
     );
   };
@@ -1552,6 +1553,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     color: '#1F2937',
+    fontFamily: 'Inter-Bold',
+    fontWeight: '700',
   },
   title: {
     fontSize: 18,
@@ -1669,7 +1672,6 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   appointmentCard: {
-    backgroundColor: '#F9FAFB',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
@@ -2224,7 +2226,6 @@ feedbackModalButton: {
 
   // Referral Card Styles
   referralCard: {
-    backgroundColor: '#F9FAFB',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
@@ -2486,14 +2487,18 @@ feedbackModalButton: {
     fontFamily: 'Inter-Medium',
   },
 
-  // Wand Background Image Styles
-  wandBackgroundImage: {
+  // Blue Corner Design
+  blueCorner: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
-    width: 40,
-    height: 40,
-    opacity: 0.4,
-    zIndex: 0,
+    bottom: 0,
+    right: 0,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 20,
+    borderLeftColor: 'transparent',
+    borderBottomWidth: 20,
+    borderBottomColor: '#1E40AF',
+    zIndex: 1,
   },
+
 });

@@ -894,6 +894,12 @@ export default function SpecialistProfileScreen() {
         {/* Custom Profile Header */}
         <View style={styles.customHeader}>
           <View style={styles.customHeaderBackground} />
+          {/* Flowing Circles Background */}
+          <View style={styles.circle1} />
+          <View style={styles.circle2} />
+          <View style={styles.circle3} />
+          <View style={styles.circle4} />
+          <View style={styles.circle5} />
           <View style={styles.headerTop}>
             <TouchableOpacity 
               style={styles.backButton}
@@ -2925,5 +2931,57 @@ const styles = StyleSheet.create({
   },
   singleFeePeriodContainer: {
     alignItems: 'center',
+  },
+  
+  // Flowing Circles Background
+  circle1: {
+    position: 'absolute',
+    top: -50,
+    right: -30,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    zIndex: 0,
+  },
+  circle2: {
+    position: 'absolute',
+    top: 40,
+    left: -40,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    zIndex: 0,
+  },
+  circle3: {
+    position: 'absolute',
+    bottom: -20,
+    right: 60,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    zIndex: 0,
+  },
+  circle4: {
+    position: 'absolute',
+    top: 80,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    zIndex: 0,
+  },
+  circle5: {
+    position: 'absolute',
+    bottom: 20,
+    left: 40,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    zIndex: 0,
   },
 });

@@ -1566,13 +1566,13 @@ export default function SpecialistHomeScreen() {
                     <View style={styles.appointmentFooter}>
                       <View style={styles.appointmentTimeInfo}>
                         <View style={styles.appointmentTimePill}>
-                          <Calendar size={10} color="#FFFFFF" />
+                          <Calendar size={10} color="#6B7280" />
                           <Text style={styles.appointmentDate}>
                             {formatAppointmentDate(appointment.appointmentDate)}
                           </Text>
                         </View>
                         <View style={styles.appointmentTimePill}>
-                          <Clock size={10} color="#FFFFFF" />
+                          <Clock size={10} color="#6B7280" />
                           <Text style={styles.appointmentDate}>
                             {(() => {
                               const timeString = appointment.appointmentTime;
@@ -2172,8 +2172,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    fontFamily: 'Inter-Regular',
     color: '#1F2937',
     marginBottom: 16,
   },
@@ -2253,15 +2253,15 @@ const styles = StyleSheet.create({
   },
 
   appointmentsContainer: {
-    gap: 12,
+    gap: 8,
   },
   appointmentCard: {
-    backgroundColor: '#1E40AF',
-    borderRadius: 12,
     padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1E40AF',
-    marginBottom: 8,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -2271,7 +2271,7 @@ const styles = StyleSheet.create({
     right: 0,
     width: 40,
     height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(30, 64, 175, 0.08)',
     borderTopRightRadius: 12,
     borderBottomLeftRadius: 20,
   },
@@ -2281,27 +2281,27 @@ const styles = StyleSheet.create({
     right: 0,
     width: 60,
     height: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(30, 64, 175, 0.05)',
     borderTopRightRadius: 12,
     borderBottomLeftRadius: 30,
   },
-  appointmentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  appointmentHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 12 
   },
   patientAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E40AF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  patientInitial: {
-    color: '#1E40AF',
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
+  patientInitial: { 
+    color: '#FFFFFF', 
+    fontSize: 14 
   },
   patientAvatarNew: {
     width: 40,
@@ -2323,20 +2323,15 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 2,
   },
-  appointmentDetails: {
-    flex: 1,
+  appointmentDetails: { flex: 1 },
+  patientName: { 
+    fontSize: 16, 
+    color: '#1F2937' 
   },
-  patientName: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  appointmentType: {
-    fontSize: 13,
-    fontFamily: 'Inter-Regular',
-    color: '#E5E7EB',
-    marginTop: 2,
+  appointmentType: { 
+    fontSize: 14, 
+    color: '#6B7280', 
+    marginTop: 2 
   },
 
   appointmentTime: {
@@ -2345,26 +2340,27 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   appointmentTimePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    gap: 4,
-  },
-  appointmentDate: {
-    fontSize: 11,
-    fontFamily: 'Inter-Regular',
-    color: '#FFFFFF',
-  },
+     flexDirection: 'row',
+     alignItems: 'center',
+     paddingHorizontal: 8,
+     paddingVertical: 4,
+     borderRadius: 12,
+     backgroundColor: '#FFFFFF',
+     borderWidth: 1,
+     borderColor: '#D1D5DB',
+     gap: 4,
+   },
+   appointmentDate: { 
+     fontSize: 12, 
+     color: '#6B7280',
+     textAlign: 'center',
+     fontFamily: 'Inter-Regular',
+   },
   appointmentFooter: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 8,
   },
   appointmentTimeInfo: {
     flex: 1,
@@ -2383,15 +2379,15 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   joinButton: { 
-    paddingHorizontal: 14, 
+    paddingHorizontal: 16, 
     paddingVertical: 8, 
-    backgroundColor: '#FFFFFF', 
+    backgroundColor: '#1E40AF', 
     borderRadius: 8,
     minWidth: 100,
     alignItems: 'center',
   },
   joinButtonText: { 
-    color: '#1E40AF', 
+    color: '#FFFFFF', 
     fontSize: 14 
   },
   patientsContainer: {

@@ -1842,7 +1842,13 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   greeting: { fontSize: 16, color: '#6B7280' },
-  userName: { fontSize: 24, color: '#1F2937', marginTop: 4 },
+  userName: { 
+    fontSize: 24, 
+    color: '#1F2937', 
+    marginTop: 4,
+    fontFamily: 'Inter-Bold',
+    fontWeight: '700',
+  },
   headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: { padding: 8 },
   chatbotButtonContainer: {

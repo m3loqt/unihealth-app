@@ -34,6 +34,7 @@ import { chatService } from '@/services/chatService';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { OnlineStatusIndicator } from '@/components/OnlineStatusIndicator';
+import { safeDataAccess } from '@/utils/safeDataAccess';
 
 interface ChatParticipant {
   uid: string;
@@ -86,6 +87,17 @@ export default function PatientChatsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Header initials for logged in user
+  const userInitials = (() => {
+    const fullName = safeDataAccess.getUserFullName(user, user?.email || 'User');
+    return fullName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join('') || 'U';
+  })();
 
   // Load chat threads
   const loadChats = useCallback(async () => {
@@ -449,7 +461,7 @@ export default function PatientChatsScreen() {
           )}
           <OnlineStatusIndicator 
             userId={participant.uid} 
-            size="small" 
+            size="medium" 
             style={styles.onlineStatusIndicator}
           />
         </View>
@@ -527,6 +539,11 @@ export default function PatientChatsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Chats</Text>
+          <TouchableOpacity onPress={() => router.push('/(patient)/tabs/profile')}>
+            <View style={styles.profileButton}>
+              <Text style={styles.profileInitialsText}>{userInitials}</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Search Bar */}
@@ -601,6 +618,9 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 16,
@@ -612,6 +632,21 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontWeight: '700',
   },
+  profileButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1E40AF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 0,
+    borderColor: 'transparent',
+  },
+  profileInitialsText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+  },
   searchSection: {
     paddingBottom: 8,
     backgroundColor: '#FFFFFF',
@@ -620,13 +655,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
-    borderRadius: 10,
-    paddingHorizontal: 14,
+    borderRadius: 12,
+    paddingHorizontal: 16,
     paddingVertical: 0,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     minHeight: 64,
     marginHorizontal: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   searchIcon: {
     marginRight: 10,
@@ -640,23 +680,29 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#F3F4F6',
     marginTop: 16,
   },
   chatList: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     paddingTop: 8,
+    backgroundColor: '#FFFFFF',
   },
   chatItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
-    paddingHorizontal: 4,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+    marginHorizontal: 0,
+    backgroundColor: '#FFFFFF',
   },
   chatItemUnread: {
     backgroundColor: '#F8FAFC',
+    marginHorizontal: 0,
+    borderLeftWidth: 3,
+    borderLeftColor: '#1E40AF',
   },
   chatAvatar: {
     marginRight: 16,
@@ -664,8 +710,8 @@ const styles = StyleSheet.create({
   },
   onlineStatusIndicator: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
+    bottom: 2,
+    right: 2,
   },
   avatarImage: {
     width: 48,
@@ -679,6 +725,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E40AF',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#1E40AF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatarText: {
     color: '#FFFFFF',
@@ -702,7 +753,7 @@ const styles = StyleSheet.create({
   },
   chatName: {
     fontSize: 15,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
   },
   specialtyText: {
@@ -744,6 +795,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 8,
+    shadowColor: '#1E40AF',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   unreadText: {
     color: '#FFFFFF',

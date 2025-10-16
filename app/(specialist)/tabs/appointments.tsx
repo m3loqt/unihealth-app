@@ -13,6 +13,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   Search,
   User,
@@ -1087,6 +1088,8 @@ export default function SpecialistAppointmentsScreen() {
         onPress={() => handleViewReferralDetails(referralData)}
         activeOpacity={0.7}
       >
+        {/* Blue Corner Design */}
+        <View style={styles.blueCorner} />
         <View style={styles.referralCardHeader}>
           <View style={styles.referralCardHeaderLeft}>
             {/* Patient Initials Avatar */}
@@ -1114,17 +1117,10 @@ export default function SpecialistAppointmentsScreen() {
         </View>
 
         <View style={styles.appointmentMeta}>
-          <View style={styles.subtleDividerLight} />
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Date:</Text>
+            <Text style={styles.metaLabel}>Date & Time:</Text>
             <Text style={styles.metaValue}>
-              {formatDisplayDate(referral?.appointmentDate || '')}
-            </Text>
-          </View>
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Time:</Text>
-            <Text style={styles.metaValue}>
-              {formatDisplayTime(referral?.appointmentTime || '')}
+              {formatDisplayDate(referral?.appointmentDate || '')} at {formatDisplayTime(referral?.appointmentTime || '')}
             </Text>
           </View>
           <View style={styles.metaRow}>
@@ -1136,27 +1132,10 @@ export default function SpecialistAppointmentsScreen() {
               })()}
             </Text>
           </View>
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Referred by:</Text>
-            <Text style={styles.metaValue}>
-              {(() => {
-                // Handle both generalist and specialist referrals
-                if (referral?.referringSpecialistId) {
-                  const name = `${referral?.referringSpecialistFirstName || ''} ${referral?.referringSpecialistLastName || ''}`.trim();
-                  return name ? `Dr. ${name}` : 'Unknown Specialist';
-                } else if (referral?.referringGeneralistId) {
-                  const name = `${referral?.referringGeneralistFirstName || ''} ${referral?.referringGeneralistLastName || ''}`.trim();
-                  return name ? `Dr. ${name}` : 'Unknown Generalist';
-                } else {
-                  return 'Unknown Doctor';
-                }
-              })()}
-            </Text>
-          </View>
         </View>
 
         {referral?.initialReasonForReferral && (
-          <View style={[styles.notesSection, { marginBottom: 10 }]}>
+          <View style={[styles.notesSection, { marginTop: 12, marginBottom: 0 }]}>
             <Text style={styles.notesLabel}>Reason:</Text>
             <Text style={styles.notesText}>{referral.initialReasonForReferral}</Text>
           </View>
@@ -1170,21 +1149,6 @@ export default function SpecialistAppointmentsScreen() {
           </View>
         )}
 
-        {/* Refer Button for Completed Referrals */}
-        {appointment.status === 'completed' && (
-          <View style={styles.appointmentActions}>
-            <TouchableOpacity
-              style={styles.referButton}
-              onPress={(e) => {
-                e.stopPropagation(); // Prevent card click
-                handleReferPatient(referral);
-              }}
-            >
-              <Stethoscope size={16} color="#FFFFFF" />
-              <Text style={styles.referButtonText}>Refer</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </TouchableOpacity>
     );
   };
@@ -1257,7 +1221,6 @@ export default function SpecialistAppointmentsScreen() {
     return (
       <TouchableOpacity 
         key={appointment.id} 
-        style={styles.appointmentCard}
         onPress={() => {
           // Handle card click for viewing appointment details
           if (isFollowUpAppointment) {
@@ -1271,6 +1234,14 @@ export default function SpecialistAppointmentsScreen() {
         }}
         activeOpacity={0.7}
       >
+        <LinearGradient
+          colors={['#F9FAFB', '#F3F4F6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.appointmentCard}
+        >
+          {/* Blue Corner Design */}
+          <View style={styles.blueCorner} />
         <View style={styles.appointmentHeader}>
           <View style={styles.patientInfo}>
             <View style={styles.patientAvatar}>
@@ -1316,17 +1287,10 @@ export default function SpecialistAppointmentsScreen() {
         {isFollowUpAppointment ? (
           // Follow-up appointment layout (label on left, value on right) - match referral format
           <View style={[styles.appointmentMeta, { marginBottom: 8 }]}>
-            <View style={styles.subtleDividerLight} />
             <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Date:</Text>
+              <Text style={styles.metaLabel}>Date & Time:</Text>
               <Text style={styles.metaValue}>
-                {formatDisplayDate(appointment.appointmentDate || '')}
-              </Text>
-            </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Time:</Text>
-              <Text style={styles.metaValue}>
-                {formatDisplayTime(appointment.appointmentTime || '')}
+                {formatDisplayDate(appointment.appointmentDate || '')} at {formatDisplayTime(appointment.appointmentTime || '')}
               </Text>
             </View>
           </View>
@@ -1351,34 +1315,6 @@ export default function SpecialistAppointmentsScreen() {
         </View>
         )}
 
-        {isFollowUpAppointment ? (
-          // For follow-up appointments, show additional notes exactly like Reason field
-          <View style={[styles.notesSection, { marginBottom: 10 }]}>
-            <Text style={styles.notesLabel}>Additional Notes:</Text>
-            <Text style={styles.notesText}>
-              {getChiefComplaint(appointment) || 'No additional notes'}
-            </Text>
-          </View>
-        ) : (
-          // For regular appointments, show purpose and notes as before
-          <>
-        {(appointment.appointmentPurpose || appointment.type === 'walk-in') && (
-          <View style={styles.notesSection}>
-            <Text style={styles.notesLabel}>Purpose:</Text>
-            <Text style={styles.notesText}>
-              {appointment.appointmentPurpose || (appointment.type === 'walk-in' ? 'Walk In' : '')}
-            </Text>
-          </View>
-        )}
-
-        {getChiefComplaint(appointment) && (
-          <View style={styles.notesSection}>
-            <Text style={styles.notesLabel}>Notes:</Text>
-            <Text style={styles.notesText}>{getChiefComplaint(appointment)}</Text>
-          </View>
-            )}
-          </>
-        )}
 
         {appointment.status === 'cancelled' && (
           <View style={styles.declineReasonSection}>
@@ -1415,20 +1351,9 @@ export default function SpecialistAppointmentsScreen() {
                 <Text style={styles.acceptButtonText}>Accept</Text>
               </TouchableOpacity>
             </>
-          ) : appointment.status === 'completed' && !isReferralAppointment ? (
-            // Completed regular appointment - show refer button
-            <TouchableOpacity
-              style={styles.referButton}
-              onPress={(e) => {
-                e.stopPropagation(); // Prevent card click
-                handleReferPatient(appointment);
-              }}
-            >
-              <Stethoscope size={16} color="#FFFFFF" />
-              <Text style={styles.referButtonText}>Refer</Text>
-            </TouchableOpacity>
           ) : null}
         </View>
+        </LinearGradient>
       </TouchableOpacity>
     );
   };
@@ -1925,7 +1850,7 @@ const styles = StyleSheet.create({
   appointmentsList: {
     paddingHorizontal: 24,
     paddingVertical: 16,
-    gap: 16,
+    gap: 6,
   },
   appointmentCard: {
     backgroundColor: '#F9FAFB',
@@ -1987,7 +1912,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#D1D5DB',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
   },
   statusText: {
     fontSize: 12,
@@ -1996,7 +1921,7 @@ const styles = StyleSheet.create({
   },
   appointmentMeta: {
     gap: 6,
-    marginBottom: 12,
+    marginBottom: 4,
   },
   metaRow: {
     flexDirection: 'row',
@@ -2369,7 +2294,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 16,
+    marginBottom: 10,
+    position: 'relative',
+    overflow: 'hidden',
   },
   referralCardHeader: {
     flexDirection: 'row',
@@ -2724,6 +2651,20 @@ const styles = StyleSheet.create({
   sortDropdownActiveText: {
     color: '#1E40AF',
     fontFamily: 'Inter-Medium',
+  },
+
+  // Blue Corner Design
+  blueCorner: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 20,
+    borderLeftColor: 'transparent',
+    borderBottomWidth: 20,
+    borderBottomColor: '#1E40AF',
+    zIndex: 1,
   },
 });
 
