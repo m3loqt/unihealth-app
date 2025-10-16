@@ -105,6 +105,8 @@ export interface Appointment {
   originalReferringGeneralistFirstName?: string;
   originalReferringGeneralistLastName?: string;
   originalReferringGeneralistId?: string;
+  // Decline reason for cancelled appointments
+  declineReason?: string;
 }
 
 export interface MedicalHistory {

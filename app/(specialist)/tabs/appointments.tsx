@@ -1318,7 +1318,7 @@ export default function SpecialistAppointmentsScreen() {
 
         {appointment.status === 'cancelled' && (
           <View style={styles.declineReasonSection}>
-            <Text style={styles.declineReasonLabel}>Decline Reason:</Text>
+            <Text style={styles.declineReasonLabel}>Cancel Reason:</Text>
             <Text style={styles.declineReasonText}>
               {appointment.declineReason || 'Appointment was declined'}
             </Text>
