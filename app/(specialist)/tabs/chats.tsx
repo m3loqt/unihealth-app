@@ -12,6 +12,7 @@ import {
   RefreshControl,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -29,7 +30,7 @@ import {
 import { router } from 'expo-router';
 
 import { useAuth } from '@/hooks/auth/useAuth';
-import { useSpecialistChatPatients } from '@/hooks/data/useSpecialistChatPatients';
+import { useSpecialistChatContacts } from '@/hooks/data/useSpecialistChatContacts';
 import { chatService } from '@/services/chatService';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
@@ -40,7 +41,7 @@ interface ChatParticipant {
   firstName: string;
   lastName: string;
   email: string;
-  role: 'patient' | 'specialist' | 'admin';
+  role: 'patient' | 'specialist' | 'generalist' | 'admin';
   specialty?: string;
   avatar?: string;
 }
@@ -63,12 +64,12 @@ interface ChatListItem {
   participant: ChatParticipant;
   lastMessageTime: string;
   unreadCount: number;
-  patient: {
+  contact: {
     uid: string;
     firstName: string;
     lastName: string;
     email: string;
-    role: 'patient';
+    role: 'patient' | 'generalist';
     specialty?: string;
     avatar?: string;
     source: 'appointment' | 'referral';
@@ -79,28 +80,28 @@ interface ChatListItem {
 
 export default function SpecialistChatsScreen() {
   const { user } = useAuth();
-  const { patients, loading: patientsLoading, error: patientsError, loadPatients, refresh: refreshPatients } = useSpecialistChatPatients();
+  const { contacts, loading: contactsLoading, error: contactsError, loadContacts, refresh: refreshContacts } = useSpecialistChatContacts();
   const [chats, setChats] = useState<ChatListItem[]>([]);
   const [filteredChats, setFilteredChats] = useState<ChatListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [chatsLoading, setChatsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Load chat threads
   const loadChats = useCallback(async () => {
-    if (!user || patientsLoading) {
+    if (!user || contactsLoading) {
       return;
     }
 
     try {
-      setLoading(true);
+      setChatsLoading(true);
       setError(null);
 
-      // If no patients available, set empty chats and finish loading
-      if (patients.length === 0) {
+      // If no contacts available, set empty chats and finish loading
+      if (contacts.length === 0) {
         setChats([]);
-        setLoading(false);
+        setChatsLoading(false);
         return;
       }
 
@@ -112,45 +113,53 @@ export default function SpecialistChatsScreen() {
         existingThreads = await chatService.getUserThreads(user.uid);
         console.log('📋 Loaded existing threads for specialist:', existingThreads.length);
         existingThreads.forEach(thread => {
-          console.log('📋 Thread:', thread.id, 'participants:', Object.keys(thread.participants), 'lastMessage:', thread.lastMessage?.text);
+          if (thread && thread.participants) {
+            console.log('📋 Thread:', thread.id, 'participants:', Object.keys(thread.participants), 'lastMessage:', thread.lastMessage?.text);
+          }
         });
       } catch (threadError) {
         console.error('Error loading existing threads:', threadError);
-        // Continue without existing threads - we'll create placeholders for all patients
+        // Continue without existing threads - we'll create placeholders for all contacts
       }
       
-      // Create chat list items from patients
-      console.log('👥 Processing patients:', patients.length);
-      for (const patient of patients) {
-        console.log('👥 Processing patient:', patient.firstName, patient.lastName, 'UID:', patient.uid);
+      // Create chat list items from contacts (patients and generalists)
+      console.log('👥 Processing contacts:', contacts.length);
+      for (const contact of contacts) {
+        console.log('👥 Processing contact:', contact.firstName, contact.lastName, 'UID:', contact.uid, 'Role:', contact.role);
         
-        // Try to find existing thread with this patient
+        // Try to find existing thread with this contact
         let thread: ChatThread | undefined;
         
         // First, try to find by checking if both participants exist in any thread
         for (const existingThread of existingThreads) {
-          console.log('🔍 Checking thread:', existingThread.id, 'participants:', Object.keys(existingThread.participants), 'looking for specialist:', user.uid, 'patient:', patient.uid);
-          
-          if (existingThread.participants[user.uid] && existingThread.participants[patient.uid]) {
-            console.log('✅ Found existing thread for patient:', patient.firstName, patient.lastName, 'thread ID:', existingThread.id, 'last message:', existingThread.lastMessage?.text || 'No last message');
-            thread = existingThread;
-            break;
+          if (existingThread && existingThread.participants) {
+            console.log('🔍 Checking thread:', existingThread.id, 'participants:', Object.keys(existingThread.participants), 'looking for specialist:', user.uid, 'contact:', contact.uid);
+            
+            if (existingThread.participants[user.uid] && existingThread.participants[contact.uid]) {
+              console.log('✅ Found existing thread for contact:', contact.firstName, contact.lastName, 'thread ID:', existingThread.id, 'last message:', existingThread.lastMessage?.text || 'No last message');
+              thread = existingThread;
+              break;
+            }
           }
         }
 
         // If no existing thread found, create a placeholder
         if (!thread) {
-          console.log('📝 Creating placeholder for patient:', patient.firstName, patient.lastName);
+          console.log('📝 Creating placeholder for contact:', contact.firstName, contact.lastName);
+          // Use the same thread ID generation logic as chatService.generateThreadId()
+          const sorted = [user.uid, contact.uid].sort();
+          const placeholderThreadId = `${sorted[0]}_${sorted[1]}`;
+          console.log('📝 Placeholder thread ID:', placeholderThreadId);
           thread = {
-            id: `${user.uid}_${patient.uid}`, // Use consistent ID format
-            participants: { [user.uid]: true, [patient.uid]: true },
-            type: patient.source === 'referral' ? 'referral' : 'direct',
-            unread: { [user.uid]: 0, [patient.uid]: 0 },
-            createdAt: patient.lastInteraction || Date.now(),
-            // No lastMessage - this will show "Start a conversation with your patient"
+            id: placeholderThreadId, // Use consistent ID format
+            participants: { [sorted[0]]: true, [sorted[1]]: true },
+            type: contact.source === 'referral' ? 'referral' : 'direct',
+            unread: { [sorted[0]]: 0, [sorted[1]]: 0 },
+            createdAt: contact.lastInteraction || Date.now(),
+            // No lastMessage - this will show "Start a conversation"
           };
         } else {
-          console.log('✅ Found existing thread for patient:', patient.firstName, patient.lastName, 'thread ID:', thread.id, 'with last message:', thread.lastMessage?.text || 'No last message');
+          console.log('✅ Found existing thread for contact:', contact.firstName, contact.lastName, 'thread ID:', thread.id, 'with last message:', thread.lastMessage?.text || 'No last message');
         }
 
         const lastMessageTime = thread.lastMessage 
@@ -160,13 +169,13 @@ export default function SpecialistChatsScreen() {
 
         // Create participant object
         const participant: ChatParticipant = {
-          uid: patient.uid,
-          firstName: patient.firstName,
-          lastName: patient.lastName,
-          email: patient.email,
-          role: 'patient',
-          specialty: patient.specialty,
-          avatar: patient.avatar,
+          uid: contact.uid,
+          firstName: contact.firstName,
+          lastName: contact.lastName,
+          email: contact.email,
+          role: contact.role,
+          specialty: contact.specialty,
+          avatar: contact.avatar,
         };
 
         chatList.push({
@@ -174,7 +183,7 @@ export default function SpecialistChatsScreen() {
           participant,
           lastMessageTime,
           unreadCount,
-          patient,
+          contact,
         });
       }
 
@@ -187,7 +196,7 @@ export default function SpecialistChatsScreen() {
 
       console.log('📋 Final chat list for specialist:', chatList.length, 'items');
       chatList.forEach(chat => {
-        console.log('📋 Chat item:', chat.patient.firstName, chat.patient.lastName, 'has lastMessage:', !!chat.thread.lastMessage, 'text:', chat.thread.lastMessage?.text || 'N/A');
+        console.log('📋 Chat item:', chat.contact.firstName, chat.contact.lastName, 'Role:', chat.contact.role, 'has lastMessage:', !!chat.thread.lastMessage, 'text:', chat.thread.lastMessage?.text || 'N/A');
       });
       setChats(chatList);
       setFilteredChats(chatList);
@@ -195,21 +204,23 @@ export default function SpecialistChatsScreen() {
       console.error('Error loading chats:', error);
       setError('Failed to load chats. Please try again.');
     } finally {
-      setLoading(false);
+      setChatsLoading(false);
     }
-  }, [user, patients, patientsLoading]);
+  }, [user, contacts, contactsLoading]);
 
-  // Load patients when component mounts
+  // Load contacts when component mounts
   useEffect(() => {
     if (user?.uid) {
-      loadPatients(user.uid);
+      loadContacts(user.uid);
     }
-  }, [user?.uid, loadPatients]);
+  }, [user?.uid, loadContacts]);
 
-  // Listen to real-time chat updates
+  // Load chats when contacts change
   useEffect(() => {
-    loadChats();
-  }, [loadChats]);
+    if (!contactsLoading && contacts.length >= 0) {
+      loadChats();
+    }
+  }, [contacts, contactsLoading, loadChats]);
 
   // Set up real-time listener for chat threads
   useEffect(() => {
@@ -220,34 +231,44 @@ export default function SpecialistChatsScreen() {
     const unsubscribe = chatService.listenToUserThreads(user.uid, (threads) => {
       console.log('📨 Real-time update received for specialist:', threads.length, 'threads');
       
-      // Update chats with real-time data
-      setChats(prevChats => {
-        const updatedChats = prevChats.map(chatItem => {
-          // Find matching thread in real-time data by checking both participants
-          const realTimeThread = threads.find(thread => 
-            thread.participants[chatItem.patient.uid] === true && 
-            thread.participants[user.uid] === true
-          );
-          
-          if (realTimeThread) {
-            console.log('🔄 Updating chat with real-time data for patient:', chatItem.patient.firstName, 'last message:', realTimeThread.lastMessage?.text);
+        // Update chats with real-time data
+        setChats(prevChats => {
+          const updatedChats = prevChats.map(chatItem => {
+            console.log('🔄 Processing chatItem for:', chatItem.contact.firstName, 'original lastMessage:', chatItem.thread.lastMessage?.text || 'No last message', 'original hasLastMessage:', !!chatItem.thread.lastMessage);
+            // Find matching thread in real-time data by checking both participants
+            const realTimeThread = threads.find(thread => 
+              thread && thread.participants && 
+              thread.participants[chatItem.contact.uid] === true && 
+              thread.participants[user.uid] === true
+            );
             
-            // Update with real-time thread data
-            const lastMessageTime = realTimeThread.lastMessage 
-              ? formatMessageTime(realTimeThread.lastMessage.at)
-              : formatMessageTime(realTimeThread.createdAt);
-            const unreadCount = realTimeThread.unread?.[user.uid] || 0;
+            console.log('🔄 Real-time check for contact:', chatItem.contact.firstName, 'found thread:', !!realTimeThread, 'thread ID:', realTimeThread?.id, 'lastMessage:', realTimeThread?.lastMessage?.text || 'No last message', 'hasLastMessage:', !!realTimeThread?.lastMessage);
             
-            return {
-              ...chatItem,
-              thread: realTimeThread,
-              lastMessageTime,
-              unreadCount,
-            };
-          }
-          
-          return chatItem;
-        });
+            if (realTimeThread) {
+              console.log('🔄 Updating chat with real-time data for contact:', chatItem.contact.firstName, 'Role:', chatItem.contact.role, 'last message:', realTimeThread.lastMessage?.text);
+              
+              // Only update if the real-time thread has a lastMessage, otherwise keep the existing data
+              if (realTimeThread.lastMessage) {
+                const lastMessageTime = formatMessageTime(realTimeThread.lastMessage.at);
+                const unreadCount = realTimeThread.unread?.[user.uid] || 0;
+                
+                console.log('✅ Updating with real-time data that has lastMessage');
+                return {
+                  ...chatItem,
+                  thread: realTimeThread,
+                  lastMessageTime,
+                  unreadCount,
+                };
+              } else {
+                console.log('⚠️ Real-time thread has no lastMessage, keeping existing data');
+                // Always keep the original data if real-time has no lastMessage
+                console.log('✅ Keeping original thread data with lastMessage:', chatItem.thread.lastMessage?.text || 'No last message');
+                return chatItem;
+              }
+            }
+            
+            return chatItem;
+          });
         
         // Sort by last message time or creation time (most recent first)
         const sortedChats = updatedChats.sort((a, b) => {
@@ -270,9 +291,9 @@ export default function SpecialistChatsScreen() {
   // Refresh chats
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshPatients(), loadChats()]);
+    await Promise.all([refreshContacts(user?.uid || ''), loadChats()]);
     setRefreshing(false);
-  }, [refreshPatients, loadChats]);
+  }, [refreshContacts, loadChats, user?.uid]);
 
   // Load chats when screen focuses
   useFocusEffect(
@@ -293,20 +314,22 @@ export default function SpecialistChatsScreen() {
     const searchWords = query.toLowerCase().trim().split(' ').filter(word => word.length > 0);
     
     const filtered = chats.filter(chatItem => {
-      const { participant, patient, thread } = chatItem;
+      const { participant, contact, thread } = chatItem;
       
       // Searchable fields
-      const patientName = `${participant.firstName} ${participant.lastName}`.toLowerCase();
-      const patientFirstName = participant.firstName.toLowerCase();
-      const patientLastName = participant.lastName.toLowerCase();
-      const specialty = (patient.specialty || '').toLowerCase();
+      const contactName = `${participant.firstName} ${participant.lastName}`.toLowerCase();
+      const contactFirstName = participant.firstName.toLowerCase();
+      const contactLastName = participant.lastName.toLowerCase();
+      const specialty = (contact.specialty || '').toLowerCase();
+      const role = contact.role.toLowerCase();
       const lastMessage = (thread.lastMessage?.text || '').toLowerCase();
       
       const searchableFields = [
-        patientName,
-        patientFirstName,
-        patientLastName,
+        contactName,
+        contactFirstName,
+        contactLastName,
         specialty,
+        role,
         lastMessage
       ];
       
@@ -346,49 +369,54 @@ export default function SpecialistChatsScreen() {
     if (!user) return;
 
     try {
-      const { patient, thread } = chatItem;
+      const { contact, thread } = chatItem;
       
       // Debug logging
-      console.log('Opening chat with patient:', {
-        patientId: patient.uid,
-        patientName: `${patient.firstName} ${patient.lastName}`,
-        source: patient.source,
-        sourceId: patient.sourceId,
+      console.log('Opening chat with contact:', {
+        contactId: contact.uid,
+        contactName: `${contact.firstName} ${contact.lastName}`,
+        contactRole: contact.role,
+        source: contact.source,
+        sourceId: contact.sourceId,
         specialistId: user.uid,
         existingThreadId: thread.id
       });
       
       // Validate required data
-      if (!patient.uid) {
-        throw new Error('Patient ID is missing');
+      if (!contact.uid) {
+        throw new Error('Contact ID is missing');
       }
       
       let threadId = thread.id;
       
        // If this is a placeholder thread (no real thread exists), create one
        // Check if this is a placeholder by looking at the thread ID format and lack of lastMessage
-       const isPlaceholder = thread.id.startsWith(`${user.uid}_${patient.uid}`) && !thread.lastMessage;
+       const sorted = [user.uid, contact.uid].sort();
+       const expectedThreadId = `${sorted[0]}_${sorted[1]}`;
+       const isPlaceholder = thread.id === expectedThreadId && !thread.lastMessage;
        
        if (isPlaceholder) {
-         console.log('📝 Creating new thread for patient:', patient.firstName, patient.lastName, 'placeholder detected');
+         console.log('📝 Creating new thread for contact:', contact.firstName, contact.lastName, 'Role:', contact.role, 'placeholder detected');
          
          // Prepare linked object, filtering out undefined values
          const linked: { referralId?: string; appointmentId?: string; clinicId?: string } = {};
-         if (patient.source === 'referral' && patient.sourceId) {
-           linked.referralId = patient.sourceId;
-         } else if (patient.source === 'appointment' && patient.sourceId) {
-           linked.appointmentId = patient.sourceId;
+         if (contact.source === 'referral' && contact.sourceId) {
+           linked.referralId = contact.sourceId;
+         } else if (contact.source === 'appointment' && contact.sourceId) {
+           linked.appointmentId = contact.sourceId;
          }
          
          try {
            // Create or get existing chat thread
-           threadId = await chatService.createOrGetThread(
+           const actualThreadId = await chatService.createOrGetThread(
              user.uid,
-             patient.uid,
-             patient.source === 'referral' ? 'referral' : 'direct',
+             contact.uid,
+             contact.source === 'referral' ? 'referral' : 'direct',
              Object.keys(linked).length > 0 ? linked : undefined
            );
            
+           // Update threadId with the actual thread ID returned from createOrGetThread
+           threadId = actualThreadId;
            console.log('✅ Successfully created new thread:', threadId);
            
            // Add a small delay to ensure the thread is fully created in Firebase
@@ -402,9 +430,12 @@ export default function SpecialistChatsScreen() {
          console.log('Using existing thread:', threadId);
        }
 
-      // Navigate to chat screen with patient info as parameters
-      const patientName = `${patient.firstName} ${patient.lastName}`;
-      router.push(`/(specialist)/chat/${threadId}?patientId=${patient.uid}&patientName=${encodeURIComponent(patientName)}&patientSpecialty=${encodeURIComponent(patient.specialty || 'General Medicine')}`);
+      // Navigate to chat screen with contact info as parameters
+      const contactName = `${contact.firstName} ${contact.lastName}`;
+      const contactRole = contact.role;
+      const contactSpecialty = contact.specialty || (contact.role === 'generalist' ? 'General Medicine' : 'Specialist');
+      
+      router.push(`/(specialist)/chat/${threadId}?contactId=${contact.uid}&contactName=${encodeURIComponent(contactName)}&contactRole=${contactRole}&contactSpecialty=${encodeURIComponent(contactSpecialty)}`);
     } catch (error) {
       console.error('Error opening chat:', error);
       Alert.alert('Error', `Failed to open chat: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -413,8 +444,11 @@ export default function SpecialistChatsScreen() {
 
   // Render chat item
   const renderChatItem = ({ item }: { item: ChatListItem }) => {
-    const { thread, participant, lastMessageTime, unreadCount, patient } = item;
+    const { thread, participant, lastMessageTime, unreadCount, contact } = item;
     const hasUnreadMessages = unreadCount > 0;
+    
+    // Debug: Check what we have in the thread object
+    console.log('🎨 Rendering chat item for:', contact.firstName, 'thread.lastMessage:', thread.lastMessage?.text || 'No last message', 'thread.id:', thread.id, 'hasLastMessage:', !!thread.lastMessage);
 
     return (
       <TouchableOpacity
@@ -444,9 +478,14 @@ export default function SpecialistChatsScreen() {
 
         <View style={styles.chatContent}>
           <View style={styles.chatHeader}>
-            <Text style={styles.chatName}>
-              {participant.firstName} {participant.lastName}
-            </Text>
+            <View style={styles.nameAndSpecialty}>
+              <Text style={styles.chatName}>
+                {contact.role === 'generalist' ? 'Dr. ' : ''}{participant.firstName} {participant.lastName}
+              </Text>
+              <Text style={styles.specialtyText}>
+                {contact.role === 'generalist' ? contact.specialty : 'Patient'}
+              </Text>
+            </View>
             <View style={styles.chatTimeContainer}>
               <Text style={styles.chatTime}>{lastMessageTime}</Text>
               {thread.lastMessage && (
@@ -465,7 +504,7 @@ export default function SpecialistChatsScreen() {
             <Text style={styles.lastMessage} numberOfLines={1}>
               {thread.lastMessage 
                 ? thread.lastMessage.text 
-                : 'Start a conversation with your patient'
+                : `Start a conversation with ${contact.role === 'generalist' ? 'the generalist' : 'your patient'}`
               }
             </Text>
             {unreadCount > 0 && (
@@ -476,13 +515,6 @@ export default function SpecialistChatsScreen() {
               </View>
             )}
           </View>
-          
-          {/* Show specialty info */}
-          <View style={styles.sourceInfo}>
-            <Text style={styles.sourceText}>
-              {patient.specialty}
-            </Text>
-          </View>
         </View>
       </TouchableOpacity>
     );
@@ -492,18 +524,19 @@ export default function SpecialistChatsScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <MessageCircle size={64} color="#D1D5DB" />
-      <Text style={styles.emptyTitle}>No Patients Available</Text>
+      <Text style={styles.emptyTitle}>No Contacts Available</Text>
       <Text style={styles.emptyDescription}>
-        You'll see your patients here once you have appointments or referrals.{'\n'}
+        You'll see your patients and referring generalists here once you have appointments or referrals.{'\n'}
       </Text>
     </View>
   );
 
-  if (loading || patientsLoading) {
+  // Show loading state only when contacts are loading (initial load)
+  if (contactsLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
-        <LoadingState message="Loading chats..." variant="fullscreen" size="large" />
+        <LoadingState message="Loading contacts..." variant="fullscreen" size="large" />
       </SafeAreaView>
     );
   }
@@ -536,12 +569,17 @@ export default function SpecialistChatsScreen() {
         </View>
 
         {/* Chat List */}
-        {error || patientsError ? (
+        {error || contactsError ? (
           <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error || patientsError}</Text>
+            <Text style={styles.errorText}>{error || contactsError}</Text>
             <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
+          </View>
+        ) : chatsLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#1E40AF" />
+            <Text style={styles.loadingText}>Loading chat threads...</Text>
           </View>
         ) : filteredChats.length === 0 ? (
           searchQuery.trim() ? (
@@ -681,11 +719,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  chatName: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
+  nameAndSpecialty: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chatName: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#1F2937',
+  },
+  specialtyText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
   },
   chatTimeContainer: {
     flexDirection: 'row',
@@ -711,14 +759,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     flex: 1,
     marginRight: 8,
-  },
-  sourceInfo: {
-    marginTop: 2,
-  },
-  sourceText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
   },
   unreadBadge: {
     backgroundColor: '#1E40AF',
@@ -794,5 +834,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 48,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    marginTop: 16,
+    textAlign: 'center',
   },
 });

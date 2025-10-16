@@ -71,17 +71,18 @@ class ChatService {
       const snapshot = await get(threadRef);
       
       if (!snapshot.exists()) {
-        // Create new thread
+        // Create new thread with participants in the same sorted order as threadId
+        const sortedParticipants = [participant1, participant2].sort();
         const threadData: ChatThread = {
           id: threadId,
           participants: {
-            [participant1]: true,
-            [participant2]: true,
+            [sortedParticipants[0]]: true,
+            [sortedParticipants[1]]: true,
           },
           type,
           unread: {
-            [participant1]: 0,
-            [participant2]: 0,
+            [sortedParticipants[0]]: 0,
+            [sortedParticipants[1]]: 0,
           },
           createdAt: Date.now(),
           ...(linked && Object.keys(linked).length > 0 && { linked }),
@@ -103,23 +104,41 @@ class ChatService {
   async getUserThreads(userId: string): Promise<ChatThread[]> {
     // Use client-side filtering to avoid Firebase indexing issues
     try {
+      console.log('📋 Getting user threads for:', userId);
       const snapshot = await get(this.threadsRef);
       const threads: ChatThread[] = [];
 
       if (snapshot.exists()) {
+        console.log('📋 Found chatThreads in database, processing...');
         snapshot.forEach((childSnapshot) => {
           const threadData = childSnapshot.val();
-          if (threadData.participants && threadData.participants[userId] === true) {
+          const threadId = childSnapshot.key;
+          
+          if (threadData && threadId && threadData.participants && typeof threadData.participants === 'object' && threadData.participants[userId] === true) {
+            console.log('📋 Found thread for user:', threadId, 'lastMessage:', threadData.lastMessage?.text || 'No last message');
             threads.push({
-              id: childSnapshot.key!,
+              id: threadId,
               ...threadData,
             });
           }
         });
+      } else {
+        console.log('📋 No chatThreads found in database');
       }
       
+      // Also check for threads that might exist only as messages
+      console.log('📋 Checking for reconstructed threads...');
+      const reconstructedThreads = await this.findReconstructedThreads(userId);
+      console.log('📋 Found reconstructed threads:', reconstructedThreads.length);
+      threads.push(...reconstructedThreads);
+      
+      // Remove duplicates (in case a thread exists in both places)
+      const uniqueThreads = threads.filter((thread, index, self) => 
+        index === self.findIndex(t => t.id === thread.id)
+      );
+      
       // Sort by lastMessage.at descending (most recent first)
-      return threads.sort((a, b) => {
+      return uniqueThreads.sort((a, b) => {
         const aTime = a.lastMessage?.at || a.createdAt;
         const bTime = b.lastMessage?.at || b.createdAt;
         return bTime - aTime;
@@ -127,6 +146,59 @@ class ChatService {
     } catch (error) {
       console.error('Error loading threads:', error);
       return []; // Return empty array if loading fails
+    }
+  }
+
+  /**
+   * Find threads that exist only as messages and need reconstruction
+   */
+  private async findReconstructedThreads(userId: string): Promise<ChatThread[]> {
+    try {
+      console.log('🔍 Finding reconstructed threads for user:', userId);
+      const messagesSnapshot = await get(this.messagesRef);
+      const reconstructedThreads: ChatThread[] = [];
+
+      if (messagesSnapshot.exists()) {
+        console.log('📨 Found messages in database, scanning for user threads...');
+        console.log('📨 Messages snapshot size:', messagesSnapshot.size);
+        const threadIds = new Set<string>();
+        
+        // Find all thread IDs where the user has messages
+        messagesSnapshot.forEach((threadSnapshot) => {
+          const threadId = threadSnapshot.key;
+          if (!threadId) return;
+          
+          threadSnapshot.forEach((messageSnapshot) => {
+            const message = messageSnapshot.val();
+            if (message && message.seenBy && typeof message.seenBy === 'object' && message.seenBy[userId] === true) {
+              console.log('📨 Found message for user in thread:', threadId, 'message text:', message.text);
+              threadIds.add(threadId);
+            }
+          });
+        });
+
+        console.log('📨 Found thread IDs with messages for user:', Array.from(threadIds));
+        
+        if (threadIds.size === 0) {
+          console.log('❌ No thread IDs found with messages for user:', userId);
+          return [];
+        }
+
+        // Check each thread ID to see if it needs reconstruction
+        for (const threadId of threadIds) {
+          const existingThread = await this.getThreadById(threadId);
+          if (existingThread) {
+            reconstructedThreads.push(existingThread);
+          }
+        }
+      } else {
+        console.log('❌ No messages section found in database at all');
+      }
+
+      return reconstructedThreads;
+    } catch (error) {
+      console.error('Error finding reconstructed threads:', error);
+      return [];
     }
   }
 
@@ -144,9 +216,11 @@ class ChatService {
       if (snapshot.exists()) {
         snapshot.forEach((childSnapshot) => {
           const threadData = childSnapshot.val();
-          if (threadData.participants && threadData.participants[userId] === true) {
+          const threadId = childSnapshot.key;
+          
+          if (threadData && threadId && threadData.participants && typeof threadData.participants === 'object' && threadData.participants[userId] === true) {
             threads.push({
-              id: childSnapshot.key!,
+              id: threadId,
               ...threadData,
             });
           }
@@ -178,6 +252,29 @@ class ChatService {
     attachmentUrl?: string
   ): Promise<string> {
     try {
+      // Validate that the thread exists and has valid participants
+      const thread = await this.getThreadById(threadId);
+      if (!thread) {
+        throw new Error(`Thread ${threadId} does not exist. Please refresh and try again.`);
+      }
+      
+      console.log('🔍 Thread validation for sendMessage:', {
+        threadId,
+        senderId,
+        participants: thread.participants,
+        isParticipant: thread.participants?.[senderId]
+      });
+      
+      if (!thread.participants || !thread.participants[senderId]) {
+        console.error('❌ Participant validation failed:', {
+          threadId,
+          senderId,
+          participants: thread.participants,
+          expectedParticipants: threadId.split('_')
+        });
+        throw new Error(`User ${senderId} is not a participant in thread ${threadId}. Thread participants: ${JSON.stringify(thread.participants)}`);
+      }
+
       // Create message
       const messageRef = ref(database, `messages/${threadId}`);
       const newMessageRef = push(messageRef);
@@ -206,6 +303,12 @@ class ChatService {
             currentData.unread = {};
           }
 
+          // Ensure participants object exists and is valid
+          if (!currentData.participants || typeof currentData.participants !== 'object') {
+            console.error('Thread participants is missing or invalid:', currentData.participants);
+            throw new Error('Thread participants data is corrupted');
+          }
+
           // Update last message
           currentData.lastMessage = {
             text,
@@ -221,6 +324,10 @@ class ChatService {
               currentData.unread[participantId] = (currentData.unread[participantId] || 0) + 1;
             }
           });
+        } else {
+          // If thread doesn't exist, this is a critical error
+          console.error('Thread does not exist:', threadId);
+          throw new Error(`Thread ${threadId} does not exist. Cannot send message.`);
         }
         return currentData;
       });
@@ -243,6 +350,16 @@ class ChatService {
     waveform?: number[]
   ): Promise<string> {
     try {
+      // Validate that the thread exists and has valid participants
+      const thread = await this.getThreadById(threadId);
+      if (!thread) {
+        throw new Error(`Thread ${threadId} does not exist. Please refresh and try again.`);
+      }
+      
+      if (!thread.participants || !thread.participants[senderId]) {
+        throw new Error(`User ${senderId} is not a participant in thread ${threadId}.`);
+      }
+
       // Create message
       const messageRef = ref(database, `messages/${threadId}`);
       const newMessageRef = push(messageRef);
@@ -275,6 +392,12 @@ class ChatService {
             currentData.unread = {};
           }
 
+          // Ensure participants object exists and is valid
+          if (!currentData.participants || typeof currentData.participants !== 'object') {
+            console.error('Thread participants is missing or invalid:', currentData.participants);
+            throw new Error('Thread participants data is corrupted');
+          }
+
           // Update last message
           currentData.lastMessage = {
             text: '🎤 Voice message',
@@ -290,6 +413,10 @@ class ChatService {
               currentData.unread[participantId] = (currentData.unread[participantId] || 0) + 1;
             }
           });
+        } else {
+          // If thread doesn't exist, this is a critical error
+          console.error('Thread does not exist:', threadId);
+          throw new Error(`Thread ${threadId} does not exist. Cannot send voice message.`);
         }
         return currentData;
       });
@@ -578,12 +705,204 @@ class ChatService {
    */
   async getThreadById(threadId: string): Promise<ChatThread | null> {
     try {
+      console.log('🔍 Getting thread by ID:', threadId);
       const threadRef = ref(database, `chatThreads/${threadId}`);
       const snapshot = await get(threadRef);
-      return snapshot.exists() ? snapshot.val() : null;
+      
+      if (snapshot.exists()) {
+        const thread = snapshot.val();
+        console.log('✅ Found existing thread in chatThreads:', threadId, 'lastMessage:', thread.lastMessage?.text || 'No last message');
+        
+        // Fix thread participants if they don't match the thread ID
+        const fixedThread = await this.fixThreadParticipants(threadId, thread);
+        
+        // If thread exists but has no lastMessage, try to reconstruct it
+        if (!fixedThread.lastMessage) {
+          console.log('⚠️ Thread exists but has no lastMessage, attempting to reconstruct...');
+          const reconstructedThread = await this.reconstructThreadFromMessages(threadId);
+          if (reconstructedThread && reconstructedThread.lastMessage) {
+            console.log('✅ Successfully reconstructed lastMessage for existing thread');
+            // Update the existing thread with the reconstructed lastMessage
+            const updatedThread = { ...fixedThread, lastMessage: reconstructedThread.lastMessage };
+            await this.saveReconstructedThread(updatedThread);
+            return updatedThread;
+          }
+        }
+        
+        return fixedThread;
+      }
+      
+      console.log('❌ Thread not found in chatThreads, attempting reconstruction:', threadId);
+      // If thread doesn't exist but messages might exist, try to reconstruct from messages
+      return await this.reconstructThreadFromMessages(threadId);
     } catch (error) {
       console.error('Error getting thread by ID:', error);
       return null;
+    }
+  }
+
+  /**
+   * Reconstruct thread metadata from existing messages
+   */
+  private async reconstructThreadFromMessages(threadId: string): Promise<ChatThread | null> {
+    try {
+      console.log('🔧 Reconstructing thread from messages:', threadId);
+      const messagesRef = ref(database, `messages/${threadId}`);
+      const snapshot = await get(messagesRef);
+      
+      if (!snapshot.exists()) {
+        console.log('❌ No messages found for thread:', threadId);
+        return null;
+      }
+
+      console.log('📨 Found messages for thread:', threadId, 'message count:', snapshot.size);
+      
+      if (snapshot.size === 0) {
+        console.log('❌ No messages found in thread:', threadId);
+        return null;
+      }
+      const messages: ChatMessage[] = [];
+      let participants: { [uid: string]: boolean } = {};
+      let lastMessage: { text: string; at: number; senderId: string } | undefined;
+      let earliestTimestamp = Date.now();
+
+      snapshot.forEach((childSnapshot) => {
+        const message = childSnapshot.val();
+        const messageId = childSnapshot.key;
+        
+        // Skip if message is null or undefined
+        if (!message || !messageId) {
+          return;
+        }
+        
+        // Messages should already have an id field, but verify it matches the key
+        if (message.id !== messageId) {
+          console.log('⚠️ Message ID mismatch:', message.id, 'vs key:', messageId);
+          // Fix the id field if it's missing or incorrect
+          message.id = messageId;
+        }
+        
+        console.log('📨 Processing message:', messageId, 'text:', message.text, 'at:', message.at, 'senderId:', message.senderId, 'hasId:', !!message.id);
+        messages.push(message);
+        
+        // Collect participants from seenBy
+        if (message.seenBy && typeof message.seenBy === 'object') {
+          Object.keys(message.seenBy).forEach(uid => {
+            if (uid) {
+              participants[uid] = true;
+            }
+          });
+        }
+        
+        // Find the latest message
+        if (message.at && typeof message.at === 'number' && (!lastMessage || message.at > lastMessage.at)) {
+          lastMessage = {
+            text: message.text || '🎤 Voice message',
+            at: message.at,
+            senderId: message.senderId || 'unknown'
+          };
+          console.log('📝 Found latest message:', lastMessage.text, 'at:', new Date(lastMessage.at).toISOString(), 'senderId:', lastMessage.senderId);
+        }
+        
+        // Find the earliest timestamp for createdAt
+        if (message.at && typeof message.at === 'number' && message.at < earliestTimestamp) {
+          earliestTimestamp = message.at;
+        }
+      });
+
+      if (!participants || Object.keys(participants).length === 0) {
+        return null;
+      }
+
+      // Create reconstructed thread
+      const reconstructedThread: ChatThread = {
+        id: threadId,
+        participants,
+        type: 'direct', // Default type, could be enhanced to detect from context
+        unread: participants ? Object.keys(participants).reduce((acc, uid) => {
+          acc[uid] = 0; // Default unread count
+          return acc;
+        }, {} as { [uid: string]: number }) : {},
+        createdAt: earliestTimestamp,
+        ...(lastMessage && { lastMessage })
+      };
+
+      console.log('🔧 Reconstructed thread:', {
+        id: threadId,
+        participants: Object.keys(participants),
+        lastMessage: lastMessage ? { text: lastMessage.text, at: new Date(lastMessage.at).toISOString() } : 'No last message',
+        createdAt: new Date(earliestTimestamp).toISOString()
+      });
+
+      // Save the reconstructed thread to avoid future reconstruction
+      await this.saveReconstructedThread(reconstructedThread);
+      
+      return reconstructedThread;
+    } catch (error) {
+      console.error('Error reconstructing thread from messages:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Save reconstructed thread to database
+   */
+  private async saveReconstructedThread(thread: ChatThread): Promise<void> {
+    try {
+      const threadRef = ref(database, `chatThreads/${thread.id}`);
+      await set(threadRef, thread);
+      console.log('✅ Reconstructed and saved thread:', thread.id);
+    } catch (error) {
+      console.error('Error saving reconstructed thread:', error);
+    }
+  }
+
+  /**
+   * Fix thread participants if they don't match the thread ID
+   */
+  private async fixThreadParticipants(threadId: string, thread: ChatThread): Promise<ChatThread> {
+    try {
+      const expectedParticipants = threadId.split('_');
+      if (expectedParticipants.length !== 2) {
+        console.error('Invalid thread ID format:', threadId);
+        return thread;
+      }
+
+      const [participant1, participant2] = expectedParticipants;
+      const currentParticipants = thread.participants || {};
+      
+      // Check if participants match the thread ID
+      const hasParticipant1 = currentParticipants[participant1];
+      const hasParticipant2 = currentParticipants[participant2];
+      
+      if (!hasParticipant1 || !hasParticipant2) {
+        console.log('🔧 Fixing thread participants for thread:', threadId);
+        
+        // Fix the participants
+        const fixedThread = {
+          ...thread,
+          participants: {
+            [participant1]: true,
+            [participant2]: true,
+          },
+          unread: {
+            [participant1]: currentParticipants[participant1] ? (thread.unread?.[participant1] || 0) : 0,
+            [participant2]: currentParticipants[participant2] ? (thread.unread?.[participant2] || 0) : 0,
+          }
+        };
+        
+        // Save the fixed thread
+        const threadRef = ref(database, `chatThreads/${threadId}`);
+        await set(threadRef, fixedThread);
+        
+        console.log('✅ Fixed thread participants:', threadId);
+        return fixedThread;
+      }
+      
+      return thread;
+    } catch (error) {
+      console.error('Error fixing thread participants:', error);
+      return thread;
     }
   }
 }

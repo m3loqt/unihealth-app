@@ -28,6 +28,7 @@ import {
 import { useAuth } from '@/hooks/auth/useAuth';
 import { chatService, ChatMessage } from '@/services/chatService';
 import { voiceMessageService } from '@/services/voiceMessageService';
+import { databaseService } from '@/services/database/firebase';
 import LoadingState from '@/components/ui/LoadingState';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { Audio } from 'expo-av';
@@ -59,11 +60,15 @@ interface Message {
 }
 
 export default function SpecialistChatScreen() {
-  const { threadId, patientId, patientName, patientSpecialty } = useLocalSearchParams<{ 
+  const { threadId, contactId, contactName, contactRole, contactSpecialty, patientId, patientName, patientSpecialty } = useLocalSearchParams<{ 
     threadId: string; 
-    patientId: string; 
-    patientName: string; 
-    patientSpecialty: string; 
+    contactId?: string; 
+    contactName?: string; 
+    contactRole?: string; 
+    contactSpecialty?: string; 
+    patientId?: string; 
+    patientName?: string; 
+    patientSpecialty?: string; 
   }>();
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -75,6 +80,10 @@ export default function SpecialistChatScreen() {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   // Get online status for the participant
   const { isOnline, formattedLastSeen } = useUserOnlineStatus(participant?.uid || '');
+  
+  // For generalists, default to offline if no status is available
+  const displayIsOnline = participant?.role === 'generalist' ? (isOnline || false) : isOnline;
+  const displayLastSeen = participant?.role === 'generalist' ? (formattedLastSeen || 'Offline') : formattedLastSeen;
   const [currentThread, setCurrentThread] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
@@ -98,22 +107,56 @@ export default function SpecialistChatScreen() {
       setCurrentThread(threadData);
       
       if (threadData && threadData.participants) {
-        // Find the patient participant (not the current user)
+        // Find the other participant (not the current user)
         const participantId = Object.keys(threadData.participants).find(id => id !== user.uid);
         
         if (participantId) {
-          // Get patient data from users collection
-          const patientData = await chatService.getUserById(participantId);
+          // Try to get participant data from URL params first (new format)
+          if (contactId && contactName && contactRole && contactSpecialty) {
+            const [firstName, ...lastNameParts] = contactName.split(' ');
+            const lastName = lastNameParts.join(' ') || 'Contact';
+            
+            setParticipant({
+              uid: contactId,
+              firstName,
+              lastName,
+              email: '',
+              role: contactRole as 'patient' | 'specialist' | 'generalist',
+              specialty: contactSpecialty,
+              avatar: '',
+            });
+            return;
+          }
           
-          if (patientData) {
+          // Try to get participant data from URL params (old format for backward compatibility)
+          if (patientId && patientName) {
+            const [firstName, ...lastNameParts] = patientName.split(' ');
+            const lastName = lastNameParts.join(' ') || 'Patient';
+            
+            setParticipant({
+              uid: patientId,
+              firstName,
+              lastName,
+              email: '',
+              role: 'patient',
+              specialty: patientSpecialty || 'General Medicine',
+              avatar: '',
+            });
+            return;
+          }
+          
+          // Get participant data from users collection
+          const participantData = await chatService.getUserById(participantId);
+          
+          if (participantData) {
             setParticipant({
               uid: participantId,
-              firstName: patientData.firstName || patientData.first_name || 'Unknown',
-              lastName: patientData.lastName || patientData.last_name || 'Patient',
-              email: patientData.email || '',
-              role: 'patient',
-              specialty: patientData.specialty || patientSpecialty || 'General Medicine',
-              avatar: patientData.avatar || patientData.profilePicture || '',
+              firstName: participantData.firstName || participantData.first_name || 'Unknown',
+              lastName: participantData.lastName || participantData.last_name || 'User',
+              email: participantData.email || '',
+              role: participantData.role || 'patient',
+              specialty: participantData.specialty || 'General Medicine',
+              avatar: participantData.avatar || participantData.profilePicture || '',
             });
             return;
           }
@@ -121,6 +164,22 @@ export default function SpecialistChatScreen() {
       }
       
       // Fallback to URL parameters if thread doesn't exist yet
+      if (contactId && contactName && contactRole && contactSpecialty) {
+        const [firstName, ...lastNameParts] = contactName.split(' ');
+        const lastName = lastNameParts.join(' ') || 'Contact';
+        
+        setParticipant({
+          uid: contactId,
+          firstName,
+          lastName,
+          email: '',
+          role: contactRole as 'patient' | 'specialist' | 'generalist',
+          specialty: contactSpecialty,
+          avatar: '',
+        });
+        return;
+      }
+      
       if (patientId && patientName) {
         const [firstName, ...lastNameParts] = patientName.split(' ');
         const lastName = lastNameParts.join(' ') || 'Patient';
@@ -156,7 +215,7 @@ export default function SpecialistChatScreen() {
     } finally {
       setParticipantLoading(false);
     }
-  }, [user, threadId, patientId, patientName, patientSpecialty]);
+  }, [user, threadId, contactId, contactName, contactRole, contactSpecialty, patientId, patientName, patientSpecialty]);
 
   // Load messages
   const loadMessages = useCallback(async () => {
@@ -554,7 +613,7 @@ export default function SpecialistChatScreen() {
                 {participant.firstName} {participant.lastName}
               </Text>
               <Text style={styles.headerStatus}>
-                {isOnline ? 'Online' : formattedLastSeen}
+                {displayIsOnline ? 'Online' : displayLastSeen}
               </Text>
             </View>
           </View>
