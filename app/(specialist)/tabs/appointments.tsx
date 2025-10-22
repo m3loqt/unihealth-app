@@ -2602,10 +2602,15 @@ const styles = StyleSheet.create({
   },
   // Sort button and dropdown styles
   sortButton: {
-    height: 48, // Match search bar height
+    height: 65, 
+    width: 65, // Match search bar height
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     paddingHorizontal: 2,
     gap: 4,
   },
