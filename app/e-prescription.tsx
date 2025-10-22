@@ -8,6 +8,7 @@ import {
   Platform,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Download, Share2 } from 'lucide-react-native';
@@ -51,6 +52,8 @@ export default function EPrescriptionScreen() {
   const webViewRef = useRef<WebView>(null);
   const [downloadModalVisible, setDownloadModalVisible] = useState(false);
   const [downloadSavedPath, setDownloadSavedPath] = useState<string | null>(null);
+  const [scheduleData, setScheduleData] = useState<any>(null);
+  const [scheduleClinics, setScheduleClinics] = useState<any>({});
 
   useEffect(() => {
     const load = async () => {
@@ -110,17 +113,24 @@ export default function EPrescriptionScreen() {
         setReferral(refData);
 
         // Related entities
-        const [clinicData, userData, patientProfileData, specialistData, specialistUserDoc] = await Promise.all([
+        const [clinicData, userData, patientProfileData, doctorData, doctorUserDoc] = await Promise.all([
           refData.referringClinicId ? databaseService.getDocument(`clinics/${refData.referringClinicId}`) : null,
           refData.patientId ? databaseService.getDocument(`users/${refData.patientId}`) : null,
           refData.patientId ? databaseService.getDocument(`patients/${refData.patientId}`) : null,
-          refData.assignedSpecialistId ? databaseService.getSpecialistProfile(refData.assignedSpecialistId) : null,
+          // Try both specialist and generalist paths
+          refData.assignedSpecialistId ? (async () => {
+            const specialistProfile = await databaseService.getSpecialistProfile(refData.assignedSpecialistId);
+            if (specialistProfile) return specialistProfile;
+            // If not found as specialist, try as doctor (generalist)
+            const doctorDoc = await databaseService.getDocument(`doctors/${refData.assignedSpecialistId}`);
+            return doctorDoc;
+          })() : null,
           refData.assignedSpecialistId ? databaseService.getDocument(`users/${refData.assignedSpecialistId}`) : null,
         ]);
         setClinic(clinicData);
         setPatient({ ...(userData || {}), ...(patientProfileData || {}) });
-        setProvider(specialistData);
-        setProviderUser(specialistUserDoc);
+        setProvider(doctorData);
+        setProviderUser(doctorUserDoc);
 
         // Prescriptions from medical history if available, otherwise by appointment
         let loadedPrescriptions: any[] = [];
@@ -158,6 +168,68 @@ export default function EPrescriptionScreen() {
             }
           } catch (error) {
             console.log('Could not load doctor signature:', error);
+          }
+
+          // Load schedule data (specialist or generalist)
+          try {
+            // Check if this is a specialist or generalist
+            const isGeneralist = doctorData?.isGeneralist === true;
+            
+            if (isGeneralist) {
+              console.log('✅ Doctor is a generalist - loading availability and clinics');
+              
+              // For generalists, get availability and clinic affiliations
+              if (doctorData?.availability) {
+                setScheduleData(doctorData.availability);
+                console.log('✅ Loaded generalist availability data');
+              }
+              
+              // Load clinics from clinicAffiliations
+              if (doctorData?.clinicAffiliations && Array.isArray(doctorData.clinicAffiliations)) {
+                const clinicsMap: any = {};
+                for (const clinicId of doctorData.clinicAffiliations) {
+                  try {
+                    const clinicInfo = await databaseService.getClinicById(clinicId);
+                    if (clinicInfo) {
+                      clinicsMap[clinicId] = clinicInfo;
+                    }
+                  } catch (err) {
+                    console.log(`Could not load clinic ${clinicId}:`, err);
+                  }
+                }
+                setScheduleClinics(clinicsMap);
+                console.log(`✅ Loaded ${Object.keys(clinicsMap).length} clinics for generalist`);
+              }
+            } else {
+              // For specialists, use the existing specialist schedule logic
+              const schedules = await databaseService.getSpecialistSchedules(refData.assignedSpecialistId);
+              if (schedules) {
+                setScheduleData(schedules);
+                console.log('✅ Loaded specialist schedule data');
+                
+                // Load clinic data for each schedule
+                const clinicsMap: any = {};
+                const scheduleKeys = Object.keys(schedules);
+                for (const key of scheduleKeys) {
+                  const schedule = schedules[key];
+                  const clinicId = schedule?.practiceLocation?.clinicId;
+                  if (clinicId && !clinicsMap[clinicId]) {
+                    try {
+                      const clinicData = await databaseService.getClinicById(clinicId);
+                      if (clinicData) {
+                        clinicsMap[clinicId] = clinicData;
+                      }
+                    } catch (err) {
+                      console.log('Could not load clinic:', clinicId);
+                    }
+                  }
+                }
+                setScheduleClinics(clinicsMap);
+                console.log('✅ Loaded clinic data for schedules');
+              }
+            }
+          } catch (error) {
+            console.log('Could not load schedule data:', error);
           }
         }
       } catch (e) {
@@ -347,7 +419,7 @@ export default function EPrescriptionScreen() {
     ].filter(Boolean);
     const patientAddress = safe(patientAddressParts.join(', '));
 
-    const ageText = age && age !== '—' ? `${age} years old` : '—';
+    const ageText = age && age !== '—' ? `${age}` : '—';
     const firstRx: any = Array.isArray(prescriptions) && prescriptions[0] ? (prescriptions[0] as any) : null;
     const prescriptionId = safe(((firstRx && (firstRx.id || firstRx.prescriptionId))
       || referral?.referralConsultationId
@@ -356,24 +428,216 @@ export default function EPrescriptionScreen() {
       || String(id)
       || '—'));
 
-    const medicineRows = (Array.isArray(prescriptions) && prescriptions.length)
-      ? prescriptions.map((p: any, idx: number) => `
-          <tr>
-            <td>${safe(p.medication || '')}</td>
-            <td>${safe(p.dosage || '')}</td>
-          </tr>
-        `).join('')
-      : `<tr><td colspan="2">No prescriptions recorded</td></tr>`;
+    // Circle numbers for prescriptions
+    const circleNumbers = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+    
+    // Generate prescription items in flowing format (like real prescription)
+    const prescriptionItems = (Array.isArray(prescriptions) && prescriptions.length)
+      ? prescriptions.map((p: any, idx: number) => {
+          const medName = safe(p.medication || 'Medication');
+          const dosage = safe(p.dosage || '');
+          const quantity = p.quantity || p.duration || '';
+          const freq = formatFrequency(p.frequency, user?.role || 'patient');
+          const route = p.route ? formatRoute(p.route, user?.role || 'patient') : 'by mouth';
+          const duration = p.duration || '';
+          
+          // Build Sig instruction
+          const sigInstruction = `Take ${dosage} ${freq} ${route}${duration ? ' for ' + duration : ''}`;
+          
+          return `
+            <div class="prescription-item">
+              <div class="prescription-number">${circleNumbers[idx] || `${idx + 1}.`}</div>
+              <div class="prescription-details">
+                <div class="medication-line">${medName} ${dosage}</div>
+                ${quantity ? `<div class="dispense-line"><span class="label">Disp:</span> <span class="value">#${quantity}</span></div>` : ''}
+                <div class="sig-line"><span class="label">Sig:</span> <span class="value">${sigInstruction}</span></div>
+              </div>
+            </div>
+          `;
+        }).join('')
+      : `<div class="prescription-item"><div class="prescription-details"><div class="medication-line">No prescriptions recorded</div></div></div>`;
+    
+    // Doctor credentials and specialty
+    const doctorSpecialty = safe(provider?.specialty || 'Medical Specialist');
+    const doctorCredentials = provider?.medicalLicenseNumber ? `License No.: ${safe(provider.medicalLicenseNumber)}` : '';
+    const prcId = provider?.prcId ? `PRC ID: ${safe(provider.prcId)}` : '';
 
-    const detailsRows = (Array.isArray(prescriptions) && prescriptions.length)
-      ? prescriptions.map((p: any, idx: number) => `
-          <tr>
-            <td>${safe(formatFrequency(p.frequency, user?.role || 'patient'))}</td>
-            <td>${safe(p.route ? formatRoute(p.route, user?.role || 'patient') : '')}</td>
-            <td>${safe(p.duration || p.quantity || '')}</td>
-          </tr>
-        `).join('')
-      : `<tr><td colspan="3">No prescriptions recorded</td></tr>`;
+    // Format clinic schedule data - show all schedules
+    let clinicScheduleInfo = '';
+    const isGeneralist = provider?.isGeneralist === true;
+    
+    if (scheduleData) {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayNamesMap: { [key: string]: number } = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+      
+      if (isGeneralist) {
+        // Handle generalist availability data
+        console.log('🔍 Rendering generalist schedule');
+        const weeklySchedule = scheduleData?.weeklySchedule || {};
+        
+        // Collect enabled days with time slots
+        const enabledDays: Array<{ day: string; dayNum: number; times: string }> = [];
+        Object.entries(weeklySchedule).forEach(([day, config]: [string, any]) => {
+          if (config?.enabled && config?.timeSlots && config.timeSlots.length > 0) {
+            const dayNum = dayNamesMap[day.toLowerCase()];
+            const firstSlot = config.timeSlots[0];
+            const startTime = firstSlot.startTime || '';
+            const endTime = firstSlot.endTime || '';
+            
+            // Convert to 12h format
+            let timeStr = '';
+            if (startTime) {
+              const [hours] = startTime.split(':').map(Number);
+              const period = hours >= 12 ? 'PM' : 'AM';
+              const displayHours = hours % 12 || 12;
+              timeStr = `${displayHours}:00 ${period}`;
+            }
+            
+            enabledDays.push({ day, dayNum, times: timeStr });
+          }
+        });
+        
+        // Sort by day number
+        enabledDays.sort((a, b) => a.dayNum - b.dayNum);
+        
+        // Build schedule string
+        let daysStr = '';
+        if (enabledDays.length === 7) {
+          daysStr = 'Mon-Sun';
+        } else if (enabledDays.length > 0) {
+          // Check if consecutive
+          let isConsecutive = true;
+          for (let i = 0; i < enabledDays.length - 1; i++) {
+            if (enabledDays[i + 1].dayNum - enabledDays[i].dayNum !== 1) {
+              isConsecutive = false;
+              break;
+            }
+          }
+          if (isConsecutive) {
+            daysStr = `${dayNames[enabledDays[0].dayNum]}-${dayNames[enabledDays[enabledDays.length - 1].dayNum]}`;
+          } else {
+            daysStr = enabledDays.map(d => dayNames[d.dayNum]).join(', ');
+          }
+        }
+        
+        const timeStr = enabledDays.length > 0 ? enabledDays[0].times : '';
+        
+        // Build schedule entries for each affiliated clinic
+        const clinicIds = Object.keys(scheduleClinics);
+        clinicIds.forEach((clinicId) => {
+          const scheduleClinic = scheduleClinics[clinicId];
+          const scheduleClinicName = scheduleClinic?.name || '';
+          const addressParts = [
+            scheduleClinic?.addressLine || scheduleClinic?.address,
+            scheduleClinic?.city
+          ].filter(Boolean);
+          const scheduleClinicAddress = addressParts.length > 0 ? addressParts[0] : '';
+          const scheduleClinicContact = scheduleClinic?.contactNumber || scheduleClinic?.phone || '';
+          
+          clinicScheduleInfo += `<div class="schedule-entry">`;
+          if (scheduleClinicName) {
+            clinicScheduleInfo += `<div class="clinic-info">${scheduleClinicName}${scheduleClinicAddress ? ', ' + scheduleClinicAddress : ''}</div>`;
+          }
+          if (daysStr && timeStr) {
+            clinicScheduleInfo += `<div class="clinic-schedule">${daysStr} ${timeStr}</div>`;
+          }
+          if (scheduleClinicContact) {
+            clinicScheduleInfo += `<div class="clinic-info">Tel: ${scheduleClinicContact}</div>`;
+          }
+          clinicScheduleInfo += `</div>`;
+        });
+      } else {
+        // Handle specialist schedule data
+        const scheduleKeys = Object.keys(scheduleData);
+        if (scheduleKeys.length > 0) {
+          // Process each schedule
+          scheduleKeys.forEach((scheduleKey, index) => {
+            const schedule = scheduleData[scheduleKey];
+            
+            // Get room/unit
+            const room = schedule?.practiceLocation?.roomOrUnit || '';
+            
+            // Get clinic info for this schedule
+            const scheduleClinicId = schedule?.practiceLocation?.clinicId || '';
+            let scheduleClinicName = '';
+            let scheduleClinicAddress = '';
+            
+            // Look up clinic from scheduleClinics map
+            const scheduleClinic = scheduleClinics[scheduleClinicId];
+            let scheduleClinicContact = '';
+            if (scheduleClinic) {
+              scheduleClinicName = scheduleClinic.name || '';
+              const addressParts = [
+                scheduleClinic.addressLine || scheduleClinic.address,
+                scheduleClinic.city
+              ].filter(Boolean);
+              scheduleClinicAddress = addressParts.length > 0 ? addressParts[0] : '';
+              scheduleClinicContact = scheduleClinic.contactNumber || scheduleClinic.phone || '';
+            } else if (scheduleClinicId === clinic?.id) {
+              // Fallback to current clinic if it matches
+              scheduleClinicName = clinicName;
+              scheduleClinicAddress = clinicAddress && clinicAddress !== '—' ? clinicAddress.split(',')[0] : '';
+              scheduleClinicContact = clinic?.contactNumber || clinic?.phone || '';
+            }
+            
+            // Get days of week
+            const daysOfWeek = schedule?.recurrence?.dayOfWeek || [];
+            let daysStr = '';
+            if (daysOfWeek.length > 0) {
+              const sortedDays = [...daysOfWeek].sort((a, b) => a - b);
+              if (sortedDays.length === 1) {
+                daysStr = dayNames[sortedDays[0]];
+              } else if (sortedDays.length === 7) {
+                daysStr = 'Mon-Sun';
+              } else if (sortedDays.length >= 2) {
+                // Check if consecutive
+                let isConsecutive = true;
+                for (let i = 0; i < sortedDays.length - 1; i++) {
+                  if (sortedDays[i + 1] - sortedDays[i] !== 1) {
+                    isConsecutive = false;
+                    break;
+                  }
+                }
+                if (isConsecutive) {
+                  daysStr = `${dayNames[sortedDays[0]]}-${dayNames[sortedDays[sortedDays.length - 1]]}`;
+                } else {
+                  daysStr = sortedDays.map(d => dayNames[d]).join(', ');
+                }
+              }
+            }
+            
+            // Get time slots
+            const slots = schedule?.slotTemplate || {};
+            const times = Object.keys(slots).sort();
+            let timeStr = '';
+            if (times.length > 0) {
+              const firstTime = times[0];
+              // Convert 24h to 12h format
+              const [hours, mins] = firstTime.split(':').map(Number);
+              const period = hours >= 12 ? 'PM' : 'AM';
+              const displayHours = hours % 12 || 12;
+              timeStr = `${displayHours}:${mins.toString().padStart(2, '0')} ${period}`;
+            }
+            
+            // Build schedule entry (wrapped in a div for side-by-side display)
+            clinicScheduleInfo += `<div class="schedule-entry">`;
+            if (room) {
+              clinicScheduleInfo += `<div class="clinic-schedule">${room}</div>`;
+            }
+            if (scheduleClinicName) {
+              clinicScheduleInfo += `<div class="clinic-info">${scheduleClinicName}${scheduleClinicAddress ? ', ' + scheduleClinicAddress : ''}</div>`;
+            }
+            if (daysStr && timeStr) {
+              clinicScheduleInfo += `<div class="clinic-schedule">${daysStr} ${timeStr}</div>`;
+            }
+            if (scheduleClinicContact) {
+              clinicScheduleInfo += `<div class="clinic-info">Tel: ${scheduleClinicContact}</div>`;
+            }
+            clinicScheduleInfo += `</div>`;
+          });
+        }
+      }
+    }
 
     return `<!DOCTYPE html>
 <html>
@@ -381,171 +645,484 @@ export default function EPrescriptionScreen() {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <style>
-    @page { size: 8.5in 11in; margin: 0.5in; }
-    html, body { margin: 0; padding: 0; background: #F3F4F6; color: ${text}; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
-    .preview { display: flex; flex-direction: column; align-items: center; padding: 16px; }
-    .page { width: 100%; max-width: 8.5in; background: #FFFFFF; box-shadow: 0 2px 16px rgba(0,0,0,0.08); position: relative; border: 1px solid ${border}; display: flex; flex-direction: column; box-sizing: border-box; }
-    .page .header, .page .top, .page .footer, .page .body { position: relative; z-index: 1; }
-    .watermark { position: absolute; left: 0; right: 0; bottom: 56px; top: auto; display: flex; align-items: center; justify-content: center; opacity: 0.1; z-index: 0; pointer-events: none; }
-    .watermark img { max-width: 65%; max-height: 65%; object-fit: contain; }
+    /* Print-first approach: Base styles optimized for 8.5" x 11" paper */
+    @page { 
+      size: 8.5in 11in; 
+      margin: 0; 
+    }
+    
+    html, body { 
+      margin: 0; 
+      padding: 0; 
+      background: #FFFFFF; 
+      color: ${text}; 
+      -webkit-print-color-adjust: exact; 
+      print-color-adjust: exact; 
+      font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    /* Container and page setup */
+    .preview { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: flex-start;
+      min-height: 100vh;
+      background: #F3F4F6;
+      overflow-x: hidden;
+    }
+    
+    /* Print-optimized page dimensions */
+    .page { 
+      width: 8.5in;
+      min-height: 11in;
+      background: #FFFFFF; 
+      position: relative; 
+      display: block;
+      box-sizing: border-box;
+      padding: 0;
+    }
 
-    .header { padding: 10px 16px; background: ${brandPrimary}; color: #fff; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; letter-spacing: 0.3px; }
-    .brand-left { font-weight: 800; }
-    .brand-right { font-weight: 600; opacity: 0.95; }
+    /* Document Header */
+    .document-header {
+      background: #1E40AF;
+      color: #FFFFFF;
+      padding: 16px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-    .top { padding: 16px; }
-    .clinic-name { font-weight: 700; font-size: 16px; margin: 0 0 2px; color: #111827; }
-    .muted { color: ${subtle}; font-size: 12px; margin: 0; }
-    .row { display: flex; gap: 16px; }
-    .cell { flex: 1; }
-    .label { color: ${subtle}; font-size: 12px; margin: 6px 0 2px; font-weight: 500; }
-    .value { font-size: 13px; line-height: 1.6; }
-    .strong { font-weight: 600; color: #111827; }
-    .rx-title { font-weight: 700; font-size: 15px; color: #1F2937; margin: 12px 0 6px; }
+    .document-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
 
-    .data-table { width: calc(100% - 48px); margin: 8px auto; border-collapse: collapse; font-size: 12px; }
-    .data-table th { text-align: left; font-weight: 600; color: #374151; background: #F9FAFB; border-bottom: 1px solid ${border}; padding: 8px; }
-    .data-table td { color: #374151; border-bottom: 1px solid ${border}; padding: 8px; vertical-align: top; }
-    .data-table tbody tr:nth-child(even) { background: #FAFAFB; }
+    .document-brand {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
 
-    .body { flex: 1; display: flex; flex-direction: column; }
-    .footer { padding: 8px 16px; color: ${subtle}; font-size: 11px; background: #F9FAFB; display: flex; align-items: center; justify-content: space-between; }
-    .divider { height: 1px; background: ${border}; width: calc(100% - 48px); margin: 10px auto; }
-    .divider-wider { width: calc(100% - 30px); }
-    .details { width: calc(100% - 32px); margin: 0 16px 4px; }
-    .detail-item { margin-bottom: 8px; }
-    .details-row { display:flex; gap:16px; align-items:flex-end; }
-    .details-col { flex:1; }
-    .text-right { text-align:right; }
-    .text-center { text-align:center; }
-    .kv-row { display:flex; align-items:flex-start; padding: 4px 0; }
-    .kv-label { flex: 0 0 40%; color: ${subtle}; font-size: 12px; }
-    .kv-value { flex: 1; text-align: right; font-size: 13px; font-weight: 600; }
-    .signature-wrap { text-align: left; display: inline-block; }
-    .signature-line { height: 1px; background: ${border}; margin: 4px 0 6px 0; width: 160px; }
-    .signature-name { color: #374151; font-size: 13.5px; font-weight: 700; }
-    .signature-caption { color: ${subtle}; font-size: 12.5px; margin-top: 6px; }
-    .signature-label { color: ${subtle}; font-size: 11px; margin-top: 6px; }
+    .page-content {
+      padding: 32px 48px;
+    }
 
-    /* Rx layout */
-    .rx-row { display: flex; gap: 12px; align-items: flex-start; width: calc(100% - 32px); margin: 0 16px; }
-    .rx-badge { width: 60px; min-width: 60px; height: 60px; border-radius: 10px; background: transparent; color: #000000; display: flex; align-items: center; justify-content: center; font-size: 50px; font-weight: 700; line-height: 1; user-select: none; opacity: 0.9; }
-    .rx-badge img { width: 100%; height: 100%; object-fit: contain; }
-    .rx-table { width: 100%; margin: 0; }
+    /* Doctor header section */
+    .doctor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0;
+      padding-bottom: 0;
+      gap: 24px;
+      position: relative;
+    }
 
-    @media screen and (max-width: 640px) { .data-table { width: 100%; } }
-    @media print { .preview { padding: 0; } .page { box-shadow: none; width: 8.5in; height: 11in; border: none; margin: 0 auto; max-width: 8.5in; } }
-    @media screen { .page { height: calc(100vh - 30px); aspect-ratio: 8.5 / 11; overflow: hidden; } }
+    .doctor-info-left {
+      flex: 1;
+      text-align: left;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .doctor-logo-right {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 150px;
+      height: 150px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+    }
+
+    .doctor-logo-right img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .header-divider {
+      height: 2px;
+      background: rgba(0, 0, 0, 0.8);
+      margin: 0 0 12px 0;
+    }
+
+    .doctor-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 4px 0;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    .doctor-credentials {
+      font-size: 14px;
+      color: #374151;
+      margin: 0 0 0 0;
+      line-height: 1.5;
+    }
+
+    .clinic-info {
+      font-size: 13px;
+      color: #6B7280;
+      margin: 1px 0 0 0;
+      line-height: 1.4;
+    }
+
+    .clinic-affiliation-section {
+      margin-top: 20px;
+      margin-bottom: 20px;
+      padding-top: 0;
+      padding-bottom: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+    }
+
+    .schedule-entry {
+      flex: 0 0 auto;
+      min-width: 180px;
+      margin-right: 24px;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    
+    .schedule-entry:last-child {
+      margin-right: 0;
+    }
+
+    .clinic-schedule {
+      font-size: 13px;
+      color: #6B7280;
+      margin: 1px 0 0 0;
+      line-height: 1.4;
+    }
+    
+    .clinic-schedule:last-child,
+    .clinic-info:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Patient info section */
+    .patient-section {
+      margin: 0 0 16px 0;
+      padding-top: 0;
+      padding-bottom: 16px;
+      border-bottom: 2px solid rgba(0, 0, 0, 0.8);
+      font-size: 16px;                            
+      line-height: 1.6;
+    }
+
+    .patient-line {
+      display: flex;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+
+    .patient-label {
+      font-weight: 600;
+      color: #111827;
+      min-width: 100px;
+    }
+
+    .patient-value {
+      flex: 1;
+      color: #374151;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.8);
+      padding-bottom: 2px;
+      margin-left: 8px;
+    }
+
+    .patient-inline {
+      display: inline-flex;
+      align-items: baseline;
+      margin-right: 32px;
+    }
+
+    /* Rx section - flowing format */
+    .rx-section {
+      margin: 20px 0;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .rx-symbol {
+      font-size: 72px;
+      font-weight: 700;
+      color: #1F2937;
+      line-height: 1;
+      min-width: 90px;
+      font-family: 'Times New Roman', serif;
+    }
+
+    .prescriptions-list {
+      flex: 1;
+    }
+
+    .prescription-item {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+    }
+
+    .prescription-item:last-child {
+      border-bottom: none;
+    }
+
+    .prescription-number {
+      font-size: 22px;
+      font-weight: 700;
+      color: #000000;
+      min-width: 28px;
+      line-height: 1.4;
+    }
+
+    .prescription-details {
+      flex: 1;
+    }
+
+    .medication-line {
+      font-size: 20px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .dispense-line,
+    .sig-line {
+      font-size: 18px;
+      color: #374151;
+      margin-bottom: 4px;
+      line-height: 1.5;
+    }
+
+    .label {
+      font-weight: 600;
+      color: #6B7280;
+      margin-right: 8px;
+    }
+
+    .value {
+      color: #111827;
+    }
+
+    /* Signature section */
+    .signature-section {
+      position: absolute;
+      bottom: 1.2in;
+      right: 0.8in;
+    }
+
+    .signature-wrap {
+      text-align: left;
+      width: auto;
+      max-width: 280px;
+    }
+
+    .signature-image-container {
+      margin-bottom: 8px;
+      height: auto;
+      width: auto;
+      display: inline-block;
+      text-align: left;
+    }
+    
+    .signature-image-container img {
+      max-width: 180px;
+      height: auto;
+      object-fit: contain;
+      display: inline-block;
+      margin: 0 0 -20px -40px;
+      padding: 0;
+      vertical-align: top;
+    }
+
+    .signature-line {
+      display: none;
+    }
+
+    .signature-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: #111827;
+      margin: 6px 0 4px 0;
+    }
+
+    .signature-details {
+      font-size: 14px;
+      color: #6B7280;
+      margin: 2px 0;
+      line-height: 1.4;
+    }
+
+    .footer {
+      position: absolute;
+      bottom: 0.4in;
+      left: 0.6in;
+      right: 0.6in;
+      padding-top: 0.2in;
+      text-align: center;
+      font-size: 11px;
+      color: #9CA3AF;
+      border-top: 1px solid rgba(0, 0, 0, 0.15);
+    }
+
+    /* Mobile scaling - scale down the print-ready layout */
+    @media screen {
+      .preview {
+        padding: 16px 0;
+      }
+      
+      .page {
+        transform: scale(0.47);
+        transform-origin: top center;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        border: 1px solid #E5E7EB;
+        margin-bottom: -600px; /* Compensate for scaled height */
+      }
+    }
+
+    /* Print settings - use original sizes */
+    @media print {
+      .preview {
+        padding: 0;
+        background: #FFFFFF;
+        display: block;
+      }
+      
+      .page {
+        transform: none;
+        box-shadow: none;
+        border: none;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .page-content {
+        padding: 0.5in 0.6in;
+      }
+      
+      .signature-section {
+        bottom: 1.2in;
+        right: 0.8in;
+      }
+      
+      .footer {
+        bottom: 0.4in;
+        left: 0.6in;
+        right: 0.6in;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="preview">
     <div class="page">
-      <div class="watermark">${logoDataUri ? `<img src="${logoDataUri}" />` : ''}</div>
-      <div class="header"><span class="brand-left">UNIHEALTH</span><span class="brand-right">E-Prescription</span></div>
-      <div class="top">
-        <div class="row">
-          <div class="cell">
-            <p class="label">Patient</p>
-            <div class="value" style="font-size:16px; font-weight:700;">${patientName}</div>
-            <p class="label">Age</p>
-            <div class="value strong">${ageText}</div>
-            ${patientContact && patientContact !== '—' ? `<p class="label">Contact Number</p><div class="value strong">${patientContact}</div>` : ''}
-            ${patientAddressParts.length ? `<p class="label">Address</p><div class="value strong">${patientAddress}</div>` : ''}
+      
+      <!-- Document Header -->
+      <div class="document-header">
+        <div class="document-title">E-Prescription</div>
+        <div class="document-brand">UniHealth</div>
+      </div>
+
+      <!-- Page Content -->
+      <div class="page-content">
+      
+      <!-- Doctor Header Section -->
+      <div class="doctor-header">
+        <div class="doctor-info-left">
+          <h1 class="doctor-name">${doctorName}, MD</h1>
+          <div class="doctor-credentials">${doctorSpecialty}</div>
+          <div class="clinic-affiliation-section">
+            ${clinicScheduleInfo || `
+              <div class="schedule-entry">
+                <div class="clinic-info">${clinicName}${clinicAddress && clinicAddress !== '—' ? ', ' + clinicAddress.split(',')[0] : ''}</div>
+                ${clinicContact && clinicContact !== '—' ? `<div class="clinic-info">Tel: ${clinicContact}</div>` : ''}
           </div>
-          <div class="cell" style="text-align:right">
-            <p class="label">Prescription ID</p>
-            <div class="value strong" style="font-size:16px; font-weight:700;">${prescriptionId}</div>
-            <p class="label">Date Issued</p>
-            <div class="value strong">${dateIssued}</div>
-            <p class=\"label\">Expiration Date</p>
-            <div class=\"value strong\">${expirationDate}</div>
+            `}
           </div>
         </div>
+        <div class="doctor-logo-right">
+          ${logoDataUri ? `<img src="${logoDataUri}" alt="UniHealth Logo" />` : ''}
       </div>
-      <div class="divider divider-wider"></div>
+      </div>
 
-      <div class="body">
+      <!-- Header Divider -->
+      <div class="header-divider"></div>
 
-                 <div class="rx-row">
-           <div class="rx-badge">${rxDataUri ? `<img src="${rxDataUri}" />` : 'Rx'}</div>
-           <div class="rx-table">
-             <table class="data-table">
-               <thead>
-                 <tr>
-                   <th style="width:50%">Medicine Name</th>
-                   <th style="width:50%">Dosage</th>
-                 </tr>
-               </thead>
-               <tbody>
-                 ${medicineRows}
-               </tbody>
-             </table>
-             
-             <table class="data-table" style="margin-top: 16px;">
-               <thead>
-                 <tr>
-                   <th style="width:33%">Frequency</th>
-                   <th style="width:33%">Route</th>
-                   <th style="width:34%">Duration</th>
-                 </tr>
-               </thead>
-               <tbody>
-                 ${detailsRows}
-               </tbody>
-             </table>
+      <!-- Patient Information Section -->
+      <div class="patient-section">
+        <div class="patient-line">
+          <span class="patient-label">Patient:</span>
+          <span class="patient-value" style="flex: 7;">${patientName}</span>
+          <span class="patient-label" style="margin-left: 24px;">Age/Sex:</span>
+          <span class="patient-value" style="flex: 3;">${ageText}${gender && gender !== '—' ? ' / ' + gender : ''}</span>
+        </div>
+        <div class="patient-line">
+          <span class="patient-label">Address:</span>
+          <span class="patient-value" style="flex: 7;">${patientAddress || '—'}</span>
+          <span class="patient-label" style="margin-left: 24px;">Date:</span>
+          <span class="patient-value" style="flex: 3;">${dateIssued}</span>
+        </div>
+      </div>
+
+      <!-- Rx Section with Flowing Format -->
+      <div class="rx-section">
+        <div class="rx-symbol">Rx</div>
+        <div class="prescriptions-list">
+          ${prescriptionItems}
            </div>
          </div>
         
-
-        <div style="padding: 6px 24px 12px;">
-          <div style="display:flex; justify-content:flex-end; margin-top: 20px;">
+      <!-- Signature Section -->
+      <div class="signature-section">
             <div class="signature-wrap">
-              <div class="signature-label">Prescribing Doctor</div>
-              <div class="signature-name" id="sig-name" style="position: relative;">
                 ${doctorSignature ? `
-                  <div class="signature-image-container" style="position: absolute; top: -28px; left: 35%; transform: translateX(-50%); background-image: url('${doctorSignature}'); background-size: contain; background-repeat: no-repeat; background-position: center; width: 150px; height: 60px; z-index: 10;"></div>
-                ` : ''}
-                Dr. ${doctorName}
+            <div class="signature-image-container">
+              <img src="${doctorSignature}" alt="Doctor Signature" />
               </div>
-              <div class="signature-line" id="sig-line"></div>
-              ${provider?.prcId ? `<div class="signature-caption">PRC ID: ${safe(provider.prcId)}</div>` : ''}
-              ${provider?.phone || provider?.contactNumber ? `<div class="signature-caption">Phone: ${safe(provider.phone || provider.contactNumber)}</div>` : ''}
-              ${providerUser?.email ? `<div class="signature-caption">Email: ${safe(providerUser.email)}</div>` : ''}
+          ` : '<div style="height: 60px;"></div>'}
+          <div class="signature-line"></div>
+          <div class="signature-name">Dr. ${doctorName}</div>
+          ${prcId ? `<div class="signature-details">${prcId}</div>` : ''}
+          ${doctorCredentials ? `<div class="signature-details">${doctorCredentials}</div>` : ''}
+          ${provider?.contactNumber || provider?.phone ? `<div class="signature-details">Contact: ${safe(provider.contactNumber || provider.phone)}</div>` : ''}
             </div>
           </div>
-        </div>
-      </div>
 
-      <div class="footer"><span class="footer-left">Generated by UniHealth • ${new Date().toLocaleString()}</span><span class="footer-right"></span></div>
+      <!-- Footer -->
+      <div class="footer">
+        Generated by UniHealth E-Prescription System • ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+      </div>
+      
+      </div><!-- End Page Content -->
+
     </div>
   </div>
-  <script>
-    (function(){
-      // Single page layout for prescription; still set page indicator
-      var page = document.querySelector('.page');
-      var foot = page.querySelector('.footer');
-      var right = foot.querySelector('.footer-right');
-      right.textContent = 'Page 1 of 1';
-
-      // Signature line width = doctor name width + 10px
-      var nameEl = document.getElementById('sig-name');
-      var lineEl = document.getElementById('sig-line');
-      if (nameEl && lineEl) {
-        // Use getBoundingClientRect for accurate width
-        var w = Math.ceil(nameEl.getBoundingClientRect().width) + 5;
-        lineEl.style.width = w + 'px';
-      }
-    })();
-  </script>
 </body>
 </html>`;
-  }, [clinic, patient, provider, referral, prescriptions, logoDataUri, user?.role, doctorSignature]);
+  }, [clinic, patient, provider, referral, prescriptions, logoDataUri, user?.role, doctorSignature, scheduleData, scheduleClinics]);
 
   const handleGeneratePdf = async () => {
     try {
-      // 8x11 inches in points (72dpi) = 576 x 792
-      const { uri } = await Print.printToFileAsync({ html, width: 576, height: 792, base64: false });
+      // 8.5 x 11 inches at 72dpi (letter size)
+      // Using standard letter size dimensions for proper print quality
+      const { uri } = await Print.printToFileAsync({ 
+        html, 
+        width: 612,  // 8.5 inches * 72 dpi
+        height: 792, // 11 inches * 72 dpi
+        base64: false 
+      });
       return uri;
     } catch (e) {
       Alert.alert('Error', 'Failed to generate PDF.');
@@ -607,12 +1184,16 @@ export default function EPrescriptionScreen() {
       </View>
 
       <View style={{ flex: 1 }}>
-        {!!error && (
+        {loading ? (
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color="#1E40AF" />
+            <Text style={styles.loaderText}>Loading e-prescription...</Text>
+          </View>
+        ) : !!error ? (
           <View style={{ padding: 16 }}>
             <Text style={{ color: '#B91C1C' }}>{error}</Text>
           </View>
-        )}
-        {!error && (
+        ) : (
           <WebView
             ref={webViewRef}
             originWhitelist={["*"]}
@@ -639,16 +1220,20 @@ export default function EPrescriptionScreen() {
         showBackdrop
         backdropOpacity={0.4}
       >
-        <View style={{ alignItems: 'center', gap: 12 }}>
-          <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
-            <CheckCircle2 size={36} color={COLORS.primary} />
+        <View style={styles.modalContent}>
+          <View style={styles.modalIconContainer}>
+            <CheckCircle2 size={40} color="#1E40AF" />
           </View>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#1F2937' }}>E-Prescription Downloaded</Text>
-          <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center' }}>
-            {downloadSavedPath ? `Your e-prescription has been saved.${Platform.OS !== 'android' ? '\nPath: ' + downloadSavedPath : ''}` : 'Your e-prescription has been saved.'}
+          <Text style={styles.modalTitle}>E-Prescription Downloaded</Text>
+          <Text style={styles.modalMessage}>
+            {downloadSavedPath ? `Your e-prescription has been saved successfully.${Platform.OS !== 'android' ? '\n\nPath: ' + downloadSavedPath : ''}` : 'Your e-prescription has been saved successfully.'}
           </Text>
-          <View style={{ height: 8 }} />
-          <Button title="Done" onPress={() => setDownloadModalVisible(false)} fullWidth />
+          <TouchableOpacity 
+            style={styles.modalButton}
+            onPress={() => setDownloadModalVisible(false)}
+          >
+            <Text style={styles.modalButtonText}>Done</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </SafeAreaView>
@@ -660,6 +1245,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+  },
+  loaderText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
   },
   header: {
     flexDirection: 'row',
@@ -727,6 +1324,50 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
     marginLeft: 8,
+  },
+  modalContent: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 16,
+  },
+  modalIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: 'Inter-Bold',
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    fontFamily: 'Inter-Regular',
+    paddingHorizontal: 8,
+  },
+  modalButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#1E40AF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
 });
 

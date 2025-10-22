@@ -39,6 +39,8 @@ export default function FitToWorkCertificateScreen() {
   const webViewRef = useRef<WebView>(null);
   const [downloadModalVisible, setDownloadModalVisible] = useState(false);
   const [downloadSavedPath, setDownloadSavedPath] = useState<string | null>(null);
+  const [scheduleData, setScheduleData] = useState<any>(null);
+  const [scheduleClinics, setScheduleClinics] = useState<any>({});
 
   const loadData = async () => {
     try {
@@ -86,6 +88,69 @@ export default function FitToWorkCertificateScreen() {
             }
             if (patientUserData || patientProfileData) {
               setPatient({ ...(patientUserData || {}), ...(patientProfileData || {}) });
+            }
+            
+            // Load schedule data if we have a doctor
+            if (doctorId && doctorData) {
+              try {
+                const isGeneralist = doctorData?.isGeneralist === true;
+                
+                if (isGeneralist) {
+                  console.log('✅ Doctor is a generalist - loading availability and clinics');
+                  
+                  // For generalists, get availability and clinic affiliations
+                  if (doctorData?.availability) {
+                    setScheduleData(doctorData.availability);
+                    console.log('✅ Loaded generalist availability data');
+                  }
+                  
+                  // Load clinics from clinicAffiliations
+                  if (doctorData?.clinicAffiliations && Array.isArray(doctorData.clinicAffiliations)) {
+                    const clinicsMap: any = {};
+                    for (const clinicId of doctorData.clinicAffiliations) {
+                      try {
+                        const clinicInfo = await databaseService.getClinicById(clinicId);
+                        if (clinicInfo) {
+                          clinicsMap[clinicId] = clinicInfo;
+                        }
+                      } catch (err) {
+                        console.log(`Could not load clinic ${clinicId}:`, err);
+                      }
+                    }
+                    setScheduleClinics(clinicsMap);
+                    console.log(`✅ Loaded ${Object.keys(clinicsMap).length} clinics for generalist`);
+                  }
+                } else {
+                  // For specialists, use the existing specialist schedule logic
+                  const schedules = await databaseService.getSpecialistSchedules(doctorId);
+                  if (schedules) {
+                    setScheduleData(schedules);
+                    console.log('✅ Loaded specialist schedule data');
+                    
+                    // Load clinic data for each schedule
+                    const clinicsMap: any = {};
+                    const scheduleKeys = Object.keys(schedules);
+                    for (const key of scheduleKeys) {
+                      const schedule = schedules[key];
+                      const clinicId = schedule?.practiceLocation?.clinicId;
+                      if (clinicId && !clinicsMap[clinicId]) {
+                        try {
+                          const clinicData = await databaseService.getClinicById(clinicId);
+                          if (clinicData) {
+                            clinicsMap[clinicId] = clinicData;
+                          }
+                        } catch (err) {
+                          console.log('Could not load clinic:', clinicId);
+                        }
+                      }
+                    }
+                    setScheduleClinics(clinicsMap);
+                    console.log('✅ Loaded clinic data for schedules');
+                  }
+                }
+              } catch (error) {
+                console.log('Could not load schedule data:', error);
+              }
             }
             
             // Early return - we have everything we need
@@ -174,6 +239,69 @@ export default function FitToWorkCertificateScreen() {
         setPatient({ ...(userData || {}), ...(patientProfileData || {}) });
         setProvider(doctorData);
         setProviderUser(doctorUserData);
+        
+        // Load schedule data if we have a doctor
+        if (doctorId && doctorData) {
+          try {
+            const isGeneralist = doctorData?.isGeneralist === true;
+            
+            if (isGeneralist) {
+              console.log('✅ Doctor is a generalist - loading availability and clinics');
+              
+              // For generalists, get availability and clinic affiliations
+              if (doctorData?.availability) {
+                setScheduleData(doctorData.availability);
+                console.log('✅ Loaded generalist availability data');
+              }
+              
+              // Load clinics from clinicAffiliations
+              if (doctorData?.clinicAffiliations && Array.isArray(doctorData.clinicAffiliations)) {
+                const clinicsMap: any = {};
+                for (const clinicId of doctorData.clinicAffiliations) {
+                  try {
+                    const clinicInfo = await databaseService.getClinicById(clinicId);
+                    if (clinicInfo) {
+                      clinicsMap[clinicId] = clinicInfo;
+                    }
+                  } catch (err) {
+                    console.log(`Could not load clinic ${clinicId}:`, err);
+                  }
+                }
+                setScheduleClinics(clinicsMap);
+                console.log(`✅ Loaded ${Object.keys(clinicsMap).length} clinics for generalist`);
+              }
+            } else {
+              // For specialists, use the existing specialist schedule logic
+              const schedules = await databaseService.getSpecialistSchedules(doctorId);
+              if (schedules) {
+                setScheduleData(schedules);
+                console.log('✅ Loaded specialist schedule data');
+                
+                // Load clinic data for each schedule
+                const clinicsMap: any = {};
+                const scheduleKeys = Object.keys(schedules);
+                for (const key of scheduleKeys) {
+                  const schedule = schedules[key];
+                  const clinicId = schedule?.practiceLocation?.clinicId;
+                  if (clinicId && !clinicsMap[clinicId]) {
+                    try {
+                      const clinicData = await databaseService.getClinicById(clinicId);
+                      if (clinicData) {
+                        clinicsMap[clinicId] = clinicData;
+                      }
+                    } catch (err) {
+                      console.log('Could not load clinic:', clinicId);
+                    }
+                  }
+                }
+                setScheduleClinics(clinicsMap);
+                console.log('✅ Loaded clinic data for schedules');
+              }
+            }
+          } catch (error) {
+            console.log('Could not load schedule data:', error);
+          }
+        }
         }
         
         // If no certificate found, create a default one for preview
@@ -360,6 +488,7 @@ export default function FitToWorkCertificateScreen() {
     const dob = safe(formatDateFlexible((patient?.dateOfBirth || patient?.dob || patient?.birthDate) as any));
     const age = computeAgeFromInput(patient?.dateOfBirth || patient?.dob || patient?.birthDate);
     const gender = safe((patient?.gender || patient?.sex || '') as any);
+    const patientAddress = safe((patient?.address || certificate?.patientDetails?.address || '') as any);
     const doctorName = safe(fullName(provider, 
       certificate?.doctorDetails ? `${certificate.doctorDetails.firstName} ${certificate.doctorDetails.lastName}`.trim() :
       (() => {
@@ -393,9 +522,9 @@ export default function FitToWorkCertificateScreen() {
     
     // Get doctor details from certificate and loaded provider data
     const doctorId = (certificate as any)?.doctor?.id || (certificate as any)?.doctorDetails?.id;
-    const doctorFirstName = (certificate as any)?.doctorDetails?.firstName || provider?.firstName || providerUser?.firstName || user?.firstName || '';
-    const doctorMiddleName = (certificate as any)?.doctorDetails?.middleName || (provider as any)?.middleName || providerUser?.middleName || user?.middleName || '';
-    const doctorLastName = (certificate as any)?.doctorDetails?.lastName || provider?.lastName || providerUser?.lastName || user?.lastName || '';
+    const doctorFirstName = (certificate as any)?.doctorDetails?.firstName || provider?.firstName || providerUser?.firstName || '';
+    const doctorMiddleName = (certificate as any)?.doctorDetails?.middleName || (provider as any)?.middleName || providerUser?.middleName || '';
+    const doctorLastName = (certificate as any)?.doctorDetails?.lastName || provider?.lastName || providerUser?.lastName || '';
     const doctorEmail = providerUser?.email || (certificate as any)?.doctorDetails?.email || (provider as any)?.email || user?.email || '';
     const doctorPrcId = provider?.prcId || (certificate as any)?.doctorDetails?.prcId || '';
     
@@ -446,11 +575,195 @@ export default function FitToWorkCertificateScreen() {
       }
     };
     const validUntil = safe(calculateValidUntil());
-    const fitnessStatement = safe(certificate?.medicalDetails?.recommendations || 'The patient has been examined and is found to be medically fit to return to work.');
+    
+    // Extract medical details from certificate
+    const diagnosis = safe(certificate?.medicalDetails?.diagnosis || 'Not specified');
+    const fitnessStatement = safe(certificate?.medicalDetails?.fitnessStatement || certificate?.medicalDetails?.recommendations || 'The patient has been examined and is found to be medically fit to return to work.');
+    const recommendations = safe(certificate?.medicalDetails?.recommendations || 'Follow medical advice');
     const workRestrictions = safe(certificate?.medicalDetails?.restrictions || 'None');
+    const remarks = safe(certificate?.medicalDetails?.remarks || '');
     const nextReviewDate = safe(formatDateFlexible(certificate?.medicalDetails?.followUpDate));
 
     const ageText = age && age !== '—' ? `${age} years old` : '—';
+    
+    // Get doctor specialty
+    const doctorSpecialty = safe(provider?.specialty || 'General Practitioner');
+
+    // Format clinic schedule data - show all schedules
+    let clinicScheduleInfo = '';
+    const isGeneralist = provider?.isGeneralist === true;
+    
+    if (scheduleData) {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayNamesMap: { [key: string]: number } = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+      
+      if (isGeneralist) {
+        // Handle generalist availability data
+        const weeklySchedule = scheduleData?.weeklySchedule || {};
+        
+        // Collect enabled days with time slots
+        const enabledDays: Array<{ day: string; dayNum: number; times: string }> = [];
+        Object.entries(weeklySchedule).forEach(([day, config]: [string, any]) => {
+          if (config?.enabled && config?.timeSlots && config.timeSlots.length > 0) {
+            const dayNum = dayNamesMap[day.toLowerCase()];
+            const firstSlot = config.timeSlots[0];
+            const startTime = firstSlot.startTime || '';
+            const endTime = firstSlot.endTime || '';
+            
+            // Convert to 12h format
+            let timeStr = '';
+            if (startTime) {
+              const [hours] = startTime.split(':').map(Number);
+              const period = hours >= 12 ? 'PM' : 'AM';
+              const displayHours = hours % 12 || 12;
+              timeStr = `${displayHours}:00 ${period}`;
+            }
+            
+            enabledDays.push({ day, dayNum, times: timeStr });
+          }
+        });
+        
+        // Sort by day number
+        enabledDays.sort((a, b) => a.dayNum - b.dayNum);
+        
+        // Build schedule string
+        let daysStr = '';
+        if (enabledDays.length === 7) {
+          daysStr = 'Mon-Sun';
+        } else if (enabledDays.length > 0) {
+          // Check if consecutive
+          let isConsecutive = true;
+          for (let i = 0; i < enabledDays.length - 1; i++) {
+            if (enabledDays[i + 1].dayNum - enabledDays[i].dayNum !== 1) {
+              isConsecutive = false;
+              break;
+            }
+          }
+          if (isConsecutive) {
+            daysStr = `${dayNames[enabledDays[0].dayNum]}-${dayNames[enabledDays[enabledDays.length - 1].dayNum]}`;
+          } else {
+            daysStr = enabledDays.map(d => dayNames[d.dayNum]).join(', ');
+          }
+        }
+        
+        const timeStr = enabledDays.length > 0 ? enabledDays[0].times : '';
+        
+        // Build schedule entries for each affiliated clinic
+        const clinicIds = Object.keys(scheduleClinics);
+        clinicIds.forEach((clinicId) => {
+          const scheduleClinic = scheduleClinics[clinicId];
+          const scheduleClinicName = scheduleClinic?.name || '';
+          const addressParts = [
+            scheduleClinic?.addressLine || scheduleClinic?.address,
+            scheduleClinic?.city
+          ].filter(Boolean);
+          const scheduleClinicAddress = addressParts.length > 0 ? addressParts[0] : '';
+          const scheduleClinicContact = scheduleClinic?.contactNumber || scheduleClinic?.phone || '';
+          
+          clinicScheduleInfo += `<div class="schedule-entry">`;
+          if (scheduleClinicName) {
+            clinicScheduleInfo += `<div class="clinic-info">${scheduleClinicName}${scheduleClinicAddress ? ', ' + scheduleClinicAddress : ''}</div>`;
+          }
+          if (daysStr && timeStr) {
+            clinicScheduleInfo += `<div class="clinic-schedule">${daysStr} ${timeStr}</div>`;
+          }
+          if (scheduleClinicContact) {
+            clinicScheduleInfo += `<div class="clinic-info">Tel: ${scheduleClinicContact}</div>`;
+          }
+          clinicScheduleInfo += `</div>`;
+        });
+      } else {
+        // Handle specialist schedule data
+        const scheduleKeys = Object.keys(scheduleData);
+        if (scheduleKeys.length > 0) {
+          // Process each schedule
+          scheduleKeys.forEach((scheduleKey, index) => {
+            const schedule = scheduleData[scheduleKey];
+            
+            // Get room/unit
+            const room = schedule?.practiceLocation?.roomOrUnit || '';
+            
+            // Get clinic info for this schedule
+            const scheduleClinicId = schedule?.practiceLocation?.clinicId || '';
+            let scheduleClinicName = '';
+            let scheduleClinicAddress = '';
+            
+            // Look up clinic from scheduleClinics map
+            const scheduleClinic = scheduleClinics[scheduleClinicId];
+            let scheduleClinicContact = '';
+            if (scheduleClinic) {
+              scheduleClinicName = scheduleClinic.name || '';
+              const addressParts = [
+                scheduleClinic.addressLine || scheduleClinic.address,
+                scheduleClinic.city
+              ].filter(Boolean);
+              scheduleClinicAddress = addressParts.length > 0 ? addressParts[0] : '';
+              scheduleClinicContact = scheduleClinic.contactNumber || scheduleClinic.phone || '';
+            } else if (scheduleClinicId === clinic?.id) {
+              // Fallback to current clinic if it matches
+              scheduleClinicName = clinicName;
+              scheduleClinicAddress = clinicAddress && clinicAddress !== '—' ? clinicAddress.split(',')[0] : '';
+              scheduleClinicContact = clinic?.contactNumber || clinic?.phone || '';
+            }
+            
+            // Get days of week
+            const daysOfWeek = schedule?.recurrence?.dayOfWeek || [];
+            let daysStr = '';
+            if (daysOfWeek.length > 0) {
+              const sortedDays = [...daysOfWeek].sort((a, b) => a - b);
+              if (sortedDays.length === 1) {
+                daysStr = dayNames[sortedDays[0]];
+              } else if (sortedDays.length === 7) {
+                daysStr = 'Mon-Sun';
+              } else if (sortedDays.length >= 2) {
+                // Check if consecutive
+                let isConsecutive = true;
+                for (let i = 0; i < sortedDays.length - 1; i++) {
+                  if (sortedDays[i + 1] - sortedDays[i] !== 1) {
+                    isConsecutive = false;
+                    break;
+                  }
+                }
+                if (isConsecutive) {
+                  daysStr = `${dayNames[sortedDays[0]]}-${dayNames[sortedDays[sortedDays.length - 1]]}`;
+                } else {
+                  daysStr = sortedDays.map(d => dayNames[d]).join(', ');
+                }
+              }
+            }
+            
+            // Get time slots
+            const slots = schedule?.slotTemplate || {};
+            const times = Object.keys(slots).sort();
+            let timeStr = '';
+            if (times.length > 0) {
+              const firstTime = times[0];
+              // Convert 24h to 12h format
+              const [hours, mins] = firstTime.split(':').map(Number);
+              const period = hours >= 12 ? 'PM' : 'AM';
+              const displayHours = hours % 12 || 12;
+              timeStr = `${displayHours}:${mins.toString().padStart(2, '0')} ${period}`;
+            }
+            
+            // Build schedule entry (wrapped in a div for side-by-side display)
+            clinicScheduleInfo += `<div class="schedule-entry">`;
+            if (room) {
+              clinicScheduleInfo += `<div class="clinic-schedule">${room}</div>`;
+            }
+            if (scheduleClinicName) {
+              clinicScheduleInfo += `<div class="clinic-info">${scheduleClinicName}${scheduleClinicAddress ? ', ' + scheduleClinicAddress : ''}</div>`;
+            }
+            if (daysStr && timeStr) {
+              clinicScheduleInfo += `<div class="clinic-schedule">${daysStr} ${timeStr}</div>`;
+            }
+            if (scheduleClinicContact) {
+              clinicScheduleInfo += `<div class="clinic-info">Tel: ${scheduleClinicContact}</div>`;
+            }
+            clinicScheduleInfo += `</div>`;
+          });
+        }
+      }
+    }
 
     return `<!DOCTYPE html>
 <html>
@@ -458,82 +771,306 @@ export default function FitToWorkCertificateScreen() {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <style>
-    @page { size: 8.5in 11in; margin: 0.5in; }
-    html, body { margin: 0; padding: 0; background: #F3F4F6; color: ${text}; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
-    .preview { display: flex; flex-direction: column; align-items: center; padding: 16px; }
-    .page { width: 100%; max-width: 8.5in; background: #FFFFFF; box-shadow: 0 2px 16px rgba(0,0,0,0.08); position: relative; border: 1px solid ${border}; display: flex; flex-direction: column; box-sizing: border-box; }
-    .page .header, .page .top, .page .footer, .page .body { position: relative; z-index: 1; }
-            .watermark { 
-          position: absolute; 
-          left: 0; 
-          right: 0; 
-          bottom: 56px; 
-          top: auto; 
-          display: flex; 
-          align-items: center; 
-          justify-content: center; 
-          opacity: 0.1; 
-          z-index: 0; 
-          pointer-events: none; 
-        }
-        
-        .watermark img { 
-          max-width: 65%; 
-          max-height: 65%; 
-          object-fit: contain; 
-        }
-        
-        .watermark-pattern {
-          position: absolute;
-          left: 0;
-          right: 0;
-          top: 0;
-          bottom: 0;
-          opacity: 0.08;
-          z-index: 0;
-          pointer-events: none;
-          overflow: hidden;
-        }
-        
-        .watermark-logo-small {
-          position: absolute;
-          opacity: 0.12;
-          transform: rotate(-30deg);
-        }
-        
-        .watermark-logo-small img {
-          max-width: 60px;
-          max-height: 60px;
-          object-fit: contain;
-        }
-
-    .header { padding: 10px 16px; background: ${brandPrimary}; color: #fff; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; letter-spacing: 0.3px; }
-    .brand-left { font-weight: 800; }
-    .brand-right { font-weight: 600; opacity: 0.95; }
-
-    .top { padding: 16px; }
-    .clinic-name { font-weight: 700; font-size: 16px; margin: 0 0 2px; color: #111827; }
-    .muted { color: ${subtle}; font-size: 12px; margin: 0; }
-    .row { display: flex; gap: 16px; }
-    .cell { flex: 1; }
-    .label { color: ${subtle}; font-size: 12px; margin: 6px 0 2px; font-weight: 500; }
-    .value { font-size: 13px; line-height: 1.6; }
-    .strong { font-weight: 600; color: #111827; }
-    .certificate-title { font-weight: 700; font-size: 18px; color: #1F2937; margin: 20px 0 15px; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
-
-    .body { flex: 1; display: flex; flex-direction: column; padding: 0 24px; }
-    .footer { padding: 8px 16px; color: ${subtle}; font-size: 11px; background: #F9FAFB; display: flex; align-items: center; justify-content: space-between; }
-    .divider { height: 1px; background: ${border}; width: calc(100% - 48px); margin: 10px auto; }
-    .divider-wider { width: calc(100% - 30px); }
+    /* Print-first approach: Base styles optimized for 8.5" x 11" paper */
+    @page { 
+      size: 8.5in 13in; 
+      margin: 0; 
+    }
     
-         .certificate-content { margin: 15px 0; line-height: 1.6; font-size: 12px; color: #374151; }
-    .certificate-statement { margin: 16px 0; padding: 16px; background: #F9FAFB; border-left: 4px solid ${brandPrimary}; border-radius: 4px; }
-    .certificate-statement-text { font-size: 16px; line-height: 1.7; color: #1F2937; }
+    html, body { 
+      margin: 0; 
+      padding: 0; 
+      background: #FFFFFF; 
+      color: ${text}; 
+      -webkit-print-color-adjust: exact; 
+      print-color-adjust: exact; 
+      font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
     
-    .signature-section { margin-top: 30px; text-align: right; }
-    .signature-name { color: #374151; font-size: 14px; font-weight: 700; }
-    .signature-caption { color: ${subtle}; font-size: 12px; margin-top: 6px; }
-    .signature-label { color: ${subtle}; font-size: 11px; margin-top: 6px; }
+    /* Container and page setup */
+    .preview { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: flex-start;
+      min-height: 100vh;
+      background: #F3F4F6;
+      overflow-x: hidden;
+    }
+    
+    /* Print-optimized page dimensions */
+    .page { 
+      width: 8.5in;
+      min-height: 13in;
+      background: #FFFFFF; 
+      position: relative; 
+      display: block;
+      box-sizing: border-box;
+      padding: 0;
+    }
+
+    .page-content {
+      padding: 32px 48px;
+      padding-bottom: 3in;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .page .header, .page .top, .page .body { position: relative; z-index: 1; }
+
+    /* Watermark */
+    .watermark {
+      position: absolute;
+      bottom: 0.8in;
+      left: 48px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      opacity: 0.18;
+      z-index: 1;
+      pointer-events: none;
+    }
+    .watermark img {
+      max-width: 65%;
+      height: auto;
+      transform: translateY(12px);
+    }
+
+    /* Document Header */
+    .document-header {
+      background: #1E40AF;
+      color: #FFFFFF;
+      padding: 16px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .document-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .document-brand {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    /* Doctor header section */
+    .doctor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0;
+      padding-bottom: 0;
+      gap: 24px;
+      position: relative;
+    }
+
+    .doctor-info-left {
+      flex: 1;
+      text-align: left;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .doctor-logo-right {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 150px;
+      height: 150px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+    }
+
+    .doctor-logo-right img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .header-divider {
+      height: 1px;
+      background: rgba(0, 0, 0, 0.15);
+      margin: 20px 0 0 0;
+    }
+
+    .doctor-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 4px 0;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    .doctor-credentials {
+      font-size: 14px;
+      color: #374151;
+      margin: 0 0 0 0;
+      line-height: 1.5;
+    }
+
+    .clinic-info {
+      font-size: 13px;
+      color: #6B7280;
+      margin: 1px 0 0 0;
+      line-height: 1.4;
+    }
+
+    .clinic-affiliation-section {
+      margin-top: 20px;
+      margin-bottom: 20px;
+      padding-top: 0;
+      padding-bottom: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+    }
+
+    .schedule-entry {
+      flex: 0 0 auto;
+      min-width: 180px;
+      margin-right: 24px;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    
+    .schedule-entry:last-child {
+      margin-right: 0;
+    }
+
+    .clinic-schedule {
+      font-size: 13px;
+      color: #6B7280;
+      margin: 1px 0 0 0;
+      line-height: 1.4;
+    }
+    
+    .clinic-schedule:last-child,
+    .clinic-info:last-child {
+      margin-bottom: 0;
+    }
+
+    .certificate-title { 
+      font-weight: 700; 
+      font-size: 28px; 
+      color: #111827; 
+      margin: 32px 0 24px; 
+      text-align: center; 
+      text-transform: uppercase; 
+      letter-spacing: 0.5px; 
+      text-decoration: none; 
+    }
+    
+    .certificate-date { 
+      text-align: left; 
+      font-size: 14px; 
+      color: #374151; 
+      margin-top: 50px;
+      margin-bottom: 50px; 
+      font-weight: 500;
+    }
+    
+    .certificate-salutation { 
+      font-size: 15px; 
+      font-weight: 700; 
+      color: #111827; 
+      margin: 24px 0; 
+      letter-spacing: 0.5px;
+    }
+    
+    .certificate-body { 
+      line-height: 2.0; 
+      font-size: 16px; 
+      color: #1F2937; 
+      text-align: justify; 
+    }
+    
+    .certificate-body p { 
+      margin: 20px 0; 
+      text-indent: 40px; 
+      line-height: 2.0;
+    }
+    
+    .certificate-body strong {
+      font-weight: 600;
+      color: #111827;
+    }
+    
+    .certificate-body em {
+      font-style: italic;
+      color: #374151;
+      font-weight: 500;
+    }
+    
+    .certificate-info-section { 
+      margin: 24px 0; 
+      padding: 18px; 
+      background: #F9FAFB; 
+      border-left: 3px solid ${brandPrimary}; 
+      border-radius: 4px; 
+    }
+    
+    /* Signature section */
+    .signature-section {
+      position: absolute;
+      bottom: 1.2in;
+      right: 0.8in;
+      z-index: 2;
+    }
+
+    .signature-wrap {
+      text-align: left;
+      width: auto;
+      max-width: 280px;
+    }
+
+    .signature-image-container {
+      margin-bottom: 8px;
+      height: auto;
+      width: auto;
+      display: inline-block;
+      text-align: left;
+    }
+    
+    .signature-image-container img {
+      max-width: 180px;
+      height: auto;
+      object-fit: contain;
+      display: inline-block;
+      margin: 0 0 -20px -40px;
+      padding: 0;
+      vertical-align: top;
+    }
+
+    .signature-line { display: none; }
+
+    .signature-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+      margin: 6px 0 4px 0;
+    }
+
+    .signature-caption {
+      font-size: 13px;
+      color: #6B7280;
+      margin: 2px 0;
+      line-height: 1.4;
+    }
+    
+    .signature-details {
+      font-size: 14px;
+      color: #6B7280;
+      margin: 2px 0;
+      line-height: 1.4;
+    }
+    
     
     /* Reset any default image styling */
     img { border: none !important; outline: none !important; box-shadow: none !important; background: transparent !important; }
@@ -553,111 +1090,141 @@ export default function FitToWorkCertificateScreen() {
       background-color: transparent !important;
     }
     
-    .disclaimer { text-align: center; padding: 16px 0; }
+    /* Mobile scaling - scale down the print-ready layout */
+    @media screen {
+      .preview {
+        padding: 16px 0;
+      }
+      
+      .page {
+        transform: scale(0.47);
+        transform-origin: top center;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        border: 1px solid #E5E7EB;
+        margin-bottom: -600px; /* Compensate for scaled height */
+      }
+    }
 
-    @media screen and (max-width: 640px) { .certificate-content { font-size: 14px; } }
-    @media print { .preview { padding: 0; } .page { box-shadow: none; width: 8.5in; height: 11in; border: none; margin: 0 auto; max-width: 8.5in; } }
-    @media screen { .page { height: calc(100vh - 30px); aspect-ratio: 8.5 / 11; overflow: hidden; } }
+    /* Print settings - use original sizes */
+    @media print {
+      .preview {
+        padding: 0;
+        background: #FFFFFF;
+        display: block;
+      }
+      
+      .page {
+        transform: none;
+        box-shadow: none;
+        border: none;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .page-content {
+        padding: 0.5in 0.6in;
+      }
+      
+      .signature-section {
+        bottom: 1.2in;
+        right: 0.8in;
+      }
+      
+      .watermark { left: 0.6in; bottom: 0.8in; }
+    }
   </style>
 </head>
 <body>
   <div class="preview">
     <div class="page">
-              <div class="watermark">${logoDataUri ? `<img src="${logoDataUri}" />` : ''}</div>
-        <div class="watermark-pattern">
-          ${logoDataUri ? `
-            <div class="watermark-logo-small" style="top: 10%; left: 5%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 25%; left: 15%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 40%; left: 25%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 55%; left: 35%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 70%; left: 45%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 85%; left: 55%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 15%; left: 65%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 30%; left: 75%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 45%; left: 85%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 60%; left: 95%;"><img src="${logoDataUri}" /></div>
-          ` : ''}
-        </div>
-      <div class="header"><span class="brand-left">UNIHEALTH</span><span class="brand-right">Medical Certificate</span></div>
-      
-             <div class="top">
-         <div class="row">
-           <div class="cell">
-             <p class="label">Certificate ID</p>
-             <div class="value strong">${certificateId}</div>
-             <p class="label">Date Issued</p>
-             <div class="value strong">${dateIssued}</div>
-           </div>
-           <div class="cell" style="text-align:right">
-             <p class="label">Valid Until</p>
-             <div class="value strong">${validUntil}</div>
-           </div>
-         </div>
-       </div>
-      
-      <div class="divider divider-wider"></div>
+      <!-- Watermark -->
+      <div class="watermark">
+        ${logoDataUri ? `<img src="${logoDataUri}" alt="UniHealth Watermark" />` : ''}
+      </div>
+      <!-- Document Header -->
+      <div class="document-header">
+        <div class="document-title">Medical Certificate</div>
+        <div class="document-brand">UniHealth</div>
+      </div>
 
-      <div class="body">
-        <h1 class="certificate-title">FIT TO WORK CERTIFICATE</h1>
-        
-        
-        
-                 <div class="certificate-content">
-           <p style="text-indent: 20px;">This is to certify that <strong>${patientName}</strong>, ${ageText}, ${gender}, was examined on <strong>${examinationDate}</strong> and is found to be medically fit to return to work.</p>
-           
-           <p style="text-indent: 20px;">This certificate is valid for employment purposes and confirms that the patient has been cleared to resume normal work activities.</p>
-         </div>
-
-        <div class="signature-section">
-          <div style="position: relative; width: 100%;">
-            <div style="text-align: left; display: inline-block;">
-              <div class="signature-label">Issuing Doctor</div>
-              <div class="signature-name" style="position: relative;">
-                ${contextSignature ? `
-                  <div class="signature-image-container" style="position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background-image: url('${contextSignature}'); background-size: contain; background-repeat: no-repeat; background-position: center; width: 150px; height: 60px; z-index: 10;"></div>
-                ` : ''}
-                Dr. ${fullDoctorName || doctorName}
-              </div>
-              <div class="signature-caption">PRC #: ${finalDoctorPrcId || 'Not Available'}</div>
-              <div class="signature-caption">Email: ${doctorEmail || 'Not Available'}</div>
+      <!-- Page Content -->
+      <div class="page-content">
+        <!-- Doctor Header Section -->
+        <div class="doctor-header">
+          <div class="doctor-info-left">
+            <h1 class="doctor-name">${fullDoctorName || doctorName}, MD</h1>
+            <div class="doctor-credentials">${doctorSpecialty}</div>
+            <div class="clinic-affiliation-section">
+              ${clinicScheduleInfo || `
+                <div class="schedule-entry">
+                  <div class="clinic-info">${clinicName}${clinicAddress && clinicAddress !== '—' ? ', ' + clinicAddress.split(',')[0] : ''}</div>
+                  ${clinicContact && clinicContact !== '—' ? `<div class="clinic-info">Tel: ${clinicContact}</div>` : ''}
+                </div>
+              `}
             </div>
           </div>
+          <div class="doctor-logo-right">
+            ${logoDataUri ? `<img src="${logoDataUri}" alt="UniHealth Logo" />` : ''}
+          </div>
+        </div>
+        
+        <!-- Header Divider -->
+        <div class="header-divider"></div>
+        
+        <h1 class="certificate-title">FIT TO WORK CERTIFICATE</h1>
+        
+        <div class="certificate-date">Date Issued: ${dateIssued}</div>
+        
+        <div class="certificate-salutation">TO WHOM IT MAY CONCERN:</div>
+        
+        <div class="certificate-body">
+          <p>This is to certify that <strong>${patientName}</strong>, ${ageText}, ${gender}, residing at ${patientAddress || 'address on file'}, was examined on <strong>${examinationDate}</strong> at our medical facility. ${diagnosis && diagnosis !== 'Not specified' ? `Upon examination, the patient presented with a medical history of <strong>${diagnosis}</strong>. ` : ''}Following a comprehensive medical assessment and review of the patient's current health status, it has been determined that the individual is <strong>${fitnessStatement}</strong>.</p>
+          
+          ${workRestrictions && workRestrictions !== 'None' ? `<p>Based on the medical evaluation, the following work restrictions are recommended for the patient's safety and well-being: <strong>${workRestrictions}</strong>. These restrictions should be observed to ensure optimal recovery and prevent any potential complications during work activities.</p>` : '<p>Based on the medical evaluation, the patient is cleared to resume all regular work activities without any restrictions. The individual is deemed fit to perform duties commensurate with their job description and responsibilities.</p>'}
+          
+          ${recommendations && recommendations !== 'Follow medical advice' ? `<p>The following medical recommendations are advised: <strong>${recommendations}</strong>. Adherence to these recommendations will support the patient's continued health and successful return to work.</p>` : ''}
+          
+          ${remarks ? `<p><em>Additional Medical Notes:</em> ${remarks}</p>` : ''}
+          
+          <p style="margin-top: 30px;">This medical certificate is issued in good faith based on the findings at the time of examination. It is being provided upon the patient's request for employment, administrative, or other legitimate purposes, except for medico-legal proceedings.</p>
+        </div>
+      </div>
+      
+      <!-- Signature Section (outside page-content) -->
+      <div class="signature-section">
+        <div class="signature-wrap">
+          ${contextSignature ? `
+            <div class="signature-image-container">
+              <img src="${contextSignature}" alt="Signature" />
+            </div>
+          ` : '<div style="height: 60px;"></div>'}
+          
+          <div class="signature-name">Dr. ${fullDoctorName || doctorName}</div>
+          ${finalDoctorPrcId ? `<div class="signature-details">PRC ID: ${finalDoctorPrcId}</div>` : ''}
+          ${(provider as any)?.medicalLicenseNumber ? `<div class="signature-details">License No.: ${safe((provider as any).medicalLicenseNumber)}</div>` : ''}
+          ${(provider as any)?.contactNumber || (provider as any)?.phone ? `<div class="signature-details">Contact: ${safe((provider as any).contactNumber || (provider as any).phone)}</div>` : ''}
         </div>
       </div>
 
-      <div class="divider divider-wider"></div>
-      
-             <div class="disclaimer">
-         <p style="text-align: center; font-size: 10px; color: #6B7280; margin: 16px 0; font-style: italic; line-height: 1.4;">
-           This certificate is issued based on medical examination findings and<br/>
-           is valid for the specified period only.
-         </p>
-       </div>
-
-      <div class="footer">
-        <span class="footer-left">Generated by UniHealth • ${new Date().toLocaleString()}</span>
-        <span class="footer-right">Page 1 of 1</span>
-      </div>
     </div>
   </div>
   <script>
     (function(){
       // Signature line width = doctor name width + 10px
       var nameEl = document.querySelector('.signature-name');
-      var lineEl = document.querySelector('.signature-line');
-      if (nameEl && lineEl) {
-        var w = Math.ceil(nameEl.getBoundingClientRect().width) + 10;
-        lineEl.style.width = w + 'px';
-      }
+      
     })();
   </script>
 </body>
 </html>`;
-  }, [clinic, patient, provider, referral, certificate, logoDataUri, contextSignature]);
+  }, [clinic, patient, provider, referral, certificate, logoDataUri, contextSignature, scheduleData, scheduleClinics]);
 
   const handleGeneratePdf = async () => {
     try {
-      const { uri } = await Print.printToFileAsync({ html, width: 576, height: 792, base64: false });
+      // 8.5 x 13 inches at 72dpi (long bond)
+      const { uri } = await Print.printToFileAsync({ html, width: 612, height: 936, base64: false });
       return uri;
     } catch (e) {
       Alert.alert('Error', 'Failed to generate PDF.');
@@ -764,16 +1331,18 @@ export default function FitToWorkCertificateScreen() {
         showBackdrop
         backdropOpacity={0.4}
       >
-        <View style={{ alignItems: 'center', gap: 12 }}>
-          <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
-            <CheckCircle2 size={36} color={COLORS.primary} />
+        <View style={styles.modalContent}>
+          <View style={styles.modalIconContainer}>
+            <CheckCircle2 size={36} color="#1E40AF" />
           </View>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#1F2937' }}>Certificate Downloaded</Text>
-          <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center' }}>
+          <Text style={styles.modalTitle}>Certificate Downloaded</Text>
+          <Text style={styles.modalMessage}>
             {downloadSavedPath ? `Your certificate has been saved.${Platform.OS !== 'android' ? '\nPath: ' + downloadSavedPath : ''}` : 'Your certificate has been saved.'}
           </Text>
           <View style={{ height: 8 }} />
-          <Button title="Done" onPress={() => setDownloadModalVisible(false)} fullWidth />
+          <TouchableOpacity style={styles.modalButton} onPress={() => setDownloadModalVisible(false)}>
+            <Text style={styles.modalButtonText}>Done</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </SafeAreaView>
@@ -852,5 +1421,40 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
     marginLeft: 8,
+  },
+  modalContent: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  modalButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#1E40AF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 15,
   },
 });
