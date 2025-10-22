@@ -39,6 +39,8 @@ export default function FitToTravelCertificateScreen() {
   const webViewRef = useRef<WebView>(null);
   const [downloadModalVisible, setDownloadModalVisible] = useState(false);
   const [downloadSavedPath, setDownloadSavedPath] = useState<string | null>(null);
+  const [scheduleData, setScheduleData] = useState<any>(null);
+  const [scheduleClinics, setScheduleClinics] = useState<any>({});
 
   useEffect(() => {
     const load = async () => {
@@ -83,7 +85,46 @@ export default function FitToTravelCertificateScreen() {
                 setPatient({ ...(patientUserData || {}), ...(patientProfileData || {}) });
               }
               
-              // Early return - we have everything we need
+              // Load schedule data (specialist or generalist)
+              if (doctorId && doctorData) {
+                try {
+                  const isGeneralist = doctorData?.isGeneralist === true;
+                  if (isGeneralist) {
+                    if (doctorData?.availability) {
+                      setScheduleData(doctorData.availability);
+                    }
+                    if (doctorData?.clinicAffiliations && Array.isArray(doctorData.clinicAffiliations)) {
+                      const clinicsMap: any = {};
+                      for (const cid of doctorData.clinicAffiliations) {
+                        try {
+                          const info = await databaseService.getClinicById(cid);
+                          if (info) clinicsMap[cid] = info;
+                        } catch {}
+                      }
+                      setScheduleClinics(clinicsMap);
+                    }
+                  } else {
+                    const schedules = await databaseService.getSpecialistSchedules(doctorId);
+                    if (schedules) {
+                      setScheduleData(schedules);
+                      const clinicsMap: any = {};
+                      const keys = Object.keys(schedules);
+                      for (const key of keys) {
+                        const schedule = schedules[key];
+                        const cid = schedule?.practiceLocation?.clinicId;
+                        if (cid && !clinicsMap[cid]) {
+                          try {
+                            const cdata = await databaseService.getClinicById(cid);
+                            if (cdata) clinicsMap[cid] = cdata;
+                          } catch {}
+                        }
+                      }
+                      setScheduleClinics(clinicsMap);
+                    }
+                  }
+                } catch {}
+              }
+
               setLoading(false);
               return;
             }
@@ -174,41 +215,81 @@ export default function FitToTravelCertificateScreen() {
           setProvider(doctorData);
           setProviderUser(doctorUserData);
 
-        if (!loadedCertificate) {
-          const today = new Date();
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          
-          const defaultCertificate: Certificate = {
-            id: `FTT-${Date.now()}`,
-            patientId: String(patientId || user?.uid || ''),
-            specialistId: user?.uid || '',
-            type: 'Fit to Travel Certificate',
-            issueDate: today.toISOString(),
-            status: 'active',
-            description: 'Fit to Travel Certificate',
-            consultationId: String(id),
-            medicalDetails: {
-              dateFrom: '',
-              dateTo: '',
-              diagnosis: '',
-              recommendations: 'The patient has been examined and is found to be medically fit to travel.',
-              restrictions: '',
-              followUpDate: '',
-              restDays: 0,
-              travelMode: 'Air travel',
-              destination: 'International',
-              travelDate: tomorrow.toLocaleDateString(),
-              specialConditions: 'None',
-              validityPeriod: '30 days from date of issue'
-            },
-            digitalSignature: '',
-            signedDate: '',
-            isSigned: false
-          };
-          setCertificate(defaultCertificate);
+          // Load schedule data (specialist or generalist)
+          if (doctorId && doctorData) {
+            try {
+              const isGeneralist = doctorData?.isGeneralist === true;
+              if (isGeneralist) {
+                if (doctorData?.availability) {
+                  setScheduleData(doctorData.availability);
+                }
+                if (doctorData?.clinicAffiliations && Array.isArray(doctorData.clinicAffiliations)) {
+                  const clinicsMap: any = {};
+                  for (const cid of doctorData.clinicAffiliations) {
+                    try {
+                      const info = await databaseService.getClinicById(cid);
+                      if (info) clinicsMap[cid] = info;
+                    } catch {}
+                  }
+                  setScheduleClinics(clinicsMap);
+                }
+              } else {
+                const schedules = await databaseService.getSpecialistSchedules(doctorId);
+                if (schedules) {
+                  setScheduleData(schedules);
+                  const clinicsMap: any = {};
+                  const keys = Object.keys(schedules);
+                  for (const key of keys) {
+                    const schedule = schedules[key];
+                    const cid = schedule?.practiceLocation?.clinicId;
+                    if (cid && !clinicsMap[cid]) {
+                      try {
+                        const cdata = await databaseService.getClinicById(cid);
+                        if (cdata) clinicsMap[cid] = cdata;
+                      } catch {}
+                    }
+                  }
+                  setScheduleClinics(clinicsMap);
+                }
+              }
+            } catch {}
+          }
+
+          if (!loadedCertificate) {
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            const defaultCertificate: Certificate = {
+              id: `FTT-${Date.now()}`,
+              patientId: String(patientId || user?.uid || ''),
+              specialistId: user?.uid || '',
+              type: 'Fit to Travel Certificate',
+              issueDate: today.toISOString(),
+              status: 'active',
+              description: 'Fit to Travel Certificate',
+              consultationId: String(id),
+              medicalDetails: {
+                dateFrom: '',
+                dateTo: '',
+                diagnosis: '',
+                recommendations: 'The patient has been examined and is found to be medically fit to travel.',
+                restrictions: '',
+                followUpDate: '',
+                restDays: 0,
+                travelMode: 'Air travel',
+                destination: 'International',
+                travelDate: tomorrow.toLocaleDateString(),
+                specialConditions: 'None',
+                validityPeriod: '30 days from date of issue'
+              },
+              digitalSignature: '',
+              signedDate: '',
+              isSigned: false
+            };
+            setCertificate(defaultCertificate);
+          }
         }
-      }
         
       } catch (e) {
         setError('Failed to load certificate data');
@@ -365,10 +446,10 @@ export default function FitToTravelCertificateScreen() {
     
     // Get doctor details from certificate and loaded provider data
     const doctorId = (certificate as any)?.doctor?.id || (certificate as any)?.doctorDetails?.id;
-    const doctorFirstName = (certificate as any)?.doctorDetails?.firstName || provider?.firstName || providerUser?.firstName || user?.firstName || '';
-    const doctorMiddleName = (certificate as any)?.doctorDetails?.middleName || (provider as any)?.middleName || providerUser?.middleName || user?.middleName || '';
-    const doctorLastName = (certificate as any)?.doctorDetails?.lastName || provider?.lastName || providerUser?.lastName || user?.lastName || '';
-    const doctorEmail = providerUser?.email || (certificate as any)?.doctorDetails?.email || (provider as any)?.email || user?.email || '';
+    const doctorFirstName = (certificate as any)?.doctorDetails?.firstName || provider?.firstName || providerUser?.firstName || '';
+    const doctorMiddleName = (certificate as any)?.doctorDetails?.middleName || (provider as any)?.middleName || providerUser?.middleName || '';
+    const doctorLastName = (certificate as any)?.doctorDetails?.lastName || provider?.lastName || providerUser?.lastName || '';
+    const doctorEmail = providerUser?.email || (certificate as any)?.doctorDetails?.email || (provider as any)?.email || '';
     const doctorPrcId = provider?.prcId || (certificate as any)?.doctorDetails?.prcId || '';
     
     // Use current user doctor profile PRC ID if available
@@ -428,36 +509,105 @@ export default function FitToTravelCertificateScreen() {
 
     const ageText = age && age !== '—' ? `${age} years old` : '—';
 
+    // Build clinic header/schedule like FTW
+    const clinicName = 'Clinic';
+    let clinicScheduleInfo = '';
+    const isGeneralist = provider?.isGeneralist === true;
+    if (scheduleData) {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayNamesMap: { [key: string]: number } = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+      if (isGeneralist) {
+        const weeklySchedule = scheduleData?.weeklySchedule || {};
+        const enabledDays: Array<{ day: string; dayNum: number; times: string }> = [];
+        Object.entries(weeklySchedule).forEach(([day, config]: [string, any]) => {
+          if (config?.enabled && config?.timeSlots && config.timeSlots.length > 0) {
+            const dayNum = dayNamesMap[day.toLowerCase()];
+            const firstSlot = config.timeSlots[0];
+            const startTime = firstSlot.startTime || '';
+            let timeStr = '';
+            if (startTime) {
+              const [hours] = startTime.split(':').map(Number);
+              const period = hours >= 12 ? 'PM' : 'AM';
+              const displayHours = hours % 12 || 12;
+              timeStr = `${displayHours}:00 ${period}`;
+            }
+            enabledDays.push({ day, dayNum, times: timeStr });
+          }
+        });
+        enabledDays.sort((a, b) => a.dayNum - b.dayNum);
+        let daysStr = '';
+        if (enabledDays.length === 7) daysStr = 'Mon-Sun';
+        else if (enabledDays.length > 0) {
+          let isConsecutive = true;
+          for (let i = 0; i < enabledDays.length - 1; i++) {
+            if (enabledDays[i + 1].dayNum - enabledDays[i].dayNum !== 1) { isConsecutive = false; break; }
+          }
+          daysStr = isConsecutive ? `${dayNames[enabledDays[0].dayNum]}-${dayNames[enabledDays[enabledDays.length - 1].dayNum]}` : enabledDays.map(d => dayNames[d.dayNum]).join(', ');
+        }
+        const timeStr = enabledDays.length > 0 ? enabledDays[0].times : '';
+        const clinicIds = Object.keys(scheduleClinics);
+        clinicIds.forEach((cid) => {
+          const sc = scheduleClinics[cid];
+          const name = sc?.name || '';
+          const addr = (sc?.addressLine || sc?.address ? (sc?.addressLine || sc?.address) : '');
+          const contact = sc?.contactNumber || sc?.phone || '';
+          clinicScheduleInfo += `<div class="schedule-entry">`;
+          if (name) clinicScheduleInfo += `<div class="clinic-info">${name}${addr ? ', ' + addr : ''}</div>`;
+          if (daysStr && timeStr) clinicScheduleInfo += `<div class="clinic-schedule">${daysStr} ${timeStr}</div>`;
+          if (contact) clinicScheduleInfo += `<div class="clinic-info">Tel: ${contact}</div>`;
+          clinicScheduleInfo += `</div>`;
+        });
+      } else {
+        const keys = Object.keys(scheduleData);
+        keys.forEach((key) => {
+          const s = scheduleData[key];
+          const cid = s?.practiceLocation?.clinicId || '';
+          const sc = scheduleClinics[cid];
+          const name = sc?.name || '';
+          const addr = (sc?.addressLine || sc?.address ? (sc?.addressLine || sc?.address) : '');
+          const contact = sc?.contactNumber || sc?.phone || '';
+          const days = s?.recurrence?.dayOfWeek || [];
+          let daysStr = '';
+          if (days.length === 1) daysStr = dayNames[days[0]];
+          else if (days.length === 7) daysStr = 'Mon-Sun';
+          else if (days.length >= 2) {
+            const sorted = [...days].sort((a: number, b: number) => a - b);
+            let isConsecutive = true;
+            for (let i = 0; i < sorted.length - 1; i++) { if (sorted[i + 1] - sorted[i] !== 1) { isConsecutive = false; break; } }
+            daysStr = isConsecutive ? `${dayNames[sorted[0]]}-${dayNames[sorted[sorted.length - 1]]}` : sorted.map((d: number) => dayNames[d]).join(', ');
+          }
+          const slots = s?.slotTemplate || {};
+          const times = Object.keys(slots).sort();
+          let timeStr = '';
+          if (times.length > 0) {
+            const [hours, mins] = times[0].split(':').map(Number);
+            const period = hours >= 12 ? 'PM' : 'AM';
+            const displayHours = hours % 12 || 12;
+            timeStr = `${displayHours}:${String(mins).padStart(2,'0')} ${period}`;
+          }
+          clinicScheduleInfo += `<div class=\"schedule-entry\">`;
+          if (name) clinicScheduleInfo += `<div class=\"clinic-info\">${name}${addr ? ', ' + addr : ''}</div>`;
+          if (daysStr && timeStr) clinicScheduleInfo += `<div class=\"clinic-schedule\">${daysStr} ${timeStr}</div>`;
+          if (contact) clinicScheduleInfo += `<div class=\"clinic-info\">Tel: ${contact}</div>`;
+          clinicScheduleInfo += `</div>`;
+        });
+      }
+    }
+
     return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <style>
-    @page { size: 8.5in 11in; margin: 0.5in; }
-    html, body { margin: 0; padding: 0; background: #F3F4F6; color: ${text}; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
-    .preview { display: flex; flex-direction: column; align-items: center; padding: 16px; }
-    .page { width: 100%; max-width: 8.5in; background: #FFFFFF; box-shadow: 0 2px 16px rgba(0,0,0,0.08); position: relative; border: 1px solid ${border}; display: flex; flex-direction: column; box-sizing: border-box; }
-    .page .header, .page .top, .page .footer, .page .body { position: relative; z-index: 1; }
-            .watermark { 
-          position: absolute; 
-          left: 0; 
-          right: 0; 
-          bottom: 56px; 
-          top: auto; 
-          display: flex; 
-          align-items: center; 
-          justify-content: center; 
-          opacity: 0.1; 
-          z-index: 0; 
-          pointer-events: none; 
-        }
-        
-        .watermark img { 
-          max-width: 65%; 
-          max-height: 65%; 
-          object-fit: contain; 
-        }
+    @page { size: 8.5in 13in; margin: 0; }
+    html, body { margin: 0; padding: 0; background: #FFFFFF; color: ${text}; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+    .preview { display: flex; flex-direction: column; align-items: center; min-height: 100vh; background: #F3F4F6; }
+    .page { width: 8.5in; height: 13in; background: #FFFFFF; position: relative; display: block; box-sizing: border-box; padding: 0; }
+    .page-content { padding: 32px 48px; padding-bottom: 3in; position: relative; z-index: 1; }
+    .page .header, .page .top, .page .body { position: relative; z-index: 1; }
+    .watermark { position: absolute; bottom: 0.8in; left: 48px; display: flex; align-items: flex-end; justify-content: flex-start; opacity: 0.18; z-index: 1; pointer-events: none; }
+    .watermark img { max-width: 65%; height: auto; }
         
         .watermark-pattern {
           position: absolute;
@@ -483,39 +633,45 @@ export default function FitToTravelCertificateScreen() {
           object-fit: contain;
         }
 
-    .header { padding: 10px 16px; background: ${brandPrimary}; color: #fff; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; letter-spacing: 0.3px; }
-    .brand-left { font-weight: 800; }
-    .brand-right { font-weight: 600; opacity: 0.95; }
+    .document-header { background: ${brandPrimary}; color: #fff; padding: 16px 48px; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; letter-spacing: 0.3px; }
+    .document-title { font-weight: 800; font-size: 20px; }
+    .document-brand { font-weight: 600; opacity: 0.95; font-size: 18px; }
 
-    .top { padding: 16px; }
-    .row { display: flex; gap: 16px; }
-    .cell { flex: 1; }
-    .label { color: ${subtle}; font-size: 12px; margin: 6px 0 2px; font-weight: 500; }
-    .value { font-size: 13px; line-height: 1.6; }
-    .strong { font-weight: 600; color: #111827; }
-    .certificate-title { font-weight: 700; font-size: 18px; color: #1F2937; margin: 20px 0 15px; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+    .doctor-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0; padding-bottom: 0; gap: 24px; position: relative; }
+    .doctor-info-left { flex: 1; text-align: left; margin-bottom: 0; padding-bottom: 0; }
+    .doctor-logo-right { position: absolute; top: 0; right: 0; width: 150px; height: 150px; display: flex; align-items: flex-start; justify-content: flex-end; }
+    .doctor-logo-right img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .doctor-name { font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 4px 0; letter-spacing: 0.3px; text-transform: uppercase; }
+    .doctor-credentials { font-size: 14px; color: #374151; margin: 0 0 0 0; line-height: 1.5; }
+    .clinic-info { font-size: 13px; color: #6B7280; margin: 1px 0 0 0; line-height: 1.4; }
+    .clinic-affiliation-section { margin-top: 20px; margin-bottom: 20px; padding-top: 0; padding-bottom: 0; display: flex; flex-wrap: wrap; gap: 0; }
+    .schedule-entry { flex: 0 0 auto; min-width: 180px; margin-right: 24px; margin-bottom: 0; padding-bottom: 0; }
+    .schedule-entry:last-child { margin-right: 0; }
+    .clinic-schedule { font-size: 13px; color: #6B7280; margin: 1px 0 0 0; line-height: 1.4; }
 
-    .body { flex: 1; display: flex; flex-direction: column; padding: 0 24px; }
-    .footer { padding: 8px 16px; color: ${subtle}; font-size: 11px; background: #F9FAFB; display: flex; align-items: center; justify-content: space-between; }
-    .divider { height: 1px; background: ${border}; width: calc(100% - 48px); margin: 10px auto; }
-    .divider-wider { width: calc(100% - 30px); }
+    .header-divider { height: 1px; background: rgba(0, 0, 0, 0.15); margin: 20px 0 0 0; }
+    .certificate-title { font-weight: 700; font-size: 28px; color: #111827; margin: 32px 0 24px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; text-decoration: none; }
+    .certificate-date { text-align: left; font-size: 14px; color: #374151; margin-top: 50px; margin-bottom: 50px; font-weight: 500; }
     
-         .certificate-content { margin: 15px 0; line-height: 1.6; font-size: 12px; color: #374151; }
-    .certificate-statement { margin: 16px 0; padding: 16px; background: #F9FAFB; border-left: 4px solid ${brandPrimary}; border-radius: 4px; }
-    .certificate-statement-text { font-size: 16px; line-height: 1.7; color: #1F2937; }
+    .certificate-salutation { font-size: 14px; font-weight: 600; color: #111827; margin: 20px 0 20px; }
     
-    .travel-details { margin: 16px 0; padding: 16px; background: #F0F9FF; border-left: 4px solid #0EA5E9; border-radius: 4px; }
-    .travel-details-title { font-size: 16px; font-weight: 700; color: #0369A1; margin-bottom: 12px; }
-    .travel-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .travel-detail-item { margin-bottom: 8px; }
-    .travel-detail-label { font-size: 14px; font-weight: 600; color: #0C4A6E; }
-    .travel-detail-value { font-size: 14px; color: #374151; margin-top: 2px; }
+    .certificate-body { line-height: 2.0; font-size: 16px; color: #1F2937; text-align: justify; }
+    .certificate-body p { margin: 20px 0; text-indent: 40px; line-height: 2.0; }
+    .certificate-body strong { font-weight: 600; color: #111827; }
+    .certificate-body em { font-style: italic; color: #374151; font-weight: 500; }
     
-    .signature-section { margin-top: 30px; text-align: right; }
-    .signature-wrap { text-align: left; display: inline-block; }
-    .signature-line { height: 1px; background: ${border}; margin: 4px 0 6px 0; width: 200px; }
-    .signature-name { color: #374151; font-size: 14px; font-weight: 700; }
-    .signature-caption { color: ${subtle}; font-size: 12px; margin-top: 6px; }
+    .certificate-info-section { margin: 20px 0; padding: 16px; background: #F9FAFB; border-left: 3px solid ${brandPrimary}; border-radius: 4px; }
+    
+    .divider { height: 1px; background: rgba(0, 0, 0, 0.8); margin: 20px 0; }
+    
+    .signature-section { position: absolute; bottom: 0.8in; right: 0.8in; text-align: left; z-index: 2; }
+    .signature-wrap { width: auto; max-width: 280px; text-align: left; }
+    .signature-image-container { display: inline-block; text-align: left; width: auto; margin-bottom: 8px; }
+    .signature-image-container img { display: inline-block; margin: 0 0 -20px -40px; max-width: 200px; max-height: 60px; object-fit: contain; vertical-align: top; }
+    .signature-line { display: none; }
+    .signature-name { color: #111827; font-size: 18px; font-weight: 700; text-align: left; margin: 6px 0 4px 0; }
+    .signature-details { color: #6B7280; font-size: 12px; margin: 2px 0; text-align: left; }
+    .signature-caption { color: #374151; font-size: 12px; margin-top: 4px; text-align: center; }
     .signature-label { color: ${subtle}; font-size: 11px; margin-top: 6px; }
     
     /* Reset any default image styling */
@@ -536,114 +692,98 @@ export default function FitToTravelCertificateScreen() {
       background-color: transparent !important;
     }
     
-    .disclaimer { text-align: center; padding: 16px 0; }
+    .disclaimer { text-align: center; padding: 16px 0; margin-bottom: 60px; }
 
-    @media screen and (max-width: 640px) { .certificate-content { font-size: 14px; } .travel-details-grid { grid-template-columns: 1fr; } }
-    @media print { .preview { padding: 0; } .page { box-shadow: none; width: 8.5in; height: 11in; border: none; margin: 0 auto; max-width: 8.5in; } }
-    @media screen { .page { height: calc(100vh - 30px); aspect-ratio: 8.5 / 11; overflow: hidden; } }
+    @media screen {
+      .preview { padding: 16px 0; }
+      .page {
+        height: 13in;
+        transform: scale(0.47);
+        transform-origin: top center;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        border: 1px solid #E5E7EB;
+        margin-bottom: -600px;
+      }
+    }
+    @media print { 
+      .preview { padding: 0; background: #FFFFFF; display: block; } 
+      .page { transform: none; box-shadow: none; border: none; margin: 0; padding: 0; width: 100%; height: 13in; } 
+      .page-content { padding: 0.5in 0.6in; padding-bottom: 3in; }
+      .signature-section { bottom: 0.8in; right: 0.8in; }
+      .watermark { left: 0.6in; bottom: 0.8in; }
+    }
   </style>
 </head>
 <body>
   <div class="preview">
     <div class="page">
-              <div class="watermark">${logoDataUri ? `<img src="${logoDataUri}" />` : ''}</div>
-        <div class="watermark-pattern">
-          ${logoDataUri ? `
-            <div class="watermark-logo-small" style="top: 10%; left: 5%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 25%; left: 15%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 40%; left: 25%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 55%; left: 35%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 70%; left: 45%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 85%; left: 55%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 15%; left: 65%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 30%; left: 75%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 45%; left: 85%;"><img src="${logoDataUri}" /></div>
-            <div class="watermark-logo-small" style="top: 60%; left: 95%;"><img src="${logoDataUri}" /></div>
-          ` : ''}
+      <div class="watermark">${logoDataUri ? `<img src="${logoDataUri}" />` : ''}</div>
+      <div class="watermark-pattern">
+        ${logoDataUri ? `
+          <div class="watermark-logo-small" style="top: 10%; left: 5%;"><img src="${logoDataUri}" /></div>
+          <div class="watermark-logo-small" style="top: 25%; left: 15%;"><img src="${logoDataUri}" /></div>
+          <div class="watermark-logo-small" style="top: 40%; left: 25%;"><img src="${logoDataUri}" /></div>
+          <div class="watermark-logo-small" style="top: 55%; left: 35%;"><img src="${logoDataUri}" /></div>
+          <div class="watermark-logo-small" style="top: 70%; left: 45%;"><img src="${logoDataUri}" /></div>
+          <div class="watermark-logo-small" style="top: 85%; left: 55%;"><img src="${logoDataUri}" /></div>
+          <div class="watermark-logo-small" style="top: 15%; left: 65%;"><img src="${logoDataUri}" /></div>
+          <div class="watermark-logo-small" style="top: 30%; left: 75%;"><img src="${logoDataUri}" /></div>
+          <div class="watermark-logo-small" style="top: 45%; left: 85%;"><img src="${logoDataUri}" /></div>
+          <div class="watermark-logo-small" style="top: 60%; left: 95%;"><img src="${logoDataUri}" /></div>
+        ` : ''}
+      </div>
+      
+      <div class="document-header">
+        <span class="document-title">Medical Certificate</span>
+        <span class="document-brand">UniHealth</span>
+      </div>
+      
+      <div class="page-content">
+        <div class="doctor-header">
+          <div class="doctor-info-left">
+            <h1 class="doctor-name">${fullDoctorName || doctorName}, MD</h1>
+            <div class="doctor-credentials">${safe(provider?.specialty || 'General Practitioner')}</div>
+            <div class="clinic-affiliation-section">
+              ${clinicScheduleInfo || ''}
+            </div>
+          </div>
+          <div class="doctor-logo-right">
+            ${logoDataUri ? `<img src="${logoDataUri}" alt="UniHealth Logo" />` : ''}
+          </div>
         </div>
-      <div class="header"><span class="brand-left">UNIHEALTH</span><span class="brand-right">Medical Certificate</span></div>
-      
-             <div class="top">
-         <div class="row">
-           <div class="cell">
-             <p class="label">Certificate ID</p>
-             <div class="value strong">${certificateId}</div>
-             <p class="label">Date Issued</p>
-             <div class="value strong">${dateIssued}</div>
-           </div>
-           <div class="cell" style="text-align:right">
-             <p class="label">Valid Until</p>
-             <div class="value strong">${validUntil}</div>
-           </div>
-         </div>
-       </div>
-      
-      <div class="divider divider-wider"></div>
-
-      <div class="body">
+        
+        <div class="header-divider"></div>
+        
         <h1 class="certificate-title">FIT TO TRAVEL CERTIFICATE</h1>
         
+        <div class="certificate-date">Date Issued: ${dateIssued}</div>
         
+        <div class="certificate-salutation">TO WHOM IT MAY CONCERN:</div>
         
-                 <div class="certificate-content">
-           <p style="text-indent: 20px;">This is to certify that <strong>${patientName}</strong>, ${ageText}, ${gender}, was examined on <strong>${examinationDate}</strong> and is found to be medically fit to travel.</p>
-           
-           <div class="travel-details">
-             <div class="travel-details-title">Travel Information</div>
-             <div class="travel-details-grid">
-               <div class="travel-detail-item">
-                 <div class="travel-detail-label">Mode of Travel:</div>
-                 <div class="travel-detail-value">${travelMode}</div>
-               </div>
-               <div class="travel-detail-item">
-                 <div class="travel-detail-label">Destination:</div>
-                 <div class="travel-detail-value">${destination}</div>
-               </div>
-               <div class="travel-detail-item">
-                 <div class="travel-detail-label">Travel Date:</div>
-                 <div class="travel-detail-value">${travelDate}</div>
-               </div>
-               <div class="travel-detail-item">
-                 <div class="travel-detail-label">Special Conditions:</div>
-                 <div class="travel-detail-value">${specialConditions}</div>
-               </div>
-             </div>
-           </div>
-           
-           <p style="text-indent: 20px;">This certificate confirms that the patient has been medically cleared for travel and is free from any contagious diseases that would pose a risk to other travelers.</p>
-         </div>
-
+        <div class="certificate-body">
+          <p>This is to certify that <strong>${patientName}</strong>, ${ageText}, ${gender}, was examined on <strong>${examinationDate}</strong> and found to be <strong>medically fit to travel</strong>. The patient has undergone medical evaluation and is cleared for travel with no medical contraindications identified.</p>
+          
+          <p>The patient is cleared for <strong>${travelMode}</strong> to <strong>${destination}</strong> with planned travel date of <strong>${travelDate}</strong>. ${specialConditions !== 'None' ? `Special travel conditions: <strong>${specialConditions}</strong>.` : 'No special travel restrictions apply.'} No signs of contagious diseases were observed during examination.</p>
+          
+          <p>This travel fitness certificate is issued upon the patient's request for travel clearance purposes and may be used for airline, immigration, or other travel-related requirements, except medico-legal proceedings.</p>
+        </div>
+        
         <div class="signature-section">
-          <div style="position: relative; width: 100%;">
-            <div style="text-align: left; display: inline-block;">
-              <div class="signature-label">Issuing Doctor</div>
-              <div class="signature-name" style="position: relative;">
-                ${contextSignature ? `
-                  <div class="signature-image-container" style="position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background-image: url('${contextSignature}'); background-size: contain; background-repeat: no-repeat; background-position: center; width: 150px; height: 60px; z-index: 10;"></div>
-                ` : ''}
-                Dr. ${fullDoctorName || doctorName}
+          <div class="signature-wrap">
+            ${contextSignature ? `
+              <div class="signature-image-container">
+                <img src="${contextSignature}" alt="Signature" />
               </div>
-              <div class="signature-line"></div>
-              <div class="signature-caption">PRC #: ${finalDoctorPrcId || 'Not Available'}</div>
-              <div class="signature-caption">Email: ${doctorEmail || 'Not Available'}</div>
-            </div>
+            ` : '<div style="height: 60px;"></div>'}
+            <div class="signature-line"></div>
+            <div class="signature-name">Dr. ${fullDoctorName || doctorName}</div>
+            ${finalDoctorPrcId ? `<div class="signature-details">PRC ID: ${finalDoctorPrcId}</div>` : ''}
+            ${(provider as any)?.medicalLicenseNumber ? `<div class="signature-details">License No.: ${safe((provider as any).medicalLicenseNumber)}</div>` : ''}
+            ${(provider as any)?.contactNumber || (provider as any)?.phone ? `<div class="signature-details">Contact: ${safe((provider as any).contactNumber || (provider as any).phone)}</div>` : ''}
           </div>
         </div>
       </div>
 
-      <div class="divider divider-wider"></div>
-      
-             <div class="disclaimer">
-         <p style="text-align: center; font-size: 10px; color: #6B7280; margin: 16px 0; font-style: italic; line-height: 1.4;">
-           This certificate is issued based on medical examination findings and<br/>
-           is valid for the specified period only.
-         </p>
-       </div>
-
-      <div class="footer">
-        <span class="footer-left">Generated by UniHealth • ${new Date().toLocaleString()}</span>
-        <span class="footer-right">Page 1 of 1</span>
-      </div>
     </div>
   </div>
   <script>
@@ -658,11 +798,12 @@ export default function FitToTravelCertificateScreen() {
   </script>
 </body>
 </html>`;
-  }, [clinic, patient, provider, referral, certificate, logoDataUri, contextSignature]);
+  }, [loading, clinic, patient, provider, referral, certificate, logoDataUri, contextSignature, scheduleData, scheduleClinics, providerUser]);
 
   const handleGeneratePdf = async () => {
     try {
-      const { uri } = await Print.printToFileAsync({ html, width: 576, height: 792, base64: false });
+      // 8.5 x 13 inches at 72dpi (long bond)
+      const { uri } = await Print.printToFileAsync({ html, width: 612, height: 936, base64: false });
       return uri;
     } catch (e) {
       Alert.alert('Error', 'Failed to generate PDF.');
@@ -764,16 +905,18 @@ export default function FitToTravelCertificateScreen() {
         showBackdrop
         backdropOpacity={0.4}
       >
-        <View style={{ alignItems: 'center', gap: 12 }}>
-          <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
-            <CheckCircle2 size={36} color={COLORS.primary} />
+        <View style={styles.modalContent}>
+          <View style={styles.modalIconContainer}>
+            <CheckCircle2 size={36} color="#1E40AF" />
           </View>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#1F2937' }}>Certificate Downloaded</Text>
-          <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center' }}>
+          <Text style={styles.modalTitle}>Certificate Downloaded</Text>
+          <Text style={styles.modalMessage}>
             {downloadSavedPath ? `Your certificate has been saved.${Platform.OS !== 'android' ? '\nPath: ' + downloadSavedPath : ''}` : 'Your certificate has been saved.'}
           </Text>
           <View style={{ height: 8 }} />
-          <Button title="Done" onPress={() => setDownloadModalVisible(false)} fullWidth />
+          <TouchableOpacity style={styles.modalButton} onPress={() => setDownloadModalVisible(false)}>
+            <Text style={styles.modalButtonText}>Done</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </SafeAreaView>
@@ -852,5 +995,40 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
     marginLeft: 8,
+  },
+  modalContent: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  modalButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#1E40AF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 15,
   },
 });

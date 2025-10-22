@@ -247,7 +247,9 @@ export default function CertificatesScreen() {
           doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           item.description?.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus =
-          statusFilter === 'all' || item.status?.toLowerCase() === statusFilter;
+          statusFilter === 'all' || 
+          (statusFilter === 'valid' && item.status?.toLowerCase() === 'active') ||
+          item.status?.toLowerCase() === statusFilter;
         return matchesSearch && matchesStatus;
       })
       .sort((a, b) => {
@@ -435,7 +437,7 @@ export default function CertificatesScreen() {
           ]}
         >
           <Text style={styles.statusLabelText}>
-            {certificate.status}
+            {certificate.status?.toLowerCase() === 'active' ? 'Valid' : certificate.status}
           </Text>
         </View>
       </View>

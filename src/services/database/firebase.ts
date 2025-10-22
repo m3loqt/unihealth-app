@@ -223,6 +223,9 @@ export interface Certificate {
     lastName: string;
     age: number;
     contactNumber: string;
+    address?: string;
+    gender?: string;
+    dateOfBirth?: string;
   };
   medicalDetails?: {
     dateFrom: string;
@@ -232,6 +235,10 @@ export interface Certificate {
     restrictions: string;
     followUpDate?: string;
     restDays?: number;
+    // Fit to Work certificate specific fields
+    fitnessStatement?: string;
+    remarks?: string;
+    examinationDate?: string;
     // Travel certificate specific fields
     travelMode?: string;
     destination?: string;
@@ -3406,14 +3413,16 @@ export const databaseService = {
     // Core fields that are always needed
     medicalDetails.dateFrom = certificateData.unfitPeriodStart || certificateData.examinationDate || new Date().toISOString().split('T')[0];
     medicalDetails.diagnosis = certificateData.diagnosis || certificateData.reasonForUnfitness || 'Not specified';
-    medicalDetails.recommendations = certificateData.medicalAdvice || certificateData.fitnessStatement || certificateData.travelFitnessStatement || 'Follow medical advice';
-    medicalDetails.remarks = certificateData.description || certificateData.type || 'Medical certificate issued';
+    medicalDetails.recommendations = certificateData.medicalAdvice || certificateData.recommendations || 'Follow medical advice';
+    medicalDetails.remarks = certificateData.remarks || certificateData.description || certificateData.type || 'Medical certificate issued';
     
     // Optional fields - only add if they have values
     addField('dateTo', certificateData.unfitPeriodEnd || certificateData.validUntil || certificateData.validityPeriod);
     addField('followUpDate', certificateData.followUpDate || certificateData.nextReviewDate);
     addField('restDays', this.calculateRestDays(certificateData.unfitPeriodStart, certificateData.unfitPeriodEnd));
     addField('restrictions', certificateData.restrictions || certificateData.workRestrictions || certificateData.specialConditions);
+    addField('fitnessStatement', certificateData.fitnessStatement || certificateData.travelFitnessStatement);
+    addField('examinationDate', certificateData.examinationDate);
     
     // Travel certificate specific fields
     addField('travelMode', certificateData.travelMode);
