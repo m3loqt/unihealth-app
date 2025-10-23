@@ -533,9 +533,23 @@ export default function PatientOverviewScreen() {
           const allReferrals = await databaseService.getDocument('referrals');
           const refs: any[] = [];
           if (allReferrals) {
+            console.log('🔍 ALL REFERRALS DEBUG:', {
+              totalReferrals: Object.keys(allReferrals).length,
+              patientId: id,
+              referralsForPatient: Object.entries(allReferrals as Record<string, any>)
+                .filter(([refId, r]) => r?.patientId === id)
+                .map(([refId, r]) => ({
+                  refId,
+                  patientId: r?.patientId,
+                  status: r?.status,
+                  appointmentDate: r?.appointmentDate,
+                  specialistName: `${r?.assignedSpecialistFirstName || ''} ${r?.assignedSpecialistLastName || ''}`.trim()
+                }))
+            });
+            
             Object.entries(allReferrals as Record<string, any>).forEach(([refId, r]) => {
               if (r?.patientId === id && String(r?.status).toLowerCase() === 'confirmed') {
-                refs.push({
+                const referralData = {
                   id: refId,
                   type: r?.type || 'referral',
                   appointmentDate: r?.appointmentDate,
@@ -547,12 +561,17 @@ export default function PatientOverviewScreen() {
                     : (r?.specialistName || ''),
                   reason: r?.initialReasonForReferral || r?.reason || '',
                   source: 'referral',
-                });
+                };
+                console.log('🔍 ADDING CONFIRMED REFERRAL:', referralData);
+                refs.push(referralData);
               }
             });
           }
+          console.log('🔍 FINAL CONFIRMED REFERRALS:', refs);
           setConfirmedReferrals(refs);
-        } catch {}
+        } catch (error) {
+          console.error('🔍 ERROR LOADING REFERRALS:', error);
+        }
       }
     } catch (error) {
       console.error('Error loading patient data:', error);
@@ -585,8 +604,16 @@ export default function PatientOverviewScreen() {
   const handleActiveConsultationPress = () => {
     if (activeConsultations.length === 0) return;
     const item: any = activeConsultations[0];
-    if (item.source === 'referral') {
-      router.push(`/(specialist)/referral-details?id=${item.id}`);
+    console.log('🔍 ACTIVE CONSULTATION PRESS DEBUG:', {
+      item,
+      source: item.source,
+      id: item.id,
+      type: item.type
+    });
+    
+    // Check if it's a referral by source or type
+    if (item.source === 'referral' || item.type === 'specialist_referral' || item.relatedReferralId) {
+      router.push(`/referral-details?id=${item.id}`);
     } else {
       router.push(`/visit-overview?id=${item.id}`);
     }
@@ -712,13 +739,67 @@ export default function PatientOverviewScreen() {
   }, [appointments]);
 
   const activeConsultations = performanceUtils.useDeepMemo(() => {
-    // Merge confirmed appointments and confirmed referrals; sort by date desc
+    // Filter appointments to only show those for the current specialist
+    const specialistAppointments = activeAppointments.filter(apt => 
+      apt.doctorId === user?.uid || apt.assignedSpecialistId === user?.uid
+    );
+    
+    // Merge confirmed appointments for current specialist and confirmed referrals; sort by date desc
     const items: any[] = [
-      ...activeAppointments,
+      ...specialistAppointments,
       ...confirmedReferrals,
     ];
-    return items.sort((a, b) => new Date(b?.appointmentDate || 0).getTime() - new Date(a?.appointmentDate || 0).getTime());
-  }, [activeAppointments, confirmedReferrals]);
+    
+    // Remove duplicates based on ID - more robust deduplication
+    const seenIds = new Set();
+    const uniqueItems = items.filter(item => {
+      if (seenIds.has(item.id)) {
+        return false;
+      }
+      seenIds.add(item.id);
+      return true;
+    });
+    
+    console.log('🔍 ACTIVE CONSULTATIONS DEBUG:', {
+      activeAppointments: activeAppointments.length,
+      specialistAppointments: specialistAppointments.length,
+      confirmedReferrals: confirmedReferrals.length,
+      totalItems: items.length,
+      uniqueItems: uniqueItems.length,
+      currentSpecialistId: user?.uid,
+      items: items.map(item => ({
+        id: item.id,
+        source: item.source,
+        type: item.type,
+        status: item.status,
+        appointmentDate: item.appointmentDate,
+        appointmentTime: item.appointmentTime,
+        doctorId: item.doctorId,
+        assignedSpecialistId: item.assignedSpecialistId
+      }))
+    });
+    
+    return uniqueItems.sort((a, b) => {
+      // Primary sort: by appointment date (descending)
+      const dateA = new Date(a?.appointmentDate || 0).getTime();
+      const dateB = new Date(b?.appointmentDate || 0).getTime();
+      if (dateA !== dateB) {
+        return dateB - dateA;
+      }
+      
+      // Secondary sort: by appointment time (descending) to handle same-date items
+      const timeA = a?.appointmentTime || '';
+      const timeB = b?.appointmentTime || '';
+      if (timeA !== timeB) {
+        return timeB.localeCompare(timeA);
+      }
+      
+      // Tertiary sort: by ID to ensure stable sorting for identical dates/times
+      const idA = a?.id || '';
+      const idB = b?.id || '';
+      return idB.localeCompare(idA);
+    });
+  }, [activeAppointments, confirmedReferrals, user?.uid]);
 
   const completedAppointments = performanceUtils.useDeepMemo(() => {
     return appointments.filter(apt => apt.status === 'completed');
@@ -1057,51 +1138,59 @@ export default function PatientOverviewScreen() {
               </View>
             )}
 
-            {/* Active Consultation */}
+            {/* Active Consultations */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Active Consultation</Text>
+              <Text style={styles.sectionTitle}>Active Consultations</Text>
               {activeConsultations.length > 0 ? (
-                <TouchableOpacity style={styles.consultationCard} onPress={handleActiveConsultationPress}>
-                  <View style={styles.consultationHeader}>
-                    <View style={styles.consultationIcon}>
-                      <FileText size={20} color="#FFFFFF" />
-                    </View>
-                    <View style={styles.consultationInfo}>
-                      <Text style={styles.consultationType}>
-                        {activeConsultations[0]?.source === 'referral'
-                          ? (activeConsultations[0]?.reason || 'Not specified')
-                          : (activeConsultations[0]?.appointmentPurpose || formatTypeLabel(activeConsultations[0]?.type))}
-                      </Text>
-                      <Text style={styles.consultationDate}>
-                        {activeConsultations[0]?.source === 'referral'
-                          ? (() => {
-                              const name = activeConsultations[0]?.specialistName;
-                              const stripped = (name || '').replace(/^Dr\.?\s+/i, '').trim();
-                              return `Dr. ${stripped || 'Unknown Doctor'}`;
-                            })()
-                          : (() => {
-                              const doctor = safeDataAccess.getAppointmentDoctorName(activeConsultations[0] as any, 'Dr. Unknown Doctor');
-                              return doctor;
-                            })()}
-                      </Text>
-                      <Text style={styles.consultationDate}>
-                        {activeConsultations[0]?.appointmentDate ? formatDate(activeConsultations[0].appointmentDate) : 'N/A'} at {activeConsultations[0]?.appointmentTime ? formatTime(activeConsultations[0].appointmentTime) : 'N/A'}
-                      </Text>
-                      {/* Status pill removed for active consultation preview */}
-                    </View>
-                    <ChevronRight size={20} color="#9CA3AF" />
-                  </View>
-                </TouchableOpacity>
+                <View style={styles.consultationsContainer}>
+                  {activeConsultations.map((consultation, index) => (
+                    <TouchableOpacity 
+                      key={consultation.id || index} 
+                      style={styles.consultationCard} 
+                      onPress={() => {
+                        console.log('🔍 CONSULTATION CLICKED:', consultation);
+                        if (consultation.source === 'referral' || consultation.type === 'specialist_referral' || consultation.relatedReferralId) {
+                          router.push(`/referral-details?id=${consultation.id}`);
+                        } else {
+                          router.push(`/visit-overview?id=${consultation.id}`);
+                        }
+                      }}
+                    >
+                      <View style={styles.consultationHeader}>
+                        <View style={styles.consultationIcon}>
+                          <FileText size={20} color="#FFFFFF" />
+                        </View>
+                        <View style={styles.consultationInfo}>
+                          <Text style={styles.consultationType}>
+                            {consultation?.source === 'referral'
+                              ? (consultation?.reason || 'Not specified')
+                              : (consultation?.appointmentPurpose || formatTypeLabel(consultation?.type))}
+                          </Text>
+                          <Text style={styles.consultationDate}>
+                            {consultation?.source === 'referral'
+                              ? (() => {
+                                  const name = consultation?.specialistName;
+                                  const stripped = (name || '').replace(/^Dr\.?\s+/i, '').trim();
+                                  return `Dr. ${stripped || 'Unknown Doctor'}`;
+                                })()
+                              : (() => {
+                                  const doctor = safeDataAccess.getAppointmentDoctorName(consultation as any, 'Dr. Unknown Doctor');
+                                  return doctor;
+                                })()}
+                          </Text>
+                          <Text style={styles.consultationDate}>
+                            {consultation?.appointmentDate ? formatDate(consultation.appointmentDate) : 'N/A'} at {consultation?.appointmentTime ? formatTime(consultation.appointmentTime) : 'N/A'}
+                          </Text>
+                        </View>
+                        <ChevronRight size={20} color="#9CA3AF" />
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               ) : (
                 <View style={styles.noConsultationCard}>
                   <FileText size={32} color="#9CA3AF" />
-                  <Text style={styles.noConsultationText}>No active consultation</Text>
-                  {/* <Text style={styles.noConsultationSubtext}>
-                    Start a new consultation to begin patient care
-                  </Text>
-                  <TouchableOpacity style={styles.startConsultationButton} onPress={handleNewConsultation}>
-                    <Text style={styles.startConsultationButtonText}>Start Consultation</Text>
-                  </TouchableOpacity> */}
+                  <Text style={styles.noConsultationText}>No active consultations</Text>
                 </View>
               )}
             </View>
@@ -1563,6 +1652,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
+  },
+  consultationsContainer: {
+    gap: 12,
   },
   consultationCard: {
     backgroundColor: '#F9FAFB',
