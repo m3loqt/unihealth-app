@@ -1169,8 +1169,7 @@ export default function PatientReferralDetailsScreen() {
                           pathname: '/e-certificate-fit-to-work',
                           params: { 
                             certificateId: cert.id,
-                            consultationId: referralData.referralConsultationId || '',
-                            id: String(id),
+                            id: referralData.referralConsultationId || String(id),
                             patientId: referralData.patientId || ''
                           }
                         });
@@ -1179,8 +1178,7 @@ export default function PatientReferralDetailsScreen() {
                           pathname: '/e-certificate-medical-sickness',
                           params: { 
                             certificateId: cert.id,
-                            consultationId: referralData.referralConsultationId || '',
-                            id: String(id),
+                            id: referralData.referralConsultationId || String(id),
                             patientId: referralData.patientId || ''
                           }
                         });
@@ -1189,8 +1187,7 @@ export default function PatientReferralDetailsScreen() {
                           pathname: '/e-certificate-fit-to-travel',
                           params: { 
                             certificateId: cert.id,
-                            consultationId: referralData.referralConsultationId || '',
-                            id: String(id),
+                            id: referralData.referralConsultationId || String(id),
                             patientId: referralData.patientId || ''
                           }
                         });
@@ -1200,8 +1197,7 @@ export default function PatientReferralDetailsScreen() {
                           pathname: '/e-certificate-fit-to-work',
                           params: { 
                             certificateId: cert.id,
-                            consultationId: referralData.referralConsultationId || '',
-                            id: String(id),
+                            id: referralData.referralConsultationId || String(id),
                             patientId: referralData.patientId || ''
                           }
                         });
