@@ -1232,7 +1232,7 @@ export default function PatientReferralDetailsScreen() {
         {/* View Visit Report button moved to bottom action bar */}
       </ScrollView>
 
-      {/* Bottom action bar (shown when completed) */}
+      {/* Bottom action bar for completed referrals */}
       {referralData.status.toLowerCase() === 'completed' && (
         <View style={styles.compactButtonBar}>
           <TouchableOpacity
@@ -1490,6 +1490,29 @@ export default function PatientReferralDetailsScreen() {
             </View>
           </KeyboardAvoidingView>
         </Modal>
+      )}
+
+      {/* Bottom action bar for confirmed referrals - Show consultation button for specialists */}
+      {referralData.status.toLowerCase() === 'confirmed' && user?.role === 'specialist' && (
+        <View style={styles.compactButtonBar}>
+          <TouchableOpacity
+            style={[styles.primaryActionButton, styles.primaryActionButtonFullWidth]}
+            onPress={() => {
+              console.log('🔍 Navigating to consultation screen with referralId:', id);
+              router.push({
+                pathname: '/patient-consultation',
+                params: {
+                  referralId: String(id),
+                  patientId: referralData.patientId
+                }
+              });
+            }}
+            activeOpacity={0.8}
+          >
+            <Stethoscope size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.primaryActionButtonText}>Start Consultation</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </SafeAreaView>
   );

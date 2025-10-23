@@ -234,6 +234,23 @@ export default function PatientConsultationScreen() {
       
       checkCompletionStatus();
       
+      // Check if the current doctor is tagged to this consultation
+      const checkDoctorTagging = () => {
+        if (referral && user?.uid) {
+          // For referrals, check if the current user is the assigned specialist
+          const isTagged = referral.assignedSpecialistId === user.uid;
+          setIsDoctorTagged(isTagged);
+        } else if (consultation && user?.uid) {
+          // For appointments, check if the current user is the assigned doctor
+          const isTagged = consultation.doctorId === user.uid;
+          setIsDoctorTagged(isTagged);
+        } else {
+          setIsDoctorTagged(false);
+        }
+      };
+      
+      checkDoctorTagging();
+      
       // Also try to get medical history for this appointment or referral
       let medicalHistory = null;
       
@@ -425,6 +442,7 @@ export default function PatientConsultationScreen() {
   const [appointmentData, setAppointmentData] = useState<any>(null);
   const [referralData, setReferralData] = useState<any>(null);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isDoctorTagged, setIsDoctorTagged] = useState(false);
 
   // Diagnosis input state
   const [newDiagnosisCode, setNewDiagnosisCode] = useState('');
@@ -709,6 +727,7 @@ export default function PatientConsultationScreen() {
     
     checkCompletionStatus();
   }, [appointmentData, referralData]);
+
 
   // Monitor formData changes for debugging
   useEffect(() => {
@@ -3401,6 +3420,8 @@ export default function PatientConsultationScreen() {
 
       {/* Bottom Action Buttons */}
       <View style={styles.bottomContainer}>
+        
+        
         {/* Save/Complete Consultation Button - Show both when at 100% progress */}
         {progressPercent < 100 ? (
           <TouchableOpacity
