@@ -376,6 +376,10 @@ export default function ReferralDetailsScreen() {
       }
       
       if (referral) {
+        // Enrich referral data with specialist information (similar to patient version)
+        const enrichedReferral = await databaseService.enrichSpecialistReferralData(referral);
+        console.log('🔍 Enriched referral data:', enrichedReferral);
+        
         // Load clinic and doctor data for complete information
         let clinicData = null;
         let referringDoctorData = null;
@@ -384,13 +388,13 @@ export default function ReferralDetailsScreen() {
         
         try {
           // Handle both generalist and specialist referrals
-          const referringDoctorId = referral.referringGeneralistId || referral.referringSpecialistId;
-          const referringDoctorNode = referral.referringGeneralistId ? 'specialists' : 'users';
+          const referringDoctorId = enrichedReferral.referringGeneralistId || enrichedReferral.referringSpecialistId;
+          const referringDoctorNode = enrichedReferral.referringGeneralistId ? 'specialists' : 'users';
           
           [clinicData, referringDoctorData, patientData] = await Promise.all([
-            databaseService.getDocument(`clinics/${referral.referringClinicId}`),
+            databaseService.getDocument(`clinics/${enrichedReferral.referringClinicId}`),
             referringDoctorId ? databaseService.getDocument(`${referringDoctorNode}/${referringDoctorId}`) : null,
-            databaseService.getDocument(`users/${referral.patientId}`)
+            databaseService.getDocument(`users/${enrichedReferral.patientId}`)
           ]);
         } catch (error) {
           console.log('Could not fetch clinic, doctor, or patient data:', error);
@@ -398,9 +402,9 @@ export default function ReferralDetailsScreen() {
          
                  // Fetch specialist clinic from practiceLocation.clinicId first
          try {
-           if (referral.practiceLocation?.clinicId) {
-             console.log('🔍 Fetching specialist clinic from practiceLocation.clinicId:', referral.practiceLocation.clinicId);
-             specialistClinicData = await databaseService.getDocument(`clinics/${referral.practiceLocation.clinicId}`);
+           if (enrichedReferral.practiceLocation?.clinicId) {
+             console.log('🔍 Fetching specialist clinic from practiceLocation.clinicId:', enrichedReferral.practiceLocation.clinicId);
+             specialistClinicData = await databaseService.getDocument(`clinics/${enrichedReferral.practiceLocation.clinicId}`);
              console.log('🔍 Specialist clinic data:', specialistClinicData);
            }
          } catch (error) {
@@ -415,9 +419,9 @@ export default function ReferralDetailsScreen() {
              console.log('🔍 Specialist schedules data:', specialistSchedules);
              
              // Find the schedule that matches the referral's specialistScheduleId
-             if (specialistSchedules && referral.specialistScheduleId) {
-               const matchingSchedule = specialistSchedules[referral.specialistScheduleId];
-               console.log('🔍 Matching schedule for ID:', referral.specialistScheduleId, matchingSchedule);
+             if (specialistSchedules && enrichedReferral.specialistScheduleId) {
+               const matchingSchedule = specialistSchedules[enrichedReferral.specialistScheduleId];
+               console.log('🔍 Matching schedule for ID:', enrichedReferral.specialistScheduleId, matchingSchedule);
                
                                if (matchingSchedule) {
                  const practiceLocation = matchingSchedule.practiceLocation;
@@ -445,10 +449,10 @@ export default function ReferralDetailsScreen() {
          }
         
         // Additional patient data fetching if the first attempt failed
-        if (!patientData && referral.patientId) {
+        if (!patientData && enrichedReferral.patientId) {
           try {
-            console.log('🔍 Retrying patient data fetch for ID:', referral.patientId);
-            patientData = await databaseService.getDocument(`users/${referral.patientId}`);
+            console.log('🔍 Retrying patient data fetch for ID:', enrichedReferral.patientId);
+            patientData = await databaseService.getDocument(`users/${enrichedReferral.patientId}`);
             console.log('🔍 Retry patient data result:', patientData);
           } catch (retryError) {
             console.log('🔍 Retry failed for patient data:', retryError);
@@ -457,7 +461,7 @@ export default function ReferralDetailsScreen() {
         
                  // Load medical history/consultation data if referral is completed
          let medicalHistory = null;
-         if (referral.status.toLowerCase() === 'completed') {
+         if (enrichedReferral.status.toLowerCase() === 'completed') {
            if (isFollowUpAppointment) {
              // For follow-up appointments, try to load medical history from the original appointment
              try {
@@ -501,18 +505,18 @@ export default function ReferralDetailsScreen() {
              } catch (error) {
                console.log('Error loading follow-up appointment data:', error);
              }
-           } else if (referral.referralConsultationId) {
+           } else if (enrichedReferral.referralConsultationId) {
              // For regular referrals, use the existing logic
              try {
                // Fetch medical history from patientMedicalHistory > patientId > entries > referralConsultationId
-               medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${referral.patientId}/entries/${referral.referralConsultationId}`);
-               console.log('🔍 Fetched medical history from referralConsultationId:', referral.referralConsultationId, medicalHistory);
+               medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${enrichedReferral.patientId}/entries/${enrichedReferral.referralConsultationId}`);
+               console.log('🔍 Fetched medical history from referralConsultationId:', enrichedReferral.referralConsultationId, medicalHistory);
              } catch (error) {
                console.log('No medical history found for this referral consultation:', error);
                
                // Fallback: try the old method if referralConsultationId approach fails
                try {
-                 medicalHistory = await databaseService.getMedicalHistoryByAppointment(referral.clinicAppointmentId, referral.patientId);
+                 medicalHistory = await databaseService.getMedicalHistoryByAppointment(enrichedReferral.clinicAppointmentId, enrichedReferral.patientId);
                  console.log('🔍 Fallback: Fetched medical history using appointment method:', medicalHistory);
                } catch (fallbackError) {
                  console.log('Fallback method also failed:', fallbackError);
@@ -523,27 +527,27 @@ export default function ReferralDetailsScreen() {
         
         // Debug logging
         console.log('🔍 REFERRAL DATA:', {
-          id: referral.id,
-          patientFirstName: referral.patientFirstName,
-          patientLastName: referral.patientLastName,
-          referringClinicName: referral.referringClinicName,
-          initialReasonForReferral: referral.initialReasonForReferral,
-          appointmentDate: referral.appointmentDate,
-          appointmentTime: referral.appointmentTime
+          id: enrichedReferral.id,
+          patientFirstName: enrichedReferral.patientFirstName,
+          patientLastName: enrichedReferral.patientLastName,
+          referringClinicName: enrichedReferral.referringClinicName,
+          initialReasonForReferral: enrichedReferral.initialReasonForReferral,
+          appointmentDate: enrichedReferral.appointmentDate,
+          appointmentTime: enrichedReferral.appointmentTime
         });
         
         console.log('🔍 CLINIC DATA:', clinicData);
         console.log('🔍 REFERRING DOCTOR DATA:', referringDoctorData);
         console.log('🔍 PATIENT DATA:', patientData);
-        console.log('🔍 PATIENT ID:', referral.patientId);
+        console.log('🔍 PATIENT ID:', enrichedReferral.patientId);
         console.log('🔍 REFERRAL PATIENT NAMES:', {
-          firstName: referral.patientFirstName,
-          lastName: referral.patientLastName
+          firstName: enrichedReferral.patientFirstName,
+          lastName: enrichedReferral.patientLastName
         });
         
         // Combine referral data with additional fetched data
         const combinedReferralData: ReferralData = {
-          ...referral,
+          ...enrichedReferral,
           // Patient information - prioritize fetched patient data over referral data
           patientName: (() => {
             // Try to get name from fetched patient data first
@@ -555,8 +559,8 @@ export default function ReferralDetailsScreen() {
             }
             
             // Fallback to referral data
-            if (referral.patientFirstName && referral.patientLastName) {
-              return `${referral.patientFirstName} ${referral.patientLastName}`;
+            if (enrichedReferral.patientFirstName && enrichedReferral.patientLastName) {
+              return `${enrichedReferral.patientFirstName} ${enrichedReferral.patientLastName}`;
             }
             
             // Final fallback
@@ -566,15 +570,15 @@ export default function ReferralDetailsScreen() {
           // Referring doctor information
           referringDoctorName: (() => {
             // Handle both generalist and specialist referrals
-            if (referral.referringSpecialistId) {
-              return referral.referringSpecialistFirstName && referral.referringSpecialistLastName 
-                ? `${referral.referringSpecialistFirstName} ${referral.referringSpecialistLastName}` 
+            if (enrichedReferral.referringSpecialistId) {
+              return enrichedReferral.referringSpecialistFirstName && enrichedReferral.referringSpecialistLastName 
+                ? `${enrichedReferral.referringSpecialistFirstName} ${enrichedReferral.referringSpecialistLastName}` 
                 : referringDoctorData 
                   ? `${referringDoctorData.firstName} ${referringDoctorData.lastName}`
                   : 'Unknown Specialist';
             } else {
-              return referral.referringGeneralistFirstName && referral.referringGeneralistLastName 
-                ? `${referral.referringGeneralistFirstName} ${referral.referringGeneralistLastName}` 
+              return enrichedReferral.referringGeneralistFirstName && enrichedReferral.referringGeneralistLastName 
+                ? `${enrichedReferral.referringGeneralistFirstName} ${enrichedReferral.referringGeneralistLastName}` 
                 : referringDoctorData 
                   ? `${referringDoctorData.firstName} ${referringDoctorData.lastName}`
                   : 'Unknown Doctor';
@@ -582,13 +586,13 @@ export default function ReferralDetailsScreen() {
           })(),
           
           // Clinic information
-          clinic: clinicData?.name || referral.referringClinicName || 'Unknown Clinic',
-          date: referral.appointmentDate,
-          time: referral.appointmentTime,
-          address: formatClinicAddress(clinicData, clinicData?.name || referral.referringClinicName),
+          clinic: clinicData?.name || enrichedReferral.referringClinicName || 'Unknown Clinic',
+          date: enrichedReferral.appointmentDate,
+          time: enrichedReferral.appointmentTime,
+          address: formatClinicAddress(clinicData, clinicData?.name || enrichedReferral.referringClinicName),
           // Merged fields for display
-          clinicAndAddress: formatClinicAndAddress(clinicData, clinicData?.name || referral.referringClinicName),
-          dateTime: formatDateTime(referral.appointmentDate, referral.appointmentTime),
+          clinicAndAddress: formatClinicAndAddress(clinicData, clinicData?.name || enrichedReferral.referringClinicName),
+          dateTime: formatDateTime(enrichedReferral.appointmentDate, enrichedReferral.appointmentTime),
           specialistClinic: specialistClinicData?.name || 'Not assigned',
           specialistClinicAndAddress: formatSpecialistClinicAndAddress(specialistClinicData, specialistClinicData?.name || 'Not assigned'),
           
@@ -618,7 +622,7 @@ export default function ReferralDetailsScreen() {
          let referralPrescriptions = [];
          let referralCertificates = [];
          
-         if (medicalHistory && (referral.referralConsultationId || (isFollowUpAppointment && medicalHistory))) {
+         if (medicalHistory && (enrichedReferral.referralConsultationId || (isFollowUpAppointment && medicalHistory))) {
            // Extract prescriptions and certificates from the medical history data
            // Build a set of potential specialist/provider IDs to resolve names dynamically
            const potentialIds = new Set<string>();
@@ -661,14 +665,14 @@ export default function ReferralDetailsScreen() {
            referralPrescriptions = (medicalHistory.prescriptions || []).map((prescription: any, index: number) => {
              const prescriberFromId = prescription?.specialistId ? idToName[String(prescription.specialistId)] : undefined;
              return {
-               id: `${referral.referralConsultationId || (isFollowUpAppointment ? id : 'mh')}-${index}`,
+               id: `${enrichedReferral.referralConsultationId || (isFollowUpAppointment ? id : 'mh')}-${index}`,
                ...prescription,
                prescribedBy: prescription.prescribedBy || prescriberFromId || resolvedProviderName,
              };
            });
            // Load certificates from new patientMedicalCertificates structure
            try {
-             const certificates = await databaseService.getCertificatesByPatientNew(referral.patientId);
+             const certificates = await databaseService.getCertificatesByPatientNew(enrichedReferral.patientId);
              // Filter certificates that are linked to this specific referral via appointmentId
              // Only show certificates that have appointmentId (from consultations)
              // Note: appointmentId is already at root level after transformation from metadata.appointmentId
@@ -698,7 +702,7 @@ export default function ReferralDetailsScreen() {
            // Fallback: try using appointment method
            try {
              // For follow-up appointments, use the appointment ID directly
-             const appointmentId = isFollowUpAppointment ? id : referral.clinicAppointmentId;
+             const appointmentId = isFollowUpAppointment ? id : enrichedReferral.clinicAppointmentId;
              
              if (appointmentId) {
                [referralPrescriptions, referralCertificates] = await Promise.all([
@@ -732,8 +736,8 @@ export default function ReferralDetailsScreen() {
                  id: p.id || `${appointmentId || 'appt'}-${index}`,
                  ...p,
                  prescribedBy: p.prescribedBy || specialistIdToName[p.specialistId] || (
-                   ((referral as any)?.assignedSpecialistFirstName || (referral as any)?.assignedSpecialistLastName)
-                     ? `${(referral as any)?.assignedSpecialistFirstName || ''} ${(referral as any)?.assignedSpecialistLastName || ''}`.trim()
+                   ((enrichedReferral as any)?.assignedSpecialistFirstName || (enrichedReferral as any)?.assignedSpecialistLastName)
+                     ? `${(enrichedReferral as any)?.assignedSpecialistFirstName || ''} ${(enrichedReferral as any)?.assignedSpecialistLastName || ''}`.trim()
                      : 'Unknown Doctor'
                  )
                }));
@@ -742,8 +746,8 @@ export default function ReferralDetailsScreen() {
                referralCertificates = (referralCertificates || []).map((cert: any, index: number) => {
                  const issuingDoctor = cert.doctor || cert.prescribedBy || cert.specialistName || 
                    (cert.specialistId && specialistIdToName[cert.specialistId]) || 
-                   ((referral as any)?.assignedSpecialistFirstName && (referral as any)?.assignedSpecialistLastName
-                     ? `${(referral as any)?.assignedSpecialistFirstName || ''} ${(referral as any)?.assignedSpecialistLastName || ''}`.trim()
+                   ((enrichedReferral as any)?.assignedSpecialistFirstName && (enrichedReferral as any)?.assignedSpecialistLastName
+                     ? `${(enrichedReferral as any)?.assignedSpecialistFirstName || ''} ${(enrichedReferral as any)?.assignedSpecialistLastName || ''}`.trim()
                      : 'Unknown Doctor');
                  
                  return {
@@ -1242,8 +1246,7 @@ export default function ReferralDetailsScreen() {
                           pathname: '/e-certificate-fit-to-work',
                           params: { 
                             certificateId: cert.id,
-                            consultationId: referralData.referralConsultationId || '',
-                            referralId: String(id),
+                            id: referralData.referralConsultationId || String(id),
                             patientId: referralData.patientId || ''
                           }
                         });
@@ -1252,8 +1255,7 @@ export default function ReferralDetailsScreen() {
                           pathname: '/e-certificate-medical-sickness',
                           params: { 
                             certificateId: cert.id,
-                            consultationId: referralData.referralConsultationId || '',
-                            referralId: String(id),
+                            id: referralData.referralConsultationId || String(id),
                             patientId: referralData.patientId || ''
                           }
                         });
@@ -1262,8 +1264,7 @@ export default function ReferralDetailsScreen() {
                           pathname: '/e-certificate-fit-to-travel',
                           params: { 
                             certificateId: cert.id,
-                            consultationId: referralData.referralConsultationId || '',
-                            referralId: String(id),
+                            id: referralData.referralConsultationId || String(id),
                             patientId: referralData.patientId || ''
                           }
                         });
@@ -1273,8 +1274,7 @@ export default function ReferralDetailsScreen() {
                           pathname: '/e-certificate-fit-to-work',
                           params: { 
                             certificateId: cert.id,
-                            consultationId: referralData.referralConsultationId || '',
-                            referralId: String(id),
+                            id: referralData.referralConsultationId || String(id),
                             patientId: referralData.patientId || ''
                           }
                         });
