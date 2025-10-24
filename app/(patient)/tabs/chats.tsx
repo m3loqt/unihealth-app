@@ -513,10 +513,12 @@ export default function PatientChatsScreen() {
   // Render empty state
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <MessageCircle size={64} color="#D1D5DB" />
+      <View style={styles.emptyIcon}>
+        <MessageCircle size={48} color="#9CA3AF" />
+      </View>
       <Text style={styles.emptyTitle}>No Doctors Available</Text>
       <Text style={styles.emptyDescription}>
-        You'll see your doctors here once you have appointments or referrals.{'\n'}
+        You'll see your doctors here once you have appointments or referrals.
       </Text>
     </View>
   );
@@ -574,7 +576,9 @@ export default function PatientChatsScreen() {
         ) : filteredChats.length === 0 ? (
           searchQuery.trim() ? (
             <View style={styles.emptyState}>
-              <Search size={64} color="#D1D5DB" />
+              <View style={styles.emptyIcon}>
+                <Search size={48} color="#9CA3AF" />
+              </View>
               <Text style={styles.emptyTitle}>No Results Found</Text>
               <Text style={styles.emptyDescription}>
                 No chats match your search for "{searchQuery}".{'\n'}
@@ -823,25 +827,27 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   emptyState: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 48,
+    paddingVertical: 64,
+    paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: 'Inter-SemiBold',
     color: '#374151',
-    marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyDescription: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 20,
+    maxWidth: 280,
   },
   errorContainer: {
     flex: 1,

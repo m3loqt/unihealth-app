@@ -1501,10 +1501,21 @@ export default function AppointmentsScreen() {
              </>
            ) : (
              <View style={styles.emptyState}>
-               <Text style={styles.emptyStateText}>
+               <View style={styles.emptyIcon}>
+                 <Calendar size={48} color="#9CA3AF" />
+               </View>
+               <Text style={styles.emptyTitle}>
                  {searchQuery.trim() 
                    ? `No appointments found for "${searchQuery}"`
                    : `No ${activeFilter.toLowerCase()} appointments found`
+                 }
+               </Text>
+               <Text style={styles.emptyDescription}>
+                 {searchQuery.trim() 
+                   ? 'Try searching with different keywords or clear your search to see all appointments.'
+                   : activeFilter === 'All' 
+                     ? 'Your appointments will appear here once you book them.'
+                     : `No ${activeFilter.toLowerCase()} appointments found. Try selecting a different filter.`
                  }
                </Text>
                {activeFilter === 'All' && !searchQuery.trim() && (
@@ -1915,11 +1926,26 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 48,
+    paddingVertical: 64,
+    paddingHorizontal: 32,
   },
-  emptyStateText: {
-    fontSize: 16,
+  emptyIcon: {
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    color: '#374151',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
     color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 350,
     marginBottom: 16,
   },
   addAppointmentButton: {

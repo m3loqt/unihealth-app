@@ -377,12 +377,18 @@ export default function PatientReferralDetailsScreen() {
           presentIllnessHistory: (medicalHistory as any)?.presentIllnessHistory || '',
           reviewOfSymptoms: (medicalHistory as any)?.reviewOfSymptoms || '',
           labResults: (medicalHistory as any)?.labResults || '',
-          medications: (medicalHistory as any)?.prescriptions
-            ? (medicalHistory as any).prescriptions.map((p: any) => `${p.medication} ${p.dosage}`).join(', ')
-            : '',
-          diagnosis: (medicalHistory as any)?.diagnosis
-            ? ((medicalHistory as any).diagnosis as any[]).map((d: any) => d.description).join(', ')
-            : '',
+          medications: (medicalHistory as any)?.medications || '',
+          diagnosis: (() => {
+            // Check both 'diagnosis' and 'diagnoses' fields (database inconsistency)
+            const diagnosisField = (medicalHistory as any)?.diagnosis || (medicalHistory as any)?.diagnoses;
+            if (diagnosisField) {
+              if (Array.isArray(diagnosisField)) {
+                return diagnosisField.map((d: any) => d.description).join(', ');
+              }
+              return diagnosisField;
+            }
+            return '';
+          })(),
           differentialDiagnosis: (medicalHistory as any)?.differentialDiagnosis || '',
           soapNotes: (medicalHistory as any)?.soapNotes || { subjective: '', objective: '', assessment: '', plan: '' },
           treatmentPlan: (medicalHistory as any)?.treatmentPlan || '',

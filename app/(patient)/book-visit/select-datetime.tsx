@@ -177,6 +177,53 @@ function convertTo12HourFormat(time24: string): string {
   return `${displayHour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
 }
 
+// Check if a time slot has passed for the current date
+function isTimeSlotPassed(selectedDate: string, timeSlot: string): boolean {
+  const now = new Date();
+  
+  // Parse the selected date (format: YYYY-MM-DD)
+  const [year, month, day] = selectedDate.split('-').map(Number);
+  const selectedDateObj = new Date(year, month - 1, day);
+  
+  // Check if selected date is today
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  selectedDateObj.setHours(0, 0, 0, 0);
+  
+  // If selected date is in the future, no slots have passed
+  if (selectedDateObj > today) {
+    return false;
+  }
+  
+  // If selected date is in the past, all slots have passed
+  if (selectedDateObj < today) {
+    return true;
+  }
+  
+  // Selected date is today - check if the time slot has passed
+  // Parse time slot (format: "HH:MM AM/PM")
+  const timeMatch = timeSlot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!timeMatch) return false;
+  
+  let hours = parseInt(timeMatch[1]);
+  const minutes = parseInt(timeMatch[2]);
+  const ampm = timeMatch[3].toUpperCase();
+  
+  // Convert to 24-hour format
+  if (ampm === 'PM' && hours !== 12) {
+    hours += 12;
+  } else if (ampm === 'AM' && hours === 12) {
+    hours = 0;
+  }
+  
+  // Create a date object for the time slot
+  const slotTime = new Date();
+  slotTime.setHours(hours, minutes, 0, 0);
+  
+  // Compare with current time
+  return now > slotTime;
+}
+
 // Format structured purpose form data into readable text for additionalNotes
 function formatPurposeDataToText(purpose: string, formData: { primaryValue: string | string[]; secondaryValue?: string; }, generalNotes: string): string {
   const config = APPOINTMENT_PURPOSE_CONFIGS[purpose];
@@ -1501,22 +1548,17 @@ export default function SelectDateTimeScreen() {
                   <View key={pageIndex} style={styles.timeRow}>
                     {page.map((timeItem, index) => {
                       const isBooked = bookedTimeSlots.includes(timeItem.time);
+                      const isPassed = isTimeSlotPassed(selectedDate, timeItem.time);
+                      const isDisabled = isBooked || isPassed;
+                      
                       console.log('🔍 Rendering time slot:', {
                         time: timeItem.time,
                         isBooked,
-                        bookedTimeSlots,
-                        includes: bookedTimeSlots.includes(timeItem.time),
+                        isPassed,
+                        isDisabled,
+                        selectedDate,
                         bookedTimeSlotsLength: bookedTimeSlots.length
                       });
-                      
-                      // Debug: Log only if this slot should be booked but isn't being detected
-                      if (bookedTimeSlots.length > 0 && !isBooked) {
-                        console.log('🔍 WARNING: Slot should be booked but isBooked=false:', {
-                          time: timeItem.time,
-                          bookedTimeSlots,
-                          includes: bookedTimeSlots.includes(timeItem.time)
-                        });
-                      }
                       
                       return (
                         <TouchableOpacity
@@ -1524,23 +1566,29 @@ export default function SelectDateTimeScreen() {
                           style={[
                             styles.timeCard,
                             selectedTime === timeItem.time && styles.timeCardSelected,
-                            isBooked && styles.timeCardBooked
+                            isBooked && styles.timeCardBooked,
+                            isPassed && !isBooked && styles.timeCardPassed
                           ]}
                           onPress={() => {
-                            console.log('🔍 Time slot pressed:', { time: timeItem.time, isBooked });
+                            console.log('🔍 Time slot pressed:', { time: timeItem.time, isBooked, isPassed });
                             if (isBooked) {
                               Alert.alert('Slot Booked', `This time slot (${timeItem.time}) is already booked and cannot be selected.`);
                               return;
                             }
+                            if (isPassed) {
+                              Alert.alert('Time Passed', `This time slot (${timeItem.time}) has already passed and cannot be selected.`);
+                              return;
+                            }
                             setSelectedTime(timeItem.time);
                           }}
-                          disabled={isBooked}
-                          activeOpacity={isBooked ? 1 : 0.7}
+                          disabled={isDisabled}
+                          activeOpacity={isDisabled ? 1 : 0.7}
                         >
                           <Text style={[
                             styles.timeText,
                             selectedTime === timeItem.time && styles.timeTextSelected,
-                            isBooked && styles.timeTextBooked
+                            isBooked && styles.timeTextBooked,
+                            isPassed && !isBooked && styles.timeTextPassed
                           ]}>
                             {timeItem.time}
                           </Text>
@@ -1548,6 +1596,12 @@ export default function SelectDateTimeScreen() {
                             <>
                               <View style={styles.bookedOverlay} />
                               <Text style={styles.bookedLabel}>Booked</Text>
+                            </>
+                          )}
+                          {isPassed && !isBooked && (
+                            <>
+                              <View style={styles.passedOverlay} />
+                              <Text style={styles.passedLabel}>Passed</Text>
                             </>
                           )}
                         </TouchableOpacity>
@@ -1996,6 +2050,12 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     position: 'relative',
   },
+  timeCardPassed: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#D1D5DB',
+    opacity: 0.6,
+    position: 'relative',
+  },
   bookedOverlay: {
     position: 'absolute',
     top: 0,
@@ -2003,6 +2063,15 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(239, 68, 68, 0.3)',
+    borderRadius: 12,
+  },
+  passedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(156, 163, 175, 0.2)',
     borderRadius: 12,
   },
   timeText: {
@@ -2018,12 +2087,26 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     fontWeight: 'bold',
   },
+  timeTextPassed: {
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through',
+  },
   bookedLabel: {
     fontSize: 10,
     fontFamily: 'Inter-Bold',
     color: '#DC2626',
     marginTop: 2,
     backgroundColor: '#FEE2E2',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  passedLabel: {
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
+    color: '#9CA3AF',
+    marginTop: 2,
+    backgroundColor: '#F3F4F6',
     paddingHorizontal: 4,
     paddingVertical: 1,
     borderRadius: 3,
