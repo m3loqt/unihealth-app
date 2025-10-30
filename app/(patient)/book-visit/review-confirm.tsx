@@ -140,7 +140,7 @@ export default function ReviewConfirmScreen() {
         patientId: user.uid,
         sourceSystem: 'UniHealth_Patient_App',
         status: 'pending' as const,
-        type: 'general_consultation',
+        type: ((isFollowUp === 'true') || (isReferralFollowUp === 'true')) ? 'follow_up' : 'general_consultation',
         // Add follow-up tracking information
         isFollowUp: isFollowUp === 'true',
         // Only include originalAppointmentId if it's not empty
