@@ -35,6 +35,7 @@ import {
   X,
   Check,
   ChevronDown as ChevronIcon,
+  MoreHorizontal,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
@@ -43,6 +44,7 @@ import { safeDataAccess } from '../../src/utils/safeDataAccess';
 import { formatRoute, formatFrequency, formatFormula } from '../../src/utils/formatting';
 import { usePdfDownload } from '../../src/hooks/usePdfDownload';
 import { generateReferralRecordPdf } from '../../src/utils/pdfTemplate';
+import ReferralTypeModal from '../../src/components/ReferralTypeModal';
 
 // Extended interface for referral data that includes additional properties
 interface ReferralData extends Referral {
@@ -313,6 +315,17 @@ export default function ReferralDetailsScreen() {
   const [declineReason, setDeclineReason] = useState('');
   const [showReasonDropdown, setShowReasonDropdown] = useState(false);
   const [customReason, setCustomReason] = useState('');
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showReferralTypeModal, setShowReferralTypeModal] = useState(false);
+
+  // Ensure menu closes if conditions are no longer met (must be before any early returns)
+  useEffect(() => {
+    const completed = (referralData?.status || '').toLowerCase() === 'completed';
+    const assignedToMe = !!referralData?.assignedSpecialistId && referralData.assignedSpecialistId === user?.uid;
+    if (!(completed && assignedToMe) && showMoreMenu) {
+      setShowMoreMenu(false);
+    }
+  }, [referralData?.status, referralData?.assignedSpecialistId, user?.uid, showMoreMenu]);
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
     patientHistory: true,
     findings: true,
@@ -880,6 +893,11 @@ export default function ReferralDetailsScreen() {
     .map((p) => p[0]?.toUpperCase())
     .join('') || 'U';
 
+  // Show menu only for completed referrals assigned to the logged-in specialist
+  const canShowMoreMenu =
+    (referralData?.status || '').toLowerCase() === 'completed' &&
+    (!!referralData?.assignedSpecialistId && referralData.assignedSpecialistId === user?.uid);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
@@ -1331,66 +1349,146 @@ export default function ReferralDetailsScreen() {
             </View>
           ) : referralData.status.toLowerCase() === 'completed' ? (
             <View>
-              <TouchableOpacity
-                style={styles.primaryBottomButton}
-                onPress={() => {
-                  router.push({ pathname: '/consultation-report', params: { id: String(id) } });
-                }}
-                activeOpacity={0.8}
-              >
-                <Download size={18} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.primaryBottomButtonText}>Generate Visit Report</Text>
-              </TouchableOpacity>
-              {user?.role === 'patient' && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <TouchableOpacity
-                  style={styles.secondaryBottomButtonOutline}
+                  style={[styles.primaryBottomButton, { flex: 1, marginBottom: 0 }]}
                   onPress={() => {
-                    alert('Referral details hidden');
+                    router.push({ pathname: '/consultation-report', params: { id: String(id) } });
                   }}
                   activeOpacity={0.8}
                 >
-                  <Eye size={18} color="#1E40AF" style={{ marginRight: 8 }} />
-                  <Text style={styles.secondaryBottomButtonOutlineText}>Hide Referral Details</Text>
+                  <Download size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.primaryBottomButtonText}>Generate Visit Report</Text>
                 </TouchableOpacity>
-              )}
+                {canShowMoreMenu && (
+                  <TouchableOpacity
+                    style={styles.moreButton}
+                    onPress={() => setShowMoreMenu(!showMoreMenu)}
+                    activeOpacity={0.8}
+                  >
+                    <MoreHorizontal size={20} color="#1E40AF" />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           ) : isConfirmed ? (
             <View>
-              <TouchableOpacity
-                style={styles.primaryBottomButton}
-                onPress={() => {
-                  // Navigate to patient consultation using referral context
-                  if (isFollowUpAppointment) {
-                    // For follow-up appointments, use appointmentId as consultationId
-                    router.push({
-                      pathname: '/patient-consultation',
-                      params: {
-                        patientId: referralData?.patientId || '',
-                        consultationId: String(appointmentId || id || ''),
-                        isFollowUp: 'true',
-                        originalReferralId: String(id || ''),
-                      },
-                    });
-                  } else {
-                    // For regular referrals, use referralId
-                    router.push({
-                      pathname: '/patient-consultation',
-                      params: {
-                        patientId: referralData?.patientId || '',
-                        referralId: String(id || referralData?.id || ''),
-                      },
-                    });
-                  }
-                }}
-                activeOpacity={0.8}
-              >
-                <Stethoscope size={18} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.primaryBottomButtonText}>Diagnose Patient</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity
+                  style={[styles.primaryBottomButton, { flex: 1, marginBottom: 0 }]}
+                  onPress={() => {
+                    if (isFollowUpAppointment) {
+                      router.push({
+                        pathname: '/patient-consultation',
+                        params: {
+                          patientId: referralData?.patientId || '',
+                          consultationId: String(appointmentId || id || ''),
+                          isFollowUp: 'true',
+                          originalReferralId: String(id || ''),
+                        },
+                      });
+                    } else {
+                      router.push({
+                        pathname: '/patient-consultation',
+                        params: {
+                          patientId: referralData?.patientId || '',
+                          referralId: String(id || referralData?.id || ''),
+                        },
+                      });
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Stethoscope size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.primaryBottomButtonText}>Diagnose Patient</Text>
+                </TouchableOpacity>
+                {/* More button intentionally omitted for confirmed */}
+              </View>
             </View>
           ) : null}
         </View>
       )}
+
+      {/* More Menu Dropdown (Specialist) */}
+      {showMoreMenu && canShowMoreMenu && (
+        <View style={styles.moreMenuOverlay}>
+          <TouchableOpacity
+            style={styles.moreMenuBackdrop}
+            onPress={() => setShowMoreMenu(false)}
+            activeOpacity={1}
+          />
+          <View style={styles.moreMenuContainer}>
+            <TouchableOpacity
+              style={styles.moreMenuItem}
+              onPress={() => {
+                setShowMoreMenu(false);
+                setShowReferralTypeModal(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <Stethoscope size={18} color="#1E40AF" style={{ marginRight: 12 }} />
+              <Text style={styles.moreMenuItemText}>Refer Patient</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Referral Type Selection Modal (Specialist) */}
+      <ReferralTypeModal
+        visible={showReferralTypeModal}
+        onClose={() => setShowReferralTypeModal(false)}
+        onSelectGeneralist={async () => {
+          if (!referralData?.clinicAppointmentId) {
+            Alert.alert('Error', 'Missing original appointment reference for trace-back.');
+            return;
+          }
+          try {
+            const traceResult = await databaseService.traceOriginalGeneralist(referralData.clinicAppointmentId);
+            if (!traceResult || !traceResult.doctor || !traceResult.clinic) {
+              Alert.alert('Error', 'Unable to trace back to original generalist.');
+              return;
+            }
+            const { doctor, clinic } = traceResult;
+            router.push({
+              pathname: '/(specialist)/book-visit/select-datetime',
+              params: {
+                clinicId: clinic.id,
+                clinicName: clinic.name,
+                doctorId: doctor.id,
+                doctorName: `${doctor.firstName} ${doctor.lastName}`,
+                doctorSpecialty: doctor.specialty || 'General Medicine',
+                patientId: referralData.patientId,
+                patientFirstName: referralData.patientFirstName,
+                patientLastName: referralData.patientLastName,
+                originalAppointmentId: referralData.id,
+                isReferral: 'true',
+                referralType: 'generalist',
+                reasonForReferral: 'Return to Generalist',
+                sourceType: 'referral',
+                isTraceBack: 'true',
+              }
+            });
+          } catch (e) {
+            Alert.alert('Error', 'Failed to trace back to original generalist.');
+          }
+        }}
+        onSelectSpecialist={() => {
+          if (!referralData) return;
+          router.push({
+            pathname: '/(specialist)/book-visit',
+            params: {
+              patientId: referralData.patientId,
+              patientFirstName: referralData.patientFirstName,
+              patientLastName: referralData.patientLastName,
+              originalAppointmentId: referralData.id,
+              isReferral: 'true',
+              referralType: 'specialist',
+              reasonForReferral: referralData.initialReasonForReferral || referralData.additionalNotes || 'Specialist referral',
+              sourceType: 'referral',
+            }
+          });
+        }}
+      />
 
       {/* Decline Referral Modal */}
       <Modal
@@ -1999,6 +2097,51 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
     letterSpacing: 0.2,
+  },
+  moreButton: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  moreMenuOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  moreMenuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  moreMenuContainer: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 90 : 82,
+    right: HORIZONTAL_MARGIN,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minWidth: 200,
+  },
+  moreMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  moreMenuItemText: {
+    color: '#1F2937',
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
   },
 
   // ---- Prescription styles ----
