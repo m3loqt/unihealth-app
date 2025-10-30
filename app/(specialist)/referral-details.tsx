@@ -613,8 +613,18 @@ export default function ReferralDetailsScreen() {
           presentIllnessHistory: medicalHistory?.presentIllnessHistory || '',
           reviewOfSymptoms: medicalHistory?.reviewOfSymptoms || '',
           labResults: medicalHistory?.labResults || '',
-          medications: medicalHistory?.prescriptions ? medicalHistory.prescriptions.map(prescription => `${prescription.medication} ${prescription.dosage}`).join(', ') : '',
-          diagnosis: medicalHistory?.diagnosis ? medicalHistory.diagnosis.map(d => d.description).join(', ') : '',
+          medications: medicalHistory?.medications || '',
+          diagnosis: (() => {
+            // Check both 'diagnosis' and 'diagnoses' fields (database inconsistency)
+            const diagnosisField = medicalHistory?.diagnosis || medicalHistory?.diagnoses;
+            if (diagnosisField) {
+              if (Array.isArray(diagnosisField)) {
+                return diagnosisField.map(d => d.description).join(', ');
+              }
+              return diagnosisField;
+            }
+            return '';
+          })(),
           differentialDiagnosis: medicalHistory?.differentialDiagnosis || '',
           soapNotes: medicalHistory?.soapNotes || {
             subjective: '',
@@ -625,6 +635,19 @@ export default function ReferralDetailsScreen() {
           treatmentPlan: medicalHistory?.treatmentPlan || '',
           clinicalSummary: medicalHistory?.clinicalSummary || ''
         };
+        
+        // Debug logging for medications and diagnosis
+        console.log('🔍 MEDICATIONS AND DIAGNOSIS DEBUG:', {
+          hasMedicalHistory: !!medicalHistory,
+          rawMedications: medicalHistory?.medications,
+          rawDiagnosis: medicalHistory?.diagnosis,
+          rawDiagnoses: medicalHistory?.diagnoses,
+          diagnosisIsArray: Array.isArray(medicalHistory?.diagnosis),
+          diagnosesIsArray: Array.isArray(medicalHistory?.diagnoses),
+          processedMedications: combinedReferralData.medications,
+          processedDiagnosis: combinedReferralData.diagnosis,
+          allMedicalHistoryKeys: medicalHistory ? Object.keys(medicalHistory) : [],
+        });
         
         console.log('🔍 FINAL PATIENT NAME:', combinedReferralData.patientName);
         console.log('🔍 FINAL REFERRAL DATA:', combinedReferralData);

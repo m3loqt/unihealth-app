@@ -51,7 +51,6 @@ export default function SpecialistPatientsScreen() {
   const markAllAsRead = realtimeNotificationData.markAllAsRead;
   const deleteNotification = realtimeNotificationData.deleteNotification;
   const refreshNotifications = realtimeNotificationData.refresh;
-  const handleNotificationPress = realtimeNotificationData.handleNotificationPress;
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [patients, setPatients] = useState<SpecialistPatient[]>([]);

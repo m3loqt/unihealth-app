@@ -464,8 +464,18 @@ export default function VisitOverviewScreen() {
           presentIllnessHistory: medicalHistory?.presentIllnessHistory || '',
           reviewOfSymptoms: medicalHistory?.reviewOfSymptoms || '',
           labResults: medicalHistory?.labResults || '',
-          medications: medicalHistory?.prescriptions ? medicalHistory.prescriptions.map(prescription => `${prescription.medication} ${prescription.dosage}`).join(', ') : '',
-          diagnosis: medicalHistory?.diagnosis ? medicalHistory.diagnosis.map(d => d.description).join(', ') : '',
+          medications: medicalHistory?.medications || '',
+          diagnosis: (() => {
+            // Check both 'diagnosis' and 'diagnoses' fields (database inconsistency)
+            const diagnosisField = medicalHistory?.diagnosis || medicalHistory?.diagnoses;
+            if (diagnosisField) {
+              if (Array.isArray(diagnosisField)) {
+                return diagnosisField.map(d => d.description).join(', ');
+              }
+              return diagnosisField;
+            }
+            return '';
+          })(),
           differentialDiagnosis: medicalHistory?.differentialDiagnosis || '',
           soapNotes: medicalHistory?.soapNotes || {
             subjective: '',
@@ -806,7 +816,7 @@ export default function VisitOverviewScreen() {
         clinicId: visitData.clinicId,
         clinicName,
         appointmentDate: visitData.appointmentDate,
-        serviceType: visitData.relatedReferralId ? 'referral' : 'appointment',
+        serviceType: (visitData.relatedReferralId ? 'referral' : 'appointment') as 'appointment' | 'referral',
         treatmentType: visitData.appointmentPurpose || 'General Consultation',
         rating: feedbackStars,
         comment: feedbackReason,
@@ -1064,6 +1074,15 @@ export default function VisitOverviewScreen() {
           <Text style={styles.sectionTitle}>Prescriptions</Text>
           {visitData.status.toLowerCase() === 'completed' && prescriptions.length ? prescriptions.map((prescription) => (
             <View key={prescription.id} style={styles.prescriptionCard}>
+              {/* DNA image background */}
+              <View style={styles.dnaImageContainer}>
+                <Image 
+                  source={require('../../assets/images/dna.png')} 
+                  style={styles.dnaBackgroundImage}
+                  resizeMode="contain"
+                />
+              </View>
+              
               <View style={styles.prescriptionHeader}>
                 <View style={[styles.medicationIcon, { backgroundColor: '#1E3A8A15' }]}>
                   <Pill size={20} color="#1E3A8A" />
@@ -1185,7 +1204,7 @@ export default function VisitOverviewScreen() {
                 {/* Days left section */}
                 <View style={styles.prescriptionStatus}>
                   {(() => {
-                    // Calculate remaining days logic similar to prescriptions.tsx
+                    // Calculate remaining days logic - matching prescriptions.tsx
                     if (!prescription.duration || 
                         prescription.duration.toLowerCase().includes('ongoing') || 
                         prescription.duration.toLowerCase().includes('continuous')) {
@@ -1198,66 +1217,137 @@ export default function VisitOverviewScreen() {
                     }
                     
                     try {
-                      const prescribedDate = new Date(prescription.prescribedDate);
+                      // Parse the prescribed date properly with multiple fallback strategies
+                      let prescribedDate: Date | null = null;
+                      
+                      if (prescription.prescribedDate) {
+                        // Clean the date string to remove any non-date characters
+                        let cleanDateString = String(prescription.prescribedDate);
+                        
+                        // Remove any trailing or embedded text (like "ten" in "10/24/2025ten")
+                        cleanDateString = cleanDateString.replace(/[a-zA-Z]+/g, '').trim();
+                        
+                        // Try multiple parsing strategies
+                        // 1. Try MM/DD/YYYY format (US format)
+                        if (cleanDateString.includes('/')) {
+                          const parts = cleanDateString.split('/');
+                          if (parts.length === 3) {
+                            const month = parseInt(parts[0], 10);
+                            const day = parseInt(parts[1], 10);
+                            const year = parseInt(parts[2], 10);
+                            
+                            // Try MM/DD/YYYY
+                            prescribedDate = new Date(year, month - 1, day);
+                            
+                            // If invalid, try DD/MM/YYYY
+                            if (isNaN(prescribedDate.getTime()) || month > 12) {
+                              prescribedDate = new Date(year, day - 1, month);
+                            }
+                          }
+                        } 
+                        // 2. Try YYYY-MM-DD format (ISO-like)
+                        else if (cleanDateString.includes('-')) {
+                          prescribedDate = new Date(cleanDateString);
+                        }
+                        // 3. Try direct parsing
+                        else {
+                          prescribedDate = new Date(cleanDateString);
+                        }
+                        
+                        // If still invalid, try fallback to visit date
+                        if (!prescribedDate || isNaN(prescribedDate.getTime())) {
+                          prescribedDate = visitData.appointmentDate ? new Date(visitData.appointmentDate) : new Date();
+                        }
+                      } else {
+                        // Fallback to visit date if prescribedDate is not available
+                        prescribedDate = visitData.appointmentDate ? new Date(visitData.appointmentDate) : new Date();
+                      }
+                      
+                      // Final check - if date is still invalid, show ongoing
+                      if (!prescribedDate || isNaN(prescribedDate.getTime())) {
+                        return (
+                          <View style={styles.remainingDaysPill}>
+                            <Hourglass size={10} color="#9CA3AF" />
+                            <Text style={styles.remainingDays}>Ongoing</Text>
+                          </View>
+                        );
+                      }
+                      
                       const now = new Date();
                       const durationMatch = prescription.duration.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)$/i);
                       
-                      if (durationMatch) {
-                        const [, amount, unit] = durationMatch;
-                        const durationAmount = parseInt(amount, 10);
-                        const durationUnit = unit.toLowerCase();
-                        
-                        const endDate = new Date(prescribedDate);
-                        switch (durationUnit) {
-                          case 'day':
-                          case 'days':
-                            endDate.setDate(endDate.getDate() + durationAmount);
-                            break;
-                          case 'week':
-                          case 'weeks':
-                            endDate.setDate(endDate.getDate() + (durationAmount * 7));
-                            break;
-                          case 'month':
-                          case 'months':
-                            endDate.setMonth(endDate.getMonth() + durationAmount);
-                            break;
-                          case 'year':
-                          case 'years':
-                            endDate.setFullYear(endDate.getFullYear() + durationAmount);
-                            break;
-                        }
-                        
-                        const remainingTime = endDate.getTime() - now.getTime();
-                        const remainingDays = Math.ceil(remainingTime / (1000 * 60 * 60 * 24));
-                        
-                        if (remainingDays > 0) {
+                      if (!durationMatch) {
+                        return (
+                          <View style={styles.remainingDaysPill}>
+                            <Hourglass size={10} color="#9CA3AF" />
+                            <Text style={styles.remainingDays}>Ongoing</Text>
+                          </View>
+                        );
+                      }
+                      
+                      const [, amount, unit] = durationMatch;
+                      const durationAmount = parseInt(amount, 10);
+                      const durationUnit = unit.toLowerCase();
+                      
+                      // Calculate end date (using a new date instance to avoid mutation)
+                      const endDate = new Date(prescribedDate.getTime());
+                      
+                      switch (durationUnit) {
+                        case 'day':
+                        case 'days':
+                          endDate.setDate(endDate.getDate() + durationAmount);
+                          break;
+                        case 'week':
+                        case 'weeks':
+                          endDate.setDate(endDate.getDate() + (durationAmount * 7));
+                          break;
+                        case 'month':
+                        case 'months':
+                          endDate.setMonth(endDate.getMonth() + durationAmount);
+                          break;
+                        case 'year':
+                        case 'years':
+                          endDate.setFullYear(endDate.getFullYear() + durationAmount);
+                          break;
+                        default:
                           return (
                             <View style={styles.remainingDaysPill}>
                               <Hourglass size={10} color="#9CA3AF" />
-                              <Text style={styles.remainingDays}>
-                                {remainingDays} days left
-                              </Text>
+                              <Text style={styles.remainingDays}>Ongoing</Text>
                             </View>
                           );
-                        } else {
-                          return (
-                            <View style={styles.remainingDaysPill}>
-                              <Hourglass size={10} color="#9CA3AF" />
-                              <Text style={styles.remainingDays}>Expired</Text>
-                            </View>
-                          );
-                        }
+                      }
+                      
+                      // Calculate remaining days
+                      const remainingTime = endDate.getTime() - now.getTime();
+                      const remainingDays = Math.ceil(remainingTime / (1000 * 60 * 60 * 24));
+                      
+                      if (remainingDays > 0) {
+                        return (
+                          <View style={styles.remainingDaysPill}>
+                            <Hourglass size={10} color="#9CA3AF" />
+                            <Text style={styles.remainingDays}>
+                              {remainingDays} days left
+                            </Text>
+                          </View>
+                        );
+                      } else {
+                        return (
+                          <View style={styles.remainingDaysPill}>
+                            <Hourglass size={10} color="#9CA3AF" />
+                            <Text style={styles.remainingDays}>Expired</Text>
+                          </View>
+                        );
                       }
                     } catch (error) {
                       console.error('Error calculating remaining days:', error);
+                      return (
+                        <View style={styles.remainingDaysPill}>
+                          <Hourglass size={10} color="#9CA3AF" />
+                          <Text style={styles.remainingDays}>Ongoing</Text>
+                        </View>
+                      );
                     }
-                    
-                    return (
-                      <View style={styles.remainingDaysPill}>
-                        <Hourglass size={10} color="#9CA3AF" />
-                        <Text style={styles.remainingDays}>Ongoing</Text>
-                      </View>
-                    );
                   })()}
                 </View>
               </View>
@@ -1933,56 +2023,33 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
-  prescriptionCard: { 
-    padding: 16, 
-    backgroundColor: '#F9FAFB', 
-    borderRadius: 12, 
-    borderWidth: 1, 
+  prescriptionCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
     borderColor: '#E5E7EB',
-    marginBottom: 12,
+    marginBottom: 4,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  prescriptionHeader: { 
-    flexDirection: 'row', 
-    alignItems: 'flex-start' 
+  prescriptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    zIndex: 1,
+    position: 'relative',
   },
-  medicationIcon: { 
-    width: 40, 
-    height: 40, 
-    borderRadius: 20, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
+  medicationIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
-    marginTop: 2,
   },
-  prescriptionDetails: { 
-    flex: 1 
-  },
-  medicationName: { 
-    fontSize: 16, 
-    color: '#1F2937',
-    fontFamily: 'Inter-Regular',
-  },
-  medicationDosage: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontStyle: 'italic',
-    fontFamily: 'Inter-Regular',
-  },
-  prescriptionDescription: { 
-    fontSize: 13, 
-    color: '#6B7280', 
-    fontFamily: 'Inter-Regular',
-    lineHeight: 18,
-    marginTop: 2,
-  },
-  prescriptionStatus: { 
-    alignItems: 'flex-end',
-  },
-  remainingDays: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    fontFamily: 'Inter-Regular',
+  prescriptionDetails: {
+    flex: 1,
   },
   medicationNameRow: {
     flexDirection: 'row',
@@ -1990,16 +2057,44 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     flexWrap: 'wrap',
   },
+  medicationName: {
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  medicationDosage: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    fontFamily: 'Inter-Regular',
+  },
+  prescriptionDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  prescriptionStatus: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
   remainingDaysPill: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#D1D5DB',
     gap: 4,
+    marginTop: 4,
+  },
+  remainingDays: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    fontFamily: 'Inter-Regular',
   },
   remainingLabel: {
     fontSize: 12,
@@ -2370,6 +2465,27 @@ const styles = StyleSheet.create({
   },
   tagTextSelected: {
     color: '#FFFFFF',
+  },
+  
+  // DNA image background design
+  dnaImageContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 100,
+    overflow: 'hidden',
+    zIndex: 0,
+    opacity: 0.06,
+  },
+  dnaBackgroundImage: {
+    position: 'absolute',
+    right: -20,
+    top: '50%',
+    width: 120,
+    height: 120,
+    transform: [{ translateY: -60 }],
+    tintColor: '#1E40AF',
   },
 });
 
