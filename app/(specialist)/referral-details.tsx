@@ -320,6 +320,7 @@ export default function ReferralDetailsScreen() {
   const [customReason, setCustomReason] = useState('');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showReferralTypeModal, setShowReferralTypeModal] = useState(false);
+  const [selectedReferralData, setSelectedReferralData] = useState<any>(null);
 
   // Ensure menu closes if conditions are no longer met (must be before any early returns)
   useEffect(() => {
@@ -335,11 +336,6 @@ export default function ReferralDetailsScreen() {
     soapNotes: true,
     treatment: true,
   });
-  
-  // More menu and referral state
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showReferralTypeModal, setShowReferralTypeModal] = useState(false);
-  const [selectedReferralData, setSelectedReferralData] = useState<any>(null);
   
   // PDF download functionality
   const { downloadModalVisible, setDownloadModalVisible, downloadSavedPath, logoDataUri, handleDownload } = usePdfDownload();
@@ -1482,86 +1478,6 @@ export default function ReferralDetailsScreen() {
         </View>
       )}
 
-      {/* More Menu Dropdown (Specialist) */}
-      {showMoreMenu && canShowMoreMenu && (
-        <View style={styles.moreMenuOverlay}>
-          <TouchableOpacity
-            style={styles.moreMenuBackdrop}
-            onPress={() => setShowMoreMenu(false)}
-            activeOpacity={1}
-          />
-          <View style={styles.moreMenuContainer}>
-            <TouchableOpacity
-              style={styles.moreMenuItem}
-              onPress={() => {
-                setShowMoreMenu(false);
-                setShowReferralTypeModal(true);
-              }}
-              activeOpacity={0.8}
-            >
-              <Stethoscope size={18} color="#1E40AF" style={{ marginRight: 12 }} />
-              <Text style={styles.moreMenuItemText}>Refer Patient</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* Referral Type Selection Modal (Specialist) */}
-      <ReferralTypeModal
-        visible={showReferralTypeModal}
-        onClose={() => setShowReferralTypeModal(false)}
-        onSelectGeneralist={async () => {
-          if (!referralData?.clinicAppointmentId) {
-            Alert.alert('Error', 'Missing original appointment reference for trace-back.');
-            return;
-          }
-          try {
-            const traceResult = await databaseService.traceOriginalGeneralist(referralData.clinicAppointmentId);
-            if (!traceResult || !traceResult.doctor || !traceResult.clinic) {
-              Alert.alert('Error', 'Unable to trace back to original generalist.');
-              return;
-            }
-            const { doctor, clinic } = traceResult;
-            router.push({
-              pathname: '/(specialist)/book-visit/select-datetime',
-              params: {
-                clinicId: clinic.id,
-                clinicName: clinic.name,
-                doctorId: doctor.id,
-                doctorName: `${doctor.firstName} ${doctor.lastName}`,
-                doctorSpecialty: doctor.specialty || 'General Medicine',
-                patientId: referralData.patientId,
-                patientFirstName: referralData.patientFirstName,
-                patientLastName: referralData.patientLastName,
-                originalAppointmentId: referralData.id,
-                isReferral: 'true',
-                referralType: 'generalist',
-                reasonForReferral: 'Return to Generalist',
-                sourceType: 'referral',
-                isTraceBack: 'true',
-              }
-            });
-          } catch (e) {
-            Alert.alert('Error', 'Failed to trace back to original generalist.');
-          }
-        }}
-        onSelectSpecialist={() => {
-          if (!referralData) return;
-          router.push({
-            pathname: '/(specialist)/book-visit',
-            params: {
-              patientId: referralData.patientId,
-              patientFirstName: referralData.patientFirstName,
-              patientLastName: referralData.patientLastName,
-              originalAppointmentId: referralData.id,
-              isReferral: 'true',
-              referralType: 'specialist',
-              reasonForReferral: referralData.initialReasonForReferral || referralData.additionalNotes || 'Specialist referral',
-              sourceType: 'referral',
-            }
-          });
-        }}
-      />
 
       {/* Decline Referral Modal */}
       <Modal
@@ -1646,7 +1562,7 @@ export default function ReferralDetailsScreen() {
       </Modal>
 
       {/* More Menu Dropdown */}
-      {showMoreMenu && (
+      {showMoreMenu && canShowMoreMenu && (
         <View style={styles.moreMenuOverlay}>
           <TouchableOpacity
             style={styles.moreMenuBackdrop}

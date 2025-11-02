@@ -73,8 +73,6 @@ export default function SpecialistAppointmentsScreen() {
   const deleteNotification = realtimeNotificationData.deleteNotification;
   const refreshNotifications = realtimeNotificationData.refresh;
   
-  // Debug log to check notification count
-  // console.log('🔔 Appointments page - unreadCount:', unreadCount);
   const { 
     appointments: hookAppointments, 
     loading: hookLoading, 
@@ -127,7 +125,6 @@ export default function SpecialistAppointmentsScreen() {
         } else if (status === 'cancelled') {
           return 'cancelled';
         } else {
-          // console.log('Unknown referral status, defaulting to cancelled:', status);
           return 'cancelled';
         }
       })(),
@@ -437,14 +434,6 @@ export default function SpecialistAppointmentsScreen() {
   };
 
   const handleReferPatient = (appointmentOrReferral: any) => {
-      id: appointmentOrReferral.id,
-      type: appointmentOrReferral.type,
-      clinicAppointmentId: appointmentOrReferral.clinicAppointmentId,
-      relatedReferralId: appointmentOrReferral.relatedReferralId,
-      relatedAppointmentId: appointmentOrReferral.relatedAppointmentId,
-      patientId: appointmentOrReferral.patientId
-    });
-    
     // Store the referral data and show modal
     setSelectedReferralData(appointmentOrReferral);
     setShowReferralTypeModal(true);
@@ -455,19 +444,6 @@ export default function SpecialistAppointmentsScreen() {
     
     const appointmentOrReferral = selectedReferralData;
     
-    // console.log('🔍 ===== STARTING GENERALIST TRACE-BACK =====');
-    // console.log('🔍 Full appointmentOrReferral data:', JSON.stringify(appointmentOrReferral, null, 2));
-    // console.log('🔍 Data type detection:', {
-      type: appointmentOrReferral.type,
-      hasRelatedReferralId: !!appointmentOrReferral.relatedReferralId,
-      hasReferralConsultationId: !!appointmentOrReferral.referralConsultationId,
-      hasReferringGeneralistId: !!appointmentOrReferral.referringGeneralistId,
-      isReferral: appointmentOrReferral.type === 'specialist_referral' || 
-                  !!appointmentOrReferral.relatedReferralId || 
-                  !!appointmentOrReferral.referralConsultationId ||
-                  !!appointmentOrReferral.referringGeneralistId
-    });
-    
     try {
       let traceResult = null;
       
@@ -477,52 +453,18 @@ export default function SpecialistAppointmentsScreen() {
           appointmentOrReferral.relatedReferralId || 
           appointmentOrReferral.referralConsultationId ||
           appointmentOrReferral.referringGeneralistId) {
-        // console.log('🔍 ===== STEP 1: REFERRAL TRACE =====');
-        // console.log('🔍 Detected referral, using clinicAppointmentId approach');
-        // console.log('🔍 Available clinicAppointmentId:', appointmentOrReferral.clinicAppointmentId);
-        
         if (appointmentOrReferral.clinicAppointmentId) {
-          // console.log(`🔍 Using clinicAppointmentId from referral: ${appointmentOrReferral.clinicAppointmentId}`);
-          // console.log('🔍 Calling databaseService.traceOriginalGeneralist...');
           traceResult = await databaseService.traceOriginalGeneralist(appointmentOrReferral.clinicAppointmentId);
-          // console.log('🔍 Trace result from clinicAppointmentId:', traceResult);
-          
-          if (traceResult && traceResult.doctor) {
-            // console.log('✅ SUCCESS: Found generalist via clinicAppointmentId');
-          } else {
-            // console.log('❌ FAILED: No generalist found via clinicAppointmentId');
-          }
-        } else {
-          // console.log('❌ Referral has no clinicAppointmentId');
         }
       } else {
-        // console.log('🔍 ===== STEP 1: APPOINTMENT TRACE =====');
-        // console.log('🔍 Detected appointment, checking for direct clinicAppointmentId');
-        // console.log('🔍 Available clinicAppointmentId:', appointmentOrReferral.clinicAppointmentId);
-        
         if (appointmentOrReferral.clinicAppointmentId) {
-          // console.log(`🔍 Using clinicAppointmentId from appointment: ${appointmentOrReferral.clinicAppointmentId}`);
-          // console.log('🔍 Calling databaseService.traceOriginalGeneralist...');
           traceResult = await databaseService.traceOriginalGeneralist(appointmentOrReferral.clinicAppointmentId);
-          // console.log('🔍 Trace result from clinicAppointmentId:', traceResult);
-          
-          if (traceResult && traceResult.doctor) {
-            // console.log('✅ SUCCESS: Found generalist via appointment clinicAppointmentId');
-          } else {
-            // console.log('❌ FAILED: No generalist found via appointment clinicAppointmentId');
-          }
-        } else {
-          // console.log('❌ Appointment has no clinicAppointmentId');
         }
       }
       
       // Step 2: If not found, look in PMH entries for that patient's relatedAppointmentId or relatedReferralId
       if (!traceResult || !traceResult.doctor) {
-        // console.log('🔍 ===== STEP 2: PMH FALLBACK =====');
-        // console.log('🔍 Primary trace failed, trying PMH fallback...');
-        
         const patientId = appointmentOrReferral.patientId;
-        // console.log(`🔍 Patient ID: ${patientId}`);
         
         // Get consultation ID for PMH lookup
         let consultationId = null;
@@ -532,34 +474,17 @@ export default function SpecialistAppointmentsScreen() {
             appointmentOrReferral.referralConsultationId ||
             appointmentOrReferral.referringGeneralistId) {
           consultationId = appointmentOrReferral.referralConsultationId || appointmentOrReferral.consultationId;
-          // console.log('🔍 Referral consultation IDs:', {
-            referralConsultationId: appointmentOrReferral.referralConsultationId,
-            consultationId: appointmentOrReferral.consultationId,
-            selected: consultationId
-          });
         } else {
           consultationId = appointmentOrReferral.appointmentConsultationId || appointmentOrReferral.consultationId;
-          // console.log('🔍 Appointment consultation IDs:', {
-            appointmentConsultationId: appointmentOrReferral.appointmentConsultationId,
-            consultationId: appointmentOrReferral.consultationId,
-            selected: consultationId
-          });
         }
         
-        // console.log(`🔍 Using consultationId for PMH lookup: ${consultationId}`);
-        
         if (!consultationId) {
-          // console.log('❌ No consultation ID available for PMH lookup');
-          // console.log('🔍 This referral/appointment has not completed diagnosis yet');
-          // console.log('🔍 Trying PMH fallback by patient ID only (without consultation ID)...');
-          
           // Fallback: Search PMH entries by patient ID only
           const pmhRef = ref(database, `medicalHistory`);
           const pmhSnapshot = await get(pmhRef);
           
           if (pmhSnapshot.exists()) {
             const pmhData = pmhSnapshot.val();
-            // console.log(`🔍 Searching PMH entries for patient ${patientId} (without consultation ID)...`);
             
             let patientPmhEntries = 0;
             
@@ -568,39 +493,25 @@ export default function SpecialistAppointmentsScreen() {
               
               if (pmhEntry.patientId === patientId) {
                 patientPmhEntries++;
-                // console.log(`🔍 Found PMH entry for patient ${patientId}: ${pmhId}`);
                 
                 // Check if this PMH entry has relatedAppointment
                 if (pmhEntry.relatedAppointment && pmhEntry.relatedAppointment.id) {
-                  // console.log(`🔍 PMH has relatedAppointment.id: ${pmhEntry.relatedAppointment.id}`);
-                  // console.log('🔍 Calling databaseService.traceOriginalGeneralist with relatedAppointment.id...');
                   traceResult = await databaseService.traceOriginalGeneralist(pmhEntry.relatedAppointment.id);
-                  // console.log('🔍 Trace result from PMH relatedAppointment.id:', traceResult);
                   
                   if (traceResult && traceResult.doctor) {
-                    // console.log('✅ SUCCESS: Found generalist via PMH relatedAppointment.id (patient ID only)');
                     break;
-                  } else {
-                    // console.log('❌ FAILED: No generalist found via PMH relatedAppointment.id');
                   }
                 }
                 
                 // Check if this PMH entry has relatedReferralId (fallback)
                 if (pmhEntry.relatedReferralId) {
-                  // console.log(`🔍 PMH has relatedReferralId: ${pmhEntry.relatedReferralId}`);
-                  // console.log('🔍 Fetching referral data...');
                   const referralRef = ref(database, `referrals/${pmhEntry.relatedReferralId}`);
                   const referralSnapshot = await get(referralRef);
                   
                   if (referralSnapshot.exists()) {
                     const referralData = referralSnapshot.val();
-                    // console.log('🔍 Referral data:', {
-                      id: pmhEntry.relatedReferralId,
-                      clinicAppointmentId: referralData.clinicAppointmentId
-                    });
                     
                     if (referralData.clinicAppointmentId) {
-                      // console.log(`🔍 Found clinicAppointmentId from PMH referral: ${referralData.clinicAppointmentId}`);
                       console.log('🔍 Calling databaseService.traceOriginalGeneralist with referral clinicAppointmentId...');
                       traceResult = await databaseService.traceOriginalGeneralist(referralData.clinicAppointmentId);
                       console.log('🔍 Trace result from PMH referral clinicAppointmentId:', traceResult);

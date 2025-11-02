@@ -79,15 +79,6 @@ export default function SpecialistProfileScreen() {
   // const refreshNotifications = realtimeNotificationData.refresh;
   // const handleNotificationPress = realtimeNotificationData.handleNotificationPress || (() => {});
 
-  // Debug logging
-  React.useEffect(() => {
-    // console.log('🔔 Specialist Profile - Notifications state:', {
-      count: notifications.length,
-      loading: notificationsLoading,
-      error: notificationsError,
-      unreadCount: notifications.filter(n => !n.read).length
-    });
-  }, [notifications, notificationsLoading, notificationsError]);
 
   // Helper function to format date safely (avoiding timezone issues)
   const formatDateSafely = (dateString: string): string => {
@@ -219,11 +210,6 @@ export default function SpecialistProfileScreen() {
 
   const fetchClinicNames = useCallback(async (clinicIds: any) => {
     try {
-      // console.log('=== Fetching Clinic Names ===');
-      // console.log('Clinic IDs received:', clinicIds);
-      // console.log('Type:', typeof clinicIds);
-      // console.log('Is Array:', Array.isArray(clinicIds));
-      
       // Handle both array and object formats
       let clinicIdArray: string[] = [];
       if (Array.isArray(clinicIds)) {
@@ -231,25 +217,19 @@ export default function SpecialistProfileScreen() {
       } else if (typeof clinicIds === 'object' && clinicIds !== null) {
         clinicIdArray = Object.values(clinicIds);
       } else {
-        // console.log('Invalid clinicIds format, clearing clinic names');
         setClinicNames([]);
         return;
       }
-      
-      // console.log('Processed clinic ID array:', clinicIdArray);
       
       const names: string[] = [];
       for (const clinicId of clinicIdArray) {
         try {
           // Always treat as clinic ID and fetch from clinics node
-          // console.log('Fetching clinic data for ID:', clinicId);
           const clinicData = await databaseService.getDocument(`clinics/${clinicId}`);
           
           if (clinicData && clinicData.name) {
-            // console.log('Clinic data found:', clinicData.name);
             names.push(clinicData.name);
           } else {
-            // console.log('No clinic data found for ID:', clinicId);
             // Fallback: show the ID if no name is available
             names.push(`Clinic ${clinicId}`);
           }
@@ -260,7 +240,6 @@ export default function SpecialistProfileScreen() {
         }
       }
       
-      // console.log('Final clinic names:', names);
       setClinicNames(names);
     } catch (error) {
       console.error('Error fetching clinic names:', error);
@@ -271,10 +250,6 @@ export default function SpecialistProfileScreen() {
   // Synchronize editableData when profile changes (for real-time updates)
   useEffect(() => {
     if (profile && isEditing) {
-      // console.log('=== Specialist Profile Sync ===');
-      // console.log('Profile data received:', profile);
-      // console.log('Current editableData:', editableData);
-      
       setEditableData(prev => {
         const updated = {
           ...prev,
@@ -295,7 +270,6 @@ export default function SpecialistProfileScreen() {
           civilStatus: profile.civilStatus || prev.civilStatus,
         };
         
-        // console.log('Updated editableData:', updated);
         return updated;
       });
     }
@@ -304,23 +278,14 @@ export default function SpecialistProfileScreen() {
   // Consolidated effect for fetching clinic names - only run when profile changes
   useEffect(() => {
     if (profile && profile.clinicAffiliations) {
-      // console.log('=== Profile Clinic Affiliations Debug ===');
-      // console.log('Profile clinicAffiliations:', profile.clinicAffiliations);
-      // console.log('Type:', typeof profile.clinicAffiliations);
-      // console.log('Is Array:', Array.isArray(profile.clinicAffiliations));
-      
       if (Array.isArray(profile.clinicAffiliations) && profile.clinicAffiliations.length > 0) {
-        // console.log('Array format, fetching clinic names for:', profile.clinicAffiliations);
         fetchClinicNames(profile.clinicAffiliations);
       } else if (typeof profile.clinicAffiliations === 'object' && profile.clinicAffiliations !== null && Object.keys(profile.clinicAffiliations).length > 0) {
-        // console.log('Object format, fetching clinic names for:', Object.values(profile.clinicAffiliations));
         fetchClinicNames(profile.clinicAffiliations);
       } else {
-        // console.log('No clinic affiliations in profile, clearing clinic names');
         setClinicNames([]);
       }
     } else if (profile) {
-      // console.log('Profile has no clinicAffiliations, clearing clinic names');
       setClinicNames([]);
     }
   }, [profile, fetchClinicNames]); // Depend on profile and fetchClinicNames
@@ -441,10 +406,6 @@ export default function SpecialistProfileScreen() {
   };
 
   const handleEditProfile = () => {
-    // console.log('=== Starting Specialist Profile Edit ===');
-    // console.log('Current profile:', profile);
-    // console.log('Current profileData:', profileData);
-    
     setIsEditing(true);
     setShowFullProfileModal(true);
     // Ensure profile data is available before setting editable data
@@ -467,10 +428,7 @@ export default function SpecialistProfileScreen() {
         civilStatus: profile.civilStatus || '',
       };
       
-      // console.log('Initializing editableData with:', initialData);
       setEditableData(initialData);
-    } else {
-      // console.log('No profile data available for editing');
     }
   };
 
@@ -749,15 +707,9 @@ export default function SpecialistProfileScreen() {
         professionalFee: parseInt(requestedFee)
       };
 
-      // console.log('=== Fee Change Request Debug ===');
-      // console.log('User ID:', user.uid);
-      // console.log('Update data:', updateData);
-      // console.log('Firebase path:', `specialists/${user.uid}`);
-
       // Update the specialist profile with fee change request and status
       await updateProfile(updateData);
 
-      // console.log('Fee change request submitted successfully');
       setShowFeeChangeConfirmation(false);
       setShowFeeChangeSuccess(true);
     } catch (error) {
