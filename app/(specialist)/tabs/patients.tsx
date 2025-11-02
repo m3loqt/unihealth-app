@@ -109,22 +109,22 @@ export default function SpecialistPatientsScreen() {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔄 Loading patients for specialist:', user.uid);
+      // console.log('🔄 Loading patients for specialist:', user.uid);
       const specialistPatients = await databaseService.getPatientsBySpecialist(user.uid);
       
-      console.log('📋 Raw patients from database:', specialistPatients);
+      // console.log('📋 Raw patients from database:', specialistPatients);
       
       // Debug: Log the structure of returned patients to understand the data
       if (specialistPatients.length > 0) {
-        console.log('🔍 Sample patient structure:', specialistPatients[0]);
-        console.log('🔍 Patient statuses:', specialistPatients.map(p => ({ id: p.id, status: (p as any).status })));
-        console.log('🔍 All patient fields:', specialistPatients.map(p => Object.keys(p)));
-        console.log('🔍 Status field types:', specialistPatients.map(p => ({ id: p.id, status: (p as any).status, statusType: typeof (p as any).status })));
+        // console.log('🔍 Sample patient structure:', specialistPatients[0]);
+        // console.log('🔍 Patient statuses:', specialistPatients.map(p => ({ id: p.id, status: (p as any).status })));
+        // console.log('🔍 All patient fields:', specialistPatients.map(p => Object.keys(p)));
+        // console.log('🔍 Status field types:', specialistPatients.map(p => ({ id: p.id, status: (p as any).status, statusType: typeof (p as any).status })));
       }
       
       // Validate patients data
       const validPatients = dataValidation.validateArray(specialistPatients, dataValidation.isValidPatient);
-      console.log('✅ Valid patients after validation:', validPatients.length, validPatients);
+      // console.log('✅ Valid patients after validation:', validPatients.length, validPatients);
       
       // Cast to SpecialistPatient[] since the database service adds status and other fields
       const typedPatients = validPatients as SpecialistPatient[];
@@ -183,7 +183,7 @@ export default function SpecialistPatientsScreen() {
 
         setReferrerByPatientId(mapByPatient);
       } catch (e) {
-        console.log('ℹ️ Could not enrich referring generalist names for patients:', e);
+        // console.log('ℹ️ Could not enrich referring generalist names for patients:', e);
       }
     } catch (error) {
       console.error('❌ Error loading patients:', error);
@@ -220,7 +220,7 @@ export default function SpecialistPatientsScreen() {
 
   // Performance optimization: memoize filtered and sorted patients
   const filteredPatients = useDeepMemo(() => {
-    console.log('🔍 Filtering patients:', {
+    // console.log('🔍 Filtering patients:', {
       totalPatients: patients.length,
       activeFilter,
       searchQuery,
@@ -250,7 +250,7 @@ export default function SpecialistPatientsScreen() {
         matchesFilter = patient.status === activeFilter.toLowerCase();
       }
       
-      console.log(`🔍 Patient ${patient.id} (${patient.patientFirstName} ${patient.patientLastName}):`, {
+      // console.log(`🔍 Patient ${patient.id} (${patient.patientFirstName} ${patient.patientLastName}):`, {
         status: patient.status,
         matchesSearch,
         matchesFilter,
@@ -260,7 +260,7 @@ export default function SpecialistPatientsScreen() {
       return matchesSearch && matchesFilter;
     });
     
-    console.log('✅ Filtered patients result:', {
+    // console.log('✅ Filtered patients result:', {
       filteredCount: filtered.length,
       filteredPatients: filtered.map(p => ({ id: p.id, status: p.status, name: `${p.patientFirstName} ${p.patientLastName}` }))
     });
