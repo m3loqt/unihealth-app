@@ -357,6 +357,23 @@ export default function SelectDateTimeScreen() {
     isTraceBack,
   } = params;
   
+  // Debug: Log all received parameters
+  console.log('🔍 Specialist select-datetime parameters:', {
+    originalAppointmentId,
+    isReferral,
+    referralType,
+    isTraceBack,
+    patientId,
+    patientFirstName,
+    patientLastName,
+    reasonForReferral,
+    sourceType,
+    doctorId,
+    doctorName,
+    clinicId,
+    clinicName
+  });
+  
   // State
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [loading, setLoading] = useState(true);
@@ -432,14 +449,24 @@ export default function SelectDateTimeScreen() {
 
   // Filter dates based on doctor availability
   const FILTERED_DATES = useMemo(() => {
+    console.log('🔍 FILTERED_DATES calculation:', {
+      isSpecialist: doctor?.isSpecialist,
+      specialistAvailableDays,
+      specialistDaysLoaded,
+      availableDaysLength: specialistAvailableDays.length,
+      doctorId: doctor?.id
+    });
+    
     // If we're still loading, show all dates for now
     if (loading) {
+      console.log('🔍 Still loading, using all dates for now');
       return AVAILABLE_DATES;
     }
     
     // For specialists, use specialist availability filtering
     if (doctor?.isSpecialist) {
       if (!specialistDaysLoaded || specialistAvailableDays.length === 0) {
+        console.log('🔍 Specialist days not loaded yet or empty, using all dates for now');
         return AVAILABLE_DATES;
       }
       
@@ -447,6 +474,8 @@ export default function SelectDateTimeScreen() {
       const filtered = AVAILABLE_DATES.filter(date => 
         specialistAvailableDays.includes(date.dayOfWeek)
       );
+      console.log('🔍 Filtered dates for specialist:', filtered.length, 'out of', AVAILABLE_DATES.length);
+      console.log('🔍 Available days:', specialistAvailableDays);
       return filtered;
     }
     
@@ -457,6 +486,11 @@ export default function SelectDateTimeScreen() {
   const datePager = useMemo(() => getPagerData(FILTERED_DATES, 7), [FILTERED_DATES]);
     // Use available time slots directly (they already include all standard slots)
   const allTimeSlots = useMemo(() => {
+    console.log('🔍 allTimeSlots calculation:', {
+      availableTimeSlots,
+      bookedTimeSlots
+    });
+    
     // availableTimeSlots already contains all standard time slots
     return availableTimeSlots;
   }, [availableTimeSlots, bookedTimeSlots]);
@@ -475,6 +509,8 @@ export default function SelectDateTimeScreen() {
       
       // If not found in doctors node, try to get from users node (for follow-up appointments)
       if (!doctorData) {
+        console.log('🔍 Doctor not found in doctors node, trying users node for:', doctorId);
+        
         // Fetch from both users and doctors nodes in parallel
         const [userData, doctorDataFromDoctors] = await Promise.all([
           databaseService.getDocument(`users/${doctorId}`),
@@ -482,6 +518,7 @@ export default function SelectDateTimeScreen() {
         ]);
         
         if (userData) {
+          console.log('🔍 Found user data, creating doctor object from users node');
           
           // Create a doctor object from user data
           doctorData = {
@@ -526,17 +563,22 @@ export default function SelectDateTimeScreen() {
 
   const loadAvailableTimeSlots = async () => {
     if (!doctor || !selectedDate) {
+      console.log('🔍 loadAvailableTimeSlots: Missing doctor or selectedDate', { doctor, selectedDate });
       return;
     }
+    
+    console.log('🔍 loadAvailableTimeSlots: Starting with', { doctorId: doctor.id, selectedDate, isSpecialist: doctor.isSpecialist });
     
     try {
       // Check if this is a specialist (use specialistSchedules + referrals)
       if (doctor.isSpecialist) {
+        console.log('🔍 This is a specialist, loading specialist schedules and checking referrals for booked slots');
         await loadSpecialistTimeSlots();
         return;
       }
       
       // For generalists (use doctors.availability + appointments)
+      console.log('🔍 This is a generalist, loading doctor availability and checking appointments for booked slots');
       await loadGeneralistTimeSlots();
       
     } catch (error) {
@@ -553,11 +595,16 @@ export default function SelectDateTimeScreen() {
     setSpecialistDaysLoaded(false);
     
     try {
+      console.log('🔍 Loading specialist available days for:', idToUse);
+      
       // Get specialist schedules
       const specialistSchedules = await databaseService.getSpecialistSchedules(idToUse);
       if (!specialistSchedules) {
+        console.log('🔍 No specialist schedules found');
         return;
       }
+
+      console.log('🔍 Raw specialist schedules:', specialistSchedules);
 
       // Find all active schedules and collect their available days
       const allAvailableDays = new Set<number>();
@@ -565,9 +612,11 @@ export default function SelectDateTimeScreen() {
       
       // The structure is specialistSchedules[scheduleId] = { specialistId, recurrence, ... }
       Object.values(specialistSchedules).forEach((schedule: any) => {
+        console.log('🔍 Processing schedule:', schedule);
         // Check if this schedule belongs to the specialist we're looking for
         if (schedule.specialistId === idToUse && schedule.isActive && new Date(schedule.validFrom) <= today) {
           if (schedule.recurrence && schedule.recurrence.dayOfWeek) {
+            console.log('🔍 Found valid schedule with days:', schedule.recurrence.dayOfWeek);
             schedule.recurrence.dayOfWeek.forEach((day: number) => {
               allAvailableDays.add(day);
             });
@@ -578,6 +627,7 @@ export default function SelectDateTimeScreen() {
       const availableDaysArray = Array.from(allAvailableDays).sort();
       setSpecialistAvailableDays(availableDaysArray);
       setSpecialistDaysLoaded(true);
+      console.log('🔍 Specialist available days loaded:', availableDaysArray);
 
     } catch (error) {
       console.error('❌ Error loading specialist available days:', error);
@@ -590,12 +640,17 @@ export default function SelectDateTimeScreen() {
     setGeneralistDaysLoaded(false);
     
     try {
+      console.log('🔍 Loading generalist available days for:', doctorData.id);
+      
       // Check if doctor has availability data
       if (!doctorData.availability?.weeklySchedule) {
+        console.log('🔍 No generalist availability found for doctor:', doctorData.id);
         setGeneralistAvailableDays([]);
         setGeneralistDaysLoaded(true);
         return;
       }
+
+      console.log('🔍 Raw generalist availability:', doctorData.availability.weeklySchedule);
 
       // Find all days where enabled is true and timeSlots exist
       const allAvailableDays = new Set<number>();
@@ -603,6 +658,7 @@ export default function SelectDateTimeScreen() {
       
       dayNames.forEach((dayName, index) => {
         const daySchedule = doctorData.availability.weeklySchedule[dayName as keyof typeof doctorData.availability.weeklySchedule];
+        console.log('🔍 Processing day:', dayName, 'index:', index, daySchedule);
         
         // Check if day is enabled and has timeSlots with startTime and endTime
         if (daySchedule?.enabled && daySchedule.timeSlots && daySchedule.timeSlots.length > 0) {
@@ -613,14 +669,20 @@ export default function SelectDateTimeScreen() {
           );
           
           if (hasValidTimeSlots) {
+            console.log('🔍 Found valid generalist schedule for', dayName, 'index:', index, ':', daySchedule.timeSlots);
             allAvailableDays.add(index);
+          } else {
+            console.log('🔍 Day', dayName, 'enabled but no valid time slots');
           }
+        } else {
+          console.log('🔍 Day', dayName, 'not available - enabled:', daySchedule?.enabled, 'timeSlots:', daySchedule?.timeSlots?.length || 0);
         }
       });
 
       const availableDaysArray = Array.from(allAvailableDays).sort();
       setGeneralistAvailableDays(availableDaysArray);
       setGeneralistDaysLoaded(true);
+      console.log('🔍 Generalist available days loaded:', availableDaysArray);
 
     } catch (error) {
       console.error('❌ Error loading generalist available days:', error);
@@ -629,6 +691,8 @@ export default function SelectDateTimeScreen() {
 
   const loadSpecialistTimeSlots = async () => {
     try {
+      console.log('🔍 Loading specialist schedules for:', doctor?.id);
+      
       // Get specialist schedules
       const specialistSchedules = await databaseService.getSpecialistSchedules(doctor!.id);
       if (!specialistSchedules) {
@@ -640,6 +704,7 @@ export default function SelectDateTimeScreen() {
 
       // Get specialist referrals to check for booked slots
       const specialistReferrals = await databaseService.getSpecialistReferrals(doctor!.id);
+      console.log('🔍 Specialist referrals:', specialistReferrals);
 
       // Find active schedule for the selected date
       // Parse date string as local date to avoid timezone issues
@@ -647,10 +712,29 @@ export default function SelectDateTimeScreen() {
       const selectedDateObj = new Date(year, month - 1, day); // month is 0-indexed
       const dayOfWeek = selectedDateObj.getDay();
       
+      console.log('🔍 DEBUG - Selected date:', selectedDate);
+      console.log('🔍 DEBUG - Selected date object:', selectedDateObj);
+      console.log('🔍 DEBUG - Day of week:', dayOfWeek);
+      console.log('🔍 DEBUG - All specialist schedules:', specialistSchedules);
+      
       // The structure is specialistSchedules[scheduleId] = { specialistId, recurrence, ... }
       let activeSchedule = null;
       
       activeSchedule = Object.values(specialistSchedules).find((schedule: any) => {
+        console.log('🔍 DEBUG - Checking schedule:', {
+          scheduleId: Object.keys(specialistSchedules).find(key => specialistSchedules[key] === schedule),
+          specialistId: schedule.specialistId,
+          doctorId: doctor!.id,
+          isActive: schedule.isActive,
+          validFrom: schedule.validFrom,
+          validFromDate: new Date(schedule.validFrom),
+          selectedDateObj: selectedDateObj,
+          validFromCheck: new Date(schedule.validFrom) > selectedDateObj,
+          recurrence: schedule.recurrence,
+          dayOfWeek: dayOfWeek,
+          includesCheck: schedule.recurrence.dayOfWeek.includes(dayOfWeek)
+        });
+        
         if (schedule.specialistId !== doctor!.id || !schedule.isActive || new Date(schedule.validFrom) > selectedDateObj) return false;
         return schedule.recurrence.dayOfWeek.includes(dayOfWeek);
       });
@@ -661,6 +745,8 @@ export default function SelectDateTimeScreen() {
         setBookedTimeSlots([]);
         return;
       }
+
+      console.log('🔍 Found active schedule:', activeSchedule);
 
       // Generate time slots from specialist's slotTemplate
       const schedule = activeSchedule as any; // Type assertion for schedule object
@@ -691,6 +777,11 @@ export default function SelectDateTimeScreen() {
       // Combine both sources of booked slots
       const allBookedSlots = [...new Set([...bookedSlotsFromReferrals, ...bookedSlotsFromAppointments])];
 
+      console.log('🔍 Specialist time slots:', specialistTimeSlots);
+      console.log('🔍 Booked slots from referrals:', bookedSlotsFromReferrals);
+      console.log('🔍 Booked slots from appointments:', bookedSlotsFromAppointments);
+      console.log('🔍 All booked slots:', allBookedSlots);
+
       setAvailableTimeSlots(specialistTimeSlots);
       setBookedTimeSlots(allBookedSlots);
 
@@ -704,13 +795,17 @@ export default function SelectDateTimeScreen() {
 
   const loadGeneralistTimeSlots = async () => {
     try {
+      console.log('🔍 Loading generalist time slots for doctor:', doctor!.id);
+      
       // Get booked time slots for this doctor on this date (from appointments)
       const bookedSlots = await databaseService.getBookedTimeSlots(doctor!.id, selectedDate);
+      console.log('🔍 Booked slots found:', bookedSlots);
       
       // Use doctor's availability from doctors node if available, otherwise use standard slots
       let availableTimeSlots = [];
       
       if (doctor?.availability?.weeklySchedule) {
+        console.log('🔍 Using doctor availability from doctors node');
         // Get the day of week for the selected date
         // Parse date string as local date to avoid timezone issues
         const [year, month, day] = selectedDate.split('-').map(Number);
@@ -727,15 +822,20 @@ export default function SelectDateTimeScreen() {
             const intervals = generateTimeIntervals(slot.startTime, slot.endTime, 20);
             availableTimeSlots.push(...intervals);
           });
+          console.log('🔍 Using doctor schedule for', dayName, ':', availableTimeSlots);
         } else {
+          console.log('🔍 Doctor not available on', dayName, ', using standard slots');
           availableTimeSlots = generateStandardTimeSlots();
         }
       } else {
+        console.log('🔍 No doctor availability found, using standard slots');
         availableTimeSlots = generateStandardTimeSlots();
       }
       
       setAvailableTimeSlots(availableTimeSlots);
       setBookedTimeSlots(bookedSlots);
+      
+      console.log('🔍 Final time slots - Available:', availableTimeSlots.length, 'Booked:', bookedSlots.length);
       
     } catch (error) {
       console.error('❌ Error loading generalist time slots:', error);
@@ -802,6 +902,14 @@ export default function SelectDateTimeScreen() {
   };
 
   useEffect(() => {
+    console.log('🔍 useEffect triggered:', { 
+      doctorId, 
+      patientId,
+      patientFirstName,
+      patientLastName
+    });
+    
+    console.log('🔍 Loading doctor data...');
     loadDoctorData();
   }, [doctorId]);
 
@@ -813,7 +921,7 @@ export default function SelectDateTimeScreen() {
 
   // Monitor bookedTimeSlots state changes
   useEffect(() => {
-    // Booked time slots updated
+    console.log('🔍 bookedTimeSlots state changed:', bookedTimeSlots);
   }, [bookedTimeSlots]);
 
   // Initialize referral mode
@@ -1069,6 +1177,27 @@ export default function SelectDateTimeScreen() {
       // Format the structured purpose data into text for additionalNotes
       const formattedNotes = formatPurposeDataToText(selectedPurpose, purposeFormData, notes);
       
+      // Debug: Log all parameters before navigation
+      console.log('Navigation parameters:', {
+        clinicId,
+        clinicName,
+        doctorId,
+        doctorName,
+        doctorSpecialty,
+        patientId,
+        patientFirstName,
+        patientLastName,
+        selectedDate,
+        selectedTime,
+        selectedPurpose,
+        notes,
+        formattedNotes,
+        purposeFormData,
+        doctor: doctor,
+        displayClinicName,
+        displayClinicAddress
+      });
+      
       // Use fetched doctor data if available, otherwise fall back to URL params
       const finalClinicName = displayClinicName || clinicName || '';
       const finalClinicAddress = displayClinicAddress || '';
@@ -1095,10 +1224,12 @@ export default function SelectDateTimeScreen() {
         reasonForReferral: String(formattedNotes || ''), // Use formatted notes for referral reason
       };
       
+      console.log('Sanitized parameters with fetched data:', params);
+      
       // Additional validation to ensure no undefined values
       const hasUndefinedValues = Object.values(params).some(value => value === 'undefined' || value === undefined);
       if (hasUndefinedValues) {
-        console.error('Found undefined values in params');
+        console.error('Found undefined values in params:', params);
         Alert.alert('Error', 'Some required information is missing. Please try again.');
         return;
       }
@@ -1315,6 +1446,15 @@ export default function SelectDateTimeScreen() {
                       const isPassed = isTimeSlotPassed(selectedDate, timeItem.time);
                       const isDisabled = isBooked || isPassed;
                       
+                      console.log('🔍 Rendering time slot:', {
+                        time: timeItem.time,
+                        isBooked,
+                        isPassed,
+                        isDisabled,
+                        selectedDate,
+                        bookedTimeSlotsLength: bookedTimeSlots.length
+                      });
+                      
                       return (
                         <TouchableOpacity
                           key={index}
@@ -1325,6 +1465,7 @@ export default function SelectDateTimeScreen() {
                             isPassed && !isBooked && styles.timeCardPassed
                           ]}
                           onPress={() => {
+                            console.log('🔍 Time slot pressed:', { time: timeItem.time, isBooked, isPassed });
                             if (isBooked) {
                               Alert.alert('Slot Booked', `This time slot (${timeItem.time}) is already booked and cannot be selected.`);
                               return;

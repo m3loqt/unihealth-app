@@ -138,7 +138,7 @@ export default function SpecialistCertificateDetailsScreen() {
         {},
         (downloadProgress) => {
           const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
-          // console.log(`Downloaded: ${progress * 100}%`);
+          console.log(`Downloaded: ${progress * 100}%`);
         }
       );
 
