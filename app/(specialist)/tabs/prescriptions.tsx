@@ -245,7 +245,7 @@ export default function SpecialistPrescriptionsScreen() {
           status: calculatePrescriptionStatus(prescription)
         }));
       
-      console.log('Loaded prescriptions:', validPrescriptions.length);
+      // console.log('Loaded prescriptions:', validPrescriptions.length);
       setPrescriptions(validPrescriptions);
       
       // Load patient names for display

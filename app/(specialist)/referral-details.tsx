@@ -35,6 +35,8 @@ import {
   X,
   Check,
   ChevronDown as ChevronIcon,
+  MoreHorizontal,
+  UserPlus,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/hooks/auth/useAuth';
@@ -43,6 +45,9 @@ import { safeDataAccess } from '../../src/utils/safeDataAccess';
 import { formatRoute, formatFrequency, formatFormula } from '../../src/utils/formatting';
 import { usePdfDownload } from '../../src/hooks/usePdfDownload';
 import { generateReferralRecordPdf } from '../../src/utils/pdfTemplate';
+import ReferralTypeModal from '../../src/components/ReferralTypeModal';
+import { ref, get } from 'firebase/database';
+import { database } from '../../src/config/firebase';
 
 // Extended interface for referral data that includes additional properties
 interface ReferralData extends Referral {
@@ -320,6 +325,11 @@ export default function ReferralDetailsScreen() {
     treatment: true,
   });
   
+  // More menu and referral state
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showReferralTypeModal, setShowReferralTypeModal] = useState(false);
+  const [selectedReferralData, setSelectedReferralData] = useState<any>(null);
+  
   // PDF download functionality
   const { downloadModalVisible, setDownloadModalVisible, downloadSavedPath, logoDataUri, handleDownload } = usePdfDownload();
 
@@ -378,7 +388,6 @@ export default function ReferralDetailsScreen() {
       if (referral) {
         // Enrich referral data with specialist information (similar to patient version)
         const enrichedReferral = await databaseService.enrichSpecialistReferralData(referral);
-        console.log('🔍 Enriched referral data:', enrichedReferral);
         
         // Load clinic and doctor data for complete information
         let clinicData = null;
@@ -397,65 +406,45 @@ export default function ReferralDetailsScreen() {
             databaseService.getDocument(`users/${enrichedReferral.patientId}`)
           ]);
         } catch (error) {
-          console.log('Could not fetch clinic, doctor, or patient data:', error);
+          console.error('Could not fetch clinic, doctor, or patient data:', error);
         }
          
                  // Fetch specialist clinic from practiceLocation.clinicId first
          try {
            if (enrichedReferral.practiceLocation?.clinicId) {
-             console.log('🔍 Fetching specialist clinic from practiceLocation.clinicId:', enrichedReferral.practiceLocation.clinicId);
              specialistClinicData = await databaseService.getDocument(`clinics/${enrichedReferral.practiceLocation.clinicId}`);
-             console.log('🔍 Specialist clinic data:', specialistClinicData);
            }
          } catch (error) {
-           console.log('Could not fetch specialist clinic from practiceLocation:', error);
+           console.error('Could not fetch specialist clinic from practiceLocation:', error);
          }
 
          // Additional: Fetch specialist's assigned clinic (fallback for older referrals)
          if (!specialistClinicData && user?.uid && user?.role === 'specialist') {
            try {
-             console.log('🔍 Fetching specialist schedules for logged-in user:', user.uid);
              const specialistSchedules = await databaseService.getDocument(`specialistSchedules/${user.uid}`);
-             console.log('🔍 Specialist schedules data:', specialistSchedules);
              
              // Find the schedule that matches the referral's specialistScheduleId
              if (specialistSchedules && enrichedReferral.specialistScheduleId) {
                const matchingSchedule = specialistSchedules[enrichedReferral.specialistScheduleId];
-               console.log('🔍 Matching schedule for ID:', enrichedReferral.specialistScheduleId, matchingSchedule);
                
                                if (matchingSchedule) {
                  const practiceLocation = matchingSchedule.practiceLocation;
                  if (practiceLocation && practiceLocation.clinicId) {
-                   console.log('🔍 Fetching specialist clinic for ID:', practiceLocation.clinicId);
                    specialistClinicData = await databaseService.getDocument(`clinics/${practiceLocation.clinicId}`);
-                   console.log('🔍 Specialist clinic data:', specialistClinicData);
-                   
-                   // Additional debug logging for specialist clinic
-                   console.log('🔍 SPECIALIST CLINIC DEBUG:', {
-                     loggedInUserId: user.uid,
-                     scheduleId: referral.specialistScheduleId,
-                     assignedSpecialistId: matchingSchedule.assignedSpecialistId,
-                     practiceLocation: practiceLocation,
-                     clinicId: practiceLocation.clinicId,
-                     clinicName: specialistClinicData?.name,
-                     fullClinicData: specialistClinicData
-                   });
                  }
                }
              }
            } catch (error) {
-             console.log('Could not fetch specialist schedule or clinic data:', error);
+             console.error('Could not fetch specialist schedule or clinic data:', error);
            }
          }
         
         // Additional patient data fetching if the first attempt failed
         if (!patientData && enrichedReferral.patientId) {
           try {
-            console.log('🔍 Retrying patient data fetch for ID:', enrichedReferral.patientId);
             patientData = await databaseService.getDocument(`users/${enrichedReferral.patientId}`);
-            console.log('🔍 Retry patient data result:', patientData);
           } catch (retryError) {
-            console.log('🔍 Retry failed for patient data:', retryError);
+            console.error('Retry failed for patient data:', retryError);
           }
         }
         
@@ -466,20 +455,17 @@ export default function ReferralDetailsScreen() {
              // For follow-up appointments, try to load medical history from the original appointment
              try {
                const appointment = await databaseService.getDocument(`appointments/${id}`);
-               console.log('🔍 Follow-up appointment data:', appointment);
                
                if (appointment?.originalAppointmentId) {
                  // Try to get medical history from the original appointment's consultation
                  try {
                    const originalAppointment = await databaseService.getDocument(`appointments/${appointment.originalAppointmentId}`);
-                   console.log('🔍 Original appointment data:', originalAppointment);
                    
                    if (originalAppointment?.appointmentConsultationId) {
                      medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${referral.patientId}/entries/${originalAppointment.appointmentConsultationId}`);
-                     console.log('🔍 Fetched medical history from original appointment consultation:', originalAppointment.appointmentConsultationId, medicalHistory);
                    }
                  } catch (error) {
-                   console.log('No medical history found for original appointment:', error);
+                   // Silent catch - no medical history from original appointment
                  }
                }
                
@@ -487,9 +473,8 @@ export default function ReferralDetailsScreen() {
                if (!medicalHistory && appointment?.appointmentConsultationId) {
                  try {
                    medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${referral.patientId}/entries/${appointment.appointmentConsultationId}`);
-                   console.log('🔍 Fetched medical history from follow-up appointment consultation:', appointment.appointmentConsultationId, medicalHistory);
                  } catch (error) {
-                   console.log('No medical history found for follow-up appointment consultation:', error);
+                   // Silent catch - no medical history from follow-up consultation
                  }
                }
                
@@ -497,53 +482,28 @@ export default function ReferralDetailsScreen() {
                if (!medicalHistory) {
                  try {
                    medicalHistory = await databaseService.getMedicalHistoryByAppointment(id as string, referral.patientId);
-                   console.log('🔍 Fallback: Fetched medical history using appointment method for follow-up:', medicalHistory);
                  } catch (fallbackError) {
-                   console.log('Fallback method also failed for follow-up:', fallbackError);
+                   // Silent catch - fallback method failed
                  }
                }
              } catch (error) {
-               console.log('Error loading follow-up appointment data:', error);
+               console.error('Error loading follow-up appointment data:', error);
              }
            } else if (enrichedReferral.referralConsultationId) {
              // For regular referrals, use the existing logic
              try {
                // Fetch medical history from patientMedicalHistory > patientId > entries > referralConsultationId
                medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${enrichedReferral.patientId}/entries/${enrichedReferral.referralConsultationId}`);
-               console.log('🔍 Fetched medical history from referralConsultationId:', enrichedReferral.referralConsultationId, medicalHistory);
              } catch (error) {
-               console.log('No medical history found for this referral consultation:', error);
-               
                // Fallback: try the old method if referralConsultationId approach fails
                try {
                  medicalHistory = await databaseService.getMedicalHistoryByAppointment(enrichedReferral.clinicAppointmentId, enrichedReferral.patientId);
-                 console.log('🔍 Fallback: Fetched medical history using appointment method:', medicalHistory);
                } catch (fallbackError) {
-                 console.log('Fallback method also failed:', fallbackError);
+                 // Silent catch - fallback method failed
                }
              }
            }
          }
-        
-        // Debug logging
-        console.log('🔍 REFERRAL DATA:', {
-          id: enrichedReferral.id,
-          patientFirstName: enrichedReferral.patientFirstName,
-          patientLastName: enrichedReferral.patientLastName,
-          referringClinicName: enrichedReferral.referringClinicName,
-          initialReasonForReferral: enrichedReferral.initialReasonForReferral,
-          appointmentDate: enrichedReferral.appointmentDate,
-          appointmentTime: enrichedReferral.appointmentTime
-        });
-        
-        console.log('🔍 CLINIC DATA:', clinicData);
-        console.log('🔍 REFERRING DOCTOR DATA:', referringDoctorData);
-        console.log('🔍 PATIENT DATA:', patientData);
-        console.log('🔍 PATIENT ID:', enrichedReferral.patientId);
-        console.log('🔍 REFERRAL PATIENT NAMES:', {
-          firstName: enrichedReferral.patientFirstName,
-          lastName: enrichedReferral.patientLastName
-        });
         
         // Combine referral data with additional fetched data
         const combinedReferralData: ReferralData = {
@@ -623,22 +583,6 @@ export default function ReferralDetailsScreen() {
           clinicalSummary: medicalHistory?.clinicalSummary || ''
         };
         
-        // Debug logging for medications and diagnosis
-        console.log('🔍 MEDICATIONS AND DIAGNOSIS DEBUG:', {
-          hasMedicalHistory: !!medicalHistory,
-          rawMedications: medicalHistory?.medications,
-          rawDiagnosis: medicalHistory?.diagnosis,
-          rawDiagnoses: medicalHistory?.diagnoses,
-          diagnosisIsArray: Array.isArray(medicalHistory?.diagnosis),
-          diagnosesIsArray: Array.isArray(medicalHistory?.diagnoses),
-          processedMedications: combinedReferralData.medications,
-          processedDiagnosis: combinedReferralData.diagnosis,
-          allMedicalHistoryKeys: medicalHistory ? Object.keys(medicalHistory) : [],
-        });
-        
-        console.log('🔍 FINAL PATIENT NAME:', combinedReferralData.patientName);
-        console.log('🔍 FINAL REFERRAL DATA:', combinedReferralData);
-        
         setReferralData(combinedReferralData);
         
                  // Load related prescriptions and certificates
@@ -650,7 +594,6 @@ export default function ReferralDetailsScreen() {
            // Build a set of potential specialist/provider IDs to resolve names dynamically
            const potentialIds = new Set<string>();
            const providerId = (medicalHistory as any)?.provider?.id;
-           console.log('🔍 Provider ID:', providerId); 
            if (providerId) potentialIds.add(String(providerId));
            (medicalHistory.prescriptions || []).forEach((pr: any) => {
              if (pr?.specialistId) potentialIds.add(String(pr.specialistId));
@@ -705,22 +648,10 @@ export default function ReferralDetailsScreen() {
                const targetId = isFollowUpAppointment ? String(appointmentId || id) : String(id);
                return certAppointmentId && certAppointmentId === targetId;
              });
-             console.log('🔍 SPECIALIST REFERRAL - Certificate filtering:', {
-               referralId: id,
-               isFollowUp: isFollowUpAppointment,
-               targetId: isFollowUpAppointment ? String(appointmentId || id) : String(id),
-               totalCertificates: certificates.length,
-               matchingCertificates: referralCertificates.length,
-               certificatesWithAppointmentId: certificates.filter(c => c.appointmentId).length
-             });
            } catch (error) {
              console.error('Error loading certificates for referral:', error);
              referralCertificates = [];
            }
-           console.log('🔍 Extracted prescriptions and certificates from medical history:', {
-             prescriptions: referralPrescriptions.length,
-             certificates: referralCertificates.length
-           });
          } else {
            // Fallback: try using appointment method
            try {
@@ -732,7 +663,6 @@ export default function ReferralDetailsScreen() {
                  databaseService.getPrescriptionsByAppointment(appointmentId),
                  databaseService.getCertificatesByAppointment(appointmentId)
                ]);
-               console.log('🔍 Fallback: Fetched prescriptions and certificates using appointment method for ID:', appointmentId);
 
                // Enrich prescriptions with specialist names from DB
                const uniqueSpecialistIds = Array.from(new Set((referralPrescriptions || [])
@@ -783,21 +713,12 @@ export default function ReferralDetailsScreen() {
                });
              }
            } catch (fallbackError) {
-             console.log('Fallback method also failed for prescriptions/certificates:', fallbackError);
+             console.error('Fallback method failed for prescriptions/certificates:', fallbackError);
            }
          }
          
          setPrescriptions(referralPrescriptions);
          setCertificates(referralCertificates);
-         
-         // Debug: Log the processed certificates
-         console.log('🔍 Processed certificates:', referralCertificates.map(cert => ({
-           id: cert.id,
-           type: cert.type,
-           doctor: cert.doctor,
-           issuedDate: cert.issuedDate,
-           createdAt: cert.createdAt
-         })));
       }
     } catch (error) {
       console.error('Error loading referral data:', error);
@@ -866,6 +787,134 @@ export default function ReferralDetailsScreen() {
       ...prev,
       [key]: !prev[key],
     }));
+  };
+
+  // Refer Patient functionality
+  const handleReferPatient = () => {
+    if (!referralData) return;
+    
+    // Store the referral data and show modal
+    setSelectedReferralData(referralData);
+    setShowReferralTypeModal(true);
+    setShowMoreMenu(false);
+  };
+
+  const handleReferToGeneralist = async () => {
+    if (!selectedReferralData) return;
+    
+    const appointmentOrReferral = selectedReferralData;
+    
+    try {
+      let traceResult = null;
+      
+      // Step 1: If it's a referral, use clinicAppointmentId
+      if (appointmentOrReferral.clinicAppointmentId) {
+        traceResult = await databaseService.traceOriginalGeneralist(appointmentOrReferral.clinicAppointmentId);
+      }
+      
+      // Step 2: If not found, look in PMH entries
+      if (!traceResult || !traceResult.doctor) {
+        const patientId = appointmentOrReferral.patientId;
+        let consultationId = appointmentOrReferral.referralConsultationId || appointmentOrReferral.consultationId;
+        
+        if (!consultationId) {
+          
+          // Fallback: Search PMH entries by patient ID only
+          const pmhRef = ref(database, `medicalHistory`);
+          const pmhSnapshot = await get(pmhRef);
+          
+          if (pmhSnapshot.exists()) {
+            const pmhData = pmhSnapshot.val();
+            
+            for (const pmhId in pmhData) {
+              const pmhEntry = pmhData[pmhId];
+              
+              if (pmhEntry.patientId === patientId) {
+                if (pmhEntry.relatedAppointment && pmhEntry.relatedAppointment.id) {
+                  traceResult = await databaseService.traceOriginalGeneralist(pmhEntry.relatedAppointment.id);
+                  if (traceResult && traceResult.doctor) {
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          // Get PMH entry directly using consultation ID as key
+          const pmhRef = ref(database, `patientMedicalHistory/${patientId}/entries/${consultationId}`);
+          const pmhSnapshot = await get(pmhRef);
+          
+          if (pmhSnapshot.exists()) {
+            const pmhEntry = pmhSnapshot.val();
+            
+            if (pmhEntry.relatedAppointment && pmhEntry.relatedAppointment.id) {
+              traceResult = await databaseService.traceOriginalGeneralist(pmhEntry.relatedAppointment.id);
+            }
+          }
+        }
+      }
+      
+      if (!traceResult || !traceResult.doctor || !traceResult.clinic) {
+        Alert.alert(
+          'Error', 
+          'Unable to trace back to the original generalist. This appointment may not have been referred from a generalist.'
+        );
+        return;
+      }
+      
+      const { doctor, clinic } = traceResult;
+      
+      // Navigate to select-datetime with traced generalist details
+      router.push({
+        pathname: '/(specialist)/book-visit/select-datetime',
+        params: {
+          clinicId: clinic.id,
+          clinicName: clinic.name,
+          doctorId: doctor.id,
+          doctorName: `${doctor.firstName} ${doctor.lastName}`,
+          doctorSpecialty: doctor.specialty || 'General Medicine',
+          patientId: appointmentOrReferral.patientId,
+          patientFirstName: appointmentOrReferral.patientFirstName,
+          patientLastName: appointmentOrReferral.patientLastName,
+          originalAppointmentId: appointmentOrReferral.id,
+          isReferral: 'true',
+          referralType: 'generalist',
+          reasonForReferral: 'Return to Generalist',
+          sourceType: 'referral',
+          isTraceBack: 'true',
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error tracing original generalist:', error);
+      Alert.alert('Error', 'Failed to trace back to original generalist. Please try again.');
+    }
+  };
+
+  const handleReferToSpecialist = () => {
+    if (!selectedReferralData) return;
+    
+    const appointmentOrReferral = selectedReferralData;
+    
+    if (!appointmentOrReferral.id) {
+      Alert.alert('Error', 'Unable to determine referral ID for tracking');
+      return;
+    }
+    
+    // Navigate to specialist booking flow
+    router.push({
+      pathname: '/(specialist)/book-visit',
+      params: {
+        patientId: appointmentOrReferral.patientId,
+        patientFirstName: appointmentOrReferral.patientFirstName,
+        patientLastName: appointmentOrReferral.patientLastName,
+        originalAppointmentId: appointmentOrReferral.id,
+        isReferral: 'true',
+        referralType: 'specialist',
+        reasonForReferral: appointmentOrReferral.initialReasonForReferral || 'Specialist referral',
+        sourceType: 'referral',
+      }
+    });
   };
 
   if (loading) {
@@ -1353,9 +1402,9 @@ export default function ReferralDetailsScreen() {
               </TouchableOpacity>
             </View>
           ) : referralData.status.toLowerCase() === 'completed' ? (
-            <View>
+            <View style={styles.confirmedButtonsContainer}>
               <TouchableOpacity
-                style={styles.primaryBottomButton}
+                style={styles.primaryBottomButtonWithMore}
                 onPress={() => {
                   router.push({ pathname: '/consultation-report', params: { id: String(id) } });
                 }}
@@ -1364,23 +1413,18 @@ export default function ReferralDetailsScreen() {
                 <Download size={18} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={styles.primaryBottomButtonText}>Generate Visit Report</Text>
               </TouchableOpacity>
-              {user?.role === 'patient' && (
-                <TouchableOpacity
-                  style={styles.secondaryBottomButtonOutline}
-                  onPress={() => {
-                    alert('Referral details hidden');
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Eye size={18} color="#1E40AF" style={{ marginRight: 8 }} />
-                  <Text style={styles.secondaryBottomButtonOutlineText}>Hide Referral Details</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={styles.moreButton}
+                onPress={() => setShowMoreMenu(!showMoreMenu)}
+                activeOpacity={0.8}
+              >
+                <MoreHorizontal size={20} color="#1E40AF" />
+              </TouchableOpacity>
             </View>
           ) : isConfirmed ? (
-            <View>
+            <View style={styles.confirmedButtonsContainer}>
               <TouchableOpacity
-                style={styles.primaryBottomButton}
+                style={styles.primaryBottomButtonWithMore}
                 onPress={() => {
                   // Navigate to patient consultation using referral context
                   if (isFollowUpAppointment) {
@@ -1409,6 +1453,13 @@ export default function ReferralDetailsScreen() {
               >
                 <Stethoscope size={18} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={styles.primaryBottomButtonText}>Diagnose Patient</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.moreButton}
+                onPress={() => setShowMoreMenu(!showMoreMenu)}
+                activeOpacity={0.8}
+              >
+                <MoreHorizontal size={20} color="#1E40AF" />
               </TouchableOpacity>
             </View>
           ) : null}
@@ -1496,6 +1547,35 @@ export default function ReferralDetailsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* More Menu Dropdown */}
+      {showMoreMenu && (
+        <View style={styles.moreMenuOverlay}>
+          <TouchableOpacity
+            style={styles.moreMenuBackdrop}
+            onPress={() => setShowMoreMenu(false)}
+            activeOpacity={1}
+          />
+          <View style={styles.moreMenuContainer}>
+            <TouchableOpacity
+              style={styles.moreMenuItem}
+              onPress={handleReferPatient}
+              activeOpacity={0.8}
+            >
+              <UserPlus size={18} color="#1E40AF" style={{ marginRight: 12 }} />
+              <Text style={styles.moreMenuItemText}>Refer Patient</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Referral Type Selection Modal */}
+      <ReferralTypeModal
+        visible={showReferralTypeModal}
+        onClose={() => setShowReferralTypeModal(false)}
+        onSelectGeneralist={handleReferToGeneralist}
+        onSelectSpecialist={handleReferToSpecialist}
+      />
 
       {/* Download Success Modal */}
       {downloadModalVisible && (
@@ -2022,6 +2102,66 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Inter-SemiBold',
     letterSpacing: 0.2,
+  },
+  confirmedButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    width: '100%',
+  },
+  primaryBottomButtonWithMore: {
+    flex: 1,
+    backgroundColor: '#1E40AF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 11,
+    paddingVertical: 15,
+  },
+  moreButton: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  moreMenuOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  moreMenuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  moreMenuContainer: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 90 : 82,
+    right: HORIZONTAL_MARGIN,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    minWidth: 200,
+  },
+  moreMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  moreMenuItemText: {
+    color: '#1F2937',
+    fontSize: 15,
+    fontFamily: 'Inter-Medium',
   },
 
   // ---- Prescription styles ----
