@@ -79,7 +79,6 @@ export default function SpecialistProfileScreen() {
   // const refreshNotifications = realtimeNotificationData.refresh;
   // const handleNotificationPress = realtimeNotificationData.handleNotificationPress || (() => {});
 
-
   // Helper function to format date safely (avoiding timezone issues)
   const formatDateSafely = (dateString: string): string => {
     if (!dateString) return '';
@@ -2937,3 +2936,6 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
 });
+
+
+

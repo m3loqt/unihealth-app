@@ -409,7 +409,6 @@ export default function SpecialistAppointmentsScreen() {
 
 
   const handleViewReferralDetails = async (referralData: any) => {
-    
     // Navigate to the new referral details screen
     router.push({
       pathname: '/referral-details',
@@ -420,7 +419,6 @@ export default function SpecialistAppointmentsScreen() {
   };
 
   const handleViewFollowUpDetails = async (appointment: Appointment) => {
-    
     // Navigate to referral details screen with follow-up flag
     router.push({
       pathname: '/referral-details',

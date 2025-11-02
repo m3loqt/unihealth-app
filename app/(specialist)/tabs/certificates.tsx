@@ -161,7 +161,7 @@ export default function SpecialistCertificatesScreen() {
       });
       
       const patientList = Array.from(uniquePatients.values());
-      // console.log(`🔍 Extracted ${patientList.length} unique patients from ${appointments.length} appointments/referrals`);
+      console.log(`🔍 Extracted ${patientList.length} unique patients from ${appointments.length} appointments/referrals`);
       setPatients(patientList);
     } catch (error) {
       console.error('Error loading patients:', error);
@@ -238,7 +238,7 @@ export default function SpecialistCertificatesScreen() {
         
         if (isSignatureSaved && savedSignature) {
           // Auto-use saved signature, skip signature page
-          // console.log('✅ Using saved signature, skipping signature page');
+          console.log('✅ Using saved signature, skipping signature page');
           
           const updatedCertificateData = {
             ...certificateData,
@@ -254,7 +254,7 @@ export default function SpecialistCertificatesScreen() {
             user.uid
           );
           
-          // console.log('✅ Certificate saved successfully with ID (auto-signed):', certificateId);
+          console.log('✅ Certificate saved successfully with ID (auto-signed):', certificateId);
           
           // Reset form
           resetForm();
@@ -345,9 +345,9 @@ export default function SpecialistCertificatesScreen() {
       setLoading(true);
       setError(null);
       
-      // console.log('🔍 Loading certificates for specialist:', user.uid);
+      console.log('🔍 Loading certificates for specialist:', user.uid);
       const specialistCertificates = await databaseService.getCertificatesBySpecialist(user.uid);
-      // console.log('📋 Raw certificates from database:', specialistCertificates);
+      console.log('📋 Raw certificates from database:', specialistCertificates);
       
       // Convert status for display (patient details are already included in the new structure)
       const enrichedCertificates = specialistCertificates.map((cert) => ({
@@ -356,11 +356,11 @@ export default function SpecialistCertificatesScreen() {
         displayStatus: cert.status === 'active' ? 'Valid' : 'Expired'
       }));
       
-      // console.log('👥 Enriched certificates:', enrichedCertificates);
+      console.log('👥 Enriched certificates:', enrichedCertificates);
       
       // Validate certificates data
       const validCertificates = dataValidation.validateArray(enrichedCertificates, dataValidation.isValidCertificate);
-      // console.log('✅ Valid certificates after validation:', validCertificates.length);
+      console.log('✅ Valid certificates after validation:', validCertificates.length);
       setCertificates(validCertificates);
     } catch (error) {
       console.error('Error loading certificates:', error);
