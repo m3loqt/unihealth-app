@@ -58,6 +58,23 @@ export default function SpecialistReviewConfirmScreen() {
   const referralType = params.referralType as string;
   const isTraceBack = params.isTraceBack as string; // Flag to indicate trace-back referral
 
+  // Debug: Log all referral parameters
+  console.log('🔍 Review-confirm referral parameters:', {
+    originalAppointmentId,
+    sourceType,
+    isReferral,
+    referralType,
+    isTraceBack,
+    patientId,
+    patientFirstName,
+    patientLastName,
+    doctorId,
+    doctorName,
+    clinicId,
+    clinicName,
+    reasonForReferral
+  });
+
   const [loading, setLoading] = useState(false);
   const [createdAppointmentId, setCreatedAppointmentId] = useState<string | null>(null);
   const [doctorData, setDoctorData] = useState<any>(null);
@@ -147,12 +164,19 @@ export default function SpecialistReviewConfirmScreen() {
       if (originalAppointmentId && originalAppointmentId !== 'undefined' && originalAppointmentId !== '') {
         clinicAppointmentId = originalAppointmentId;
         clinicAppointmentIdSource = sourceType || 'unknown';
+        console.log('✅ Using originalAppointmentId as clinicAppointmentId:', {
+          clinicAppointmentId,
+          sourceType: clinicAppointmentIdSource,
+          originalAppointmentId
+        });
       } else {
-        console.warn('No originalAppointmentId provided - creating referral without clinicAppointmentId');
+        console.warn('⚠️ No originalAppointmentId provided - creating referral without clinicAppointmentId');
+        console.log('⚠️ This may indicate a direct specialist referral without a source appointment/referral');
       }
 
       // Check if this is a generalist referral (trace-back)
       if (referralType === 'generalist' && isTraceBack === 'true') {
+        console.log('🔍 Creating appointment for generalist referral (trace-back)');
         
         // Create appointment data for generalist
         const appointmentData = {
@@ -188,10 +212,13 @@ export default function SpecialistReviewConfirmScreen() {
 
         // Save to database as appointment
         const appointmentId = await databaseService.createAppointment(appointmentData);
+        console.log('Generalist appointment created successfully with ID:', appointmentId);
         setCreatedAppointmentId(appointmentId);
         setReferralConfirmed(true);
         
       } else {
+        console.log('🔍 Creating referral for specialist referral');
+        
         // Create referral data for specialist
         const specialistReferralData = {
           appointmentDate: selectedDate,
@@ -221,6 +248,7 @@ export default function SpecialistReviewConfirmScreen() {
 
         // Save to database as referral
         const referralId = await databaseService.createReferral(specialistReferralData);
+        console.log('Specialist referral created successfully with ID:', referralId);
         setCreatedAppointmentId(referralId);
         setReferralConfirmed(true);
       }

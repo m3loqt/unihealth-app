@@ -111,10 +111,10 @@ export default function SpecialistChatsScreen() {
       let existingThreads: ChatThread[] = [];
       try {
         existingThreads = await chatService.getUserThreads(user.uid);
-        // console.log('📋 Loaded existing threads for specialist:', existingThreads.length);
+        console.log('📋 Loaded existing threads for specialist:', existingThreads.length);
         existingThreads.forEach(thread => {
           if (thread && thread.participants) {
-            // console.log('📋 Thread:', thread.id, 'participants:', Object.keys(thread.participants), 'lastMessage:', thread.lastMessage?.text);
+            console.log('📋 Thread:', thread.id, 'participants:', Object.keys(thread.participants), 'lastMessage:', thread.lastMessage?.text);
           }
         });
       } catch (threadError) {
@@ -123,9 +123,9 @@ export default function SpecialistChatsScreen() {
       }
       
       // Create chat list items from contacts (patients and generalists)
-      // console.log('👥 Processing contacts:', contacts.length);
+      console.log('👥 Processing contacts:', contacts.length);
       for (const contact of contacts) {
-        // console.log('👥 Processing contact:', contact.firstName, contact.lastName, 'UID:', contact.uid, 'Role:', contact.role);
+        console.log('👥 Processing contact:', contact.firstName, contact.lastName, 'UID:', contact.uid, 'Role:', contact.role);
         
         // Try to find existing thread with this contact
         let thread: ChatThread | undefined;
@@ -133,10 +133,10 @@ export default function SpecialistChatsScreen() {
         // First, try to find by checking if both participants exist in any thread
         for (const existingThread of existingThreads) {
           if (existingThread && existingThread.participants) {
-            // console.log('🔍 Checking thread:', existingThread.id, 'participants:', Object.keys(existingThread.participants), 'looking for specialist:', user.uid, 'contact:', contact.uid);
+            console.log('🔍 Checking thread:', existingThread.id, 'participants:', Object.keys(existingThread.participants), 'looking for specialist:', user.uid, 'contact:', contact.uid);
             
             if (existingThread.participants[user.uid] && existingThread.participants[contact.uid]) {
-              // console.log('✅ Found existing thread for contact:', contact.firstName, contact.lastName, 'thread ID:', existingThread.id, 'last message:', existingThread.lastMessage?.text || 'No last message');
+              console.log('✅ Found existing thread for contact:', contact.firstName, contact.lastName, 'thread ID:', existingThread.id, 'last message:', existingThread.lastMessage?.text || 'No last message');
               thread = existingThread;
               break;
             }
@@ -145,11 +145,11 @@ export default function SpecialistChatsScreen() {
 
         // If no existing thread found, create a placeholder
         if (!thread) {
-          // console.log('📝 Creating placeholder for contact:', contact.firstName, contact.lastName);
+          console.log('📝 Creating placeholder for contact:', contact.firstName, contact.lastName);
           // Use the same thread ID generation logic as chatService.generateThreadId()
           const sorted = [user.uid, contact.uid].sort();
           const placeholderThreadId = `${sorted[0]}_${sorted[1]}`;
-          // console.log('📝 Placeholder thread ID:', placeholderThreadId);
+          console.log('📝 Placeholder thread ID:', placeholderThreadId);
           thread = {
             id: placeholderThreadId, // Use consistent ID format
             participants: { [sorted[0]]: true, [sorted[1]]: true },
@@ -159,7 +159,7 @@ export default function SpecialistChatsScreen() {
             // No lastMessage - this will show "Start a conversation"
           };
         } else {
-          // console.log('✅ Found existing thread for contact:', contact.firstName, contact.lastName, 'thread ID:', thread.id, 'with last message:', thread.lastMessage?.text || 'No last message');
+          console.log('✅ Found existing thread for contact:', contact.firstName, contact.lastName, 'thread ID:', thread.id, 'with last message:', thread.lastMessage?.text || 'No last message');
         }
 
         const lastMessageTime = thread.lastMessage 
@@ -194,9 +194,9 @@ export default function SpecialistChatsScreen() {
         return timeB - timeA;
       });
 
-      // console.log('📋 Final chat list for specialist:', chatList.length, 'items');
+      console.log('📋 Final chat list for specialist:', chatList.length, 'items');
       chatList.forEach(chat => {
-        // console.log('📋 Chat item:', chat.contact.firstName, chat.contact.lastName, 'Role:', chat.contact.role, 'has lastMessage:', !!chat.thread.lastMessage, 'text:', chat.thread.lastMessage?.text || 'N/A');
+        console.log('📋 Chat item:', chat.contact.firstName, chat.contact.lastName, 'Role:', chat.contact.role, 'has lastMessage:', !!chat.thread.lastMessage, 'text:', chat.thread.lastMessage?.text || 'N/A');
       });
       setChats(chatList);
       setFilteredChats(chatList);
@@ -226,15 +226,15 @@ export default function SpecialistChatsScreen() {
   useEffect(() => {
     if (!user) return;
 
-    // console.log('👂 Setting up real-time listener for specialist:', user.uid);
+    console.log('👂 Setting up real-time listener for specialist:', user.uid);
     
     const unsubscribe = chatService.listenToUserThreads(user.uid, (threads) => {
-      // console.log('📨 Real-time update received for specialist:', threads.length, 'threads');
+      console.log('📨 Real-time update received for specialist:', threads.length, 'threads');
       
         // Update chats with real-time data
         setChats(prevChats => {
           const updatedChats = prevChats.map(chatItem => {
-            // console.log('🔄 Processing chatItem for:', chatItem.contact.firstName, 'original lastMessage:', chatItem.thread.lastMessage?.text || 'No last message', 'original hasLastMessage:', !!chatItem.thread.lastMessage);
+            console.log('🔄 Processing chatItem for:', chatItem.contact.firstName, 'original lastMessage:', chatItem.thread.lastMessage?.text || 'No last message', 'original hasLastMessage:', !!chatItem.thread.lastMessage);
             // Find matching thread in real-time data by checking both participants
             const realTimeThread = threads.find(thread => 
               thread && thread.participants && 
@@ -242,17 +242,17 @@ export default function SpecialistChatsScreen() {
               thread.participants[user.uid] === true
             );
             
-            // console.log('🔄 Real-time check for contact:', chatItem.contact.firstName, 'found thread:', !!realTimeThread, 'thread ID:', realTimeThread?.id, 'lastMessage:', realTimeThread?.lastMessage?.text || 'No last message', 'hasLastMessage:', !!realTimeThread?.lastMessage);
+            console.log('🔄 Real-time check for contact:', chatItem.contact.firstName, 'found thread:', !!realTimeThread, 'thread ID:', realTimeThread?.id, 'lastMessage:', realTimeThread?.lastMessage?.text || 'No last message', 'hasLastMessage:', !!realTimeThread?.lastMessage);
             
             if (realTimeThread) {
-              // console.log('🔄 Updating chat with real-time data for contact:', chatItem.contact.firstName, 'Role:', chatItem.contact.role, 'last message:', realTimeThread.lastMessage?.text);
+              console.log('🔄 Updating chat with real-time data for contact:', chatItem.contact.firstName, 'Role:', chatItem.contact.role, 'last message:', realTimeThread.lastMessage?.text);
               
               // Only update if the real-time thread has a lastMessage, otherwise keep the existing data
               if (realTimeThread.lastMessage) {
                 const lastMessageTime = formatMessageTime(realTimeThread.lastMessage.at);
                 const unreadCount = realTimeThread.unread?.[user.uid] || 0;
                 
-                // console.log('✅ Updating with real-time data that has lastMessage');
+                console.log('✅ Updating with real-time data that has lastMessage');
                 return {
                   ...chatItem,
                   thread: realTimeThread,
@@ -260,9 +260,9 @@ export default function SpecialistChatsScreen() {
                   unreadCount,
                 };
               } else {
-                // console.log('⚠️ Real-time thread has no lastMessage, keeping existing data');
+                console.log('⚠️ Real-time thread has no lastMessage, keeping existing data');
                 // Always keep the original data if real-time has no lastMessage
-                // console.log('✅ Keeping original thread data with lastMessage:', chatItem.thread.lastMessage?.text || 'No last message');
+                console.log('✅ Keeping original thread data with lastMessage:', chatItem.thread.lastMessage?.text || 'No last message');
                 return chatItem;
               }
             }
@@ -283,7 +283,7 @@ export default function SpecialistChatsScreen() {
     });
 
     return () => {
-      // console.log('🔇 Unsubscribing from real-time updates for specialist');
+      console.log('🔇 Unsubscribing from real-time updates for specialist');
       unsubscribe();
     };
   }, [user]);
@@ -372,7 +372,7 @@ export default function SpecialistChatsScreen() {
       const { contact, thread } = chatItem;
       
       // Debug logging
-      // console.log('Opening chat with contact:', {
+      console.log('Opening chat with contact:', {
         contactId: contact.uid,
         contactName: `${contact.firstName} ${contact.lastName}`,
         contactRole: contact.role,
@@ -396,7 +396,7 @@ export default function SpecialistChatsScreen() {
        const isPlaceholder = thread.id === expectedThreadId && !thread.lastMessage;
        
        if (isPlaceholder) {
-         // console.log('📝 Creating new thread for contact:', contact.firstName, contact.lastName, 'Role:', contact.role, 'placeholder detected');
+         console.log('📝 Creating new thread for contact:', contact.firstName, contact.lastName, 'Role:', contact.role, 'placeholder detected');
          
          // Prepare linked object, filtering out undefined values
          const linked: { referralId?: string; appointmentId?: string; clinicId?: string } = {};
@@ -417,17 +417,17 @@ export default function SpecialistChatsScreen() {
            
            // Update threadId with the actual thread ID returned from createOrGetThread
            threadId = actualThreadId;
-           // console.log('✅ Successfully created new thread:', threadId);
+           console.log('✅ Successfully created new thread:', threadId);
            
            // Add a small delay to ensure the thread is fully created in Firebase
            await new Promise(resolve => setTimeout(resolve, 500));
          } catch (error) {
            console.error('Error creating thread:', error);
            // Continue with the placeholder thread ID - the individual chat screen will handle it
-           // console.log('Continuing with placeholder thread ID');
+           console.log('Continuing with placeholder thread ID');
          }
        } else {
-         // console.log('Using existing thread:', threadId);
+         console.log('Using existing thread:', threadId);
        }
 
       // Navigate to chat screen with contact info as parameters
@@ -448,7 +448,7 @@ export default function SpecialistChatsScreen() {
     const hasUnreadMessages = unreadCount > 0;
     
     // Debug: Check what we have in the thread object
-    // console.log('🎨 Rendering chat item for:', contact.firstName, 'thread.lastMessage:', thread.lastMessage?.text || 'No last message', 'thread.id:', thread.id, 'hasLastMessage:', !!thread.lastMessage);
+    console.log('🎨 Rendering chat item for:', contact.firstName, 'thread.lastMessage:', thread.lastMessage?.text || 'No last message', 'thread.id:', thread.id, 'hasLastMessage:', !!thread.lastMessage);
 
     return (
       <TouchableOpacity
