@@ -318,6 +318,17 @@ export default function ReferralDetailsScreen() {
   const [declineReason, setDeclineReason] = useState('');
   const [showReasonDropdown, setShowReasonDropdown] = useState(false);
   const [customReason, setCustomReason] = useState('');
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showReferralTypeModal, setShowReferralTypeModal] = useState(false);
+
+  // Ensure menu closes if conditions are no longer met (must be before any early returns)
+  useEffect(() => {
+    const completed = (referralData?.status || '').toLowerCase() === 'completed';
+    const assignedToMe = !!referralData?.assignedSpecialistId && referralData.assignedSpecialistId === user?.uid;
+    if (!(completed && assignedToMe) && showMoreMenu) {
+      setShowMoreMenu(false);
+    }
+  }, [referralData?.status, referralData?.assignedSpecialistId, user?.uid, showMoreMenu]);
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
     patientHistory: true,
     findings: true,
@@ -952,6 +963,11 @@ export default function ReferralDetailsScreen() {
     .map((p) => p[0]?.toUpperCase())
     .join('') || 'U';
 
+  // Show menu only for completed referrals assigned to the logged-in specialist
+  const canShowMoreMenu =
+    (referralData?.status || '').toLowerCase() === 'completed' &&
+    (!!referralData?.assignedSpecialistId && referralData.assignedSpecialistId === user?.uid);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
@@ -1465,6 +1481,87 @@ export default function ReferralDetailsScreen() {
           ) : null}
         </View>
       )}
+
+      {/* More Menu Dropdown (Specialist) */}
+      {showMoreMenu && canShowMoreMenu && (
+        <View style={styles.moreMenuOverlay}>
+          <TouchableOpacity
+            style={styles.moreMenuBackdrop}
+            onPress={() => setShowMoreMenu(false)}
+            activeOpacity={1}
+          />
+          <View style={styles.moreMenuContainer}>
+            <TouchableOpacity
+              style={styles.moreMenuItem}
+              onPress={() => {
+                setShowMoreMenu(false);
+                setShowReferralTypeModal(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <Stethoscope size={18} color="#1E40AF" style={{ marginRight: 12 }} />
+              <Text style={styles.moreMenuItemText}>Refer Patient</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Referral Type Selection Modal (Specialist) */}
+      <ReferralTypeModal
+        visible={showReferralTypeModal}
+        onClose={() => setShowReferralTypeModal(false)}
+        onSelectGeneralist={async () => {
+          if (!referralData?.clinicAppointmentId) {
+            Alert.alert('Error', 'Missing original appointment reference for trace-back.');
+            return;
+          }
+          try {
+            const traceResult = await databaseService.traceOriginalGeneralist(referralData.clinicAppointmentId);
+            if (!traceResult || !traceResult.doctor || !traceResult.clinic) {
+              Alert.alert('Error', 'Unable to trace back to original generalist.');
+              return;
+            }
+            const { doctor, clinic } = traceResult;
+            router.push({
+              pathname: '/(specialist)/book-visit/select-datetime',
+              params: {
+                clinicId: clinic.id,
+                clinicName: clinic.name,
+                doctorId: doctor.id,
+                doctorName: `${doctor.firstName} ${doctor.lastName}`,
+                doctorSpecialty: doctor.specialty || 'General Medicine',
+                patientId: referralData.patientId,
+                patientFirstName: referralData.patientFirstName,
+                patientLastName: referralData.patientLastName,
+                originalAppointmentId: referralData.id,
+                isReferral: 'true',
+                referralType: 'generalist',
+                reasonForReferral: 'Return to Generalist',
+                sourceType: 'referral',
+                isTraceBack: 'true',
+              }
+            });
+          } catch (e) {
+            Alert.alert('Error', 'Failed to trace back to original generalist.');
+          }
+        }}
+        onSelectSpecialist={() => {
+          if (!referralData) return;
+          router.push({
+            pathname: '/(specialist)/book-visit',
+            params: {
+              patientId: referralData.patientId,
+              patientFirstName: referralData.patientFirstName,
+              patientLastName: referralData.patientLastName,
+              originalAppointmentId: referralData.id,
+              isReferral: 'true',
+              referralType: 'specialist',
+              reasonForReferral: referralData.initialReasonForReferral || referralData.additionalNotes || 'Specialist referral',
+              sourceType: 'referral',
+            }
+          });
+        }}
+      />
 
       {/* Decline Referral Modal */}
       <Modal

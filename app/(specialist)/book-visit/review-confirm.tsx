@@ -173,7 +173,7 @@ export default function SpecialistReviewConfirmScreen() {
           patientLastName: patientLastName,
           sourceSystem: 'UniHealth_Specialist_App',
           status: 'pending' as const,
-          type: 'general_consultation',
+          type: 'follow_up',
           // Add trace-back metadata
           isReferralFollowUp: true,
           originalAppointmentId: originalAppointmentId,

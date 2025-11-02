@@ -94,7 +94,7 @@ export interface Appointment {
   sourceSystem?: string; // Optional for walk-ins
   specialty?: string; // Added back for UI display
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  type: 'general_consultation' | 'walk-in' | string;
+  type: 'general_consultation' | 'follow_up' | 'walk-in' | string;
   consultationId?: string;
   appointmentConsultationId?: string;
   // Follow-up tracking fields

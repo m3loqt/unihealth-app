@@ -22,7 +22,7 @@ export interface Appointment {
   sourceSystem?: string; // Optional for walk-ins
   specialty?: string; // Added back for UI display
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  type: 'general_consultation' | 'walk-in' | 'specialist_referral' | string;
+  type: 'general_consultation' | 'follow_up' | 'walk-in' | 'specialist_referral' | string;
   consultationId?: string;
   appointmentConsultationId?: string;
   // Specialist referral specific fields
@@ -50,7 +50,7 @@ export interface CreateAppointmentData {
   patientId: string;
   sourceSystem: string;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  type: 'general_consultation' | string;
+  type: 'general_consultation' | 'follow_up' | string;
 }
 
 // New interface for walk-in appointments (read-only)
