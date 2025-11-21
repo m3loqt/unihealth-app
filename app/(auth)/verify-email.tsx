@@ -233,7 +233,7 @@ export default function VerifyEmailScreen() {
           {/* Description */}
           <Text style={styles.description}>
             {verificationSent 
-              ? `We've sent a verification link to ${userEmail}. Please check your inbox and click the link to verify your email address.`
+              ? `We've sent a verification link to ${userEmail}. Please check your inbox or spam and click the link to verify your email address.`
               : 'We need to verify your email address to complete your patient account setup. This helps us keep your account secure and ensures you receive important health updates.'
             }
           </Text>

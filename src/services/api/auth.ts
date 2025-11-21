@@ -13,7 +13,7 @@ import {
 } from 'firebase/auth';
 import { ref, set, get, child, remove, query, orderByChild, equalTo } from 'firebase/database';
 import { auth, database } from '../../config/firebase';
-import { getCurrentLocalTimestamp } from '../../utils/date';
+import { getCurrentLocalTimestamp, convertToISOFormat } from '../../utils/date';
 import { emailService } from '../email/emailService';
 import { capitalizeRelationship } from '../../utils/formatting';
 import { cleanOptionalString, processAllergies, filterUndefinedValues } from '../../utils/string';
@@ -560,11 +560,14 @@ export const authService = {
       };
       
       // Prepare patient node data with null safety (editable fields)
+      // Convert dateOfBirth from MM/DD/YYYY to YYYY-MM-DD format for storage
+      const dateOfBirthISO = signUpData.dateOfBirth ? convertToISOFormat(signUpData.dateOfBirth) : '';
+      
       const patientNodeData: PatientNode = {
         address: signUpData.address || '',
         contactNumber: signUpData.contactNumber || '',
         createdAt: currentTime,
-        dateOfBirth: signUpData.dateOfBirth || '',
+        dateOfBirth: dateOfBirthISO,
         emergencyContact: signUpData.emergencyContactName ? {
           name: signUpData.emergencyContactName,
           phone: signUpData.emergencyContactNumber || '',
@@ -615,7 +618,7 @@ export const authService = {
         middleName: cleanOptionalString(signUpData.middleName),
         lastName: signUpData.lastName,
         phone: signUpData.contactNumber || undefined,
-        dateOfBirth: signUpData.dateOfBirth || undefined,
+        dateOfBirth: dateOfBirthISO || undefined,
         gender: signUpData.gender || undefined,
         address: signUpData.address || undefined,
         highestEducationalAttainment: cleanOptionalString(signUpData.highestEducationalAttainment),

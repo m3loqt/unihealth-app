@@ -506,8 +506,9 @@ export default function PatientOverviewScreen() {
             );
           }
           let dobDate: Date | null = null;
+          const { parseFlexibleDate } = require('../../src/utils/date');
           for (const cand of dobCandidates) {
-            const parsed = parseDate(cand);
+            const parsed = parseFlexibleDate(cand);
             if (parsed) { dobDate = parsed; break; }
           }
           if (dobDate) {
@@ -721,7 +722,10 @@ export default function PatientOverviewScreen() {
 
   const getPatientAge = () => {
     if (patientData?.dateOfBirth) {
-      const birthDate = new Date(patientData.dateOfBirth);
+      const { parseFlexibleDate } = require('../../src/utils/date');
+      const birthDate = parseFlexibleDate(patientData.dateOfBirth);
+      if (!birthDate) return null;
+      
       const today = new Date();
       const age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
@@ -946,7 +950,14 @@ export default function PatientOverviewScreen() {
       .map((n: string) => n[0]?.toUpperCase())
       .join('') || 'P';
   })();
-  const patientDOB = patientData?.dateOfBirth ? formatDate(patientData.dateOfBirth) : 'Not provided';
+  // Format dateOfBirth using flexible parsing
+  const patientDOB = (() => {
+    if (!patientData?.dateOfBirth) return 'Not provided';
+    const { parseFlexibleDate } = require('../../src/utils/date');
+    const birthDate = parseFlexibleDate(patientData.dateOfBirth);
+    if (!birthDate) return patientData.dateOfBirth; // Fallback to raw value if parsing fails
+    return formatDate(birthDate.toISOString());
+  })();
 
   return (
     <SafeAreaView style={styles.container}>

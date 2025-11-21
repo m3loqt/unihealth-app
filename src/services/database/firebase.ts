@@ -13,7 +13,7 @@ import {
   endBefore
 } from 'firebase/database';
 import { database } from '../../config/firebase';
-import { getCurrentLocalTimestamp } from '../../utils/date';
+import { getCurrentLocalTimestamp, parseFlexibleDate } from '../../utils/date';
 
 // Standardized data type definitions for immutable vs mutable data separation
 export interface ImmutableUserData {
@@ -309,33 +309,47 @@ export const DataTransformationUtils = {
 
   // Transform standardized patient data to profile format
   toPatientProfile: (data: StandardizedPatientData): PatientProfileData => {
-    const age = data.dateOfBirth ? 
-      Math.floor((Date.now() - new Date(data.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 
-      undefined;
+    // Use flexible date parsing for age calculation
+    let age: number | undefined;
+    let formattedDateOfBirth: string | undefined;
+    
+    if (data.dateOfBirth) {
+      const birthDate = parseFlexibleDate(data.dateOfBirth);
+      
+      if (birthDate) {
+        age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+        formattedDateOfBirth = birthDate.toLocaleDateString();
+      }
+    }
     
     return {
       ...data,
       displayName: data.fullName,
       age,
-      formattedDateOfBirth: data.dateOfBirth ? 
-        new Date(data.dateOfBirth).toLocaleDateString() : 
-        undefined,
+      formattedDateOfBirth,
     };
   },
 
   // Transform standardized specialist data to profile format
   toSpecialistProfile: (data: StandardizedSpecialistData): SpecialistProfileData => {
-    const age = data.dateOfBirth ? 
-      Math.floor((Date.now() - new Date(data.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 
-      undefined;
+    // Use flexible date parsing for age calculation
+    let age: number | undefined;
+    let formattedDateOfBirth: string | undefined;
+    
+    if (data.dateOfBirth) {
+      const birthDate = parseFlexibleDate(data.dateOfBirth);
+      
+      if (birthDate) {
+        age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+        formattedDateOfBirth = birthDate.toLocaleDateString();
+      }
+    }
     
     return {
       ...data,
       displayName: data.fullName,
       age,
-      formattedDateOfBirth: data.dateOfBirth ? 
-        new Date(data.dateOfBirth).toLocaleDateString() : 
-        undefined,
+      formattedDateOfBirth,
       formattedYearsOfExperience: data.yearsOfExperience ? 
         `${data.yearsOfExperience} year${data.yearsOfExperience !== 1 ? 's' : ''} of experience` : 
         undefined,
@@ -569,20 +583,17 @@ export const databaseService = {
                     if (fullPatientData.age && fullPatientData.age > 0) {
                       patientDetails.age = fullPatientData.age;
                     } else if (fullPatientData.dateOfBirth) {
-                      // Parse date - handle MM/DD/YYYY format
-                      let birthDate: Date;
-                      if (fullPatientData.dateOfBirth.includes('/')) {
-                        // Format: MM/DD/YYYY or DD/MM/YYYY
-                        const parts = fullPatientData.dateOfBirth.split('/');
-                        // Assume MM/DD/YYYY format
-                        birthDate = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
-                      } else {
-                        birthDate = new Date(fullPatientData.dateOfBirth);
-                      }
+                      // Use flexible date parsing to handle multiple formats
+                      const birthDate = parseFlexibleDate(fullPatientData.dateOfBirth);
                       
-                      const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-                      patientDetails.age = age > 0 ? age : 0;
-                      console.log('🔍 Calculated age:', age, 'from birthDate:', birthDate);
+                      if (birthDate) {
+                        const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                        patientDetails.age = age > 0 ? age : 0;
+                        console.log('🔍 Calculated age:', age, 'from birthDate:', birthDate);
+                      } else {
+                        console.warn('Could not parse dateOfBirth:', fullPatientData.dateOfBirth);
+                        patientDetails.age = 0;
+                      }
                     }
                     patientDetails.gender = fullPatientData.gender || 'Unknown';
                     patientDetails.contactNumber = fullPatientData.contactNumber || 'N/A';
@@ -650,20 +661,17 @@ export const databaseService = {
                         if (fullPatientData.age && fullPatientData.age > 0) {
                           patientDetails.age = fullPatientData.age;
                         } else if (fullPatientData.dateOfBirth) {
-                          // Parse date - handle MM/DD/YYYY format
-                          let birthDate: Date;
-                          if (fullPatientData.dateOfBirth.includes('/')) {
-                            // Format: MM/DD/YYYY or DD/MM/YYYY
-                            const parts = fullPatientData.dateOfBirth.split('/');
-                            // Assume MM/DD/YYYY format
-                            birthDate = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
-                          } else {
-                            birthDate = new Date(fullPatientData.dateOfBirth);
-                          }
+                          // Use flexible date parsing to handle multiple formats
+                          const birthDate = parseFlexibleDate(fullPatientData.dateOfBirth);
                           
-                          const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-                          patientDetails.age = age > 0 ? age : 0;
-                          console.log('🔍 Calculated age (referral):', age, 'from birthDate:', birthDate);
+                          if (birthDate) {
+                            const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                            patientDetails.age = age > 0 ? age : 0;
+                            console.log('🔍 Calculated age (referral):', age, 'from birthDate:', birthDate);
+                          } else {
+                            console.warn('Could not parse dateOfBirth:', fullPatientData.dateOfBirth);
+                            patientDetails.age = 0;
+                          }
                         }
                         patientDetails.gender = fullPatientData.gender || 'Unknown';
                         patientDetails.contactNumber = fullPatientData.contactNumber || 'N/A';
@@ -3613,54 +3621,8 @@ export const databaseService = {
     if (!dateOfBirth) return 0;
     
     try {
-      // Handle different date formats commonly found in the database
-      let birthDate: Date | null = null;
-      
-      // Try direct parsing first
-      const directParse = new Date(dateOfBirth);
-      if (!isNaN(directParse.getTime())) {
-        birthDate = directParse;
-      } else {
-        // Handle string formats
-        const cleaned = dateOfBirth.replace(/[-\.]/g, '/').trim();
-        const parts = cleaned.split('/').map(p => p.trim());
-        
-        if (parts.length === 3) {
-          let day: number, month: number, year: number;
-          
-          if (parts[0].length === 4) {
-            // YYYY/MM/DD format (ISO-like)
-            year = Number(parts[0]);
-            month = Number(parts[1]);
-            day = Number(parts[2]);
-          } else if (Number(parts[0]) > 12) {
-            // DD/MM/YYYY format
-            day = Number(parts[0]);
-            month = Number(parts[1]);
-            year = Number(parts[2]);
-          } else {
-            // MM/DD/YYYY format (US format - most common in our data)
-            month = Number(parts[0]);
-            day = Number(parts[1]);
-            year = Number(parts[2]);
-          }
-          
-          // Validate the parsed values
-          if (year && month && day && 
-              year > 1900 && year < 2100 && 
-              month >= 1 && month <= 12 && 
-              day >= 1 && day <= 31) {
-            birthDate = new Date(year, month - 1, day);
-            
-            // Check if the date is valid (handles invalid dates like Feb 30)
-            if (birthDate.getFullYear() !== year || 
-                birthDate.getMonth() !== month - 1 || 
-                birthDate.getDate() !== day) {
-              birthDate = null;
-            }
-          }
-        }
-      }
+      // Use the flexible date parsing utility
+      const birthDate = parseFlexibleDate(dateOfBirth);
       
       if (!birthDate || isNaN(birthDate.getTime())) {
         console.warn('Invalid date of birth:', dateOfBirth);
