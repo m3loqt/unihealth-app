@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "UniHealth",
-    "slug": "unihealth-app",
+    "slug": "unihealth",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -23,7 +23,10 @@
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.unihealth.app"
+      "package": "com.unihealth.app",
+      "compileSdkVersion": 35,
+      "targetSdkVersion": 35,
+      "minSdkVersion": 24
     },
     "web": {
       "favicon": "./assets/images/favicon.png",
@@ -35,6 +38,13 @@
     "scheme": "unihealth",
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9ba99afe-98fc-46d6-9d3f-3697e09d1439"
+      }
+    },
+    "owner": "meloqt01"
   }
 }
