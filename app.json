@@ -4,7 +4,7 @@
     "slug": "unihealth",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/log.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/images/HEALTH Logo.png",
@@ -19,8 +19,9 @@
       "bundleIdentifier": "com.unihealth.app"
     },
     "android": {
+      "icon": "./assets/images/log.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
+        "foregroundImage": "./assets/images/log.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.unihealth.app",
