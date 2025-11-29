@@ -116,8 +116,11 @@ export default function SpecialistChatsScreen() {
         // Continue without existing threads - we'll create placeholders for all contacts
       }
       
-      // Create chat list items from contacts (patients and generalists)
-      for (const contact of contacts) {
+      // Create chat list items from contacts (only generalists - patients are hidden)
+      // Filter out patient conversations
+      const generalistContacts = contacts.filter(contact => contact.role !== 'patient');
+      
+      for (const contact of generalistContacts) {
         // Try to find existing thread with this contact
         let thread: ChatThread | undefined;
         
@@ -473,7 +476,7 @@ export default function SpecialistChatsScreen() {
       <MessageCircle size={64} color="#D1D5DB" />
       <Text style={styles.emptyTitle}>No Contacts Available</Text>
       <Text style={styles.emptyDescription}>
-        You'll see your patients and referring generalists here once you have appointments or referrals.{'\n'}
+        You'll see your referring generalists here once you have referrals.{'\n'}
       </Text>
     </View>
   );
