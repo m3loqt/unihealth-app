@@ -153,6 +153,8 @@ export interface MedicalHistory {
   };
   treatmentPlan?: string;
   type: string;
+  patientType?: 'Outpatient' | 'Inpatient';
+  courseInTheWard?: string;
   // certificates removed - now stored separately in patientMedicalCertificates
 }
 
