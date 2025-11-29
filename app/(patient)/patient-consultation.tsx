@@ -15,6 +15,7 @@ import {
   Modal,
   Pressable,
   Dimensions,
+  Switch,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import {
@@ -81,6 +82,7 @@ export default function PatientConsultationScreen() {
     // Step 1: Patient History
     presentIllnessHistory: string;
     reviewOfSymptoms: string;
+    courseInTheWard: string;
     
     // Step 2: Findings
     labResults: string;
@@ -105,6 +107,7 @@ export default function PatientConsultationScreen() {
   }>({
     presentIllnessHistory: '',
     reviewOfSymptoms: '',
+    courseInTheWard: '',
     labResults: '',
     medications: '',
     diagnoses: [],
@@ -119,6 +122,9 @@ export default function PatientConsultationScreen() {
     certificates: [],
     
   });
+
+  // Inpatient/Outpatient switch state (default: outpatient)
+  const [isInpatient, setIsInpatient] = useState(false);
 
   // Derived validation for required fields (prescriptions and certificates are optional)
   const isCompleteEnabled = (() => {
@@ -135,6 +141,10 @@ export default function PatientConsultationScreen() {
       formData.treatmentPlan,
       formData.clinicalSummary,
     ];
+    // Add courseInTheWard if inpatient is selected
+    if (isInpatient) {
+      requiredStrings.push(formData.courseInTheWard);
+    }
     const allTextFilled = requiredStrings.every((v) => typeof v === 'string' && v.trim().length > 0);
     const hasDiagnoses = formData.diagnoses.length > 0 && formData.diagnoses.every((d) =>
       (d.code || '').toString().trim().length > 0 && (d.description || '').toString().trim().length > 0
@@ -157,6 +167,10 @@ export default function PatientConsultationScreen() {
       formData.treatmentPlan,
       formData.clinicalSummary,
     ];
+    // Add courseInTheWard if inpatient is selected
+    if (isInpatient) {
+      requiredFields.push(formData.courseInTheWard);
+    }
     const totalRequired = requiredFields.length + 1; // +1 for Diagnoses block
     const completedText = requiredFields.filter((v) => typeof v === 'string' && v.trim().length > 0).length;
     const diagnosesComplete = formData.diagnoses.length > 0 && formData.diagnoses.every((d) =>
@@ -313,10 +327,15 @@ export default function PatientConsultationScreen() {
         }
       }
       
+      // Load patientType and set isInpatient accordingly
+      const patientType = (medicalHistory as any)?.patientType || 'Outpatient';
+      const isInpatientValue = patientType === 'Inpatient';
+      
       setFormData(prevFormData => ({
         // Step 1: Patient History
         presentIllnessHistory: medicalHistory?.presentIllnessHistory || '',
         reviewOfSymptoms: medicalHistory?.reviewOfSymptoms || '',
+        courseInTheWard: (medicalHistory as any)?.courseInTheWard || '',
         
         // Step 2: Findings
         labResults: medicalHistory?.labResults || '',
@@ -339,6 +358,9 @@ export default function PatientConsultationScreen() {
         prescriptions: medicalHistory?.prescriptions || [],
         certificates: certificatesForConsultation.length > 0 ? certificatesForConsultation : (prevFormData.certificates || []), // Load certificates from PMC or preserve existing ones
       }));
+      
+      // Set inpatient/outpatient switch based on loaded data
+      setIsInpatient(isInpatientValue);
       
       console.log('🔍 Form data set with diagnoses:', medicalHistory?.diagnoses || []);
       console.log('🔍 Number of diagnoses in form data after setting:', (medicalHistory?.diagnoses || []).length);
@@ -1565,6 +1587,8 @@ export default function PatientConsultationScreen() {
           sourceSystem: 'UniHealth_Patient_App',
         },
         type: 'General Consultation',
+        patientType: isInpatient ? 'Inpatient' : 'Outpatient',
+        courseInTheWard: isInpatient ? formData.courseInTheWard : undefined,
       };
       
       // Debug: Verify certificates are excluded from consultation data
@@ -2010,6 +2034,8 @@ export default function PatientConsultationScreen() {
           sourceSystem: 'UniHealth_Patient_App',
         },
         type: 'General Consultation',
+        patientType: isInpatient ? 'Inpatient' : 'Outpatient',
+        courseInTheWard: isInpatient ? formData.courseInTheWard : undefined,
       };
       
       // Debug: Verify certificates are excluded from consultation data
@@ -2479,6 +2505,64 @@ export default function PatientConsultationScreen() {
             
             {/* Review of Symptoms */}
             {renderFieldWithSpeech('Review of Symptoms', 'reviewOfSymptoms', true, true)}
+            
+            {/* Course in the Ward - Only shown when inpatient is selected */}
+            {isInpatient && (
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>
+                  Course in the Ward
+                  <Text style={styles.requiredAsterisk}> *</Text>
+                </Text>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={[styles.textInput, styles.courseInWardInput]}
+                    value={formData.courseInTheWard || ''}
+                    onChangeText={(value) => handleInputChange('courseInTheWard', value)}
+                    multiline={true}
+                    numberOfLines={6}
+                    textAlignVertical="top"
+                    placeholder="Enter course in the ward..."
+                    placeholderTextColor="#9CA3AF"
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.micButton,
+                      activeField === 'courseInTheWard' && styles.micButtonActive,
+                      !isVoiceAvailable && styles.micButtonDisabled,
+                    ]}
+                    onPress={() => {
+                      console.log('Microphone pressed for field: courseInTheWard');
+                      if (activeField === 'courseInTheWard' && isRecording) {
+                        handleStopRecording();
+                      } else {
+                        handleStartRecording('courseInTheWard');
+                      }
+                    }}
+                    disabled={!isVoiceAvailable}
+                  >
+                    <Animated.View
+                      style={[
+                        styles.micIconContainer,
+                        activeField === 'courseInTheWard' && {
+                          transform: [{ scale: pulseAnim }],
+                          backgroundColor: "#1E40AF",
+                          borderColor: "#1E40AF"
+                        },
+                        !isVoiceAvailable && styles.micIconDisabled,
+                      ]}
+                    >
+                      <Mic
+                        size={16}
+                        color={activeField === 'courseInTheWard' ? '#FFFFFF' : '#1E40AF'}
+                      />
+                    </Animated.View>
+                  </TouchableOpacity>
+                </View>
+                {activeField === 'courseInTheWard' && isRecording && (
+                  <Text style={styles.recordingIndicator}>Recording...</Text>
+                )}
+              </View>
+            )}
           </View>
         );
         
@@ -3394,6 +3478,26 @@ export default function PatientConsultationScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Patient Consultation</Text>
         <View style={styles.headerActions}>
+          {/* Inpatient/Outpatient Switch */}
+          <View style={styles.headerSwitchContainer}>
+            <Text style={styles.headerSwitchLabel}>
+              {isInpatient ? 'Inpatient' : 'Outpatient'}
+            </Text>
+            <Switch
+              value={isInpatient}
+              onValueChange={(value) => {
+                setIsInpatient(value);
+                setHasChanges(true);
+                // Clear courseInTheWard when switching to outpatient
+                if (!value) {
+                  setFormData(prev => ({ ...prev, courseInTheWard: '' }));
+                }
+              }}
+              trackColor={{ false: '#E5E7EB', true: '#1E40AF' }}
+              thumbColor={isInpatient ? '#FFFFFF' : '#9CA3AF'}
+              ios_backgroundColor="#E5E7EB"
+            />
+          </View>
           {/* View Medical History Button - Only show if appointment/referral is completed */}
           {isCompleted && (consultationIdString || referralIdString) && (
             <TouchableOpacity
@@ -4067,6 +4171,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 24,
   },
+  headerSwitchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerSwitchLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    fontWeight: '600',
+  },
   viewHistoryButton: {
     width: 40,
     height: 40,
@@ -4134,6 +4249,11 @@ const styles = StyleSheet.create({
   },
   multilineInput: {
     minHeight: 80,
+    textAlignVertical: 'top',
+    paddingTop: 12,
+  },
+  courseInWardInput: {
+    minHeight: 120,
     textAlignVertical: 'top',
     paddingTop: 12,
   },
@@ -4433,6 +4553,36 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: '#374151',
     marginBottom: 8,
+  },
+  switchContainer: {
+    marginBottom: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  switchLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  switchOption: {
+    fontSize: 15,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+  },
+  switchOptionActive: {
+    fontFamily: 'Inter-SemiBold',
+    color: '#1E40AF',
   },
   requiredAsterisk: {
     color: '#EF4444',
