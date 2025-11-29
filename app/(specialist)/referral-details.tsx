@@ -16,6 +16,7 @@ import {
   RefreshControl,
   Modal,
   TextInput,
+  Pressable,
 } from 'react-native';
 import {
   Pill,
@@ -315,6 +316,8 @@ export default function ReferralDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [showReasonDropdown, setShowReasonDropdown] = useState(false);
   const [customReason, setCustomReason] = useState('');
@@ -841,16 +844,26 @@ export default function ReferralDetailsScreen() {
   const isPending = (referralData?.status || '').toLowerCase() === 'pending' || (referralData?.status || '').toLowerCase() === 'pending_acceptance';
   const isConfirmed = (referralData?.status || '').toLowerCase() === 'confirmed';
 
-  // Accept referral
-  const handleAcceptReferral = async () => {
+  // Accept referral - show confirmation modal
+  const handleAcceptReferral = () => {
+    setShowAcceptModal(true);
+  };
+
+  // Confirm accept referral - actually accept it
+  const confirmAcceptReferral = async () => {
     if (!referralData?.id) return;
     try {
       await databaseService.updateReferralStatus(referralData.id, 'confirmed');
-      Alert.alert('Success', 'Referral confirmed successfully!');
+      setShowAcceptModal(false);
+      setShowSuccessModal(true);
       await loadReferralData();
     } catch (error) {
       Alert.alert('Error', 'Failed to accept referral. Please try again.');
     }
+  };
+
+  const handleCloseSuccessModal = () => {
+    setShowSuccessModal(false);
   };
 
   // Decline referral
@@ -1560,6 +1573,111 @@ export default function ReferralDetailsScreen() {
         </View>
       )}
 
+
+      {/* Accept Referral Confirmation Modal */}
+      <Modal
+        visible={showAcceptModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowAcceptModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Accept Referral</Text>
+              <Text style={styles.modalSubtitle}>
+                Are you sure you want to accept this referral with{' '}
+                <Text style={{ fontWeight: 'bold', color: '#1E40AF' }}>
+                  {referralData?.patientName || 'this patient'}
+                </Text>
+                ?
+              </Text>
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalCancelButton}
+                  onPress={() => setShowAcceptModal(false)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalSubmitButton, { backgroundColor: '#1E40AF' }]}
+                  onPress={confirmAcceptReferral}
+                >
+                  <Text style={styles.modalSubmitText}>Accept</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal for Referral Confirmation */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCloseSuccessModal}
+      >
+        <Pressable style={styles.successModalBackdrop} onPress={handleCloseSuccessModal}>
+          <View style={styles.successModalOverlay} />
+        </Pressable>
+        
+        <View style={styles.successModalContainer}>
+          <View style={styles.successModalContent}>
+            <View style={styles.successIconContainer}>
+              <CheckCircle size={64} color="#1E40AF" />
+            </View>
+            <Text style={styles.successTitle}>Referral Confirmed!</Text>
+            <Text style={styles.successMessage}>
+              You have successfully confirmed the referral. The patient and referring specialist will be notified.
+            </Text>
+            <View style={styles.successModalDetailsCard}>
+              <View style={styles.successModalDetailRow}>
+                <Text style={styles.successModalDetailLabel}>Patient:</Text>
+                <Text style={styles.successModalDetailValue}>
+                  {referralData?.patientName || 'Unknown Patient'}
+                </Text>
+              </View>
+              {referralData?.clinic && (
+                <View style={styles.successModalDetailRow}>
+                  <Text style={styles.successModalDetailLabel}>Clinic:</Text>
+                  <Text style={styles.successModalDetailValue}>{referralData.clinic}</Text>
+                </View>
+              )}
+              {referralData?.date && (
+                <View style={styles.successModalDetailRow}>
+                  <Text style={styles.successModalDetailLabel}>Date:</Text>
+                  <Text style={styles.successModalDetailValue}>{formatDate(referralData.date)}</Text>
+                </View>
+              )}
+              {referralData?.time && (
+                <View style={styles.successModalDetailRow}>
+                  <Text style={styles.successModalDetailLabel}>Time:</Text>
+                  <Text style={styles.successModalDetailValue}>{formatTime(referralData.time)}</Text>
+                </View>
+              )}
+              {referralData?.initialReasonForReferral && (
+                <View style={styles.successModalDetailRow}>
+                  <Text style={styles.successModalDetailLabel}>Purpose:</Text>
+                  <Text style={styles.successModalDetailValue}>{referralData.initialReasonForReferral}</Text>
+                </View>
+              )}
+            </View>
+            <TouchableOpacity
+              style={styles.successModalCloseButton}
+              onPress={handleCloseSuccessModal}
+            >
+              <Text style={styles.successModalCloseButtonText}>Close</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.successModalXButton}
+              onPress={handleCloseSuccessModal}
+            >
+              <X size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Decline Referral Modal */}
       <Modal
@@ -2410,6 +2528,120 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
     marginLeft: 3,
+  },
+
+  // Success Modal Styles
+  successModalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  successModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  successModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  successModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    position: 'relative',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    width: '100%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  successIconContainer: {
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 22,
+  },
+  successModalDetailsCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  successModalDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  successModalDetailLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  successModalDetailValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 12,
+  },
+  successModalCloseButton: {
+    backgroundColor: '#1E40AF',
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 32,
+    width: '100%',
+    alignItems: 'center',
+  },
+  successModalCloseButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+  },
+  successModalXButton: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
 });
 
