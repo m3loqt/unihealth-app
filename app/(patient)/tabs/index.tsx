@@ -927,8 +927,8 @@ export default function HomeScreen() {
             <Text style={styles.userName}>{user?.firstName || ''}</Text>
           </View>
            <View style={styles.headerIcons}>
-             {/* AI Chat Button */}
-             <View style={styles.chatbotButtonContainer}>
+             {/* AI Chat Button - Hidden for patients */}
+             {/* <View style={styles.chatbotButtonContainer}>
                <TouchableOpacity 
                  style={styles.iconButton}
                  onPress={handleOpenChatbot}
@@ -938,7 +938,7 @@ export default function HomeScreen() {
                <View style={styles.newBadge}>
                  <Text style={styles.newBadgeText}>NEW</Text>
                </View>
-             </View>
+             </View> */}
              
              <TouchableOpacity 
                style={styles.iconButton}
