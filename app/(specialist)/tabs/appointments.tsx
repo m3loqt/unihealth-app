@@ -12,6 +12,7 @@ import {
   Modal,
   Alert,
   RefreshControl,
+  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -177,6 +178,7 @@ export default function SpecialistAppointmentsScreen() {
   // Accept/Decline Modals for Referrals
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   
   // Referral Type Modal
@@ -333,14 +335,19 @@ export default function SpecialistAppointmentsScreen() {
         await databaseService.updateAppointmentStatus(selectedAppointment.id, 'confirmed');
       }
       
-      Alert.alert('Success', 'Referral confirmed successfully!');
+      // Close accept modal and show success modal
       setShowAcceptModal(false);
-      setSelectedAppointment(null);
+      setShowSuccessModal(true);
       // Real-time updates will handle the refresh automatically
     } catch (error) {
       console.error('Error accepting referral:', error);
       Alert.alert('Error', 'Failed to accept referral. Please try again.');
     }
+  };
+
+  const handleCloseSuccessModal = () => {
+    setShowSuccessModal(false);
+    setSelectedAppointment(null);
   };
 
   const handleDeclineReferral = (appointment: Appointment) => {
@@ -1351,6 +1358,107 @@ export default function SpecialistAppointmentsScreen() {
     );
   };
 
+  // Success modal for referral confirmation
+  const renderSuccessModal = () => {
+    if (!selectedAppointment) return null;
+    
+    const formatDate = (dateString: string) => {
+      try {
+        const [year, month, day] = dateString.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch (error) {
+        return dateString;
+      }
+    };
+
+    const formatTime = (timeString: string) => {
+      if (!timeString) return 'Not specified';
+      if (timeString.includes('AM') || timeString.includes('PM')) {
+        return timeString;
+      }
+      const [hours, minutes] = timeString.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 || 12;
+      return `${displayHour}:${minutes} ${ampm}`;
+    };
+
+    return (
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCloseSuccessModal}
+      >
+        <Pressable style={styles.successModalBackdrop} onPress={handleCloseSuccessModal}>
+          <View style={styles.successModalOverlay} />
+        </Pressable>
+        
+        <View style={styles.successModalContainer}>
+          <View style={styles.successModalContent}>
+            <View style={styles.successIconContainer}>
+              <CheckCircle size={64} color="#1E40AF" />
+            </View>
+            <Text style={styles.successTitle}>Referral Confirmed!</Text>
+            <Text style={styles.successMessage}>
+              You have successfully confirmed the referral. The patient and referring specialist will be notified.
+            </Text>
+            <View style={styles.successModalDetailsCard}>
+              <View style={styles.successModalDetailRow}>
+                <Text style={styles.successModalDetailLabel}>Patient:</Text>
+                <Text style={styles.successModalDetailValue}>
+                  {selectedAppointment.patientFirstName} {selectedAppointment.patientLastName}
+                </Text>
+              </View>
+              {selectedAppointment.clinicName && (
+                <View style={styles.successModalDetailRow}>
+                  <Text style={styles.successModalDetailLabel}>Clinic:</Text>
+                  <Text style={styles.successModalDetailValue}>{selectedAppointment.clinicName}</Text>
+                </View>
+              )}
+              {selectedAppointment.appointmentDate && (
+                <View style={styles.successModalDetailRow}>
+                  <Text style={styles.successModalDetailLabel}>Date:</Text>
+                  <Text style={styles.successModalDetailValue}>{formatDate(selectedAppointment.appointmentDate)}</Text>
+                </View>
+              )}
+              {selectedAppointment.appointmentTime && (
+                <View style={styles.successModalDetailRow}>
+                  <Text style={styles.successModalDetailLabel}>Time:</Text>
+                  <Text style={styles.successModalDetailValue}>{formatTime(selectedAppointment.appointmentTime)}</Text>
+                </View>
+              )}
+              {selectedAppointment.appointmentPurpose && (
+                <View style={styles.successModalDetailRow}>
+                  <Text style={styles.successModalDetailLabel}>Purpose:</Text>
+                  <Text style={styles.successModalDetailValue}>{selectedAppointment.appointmentPurpose}</Text>
+                </View>
+              )}
+            </View>
+            <TouchableOpacity
+              style={styles.successModalCloseButton}
+              onPress={handleCloseSuccessModal}
+            >
+              <Text style={styles.successModalCloseButtonText}>Close</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.successModalXButton}
+              onPress={handleCloseSuccessModal}
+            >
+              <X size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   // Decline modal
   const renderDeclineModal = () => (
     <Modal
@@ -1633,6 +1741,7 @@ export default function SpecialistAppointmentsScreen() {
       {/* MODALS */}
       {renderAcceptModal()}
       {renderDeclineModal()}
+      {renderSuccessModal()}
       {renderAppointmentDetailsModal()}
       
       {/* Referral Type Selection Modal */}
@@ -2552,6 +2661,120 @@ const styles = StyleSheet.create({
   sortDropdownActiveText: {
     color: '#1E40AF',
     fontFamily: 'Inter-Medium',
+  },
+
+  // Success Modal Styles
+  successModalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  successModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  successModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  successModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    position: 'relative',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    width: '100%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  successIconContainer: {
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontFamily: 'Inter-Bold',
+    color: '#1F2937',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 22,
+  },
+  successModalDetailsCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#00000022',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  successModalDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  successModalDetailLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  successModalDetailValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#1F2937',
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 12,
+  },
+  successModalCloseButton: {
+    backgroundColor: '#1E40AF',
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 32,
+    width: '100%',
+    alignItems: 'center',
+  },
+  successModalCloseButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+  },
+  successModalXButton: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
 
   // Blue Corner Design
