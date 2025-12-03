@@ -459,7 +459,6 @@ export const databaseService = {
   // Appointments
   async getAppointments(userId: string, role: 'patient' | 'specialist'): Promise<Appointment[]> {
     try {
-      console.log(`🔍 getAppointments called for user: ${userId}, role: ${role}`);
       const appointmentsRef = ref(database, 'appointments');
       const snapshot = await get(appointmentsRef);
       
@@ -484,7 +483,6 @@ export const databaseService = {
         
         const resolvedAppointments = await Promise.all(promises);
         appointments.push(...resolvedAppointments);
-        console.log(`🔍 Found ${resolvedAppointments.length} regular appointments`);
         
         // Also fetch specialist-to-specialist referrals for both patients and specialists
         const specialistReferrals = await this.getSpecialistReferralsForUser(userId, role);
@@ -499,18 +497,14 @@ export const databaseService = {
         });
         
         appointments.push(...filteredSpecialistReferrals);
-        console.log(`🔍 Total appointments (including filtered referrals): ${appointments.length}`);
         
         return appointments.sort((a, b) => new Date(b.appointmentDate).getTime() - new Date(a.appointmentDate).getTime());
       }
-      console.log('🔍 No appointments found in database');
       return [];
     } catch (error) {
       // Suppress Firebase indexing errors
       if (error instanceof Error && error.message.includes('indexOn')) {
-        console.log('Firebase indexing not configured, using client-side filtering');
-      } else {
-        console.error('Get appointments error:', error);
+        // Firebase indexing not configured, using client-side filtering
       }
       return [];
     }
@@ -519,7 +513,6 @@ export const databaseService = {
   // Get all appointments for a specific doctor (for patient selection in certificate creation)
   async getAppointmentsByDoctor(doctorId: string): Promise<any[]> {
     try {
-      console.log(`🔍 getAppointmentsByDoctor called for doctor: ${doctorId}`);
       const appointmentsRef = ref(database, 'appointments');
       const snapshot = await get(appointmentsRef);
       
@@ -555,15 +548,6 @@ export const databaseService = {
                   
                   if (patientSnapshot.exists()) {
                     const fullPatientData = patientSnapshot.val();
-                    console.log('🔍 Full patient data:', {
-                      patientId: enrichedAppointment.patientId,
-                      hasDateOfBirth: !!fullPatientData.dateOfBirth,
-                      dateOfBirth: fullPatientData.dateOfBirth,
-                      hasAge: !!fullPatientData.age,
-                      age: fullPatientData.age,
-                      gender: fullPatientData.gender,
-                      contactNumber: fullPatientData.contactNumber,
-                    });
                     
                     // Try to use existing age field first, then calculate from dateOfBirth
                     if (fullPatientData.age && fullPatientData.age > 0) {
@@ -582,13 +566,12 @@ export const databaseService = {
                       
                       const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
                       patientDetails.age = age > 0 ? age : 0;
-                      console.log('🔍 Calculated age:', age, 'from birthDate:', birthDate);
                     }
                     patientDetails.gender = fullPatientData.gender || 'Unknown';
                     patientDetails.contactNumber = fullPatientData.contactNumber || 'N/A';
                   }
                 } catch (err) {
-                  console.error('Error fetching full patient data:', err);
+                  // Error fetching full patient data
                 }
               }
               
@@ -604,7 +587,6 @@ export const databaseService = {
         
         const resolvedAppointments = await Promise.all(promises);
         appointments.push(...resolvedAppointments);
-        console.log(`🔍 Found ${resolvedAppointments.length} appointments for doctor ${doctorId}`);
         
         // Also fetch referrals for this specialist
         try {
@@ -636,15 +618,6 @@ export const databaseService = {
                       
                       if (patientSnapshot.exists()) {
                         const fullPatientData = patientSnapshot.val();
-                        console.log('🔍 Full patient data (referral):', {
-                          patientId: referralData.patientId,
-                          hasDateOfBirth: !!fullPatientData.dateOfBirth,
-                          dateOfBirth: fullPatientData.dateOfBirth,
-                          hasAge: !!fullPatientData.age,
-                          age: fullPatientData.age,
-                          gender: fullPatientData.gender,
-                          contactNumber: fullPatientData.contactNumber,
-                        });
                         
                         // Try to use existing age field first, then calculate from dateOfBirth
                         if (fullPatientData.age && fullPatientData.age > 0) {
@@ -663,13 +636,12 @@ export const databaseService = {
                           
                           const age = Math.floor((Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
                           patientDetails.age = age > 0 ? age : 0;
-                          console.log('🔍 Calculated age (referral):', age, 'from birthDate:', birthDate);
                         }
                         patientDetails.gender = fullPatientData.gender || 'Unknown';
                         patientDetails.contactNumber = fullPatientData.contactNumber || 'N/A';
                       }
                     } catch (err) {
-                      console.error('Error fetching patient data from referral:', err);
+                      // Error fetching patient data from referral
                     }
                   }
                   
@@ -686,19 +658,15 @@ export const databaseService = {
             
             const resolvedReferrals = await Promise.all(referralPromises);
             appointments.push(...resolvedReferrals);
-            console.log(`🔍 Found ${resolvedReferrals.length} referrals for specialist ${doctorId}`);
           }
         } catch (referralError) {
-          console.error('Error fetching referrals:', referralError);
+          // Error fetching referrals
         }
         
-        console.log(`🔍 Total appointments + referrals: ${appointments.length}`);
         return appointments;
       }
-      console.log('🔍 No appointments found in database');
       return [];
     } catch (error) {
-      console.error('Get appointments by doctor error:', error);
       return [];
     }
   },
@@ -706,12 +674,10 @@ export const databaseService = {
   // Helper method to get specialist-to-specialist referrals for a user
   async getSpecialistReferralsForUser(userId: string, role: 'patient' | 'specialist'): Promise<Appointment[]> {
     try {
-      console.log(`🔍 Fetching specialist referrals for user: ${userId}, role: ${role}`);
       const referralsRef = ref(database, 'referrals');
       const snapshot = await get(referralsRef);
       
       if (!snapshot.exists()) {
-        console.log('🔍 No referrals found in database');
         return [];
       }
 
@@ -729,28 +695,20 @@ export const databaseService = {
           ? referralData.patientId === userId
           : referralData.assignedSpecialistId === userId;
 
-        console.log(`🔍 Referral ${childSnapshot.key}: patientId=${referralData.patientId}, assignedSpecialistId=${referralData.assignedSpecialistId}, isRelevant=${isRelevantToUser}`);
-
         if (isRelevantToUser) {
           relevantReferrals++;
           const promise = this.convertSpecialistReferralToAppointment(referralData, childSnapshot.key).then(appointment => {
             if (appointment) {
               specialistReferrals.push(appointment);
-              console.log(`✅ Converted specialist referral to appointment: ${appointment.id}`);
-            } else {
-              console.log(`❌ Failed to convert specialist referral to appointment: ${childSnapshot.key}`);
             }
           });
           promises.push(promise);
         }
       });
 
-      console.log(`🔍 Found ${totalReferrals} total referrals, ${relevantReferrals} relevant to user`);
       await Promise.all(promises);
-      console.log(`🔍 Returning ${specialistReferrals.length} specialist referrals`);
       return specialistReferrals;
     } catch (error) {
-      console.error('Get specialist referrals for user error:', error);
       return [];
     }
   },
@@ -758,14 +716,10 @@ export const databaseService = {
   // Helper method to convert specialist referral data to appointment format
   async convertSpecialistReferralToAppointment(referralData: any, referralId: string): Promise<Appointment | null> {
     try {
-      console.log(`🔍 Converting specialist referral ${referralId} to appointment format`);
-      console.log(`🔍 Referral data:`, referralData);
-      
       // Enrich referral data with information from users, patients, doctors, and clinics nodes
       const enrichedData = await this.enrichSpecialistReferralData(referralData);
       
       if (!enrichedData) {
-        console.log(`❌ Failed to enrich referral data for ${referralId}`);
         return null;
       }
 
@@ -801,10 +755,8 @@ export const databaseService = {
         practiceLocation: referralData.practiceLocation
       } as Appointment;
       
-      console.log(`✅ Successfully converted referral ${referralId} to appointment:`, appointment);
       return appointment;
     } catch (error) {
-      console.error('Error converting specialist referral to appointment:', error);
       return null;
     }
   },
@@ -812,7 +764,6 @@ export const databaseService = {
   // Helper method to enrich specialist referral data with information from other nodes
   async enrichSpecialistReferralData(referralData: any): Promise<any> {
     try {
-      console.log(`🔍 Enriching referral data for patient: ${referralData.patientId}, specialist: ${referralData.assignedSpecialistId}`);
       const enriched = { ...referralData };
 
       // Fetch patient data from users node
@@ -822,41 +773,24 @@ export const databaseService = {
           enriched.patientFirstName = userData.firstName || userData.first_name;
           enriched.patientLastName = userData.lastName || userData.last_name;
           enriched.patientMiddleName = userData.middleName || userData.middle_name;
-          console.log(`✅ Enriched patient data from users node: ${userData.firstName} ${userData.lastName}`);
-        } else {
-          console.log(`❌ No patient data found for ID: ${referralData.patientId}`);
         }
       }
 
       // Fetch assigned specialist data from users and doctors nodes
       if (referralData.assignedSpecialistId) {
-        console.log(`🔍 Fetching specialist data for ID: ${referralData.assignedSpecialistId}`);
         const [userData, doctorData] = await Promise.all([
           this.getDocument(`users/${referralData.assignedSpecialistId}`),
           this.getDocument(`doctors/${referralData.assignedSpecialistId}`)
         ]);
         
-        console.log(`🔍 User data for specialist ${referralData.assignedSpecialistId}:`, userData);
-        console.log(`🔍 Doctor data for specialist ${referralData.assignedSpecialistId}:`, doctorData);
-        
         if (userData) {
           enriched.assignedSpecialistFirstName = userData.firstName || userData.first_name;
           enriched.assignedSpecialistLastName = userData.lastName || userData.last_name;
           enriched.assignedSpecialistMiddleName = userData.middleName || userData.middle_name;
-          console.log(`✅ Enriched specialist name from users node: ${userData.firstName} ${userData.lastName}`);
-        } else {
-          console.log(`❌ No user data found for specialist ID: ${referralData.assignedSpecialistId}`);
         }
         
         if (doctorData) {
           enriched.assignedSpecialistSpecialty = doctorData.specialty;
-          console.log(`✅ Enriched specialist specialty from doctors node: ${doctorData.specialty}`);
-        } else {
-          console.log(`❌ No doctor data found for specialist ID: ${referralData.assignedSpecialistId}`);
-        }
-        
-        if (!userData && !doctorData) {
-          console.log(`❌ No specialist data found for ID: ${referralData.assignedSpecialistId}`);
         }
       }
 
@@ -867,9 +801,6 @@ export const databaseService = {
           enriched.referringGeneralistFirstName = referringGeneralistData.firstName || referringGeneralistData.first_name;
           enriched.referringGeneralistLastName = referringGeneralistData.lastName || referringGeneralistData.last_name;
           enriched.referringGeneralistMiddleName = referringGeneralistData.middleName || referringGeneralistData.middle_name;
-          console.log(`✅ Enriched referring generalist data from users node: ${referringGeneralistData.firstName} ${referringGeneralistData.lastName}`);
-        } else {
-          console.log(`❌ No referring generalist data found for ID: ${referralData.referringGeneralistId}`);
         }
       }
 
@@ -880,9 +811,6 @@ export const databaseService = {
           enriched.referringSpecialistFirstName = referringUserData.firstName || referringUserData.first_name;
           enriched.referringSpecialistLastName = referringUserData.lastName || referringUserData.last_name;
           enriched.referringSpecialistMiddleName = referringUserData.middleName || referringUserData.middle_name;
-          console.log(`✅ Enriched referring specialist data from users node: ${referringUserData.firstName} ${referringUserData.lastName}`);
-        } else {
-          console.log(`❌ No referring specialist data found for ID: ${referralData.referringSpecialistId}`);
         }
       }
 
@@ -891,9 +819,6 @@ export const databaseService = {
         const clinicData = await this.getClinicById(referralData.practiceLocation.clinicId);
         if (clinicData) {
           enriched.clinicName = clinicData.name;
-          console.log(`✅ Enriched clinic data: ${clinicData.name}`);
-        } else {
-          console.log(`❌ No clinic data found for ID: ${referralData.practiceLocation.clinicId}`);
         }
       }
 
@@ -902,92 +827,46 @@ export const databaseService = {
         const referringClinicData = await this.getClinicById(referralData.referringClinicId);
         if (referringClinicData) {
           enriched.referringClinicName = referringClinicData.name;
-          console.log(`✅ Enriched referring clinic data: ${referringClinicData.name}`);
-        } else {
-          console.log(`❌ No referring clinic data found for ID: ${referralData.referringClinicId}`);
         }
       }
 
       return enriched;
     } catch (error) {
-      console.error('Error enriching specialist referral data:', error);
       return referralData;
     }
   },
 
   // Test function to debug specialist referrals
   async testSpecialistReferralsForPatient(patientId: string): Promise<void> {
-    console.log(`🧪 Testing specialist referrals for patient: ${patientId}`);
-    
     try {
       // Test direct referrals query first to see raw data
       const referralsRef = ref(database, 'referrals');
       const snapshot = await get(referralsRef);
-      console.log(`🧪 Direct referrals query found ${snapshot.size} total referrals`);
       
       if (snapshot.exists()) {
         snapshot.forEach((childSnapshot) => {
           const referralData = childSnapshot.val();
           if (referralData.patientId === patientId) {
-            console.log(`🧪 FOUND REFERRAL FOR PATIENT ${patientId}:`, {
-              id: childSnapshot.key,
-              patientId: referralData.patientId,
-              assignedSpecialistId: referralData.assignedSpecialistId,
-              referringSpecialistId: referralData.referringSpecialistId,
-              referringGeneralistId: referralData.referringGeneralistId,
-              status: referralData.status,
-              appointmentDate: referralData.appointmentDate,
-              additionalNotes: referralData.additionalNotes,
-              practiceLocation: referralData.practiceLocation,
-              referringClinicId: referralData.referringClinicId
-            });
+            // Found referral for patient
           }
         });
       }
 
       // Test the specialist referrals function directly
       const specialistReferrals = await this.getSpecialistReferralsForUser(patientId, 'patient');
-      console.log(`🧪 getSpecialistReferralsForUser returned ${specialistReferrals.length} specialist referrals`);
       specialistReferrals.forEach((ref, index) => {
-        console.log(`🧪 Specialist Referral ${index + 1}:`, {
-          id: ref.id,
-          type: ref.type,
-          patientId: ref.patientId,
-          doctorId: ref.doctorId,
-          doctorFirstName: ref.doctorFirstName,
-          doctorLastName: ref.doctorLastName,
-          doctorSpecialty: ref.doctorSpecialty,
-          referringSpecialistId: ref.referringSpecialistId,
-          referringSpecialistFirstName: ref.referringSpecialistFirstName,
-          referringSpecialistLastName: ref.referringSpecialistLastName,
-          status: ref.status,
-          appointmentDate: ref.appointmentDate
-        });
+        // Process referral
       });
 
       // Test the main getAppointments function
       const appointments = await this.getAppointments(patientId, 'patient');
-      console.log(`🧪 getAppointments returned ${appointments.length} appointments`);
       appointments.forEach((apt, index) => {
         if (apt.type === 'specialist_referral') {
-          console.log(`🧪 Specialist Referral Appointment ${index + 1}:`, {
-            id: apt.id,
-            type: apt.type,
-            patientId: apt.patientId,
-            doctorId: apt.doctorId,
-            doctorFirstName: apt.doctorFirstName,
-            doctorLastName: apt.doctorLastName,
-            doctorSpecialty: apt.doctorSpecialty,
-            referringSpecialistId: apt.referringSpecialistId,
-            referringSpecialistFirstName: apt.referringSpecialistFirstName,
-            referringSpecialistLastName: apt.referringSpecialistLastName,
-            status: apt.status,
-            appointmentDate: apt.appointmentDate
-          });
+          // Process specialist referral appointment
         }
       });
     } catch (error) {
-      console.error('🧪 Test failed:', error);
+      // Test failed
     }
   },
 
@@ -1056,7 +935,7 @@ export const databaseService = {
       }
 
     } catch (error) {
-      console.error('Error enriching appointment data:', error);
+      // Error enriching appointment data
     }
 
     return enriched;
@@ -1069,7 +948,6 @@ export const databaseService = {
       const snapshot = await get(userRef);
       return snapshot.exists() ? snapshot.val() : null;
     } catch (error) {
-      console.error('Error fetching user data:', error);
       return null;
     }
   },
@@ -1101,16 +979,13 @@ export const databaseService = {
             
             generalistCount++;
             hasGeneralist = true;
-            console.log(`🔍 Found generalist doctor ${doctorData.firstName} ${doctorData.lastName} for clinic ${clinicId}`);
           }
         });
         
-        console.log(`🔍 Clinic ${clinicId} has ${generalistCount} generalist doctors`);
         return hasGeneralist;
       }
       return false;
     } catch (error) {
-      console.error('Check generalist doctors error:', error);
       return false;
     }
   },
@@ -1353,7 +1228,7 @@ export const databaseService = {
                  clinicId.toLowerCase().includes(affiliation.toLowerCase())
                )) &&
               doctorData.isSpecialist === true &&
-              doctorData.status !== 'pending' && doctorData.status !== 'rejected' && doctorData.status !== 'suspended') { // ✅ Added status verification
+              doctorData.status !== 'pending' && doctorData.status !== 'rejected' && doctorData.status !== 'suspended') { //  Added status verification
             // Ensure doctor has proper availability data
             const doctorWithDefaults = {
               id: childSnapshot.key!,
@@ -1367,7 +1242,7 @@ export const databaseService = {
             doctors.push(doctorWithDefaults);
           }
         });
-        console.log(`🔍 Filtered specialists for clinic ${clinicId}: ${doctors.length} verified specialists found`);
+        console.log(` Filtered specialists for clinic ${clinicId}: ${doctors.length} verified specialists found`);
         return doctors;
       }
       return [];
@@ -1456,19 +1331,19 @@ export const databaseService = {
           }
         });
         
-        console.log(`🔍 Found ${clinics.length} active clinics with valid addresses`);
+        console.log(` Found ${clinics.length} active clinics with valid addresses`);
         
         // Filter clinics to only include those with generalist doctors
         const clinicsWithGeneralists = await Promise.all(
           clinics.map(async (clinic) => {
             const hasGeneralists = await this.hasGeneralistDoctors(clinic.id);
-            console.log(`🔍 Clinic ${clinic.name} (${clinic.id}) has generalists: ${hasGeneralists}`);
+            console.log(` Clinic ${clinic.name} (${clinic.id}) has generalists: ${hasGeneralists}`);
             return hasGeneralists ? { ...clinic, hasGeneralistDoctors: true } : null;
           })
         );
         
         const validClinics = clinicsWithGeneralists.filter(Boolean) as Clinic[];
-        console.log(`🔍 Final result: ${validClinics.length} clinics with generalist doctors`);
+        console.log(` Final result: ${validClinics.length} clinics with generalist doctors`);
         
         return validClinics;
       }
@@ -1486,21 +1361,21 @@ export const databaseService = {
     clinic: Clinic | null;
   }> {
     try {
-      console.log(`🔍 ===== DATABASE SERVICE: TRACE ORIGINAL GENERALIST =====`);
-      console.log(`🔍 Input clinicAppointmentId: ${clinicAppointmentId}`);
+      console.log(` ===== DATABASE SERVICE: TRACE ORIGINAL GENERALIST =====`);
+      console.log(` Input clinicAppointmentId: ${clinicAppointmentId}`);
       
       // Get the appointment
-      console.log(`🔍 Fetching appointment from appointments/${clinicAppointmentId}...`);
+      console.log(` Fetching appointment from appointments/${clinicAppointmentId}...`);
       const appointmentRef = ref(database, `appointments/${clinicAppointmentId}`);
       const appointmentSnapshot = await get(appointmentRef);
       
       if (!appointmentSnapshot.exists()) {
-        console.log(`❌ Appointment ${clinicAppointmentId} not found in database`);
+        console.log(` Appointment ${clinicAppointmentId} not found in database`);
         return { doctor: null, appointment: null, clinic: null };
       }
       
       const appointment = appointmentSnapshot.val() as Appointment;
-      console.log(`✅ Found appointment:`, {
+      console.log(` Found appointment:`, {
         id: appointment.id,
         doctorId: appointment.doctorId,
         patientId: appointment.patientId,
@@ -1510,28 +1385,28 @@ export const databaseService = {
       });
       
       // Get the doctor details
-      console.log(`🔍 Fetching doctor from doctors/${appointment.doctorId}...`);
+      console.log(` Fetching doctor from doctors/${appointment.doctorId}...`);
       const doctorRef = ref(database, `doctors/${appointment.doctorId}`);
       const doctorSnapshot = await get(doctorRef);
       
       if (!doctorSnapshot.exists()) {
-        console.log(`❌ Doctor ${appointment.doctorId} not found in database`);
+        console.log(` Doctor ${appointment.doctorId} not found in database`);
         return { doctor: null, appointment, clinic: null };
       }
       
       const doctorData = doctorSnapshot.val();
-      console.log(`✅ Found doctor data:`, {
-        id: appointment.doctorId,
-        firstName: doctorData.firstName,
-        lastName: doctorData.lastName,
-        isGeneralist: doctorData.isGeneralist,
-        isSpecialist: doctorData.isSpecialist,
-        specialty: doctorData.specialty
-      });
+      // console.log(` Found doctor data:`, {
+      //   id: appointment.doctorId,
+      //   firstName: doctorData.firstName,
+      //   lastName: doctorData.lastName,
+      //   isGeneralist: doctorData.isGeneralist,
+      //   isSpecialist: doctorData.isSpecialist,
+      //   specialty: doctorData.specialty
+      // });
       
       // Validate that the doctor is a generalist
       if (!doctorData.isGeneralist) {
-        console.log(`❌ Doctor ${appointment.doctorId} is not a generalist (isGeneralist: ${doctorData.isGeneralist})`);
+        console.log(` Doctor ${appointment.doctorId} is not a generalist (isGeneralist: ${doctorData.isGeneralist})`);
         return { doctor: null, appointment, clinic: null };
       }
       
@@ -1547,10 +1422,10 @@ export const databaseService = {
         }
       };
       
-      console.log(`✅ Validated generalist: ${doctor.firstName} ${doctor.lastName}`);
+      console.log(` Validated generalist: ${doctor.firstName} ${doctor.lastName}`);
       
       // Get the clinic details
-      console.log(`🔍 Fetching clinic from clinics/${appointment.clinicId}...`);
+      console.log(` Fetching clinic from clinics/${appointment.clinicId}...`);
       const clinicRef = ref(database, `clinics/${appointment.clinicId}`);
       const clinicSnapshot = await get(clinicRef);
       
@@ -1572,13 +1447,13 @@ export const databaseService = {
           createdAt: clinicData.createdAt || Date.now(),
           updatedAt: clinicData.updatedAt || Date.now(),
         };
-        console.log(`✅ Found clinic: ${clinic.name} (${clinic.id})`);
+        console.log(` Found clinic: ${clinic.name} (${clinic.id})`);
       } else {
-        console.log(`❌ Clinic ${appointment.clinicId} not found in database`);
+        console.log(` Clinic ${appointment.clinicId} not found in database`);
       }
       
-      console.log(`✅ ===== DATABASE SERVICE: TRACE SUCCESS =====`);
-      console.log(`✅ Returning:`, {
+      console.log(` ===== DATABASE SERVICE: TRACE SUCCESS =====`);
+      console.log(` Returning:`, {
         doctor: doctor ? `${doctor.firstName} ${doctor.lastName}` : null,
         clinic: clinic ? clinic.name : null,
         appointment: appointment ? appointment.id : null
@@ -1587,8 +1462,8 @@ export const databaseService = {
       return { doctor, appointment, clinic };
       
     } catch (error) {
-      console.error('❌ ===== DATABASE SERVICE: TRACE ERROR =====');
-      console.error('❌ Error tracing original generalist:', error);
+      console.error(' ===== DATABASE SERVICE: TRACE ERROR =====');
+      console.error(' Error tracing original generalist:', error);
       return { doctor: null, appointment: null, clinic: null };
     }
   },
@@ -1622,7 +1497,7 @@ export const databaseService = {
           }
         });
         
-        console.log(`🔍 Loaded ${doctors.length} verified doctors (generalists + verified specialists)`);
+        console.log(` Loaded ${doctors.length} verified doctors (generalists + verified specialists)`);
         return doctors;
       }
       return [];
@@ -1787,17 +1662,17 @@ export const databaseService = {
 
       async getBookedTimeSlots(doctorId: string, date: string): Promise<string[]> {
       try {
-        console.log('🔍 getBookedTimeSlots: Searching for', { doctorId, date });
+        console.log(' getBookedTimeSlots: Searching for', { doctorId, date });
         const appointmentsRef = ref(database, 'appointments');
         const snapshot = await get(appointmentsRef);
       
       if (snapshot.exists()) {
         const bookedSlots: string[] = [];
-        console.log('🔍 Found appointments, checking each one...');
+        console.log(' Found appointments, checking each one...');
         
         snapshot.forEach((childSnapshot) => {
           const appointmentData = childSnapshot.val();
-          console.log('🔍 Checking appointment:', {
+          console.log(' Checking appointment:', {
             id: childSnapshot.key,
             doctorId: appointmentData.doctorId,
             doctor: appointmentData.doctor,
@@ -1810,19 +1685,19 @@ export const databaseService = {
           // Handle both doctorId and doctor field names for compatibility
           const appointmentDoctorId = appointmentData.doctorId || appointmentData.doctor;
           if (appointmentDoctorId === doctorId && appointmentData.appointmentDate === date) {
-            console.log('🔍 ✅ Found matching appointment:', appointmentData.appointmentTime);
+            console.log('  Found matching appointment:', appointmentData.appointmentTime);
             bookedSlots.push(appointmentData.appointmentTime);
           }
         });
         
-        console.log('🔍 Final booked slots:', bookedSlots);
+        console.log(' Final booked slots:', bookedSlots);
         return bookedSlots;
       } else {
-        console.log('🔍 No appointments found in database');
+        console.log(' No appointments found in database');
         return [];
       }
     } catch (error) {
-      console.error('❌ Get booked time slots error:', error);
+      console.error(' Get booked time slots error:', error);
       return [];
     }
   },
@@ -1894,20 +1769,20 @@ export const databaseService = {
     allSlots: string[];
   }> {
     try {
-      console.log('🔍 getDoctorScheduleWithBookings: Starting for', { doctorId, date });
+      console.log(' getDoctorScheduleWithBookings: Starting for', { doctorId, date });
       
       // Get all available slots for the doctor on this date
       const availableSlots = await this.getAvailableTimeSlots(doctorId, date);
-      console.log('🔍 Available slots:', availableSlots);
+      console.log(' Available slots:', availableSlots);
       
       // Get booked slots for the doctor on this date
       const bookedSlots = await this.getBookedTimeSlots(doctorId, date);
-      console.log('🔍 Booked slots:', bookedSlots);
+      console.log(' Booked slots:', bookedSlots);
       
       // Get doctor's schedule to determine all possible slots
       const doctor = await this.getDoctorById(doctorId);
       if (!doctor) {
-        console.log('🔍 Doctor not found');
+        console.log(' Doctor not found');
         return { availableSlots: [], bookedSlots: [], allSlots: [] };
       }
 
@@ -1915,7 +1790,7 @@ export const databaseService = {
       const weeklySchedule = doctor.availability?.weeklySchedule?.[dayOfWeek];
       const specificDate = doctor.availability?.specificDates?.[date];
 
-      console.log('🔍 Doctor schedule info:', {
+      console.log(' Doctor schedule info:', {
         dayOfWeek,
         hasWeeklySchedule: !!weeklySchedule,
         hasSpecificDate: !!specificDate,
@@ -1939,7 +1814,7 @@ export const databaseService = {
         });
       }
 
-      console.log('🔍 All possible slots:', allSlots);
+      console.log(' All possible slots:', allSlots);
 
       const result = {
         availableSlots,
@@ -1947,10 +1822,10 @@ export const databaseService = {
         allSlots
       };
       
-      console.log('🔍 Final result:', result);
+      console.log(' Final result:', result);
       return result;
     } catch (error) {
-      console.error('❌ Get doctor schedule with bookings error:', error);
+      console.error(' Get doctor schedule with bookings error:', error);
       return { availableSlots: [], bookedSlots: [], allSlots: [] };
     }
   },
@@ -2023,7 +1898,7 @@ export const databaseService = {
       
       // Create notifications for the appointment (pending status)
       // Notification creation disabled - using real-time listeners instead
-      console.log('🔔 Real-time notifications will handle appointment creation');
+      console.log(' Real-time notifications will handle appointment creation');
       
       return newAppointmentRef.key!;
     } catch (error) {
@@ -2143,7 +2018,7 @@ export const databaseService = {
   // Specialist-specific methods
   async getPatientsBySpecialist(specialistId: string): Promise<Patient[]> {
     try {
-      console.log('🔍 getPatientsBySpecialist called with specialistId:', specialistId);
+      console.log(' getPatientsBySpecialist called with specialistId:', specialistId);
       
       // Get unique patient IDs from appointments and referrals
       const uniquePatientIds = await this.getUniquePatientIdsForSpecialist(specialistId);
@@ -2154,7 +2029,7 @@ export const databaseService = {
         try {
           const patientData = await this.getPatientData(patientId);
           if (!patientData) {
-            console.log(`❌ No standardized data found for patient: ${patientId}`);
+            console.log(` No standardized data found for patient: ${patientId}`);
             return null;
           }
           
@@ -2187,10 +2062,10 @@ export const databaseService = {
             isScheduledVisit,
           });
           
-          console.log(`✅ Standardized patient data processed for ${patientId}:`, patientInfo.patientFirstName, patientInfo.patientLastName);
+          console.log(` Standardized patient data processed for ${patientId}:`, patientInfo.patientFirstName, patientInfo.patientLastName);
           return patientInfo;
         } catch (error) {
-          console.error(`❌ Error processing patient ${patientId}:`, error);
+          console.error(` Error processing patient ${patientId}:`, error);
           return null;
         }
       });
@@ -2201,7 +2076,7 @@ export const databaseService = {
       console.log(`🎯 Final result: ${validPatients.length} patients returned using standardized method`);
       return validPatients;
     } catch (error) {
-      console.error('❌ Get patients by specialist error:', error);
+      console.error(' Get patients by specialist error:', error);
       return [];
     }
   },
@@ -2246,7 +2121,7 @@ export const databaseService = {
       
       return Array.from(uniquePatientIds);
     } catch (error) {
-      console.error('❌ Error getting unique patient IDs:', error);
+      console.error(' Error getting unique patient IDs:', error);
       return [];
     }
   },
@@ -2282,7 +2157,7 @@ export const databaseService = {
       
       return mostRecentAppointment;
     } catch (error) {
-      console.error('❌ Error getting most recent appointment:', error);
+      console.error(' Error getting most recent appointment:', error);
       return null;
     }
   },
@@ -2316,7 +2191,7 @@ export const databaseService = {
     try {
       // If we have a referralId, follow the specific path to get consultationDate
       if (referralId) {
-        console.log(`🔍 Fetching consultation date for referral: ${referralId}`);
+        console.log(` Fetching consultation date for referral: ${referralId}`);
         
         // Step 1: Get referralConsultationId from referrals node of that referralId
         const referralRef = ref(database, `referrals/${referralId}`);
@@ -2337,13 +2212,13 @@ export const databaseService = {
               const consultation = consultationSnapshot.val();
               const consultationDate = consultation.consultationDate;
               
-              console.log(`✅ Found consultation for referral ${referralId}:`, consultationDate);
+              console.log(` Found consultation for referral ${referralId}:`, consultationDate);
               return { date: consultationDate, isScheduledVisit: false };
             } else {
-              console.log(`❌ No consultation found for referralConsultationId ${referralConsultationId}`);
+              console.log(` No consultation found for referralConsultationId ${referralConsultationId}`);
             }
           } else {
-            console.log(`⚠️ No referralConsultationId found in referral ${referralId}`);
+            console.log(` No referralConsultationId found in referral ${referralId}`);
           }
           
           // Step 3: If consultationDate is null, look for appointmentDate inside referrals node of that referralId
@@ -2352,10 +2227,10 @@ export const databaseService = {
             console.log(`📅 Using appointmentDate from referral ${referralId}:`, appointmentDate);
             return { date: appointmentDate, isScheduledVisit: true };
           } else {
-            console.log(`❌ No appointmentDate found in referral ${referralId}`);
+            console.log(` No appointmentDate found in referral ${referralId}`);
           }
         } else {
-          console.log(`❌ No referral found for referralId ${referralId}`);
+          console.log(` No referral found for referralId ${referralId}`);
         }
       }
       
@@ -2518,7 +2393,7 @@ export const databaseService = {
   // New certificate retrieval functions for patientMedicalCertificates structure
   async getCertificatesByPatientNew(patientId: string): Promise<Certificate[]> {
     try {
-      console.log('🔍 Loading certificates for patient:', patientId);
+      console.log(' Loading certificates for patient:', patientId);
       const certificatesRef = ref(database, `patientMedicalCertificates/${patientId}`);
       const snapshot = await get(certificatesRef);
       
@@ -2543,13 +2418,13 @@ export const databaseService = {
             id: certData.id || childSnapshot.key
           };
           const transformedCert = this.transformNewCertificateToLegacy(enrichedCertData, patientId);
-          console.log('✅ Transformed certificate:', transformedCert);
+          console.log(' Transformed certificate:', transformedCert);
           certificates.push(transformedCert);
         });
         console.log('📋 Total certificates found:', certificates.length);
         return certificates;
       }
-      console.log('❌ No certificates found for patient:', patientId);
+      console.log(' No certificates found for patient:', patientId);
       return [];
     } catch (error) {
       console.error('Get certificates by patient (new structure) error:', error);
@@ -2598,7 +2473,7 @@ export const databaseService = {
     };
     
     // DEBUG: Log the certificate data structure
-    console.log('🔍 transformNewCertificateToLegacy - Raw certData:', {
+    console.log(' transformNewCertificateToLegacy - Raw certData:', {
       certificateId: certData.certificateId,
       id: certData.id,
       key: certData.key,
@@ -2671,7 +2546,7 @@ export const databaseService = {
       }
     };
     
-    console.log('🔍 transformNewCertificateToLegacy - Transformed cert:', {
+    console.log(' transformNewCertificateToLegacy - Transformed cert:', {
       id: transformedCert.id,
       type: transformedCert.type,
       doctor: transformedCert.doctor,
@@ -2840,9 +2715,9 @@ export const databaseService = {
         lastLogin: lastLoginTime
       });
       
-      console.log('✅ LastLogin updated successfully in', nodeName, 'node:', lastLoginTime);
+      console.log(' LastLogin updated successfully in', nodeName, 'node:', lastLoginTime);
     } catch (error) {
-      console.error('❌ Error updating lastLogin:', error);
+      console.error(' Error updating lastLogin:', error);
       throw error;
     }
   },
@@ -2861,7 +2736,7 @@ export const databaseService = {
       
       return null;
     } catch (error) {
-      console.error('❌ Error getting lastLogin:', error);
+      console.error(' Error getting lastLogin:', error);
       return null;
     }
   },
@@ -2987,7 +2862,7 @@ export const databaseService = {
           feeHistory: updatedFeeHistory
         });
         
-        console.log('📊 Fee history updated for specialist:', specialistId, {
+        console.log(' Fee history updated for specialist:', specialistId, {
           newFee,
           effectiveDate: newFeeEntry.effectiveDate
         });
@@ -3024,7 +2899,7 @@ export const databaseService = {
   // Standardized method for fetching patient data with proper immutable/mutable separation
   async getPatientData(patientId: string): Promise<StandardizedPatientData | null> {
     try {
-      console.log('🔍 Fetching standardized patient data for:', patientId);
+      console.log(' Fetching standardized patient data for:', patientId);
       
       // Fetch from both users and patients nodes in parallel
       const [userData, patientData] = await Promise.all([
@@ -3033,7 +2908,7 @@ export const databaseService = {
       ]);
       
       if (!userData && !patientData) {
-        console.log('❌ No data found for patient:', patientId);
+        console.log(' No data found for patient:', patientId);
         return null;
       }
       
@@ -3064,10 +2939,10 @@ export const databaseService = {
         fullName: `${userData?.firstName || userData?.first_name || userData?.givenName || ''} ${userData?.lastName || userData?.last_name || userData?.familyName || ''}`.trim() || 'Unknown Patient',
       };
       
-      console.log('✅ Standardized patient data fetched:', standardizedData.fullName);
+      console.log(' Standardized patient data fetched:', standardizedData.fullName);
       return standardizedData;
     } catch (error) {
-      console.error('❌ Error fetching standardized patient data:', error);
+      console.error(' Error fetching standardized patient data:', error);
       return null;
     }
   },
@@ -3075,7 +2950,7 @@ export const databaseService = {
   // Standardized method for fetching specialist data with proper immutable/mutable separation
   async getSpecialistData(specialistId: string): Promise<StandardizedSpecialistData | null> {
     try {
-      console.log('🔍 Fetching standardized specialist data for:', specialistId);
+      console.log(' Fetching standardized specialist data for:', specialistId);
       
       // Fetch from both users and doctors nodes in parallel
       const [userData, doctorData] = await Promise.all([
@@ -3084,7 +2959,7 @@ export const databaseService = {
       ]);
       
       if (!userData && !doctorData) {
-        console.log('❌ No data found for specialist:', specialistId);
+        console.log(' No data found for specialist:', specialistId);
         return null;
       }
       
@@ -3119,22 +2994,22 @@ export const databaseService = {
         fullName: `${userData?.firstName || userData?.first_name || userData?.givenName || ''} ${userData?.lastName || userData?.last_name || userData?.familyName || ''}`.trim() || 'Unknown Specialist',
       };
       
-      console.log('✅ Standardized specialist data fetched:', standardizedData.fullName);
+      console.log(' Standardized specialist data fetched:', standardizedData.fullName);
       return standardizedData;
     } catch (error) {
-      console.error('❌ Error fetching standardized specialist data:', error);
+      console.error(' Error fetching standardized specialist data:', error);
       return null;
     }
   },
 
   async getPatientById(patientId: string): Promise<any> {
     try {
-      console.log('🔍 getPatientById called with patientId:', patientId);
+      console.log(' getPatientById called with patientId:', patientId);
       
       // Use standardized method for consistent data fetching
       const standardizedData = await this.getPatientData(patientId);
       if (standardizedData) {
-        console.log('✅ Using standardized patient data for getPatientById');
+        console.log(' Using standardized patient data for getPatientById');
         return standardizedData;
       }
       
@@ -3159,10 +3034,10 @@ export const databaseService = {
         return patientData;
       }
       
-      console.log('❌ No patient data found in any source for:', patientId);
+      console.log(' No patient data found in any source for:', patientId);
       return null;
     } catch (error) {
-      console.error('❌ Get patient by ID error:', error);
+      console.error(' Get patient by ID error:', error);
       return null;
     }
   },
@@ -3274,7 +3149,7 @@ export const databaseService = {
             return certAppointmentId === appointmentId;
           });
           
-          console.log('🔍 getCertificatesByAppointment - Found certificates:', {
+          console.log(' getCertificatesByAppointment - Found certificates:', {
             appointmentId,
             totalCertificates: allCertificates.length,
             matchingCertificates: appointmentCertificates.length
@@ -3293,7 +3168,7 @@ export const databaseService = {
   async getCertificateById(certificateId: string): Promise<Certificate | null> {
     // Use new structure - search through patientMedicalCertificates
     try {
-      console.log('🔍 Searching for certificate ID:', certificateId);
+      console.log(' Searching for certificate ID:', certificateId);
       const certificatesRef = ref(database, 'patientMedicalCertificates');
       const snapshot = await get(certificatesRef);
       
@@ -3313,7 +3188,7 @@ export const databaseService = {
             if (certData.certificateId === certificateId || 
                 certData.id === certificateId || 
                 certSnapshot.key === certificateId) {
-              console.log('✅ Found matching certificate!');
+              console.log(' Found matching certificate!');
               // Pass the certificate key as consultation ID if not explicitly stored
               const consultationId = certData.metadata?.consultationId || certSnapshot.key;
               const enrichedCertData = {
@@ -3331,7 +3206,7 @@ export const databaseService = {
         console.log('🎯 Final result:', foundCertificate ? 'Found' : 'Not found');
         return foundCertificate;
       }
-      console.log('❌ No patientMedicalCertificates data found');
+      console.log(' No patientMedicalCertificates data found');
       return null;
     } catch (error) {
       console.error('Get certificate by ID error:', error);
@@ -3341,7 +3216,7 @@ export const databaseService = {
 
   async updateAppointmentStatus(id: string, status: string, reason?: string): Promise<void> {
     try {
-      console.log('🔔 Starting updateAppointmentStatus for appointment:', id, 'with status:', status);
+      console.log(' Starting updateAppointmentStatus for appointment:', id, 'with status:', status);
       
       const appointmentRef = ref(database, `appointments/${id}`);
       const snapshot = await get(appointmentRef);
@@ -3363,13 +3238,13 @@ export const databaseService = {
       }
 
       await update(appointmentRef, updates);
-      console.log('✅ Appointment status updated successfully');
+      console.log(' Appointment status updated successfully');
 
       // Notification creation disabled - using real-time listeners instead
-      console.log('🔔 Real-time notifications will handle appointment status changes');
+      console.log(' Real-time notifications will handle appointment status changes');
 
     } catch (error) {
-      console.error('❌ Update appointment status error:', error);
+      console.error(' Update appointment status error:', error);
       throw error;
     }
   },
@@ -4050,7 +3925,7 @@ export const databaseService = {
 
   async updateReferralStatus(referralId: string, status: 'confirmed' | 'cancelled', declineReason?: string, specialistNotes?: string): Promise<void> {
     try {
-      console.log('🔔 Starting updateReferralStatus for referral:', referralId, 'with status:', status);
+      console.log(' Starting updateReferralStatus for referral:', referralId, 'with status:', status);
       
       const referralRef = ref(database, `referrals/${referralId}`);
       const snapshot = await get(referralRef);
@@ -4077,11 +3952,11 @@ export const databaseService = {
       
       // Update the referral
       await update(referralRef, updates);
-      console.log('✅ Referral status updated successfully');
+      console.log(' Referral status updated successfully');
       
       
     } catch (error) {
-      console.error('❌ Update referral status error:', error);
+      console.error(' Update referral status error:', error);
       throw error;
     }
   },
@@ -4114,7 +3989,7 @@ export const databaseService = {
 
   async updateReferral(referralId: string, updates: Partial<Referral>): Promise<void> {
     try {
-      console.log('🔔 Starting updateReferral for referral:', referralId, 'with updates:', updates);
+      console.log(' Starting updateReferral for referral:', referralId, 'with updates:', updates);
       
       const referralRef = ref(database, `referrals/${referralId}`);
       const snapshot = await get(referralRef);
@@ -4133,10 +4008,10 @@ export const databaseService = {
       
       // Update the referral
       await update(referralRef, updatedData);
-      console.log('✅ Referral updated successfully');
+      console.log(' Referral updated successfully');
       
     } catch (error) {
-      console.error('❌ Update referral error:', error);
+      console.error(' Update referral error:', error);
       throw error;
     }
   },
@@ -4738,9 +4613,9 @@ export const databaseService = {
     consultationData: Partial<MedicalHistory>
   ): Promise<string> {
     try {
-      console.log('🔍 saveReferralConsultationData - Input consultationData:', consultationData);
-      console.log('🔍 Number of diagnoses in consultationData:', consultationData.diagnosis?.length || 0);
-      console.log('🔍 Diagnoses array:', consultationData.diagnosis);
+      console.log(' saveReferralConsultationData - Input consultationData:', consultationData);
+      console.log(' Number of diagnoses in consultationData:', consultationData.diagnosis?.length || 0);
+      console.log(' Diagnoses array:', consultationData.diagnosis);
       
       // Generate consultation data with required fields
       const medicalHistoryData = {
@@ -4757,8 +4632,8 @@ export const databaseService = {
         }
       };
       
-      console.log('🔍 medicalHistoryData to be saved:', medicalHistoryData);
-      console.log('🔍 Number of diagnoses in medicalHistoryData:', medicalHistoryData.diagnosis?.length || 0);
+      console.log(' medicalHistoryData to be saved:', medicalHistoryData);
+      console.log(' Number of diagnoses in medicalHistoryData:', medicalHistoryData.diagnosis?.length || 0);
 
       // Use Firebase push to generate the consultationId
       const consultationId = await this.pushDocument(`patientMedicalHistory/${patientId}/entries`, medicalHistoryData);
@@ -4787,12 +4662,12 @@ export const databaseService = {
       if (temporaryData) {
         // Remove the temporary data saved with referralId as the key
         await this.removeDocument(temporaryDataPath);
-        console.log('✅ Temporary referral data cleaned up successfully');
+        console.log(' Temporary referral data cleaned up successfully');
       } else {
         console.log('ℹ️ No temporary referral data found to clean up');
       }
     } catch (error) {
-      console.error('❌ Error cleaning up temporary referral data:', error);
+      console.error(' Error cleaning up temporary referral data:', error);
       // Don't throw error - cleanup failure shouldn't break the main flow
     }
   },
@@ -4800,10 +4675,10 @@ export const databaseService = {
   // Create referral with Firebase push key
   async createReferral(referralData: Partial<Referral>): Promise<string> {
     try {
-      console.log('🔔 Creating referral with Firebase push key...');
-      console.log('🔍 Referral data clinicAppointmentId:', referralData.clinicAppointmentId);
-      // console.log('🔍 Referral source type:', referralData.referralSourceType);
-      // console.log('🔍 Referral source ID:', referralData.referralSourceId);
+      console.log(' Creating referral with Firebase push key...');
+      console.log(' Referral data clinicAppointmentId:', referralData.clinicAppointmentId);
+      // console.log(' Referral source type:', referralData.referralSourceType);
+      // console.log(' Referral source ID:', referralData.referralSourceId);
       
       // Validate required fields for specialist-to-specialist referrals
       if (!referralData.patientId) {
@@ -4818,12 +4693,12 @@ export const databaseService = {
       
       // Log warning if clinicAppointmentId is missing for specialist referrals
       if (!referralData.clinicAppointmentId || referralData.clinicAppointmentId === '') {
-        console.warn('⚠️ Creating specialist referral without clinicAppointmentId');
-        console.warn('⚠️ This may indicate a direct specialist referral without a source appointment/referral');
-        // console.warn('⚠️ Referral source type:', referralData.referralSourceType || 'unknown');
+        console.warn(' Creating specialist referral without clinicAppointmentId');
+        console.warn(' This may indicate a direct specialist referral without a source appointment/referral');
+        // console.warn(' Referral source type:', referralData.referralSourceType || 'unknown');
       } else {
-        console.log('✅ Referral includes clinicAppointmentId:', referralData.clinicAppointmentId);
-        // console.log('✅ Source type:', referralData.referralSourceType || 'unknown');
+        console.log(' Referral includes clinicAppointmentId:', referralData.clinicAppointmentId);
+        // console.log(' Source type:', referralData.referralSourceType || 'unknown');
       }
       
       // Prepare referral data with required fields
@@ -4837,16 +4712,16 @@ export const databaseService = {
 
       // Use Firebase push to generate the referralId
       const referralId = await this.pushDocument('referrals', completeReferralData);
-      console.log('✅ Referral created with Firebase push key:', referralId);
-      console.log('✅ Referral includes clinicAppointmentId:', completeReferralData.clinicAppointmentId || 'none');
+      console.log(' Referral created with Firebase push key:', referralId);
+      console.log(' Referral includes clinicAppointmentId:', completeReferralData.clinicAppointmentId || 'none');
       
       // Create notifications for the referral (pending status)
       // Notification creation disabled - using real-time listeners instead
-      console.log('🔔 Real-time notifications will handle referral creation');
+      console.log(' Real-time notifications will handle referral creation');
       
       return referralId;
     } catch (error) {
-      console.error('❌ Create referral error:', error);
+      console.error(' Create referral error:', error);
       throw new Error('Failed to create referral');
     }
   },
@@ -4905,7 +4780,7 @@ export const databaseService = {
     isAnonymous: boolean;
   }): Promise<string> {
     try {
-      console.log('🔔 Submitting feedback...');
+      console.log(' Submitting feedback...');
       
       // Check if feedback already exists
       let feedbackExists = false;
@@ -4931,11 +4806,11 @@ export const databaseService = {
 
       // Use Firebase push to generate the feedbackId
       const feedbackId = await this.pushDocument('feedback', completeFeedbackData);
-      console.log('✅ Feedback submitted with ID:', feedbackId);
+      console.log(' Feedback submitted with ID:', feedbackId);
       
       return feedbackId;
     } catch (error) {
-      console.error('❌ Submit feedback error:', error);
+      console.error(' Submit feedback error:', error);
       throw error;
     }
   },
@@ -4988,7 +4863,7 @@ export const databaseService = {
       console.log('🗑️ No schedules found for specialist:', specialistId);
       return null;
     } catch (error) {
-      console.error('❌ Error getting specialist schedules:', error);
+      console.error(' Error getting specialist schedules:', error);
       return null;
     }
   },
@@ -5024,24 +4899,24 @@ export const databaseService = {
 
   // Add a new specialist schedule
   async addSpecialistSchedule(specialistId: string, scheduleData: any): Promise<string> {
-    console.log('🔍 addSpecialistSchedule called');
-    console.log('🔍 specialistId:', specialistId);
-    console.log('🔍 scheduleData:', scheduleData);
+    console.log(' addSpecialistSchedule called');
+    console.log(' specialistId:', specialistId);
+    console.log(' scheduleData:', scheduleData);
     
     try {
       const schedulesRef = ref(database, `specialistSchedules/${specialistId}`);
       const newScheduleRef = push(schedulesRef);
       
       if (newScheduleRef.key) {
-        console.log('🔍 Saving schedule to database...');
+        console.log(' Saving schedule to database...');
         await set(newScheduleRef, scheduleData);
-        console.log('✅ Specialist schedule added with ID:', newScheduleRef.key);
+        console.log(' Specialist schedule added with ID:', newScheduleRef.key);
         return newScheduleRef.key;
       } else {
         throw new Error('Failed to generate schedule ID');
       }
     } catch (error) {
-      console.error('❌ Add specialist schedule error:', error);
+      console.error(' Add specialist schedule error:', error);
       throw error;
     }
   },
@@ -5051,9 +4926,9 @@ export const databaseService = {
     try {
       const scheduleRef = ref(database, `specialistSchedules/${specialistId}/${scheduleId}`);
       await update(scheduleRef, updateData);
-      console.log('✅ Specialist schedule updated:', scheduleId);
+      console.log(' Specialist schedule updated:', scheduleId);
     } catch (error) {
-      console.error('❌ Update specialist schedule error:', error);
+      console.error(' Update specialist schedule error:', error);
       throw error;
     }
   },
@@ -5065,9 +4940,9 @@ export const databaseService = {
       const scheduleRef = ref(database, `specialistSchedules/${specialistId}/${scheduleId}`);
       console.log('🗑️ Attempting to delete schedule at path:', `specialistSchedules/${specialistId}/${scheduleId}`);
       await remove(scheduleRef);
-      console.log('✅ Specialist schedule deleted:', scheduleId);
+      console.log(' Specialist schedule deleted:', scheduleId);
     } catch (error) {
-      console.error('❌ Delete specialist schedule error:', error);
+      console.error(' Delete specialist schedule error:', error);
       throw error;
     }
   },
@@ -5095,7 +4970,7 @@ export const databaseService = {
   // Permission Requests (for consent system)
   async getPermissionRequests(patientId?: string, specialistId?: string): Promise<any[]> {
     try {
-      console.log('🔍 Getting permission requests for patient:', patientId, 'specialist:', specialistId);
+      console.log(' Getting permission requests for patient:', patientId, 'specialist:', specialistId);
       
       const permissionRequestsRef = ref(database, 'permissionRequests');
       const snapshot = await get(permissionRequestsRef);
@@ -5118,37 +4993,37 @@ export const databaseService = {
         // Sort by timestamp (newest first)
         requests.sort((a, b) => b.timestamp - a.timestamp);
         
-        console.log('✅ Found', requests.length, 'permission requests');
+        console.log(' Found', requests.length, 'permission requests');
         return requests;
       }
       
       return [];
     } catch (error) {
-      console.error('❌ Error getting permission requests:', error);
+      console.error(' Error getting permission requests:', error);
       return [];
     }
   },
 
   async getPermissionRequestById(requestId: string): Promise<any | null> {
     try {
-      console.log('🔍 Getting permission request:', requestId);
+      console.log(' Getting permission request:', requestId);
       
       const requestRef = ref(database, `permissionRequests/${requestId}`);
       const snapshot = await get(requestRef);
       
       if (snapshot.exists()) {
         const requestData = snapshot.val();
-        console.log('✅ Found permission request:', requestId);
+        console.log(' Found permission request:', requestId);
         return {
           id: requestId,
           ...requestData
         };
       }
       
-      console.log('❌ Permission request not found:', requestId);
+      console.log(' Permission request not found:', requestId);
       return null;
     } catch (error) {
-      console.error('❌ Error getting permission request:', error);
+      console.error(' Error getting permission request:', error);
       return null;
     }
   },
@@ -5166,10 +5041,10 @@ export const databaseService = {
         createdAt: new Date().toISOString()
       });
       
-      console.log('✅ Permission request created:', requestId);
+      console.log(' Permission request created:', requestId);
       return requestId;
     } catch (error) {
-      console.error('❌ Error creating permission request:', error);
+      console.error(' Error creating permission request:', error);
       throw error;
     }
   },
@@ -5184,9 +5059,9 @@ export const databaseService = {
         updatedAt: new Date().toISOString()
       });
       
-      console.log('✅ Permission request updated:', requestId);
+      console.log(' Permission request updated:', requestId);
     } catch (error) {
-      console.error('❌ Error updating permission request:', error);
+      console.error(' Error updating permission request:', error);
       throw error;
     }
   },
@@ -5198,16 +5073,16 @@ export const databaseService = {
       const requestRef = ref(database, `permissionRequests/${requestId}`);
       await remove(requestRef);
       
-      console.log('✅ Permission request deleted:', requestId);
+      console.log(' Permission request deleted:', requestId);
     } catch (error) {
-      console.error('❌ Error deleting permission request:', error);
+      console.error(' Error deleting permission request:', error);
       throw error;
     }
   },
 
   async getExpiredPermissionRequests(): Promise<any[]> {
     try {
-      console.log('🔍 Getting expired permission requests');
+      console.log(' Getting expired permission requests');
       
       const now = Date.now();
       const requests = await this.getPermissionRequests();
@@ -5216,10 +5091,10 @@ export const databaseService = {
         req.status === 'pending' && req.expiresAt < now
       );
       
-      console.log('✅ Found', expiredRequests.length, 'expired permission requests');
+      console.log(' Found', expiredRequests.length, 'expired permission requests');
       return expiredRequests;
     } catch (error) {
-      console.error('❌ Error getting expired permission requests:', error);
+      console.error(' Error getting expired permission requests:', error);
       return [];
     }
   },
@@ -5237,23 +5112,23 @@ export const databaseService = {
         });
       }
       
-      console.log('✅ Cleaned up', expiredRequests.length, 'expired permission requests');
+      console.log(' Cleaned up', expiredRequests.length, 'expired permission requests');
     } catch (error) {
-      console.error('❌ Error cleaning up expired permission requests:', error);
+      console.error(' Error cleaning up expired permission requests:', error);
     }
   },
 
   // Patient Consent Settings
   async getPatientConsentSettings(patientId: string): Promise<any | null> {
     try {
-      console.log('🔍 Getting consent settings for patient:', patientId);
+      console.log(' Getting consent settings for patient:', patientId);
       
       const settingsRef = ref(database, `patientConsentSettings/${patientId}`);
       const snapshot = await get(settingsRef);
       
       if (snapshot.exists()) {
         const settingsData = snapshot.val();
-        console.log('✅ Found consent settings for patient:', patientId);
+        console.log(' Found consent settings for patient:', patientId);
         return {
           patientId,
           ...settingsData
@@ -5271,7 +5146,7 @@ export const databaseService = {
       console.log('📝 Using default consent settings for patient:', patientId);
       return defaultSettings;
     } catch (error) {
-      console.error('❌ Error getting patient consent settings:', error);
+      console.error(' Error getting patient consent settings:', error);
       return null;
     }
   },
@@ -5288,9 +5163,9 @@ export const databaseService = {
         version: (settings.version || 1) + 1
       });
       
-      console.log('✅ Consent settings updated for patient:', patientId);
+      console.log(' Consent settings updated for patient:', patientId);
     } catch (error) {
-      console.error('❌ Error updating patient consent settings:', error);
+      console.error(' Error updating patient consent settings:', error);
       throw error;
     }
   },
@@ -5320,13 +5195,13 @@ export const databaseService = {
           callback([]);
         }
       }, (error) => {
-        console.error('❌ Error listening to consent requests:', error);
+        console.error(' Error listening to consent requests:', error);
         callback([]);
       });
       
       return unsubscribe;
     } catch (error) {
-      console.error('❌ Error setting up consent request listener:', error);
+      console.error(' Error setting up consent request listener:', error);
       return () => {}; // Return empty unsubscribe function
     }
   },
@@ -5353,13 +5228,13 @@ export const databaseService = {
           callback(null);
         }
       }, (error) => {
-        console.error('❌ Error listening to consent request status:', error);
+        console.error(' Error listening to consent request status:', error);
         callback(null);
       });
       
       return unsubscribe;
     } catch (error) {
-      console.error('❌ Error setting up consent request status listener:', error);
+      console.error(' Error setting up consent request status listener:', error);
       return () => {}; // Return empty unsubscribe function
     }
   },
@@ -5372,9 +5247,9 @@ export const databaseService = {
         signature: signature,
         isSignatureSaved: true,
       });
-      console.log('✅ Doctor signature saved successfully');
+      console.log(' Doctor signature saved successfully');
     } catch (error) {
-      console.error('❌ Error saving doctor signature:', error);
+      console.error(' Error saving doctor signature:', error);
       throw new Error('Failed to save doctor signature');
     }
   },
@@ -5394,7 +5269,7 @@ export const databaseService = {
       
       return { signature: null, isSignatureSaved: false };
     } catch (error) {
-      console.error('❌ Error getting doctor signature:', error);
+      console.error(' Error getting doctor signature:', error);
       throw new Error('Failed to get doctor signature');
     }
   },
@@ -5406,9 +5281,9 @@ export const databaseService = {
         signature: null,
         isSignatureSaved: false,
       });
-      console.log('✅ Doctor signature cleared successfully');
+      console.log(' Doctor signature cleared successfully');
     } catch (error) {
-      console.error('❌ Error clearing doctor signature:', error);
+      console.error(' Error clearing doctor signature:', error);
       throw new Error('Failed to clear doctor signature');
     }
   },

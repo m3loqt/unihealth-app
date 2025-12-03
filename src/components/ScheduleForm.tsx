@@ -104,7 +104,7 @@ export default function ScheduleForm({
       const clinicsData = await databaseService.getAllClinics();
       setClinics(clinicsData);
     } catch (error) {
-      console.error('❌ Error loading clinics:', error);
+      console.error(' Error loading clinics:', error);
       Alert.alert('Error', 'Failed to load clinics. Please try again.');
     }
   };
@@ -244,30 +244,30 @@ export default function ScheduleForm({
   };
 
   const handleSubmit = async () => {
-    console.log('🔍 handleSubmit called');
-    console.log('🔍 Form data:', formData);
+    console.log(' handleSubmit called');
+    console.log(' Form data:', formData);
     
     if (!validateForm()) {
-      console.log('❌ Form validation failed');
+      console.log(' Form validation failed');
       return;
     }
 
-    console.log('✅ Form validation passed, showing confirmation modal');
+    console.log(' Form validation passed, showing confirmation modal');
     // Show confirmation modal instead of directly submitting
     setShowConfirmation(true);
   };
 
   const handleConfirmSubmit = async () => {
-    console.log('🔍 handleConfirmSubmit called');
+    console.log(' handleConfirmSubmit called');
     try {
       setLoading(true);
       setShowConfirmation(false);
-      console.log('🔍 Calling onSubmit with formData:', formData);
+      console.log(' Calling onSubmit with formData:', formData);
       await onSubmit(formData);
-      console.log('✅ onSubmit completed successfully');
+      console.log(' onSubmit completed successfully');
       onClose();
     } catch (error) {
-      console.error('❌ Schedule form submission error:', error);
+      console.error(' Schedule form submission error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to save schedule';
       Alert.alert('Error', errorMessage);
     } finally {
@@ -280,26 +280,26 @@ export default function ScheduleForm({
   };
 
   const validateForm = (): boolean => {
-    console.log('🔍 validateForm called');
-    console.log('🔍 clinicId:', formData.clinicId);
-    console.log('🔍 roomOrUnit:', formData.roomOrUnit);
-    console.log('🔍 validFrom:', formData.validFrom);
-    console.log('🔍 daysOfWeek:', formData.daysOfWeek);
-    console.log('🔍 startTime:', formData.startTime);
-    console.log('🔍 endTime:', formData.endTime);
+    console.log(' validateForm called');
+    console.log(' clinicId:', formData.clinicId);
+    console.log(' roomOrUnit:', formData.roomOrUnit);
+    console.log(' validFrom:', formData.validFrom);
+    console.log(' daysOfWeek:', formData.daysOfWeek);
+    console.log(' startTime:', formData.startTime);
+    console.log(' endTime:', formData.endTime);
     
     if (!formData.clinicId) {
-      console.log('❌ No clinic selected');
+      console.log(' No clinic selected');
       Alert.alert('Error', 'Please select a clinic');
       return false;
     }
     if (!formData.roomOrUnit.trim()) {
-      console.log('❌ No room/unit entered');
+      console.log(' No room/unit entered');
       Alert.alert('Error', 'Please enter a room/unit');
       return false;
     }
     if (!formData.validFrom) {
-      console.log('❌ No valid from date');
+      console.log(' No valid from date');
       Alert.alert('Error', 'Please select a valid from date');
       return false;
     }
@@ -307,7 +307,7 @@ export default function ScheduleForm({
     // Validate date format (YYYY-MM-DD)
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(formData.validFrom)) {
-      console.log('❌ Invalid date format');
+      console.log(' Invalid date format');
       Alert.alert('Error', 'Please enter a valid date in YYYY-MM-DD format');
       return false;
     }
@@ -319,37 +319,37 @@ export default function ScheduleForm({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    console.log('🔍 Date comparison debug:');
-    console.log('🔍 selectedDate:', selectedDate.toISOString());
-    console.log('🔍 today:', today.toISOString());
-    console.log('🔍 selectedDate < today:', selectedDate < today);
+    console.log(' Date comparison debug:');
+    console.log(' selectedDate:', selectedDate.toISOString());
+    console.log(' today:', today.toISOString());
+    console.log(' selectedDate < today:', selectedDate < today);
     
     if (selectedDate < today) {
-      console.log('❌ Date is in the past');
+      console.log(' Date is in the past');
       Alert.alert('Error', 'Valid from date cannot be in the past');
       return false;
     }
     if (formData.daysOfWeek.length === 0) {
-      console.log('❌ No days selected');
+      console.log(' No days selected');
       Alert.alert('Error', 'Please select at least one day of the week');
       return false;
     }
     if (!formData.startTime) {
-      console.log('❌ No start time');
+      console.log(' No start time');
       Alert.alert('Error', 'Please select a start time');
       return false;
     }
     if (!formData.endTime) {
-      console.log('❌ No end time');
+      console.log(' No end time');
       Alert.alert('Error', 'Please select an end time');
       return false;
     }
     if (compareTimes(formData.startTime, formData.endTime) >= 0) {
-      console.log('❌ End time must be after start time');
+      console.log(' End time must be after start time');
       Alert.alert('Error', 'End time must be after start time');
       return false;
     }
-    console.log('✅ Form validation passed');
+    console.log(' Form validation passed');
     return true;
   };
 
@@ -554,7 +554,7 @@ export default function ScheduleForm({
   );
 
   const renderConfirmationModal = () => {
-    console.log('🔍 renderConfirmationModal called, showConfirmation:', showConfirmation);
+    console.log(' renderConfirmationModal called, showConfirmation:', showConfirmation);
     const selectedClinic = clinics.find(c => c.id === formData.clinicId);
     const selectedDays = formData.daysOfWeek
       .map(day => DAYS_OF_WEEK.find(d => d.value === day)?.label)

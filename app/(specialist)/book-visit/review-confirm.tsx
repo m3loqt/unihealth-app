@@ -59,7 +59,7 @@ export default function SpecialistReviewConfirmScreen() {
   const isTraceBack = params.isTraceBack as string; // Flag to indicate trace-back referral
 
   // Debug: Log all referral parameters
-  console.log('🔍 Review-confirm referral parameters:', {
+  console.log(' Review-confirm referral parameters:', {
     originalAppointmentId,
     sourceType,
     isReferral,
@@ -156,38 +156,54 @@ export default function SpecialistReviewConfirmScreen() {
       if (originalAppointmentId && originalAppointmentId !== 'undefined' && originalAppointmentId !== '') {
         clinicAppointmentId = originalAppointmentId;
         clinicAppointmentIdSource = sourceType || 'unknown';
-        console.log('✅ Using originalAppointmentId as clinicAppointmentId:', {
+        console.log(' Using originalAppointmentId as clinicAppointmentId:', {
           clinicAppointmentId,
           sourceType: clinicAppointmentIdSource,
           originalAppointmentId
         });
       } else {
-        console.warn('⚠️ No originalAppointmentId provided - creating referral without clinicAppointmentId');
-        console.log('⚠️ This may indicate a direct specialist referral without a source appointment/referral');
+        console.warn(' No originalAppointmentId provided - creating referral without clinicAppointmentId');
+        console.log(' This may indicate a direct specialist referral without a source appointment/referral');
       }
 
       // Track the created ID for email sending (state updates are async, so we need a local variable)
       let createdId: string | null = null;
 
+      // Determine if this is a generalist referral - check early to prevent any room lookups
+      // Use case-insensitive and flexible checking to handle any parameter variations
+      const referralTypeLower = String(referralType || '').toLowerCase();
+      const isTraceBackStr = String(isTraceBack || '').toLowerCase();
+      const isGeneralistReferral = referralTypeLower.includes('generalist') && 
+                                    (isTraceBackStr === 'true');
+      
+      console.log(' Referral type check:', {
+        referralType,
+        referralTypeLower,
+        isTraceBack,
+        isTraceBackStr,
+        isGeneralistReferral,
+        willSkipRoomLookup: isGeneralistReferral,
+        'CHECK: If true, should skip ALL room lookups': isGeneralistReferral
+      });
+      
+      // If this is a generalist referral, log it clearly
+      if (isGeneralistReferral) {
+        console.log(' CONFIRMED: This is a GENERALIST referral - ALL room lookups will be SKIPPED');
+      } else {
+        console.log(' CONFIRMED: This is a SPECIALIST referral - room lookups will be performed');
+      }
+
       // Check if this is a generalist referral (trace-back)
-      if (referralType === 'generalist' && isTraceBack === 'true') {
-        console.log('🔍 Creating appointment for generalist referral (trace-back)');
+      if (isGeneralistReferral) {
+        console.log(' Creating appointment for generalist referral (trace-back)');
+        console.log(' IMPORTANT: No room lookup required for generalist referrals - creating appointment directly');
         
-        // For generalist referrals, try to get referring specialist's clinic (optional, no room lookup needed)
-        // If it fails, we can still proceed without it
-        let referringClinicId = '';
-        let referringClinicName = '';
-        try {
-          const referringClinic = await getReferringSpecialistClinic(user.uid);
-          if (referringClinic) {
-            referringClinicId = referringClinic.clinicId;
-            referringClinicName = referringClinic.clinicName;
-          }
-        } catch (clinicError) {
-          console.warn('⚠️ Could not determine referring specialist clinic, proceeding without it:', clinicError);
-        }
+        // For generalist referrals: NO room lookup, NO schedule lookup, NO practiceLocation required
+        // Generalists don't have scheduled rooms like specialists do, so we create the appointment
+        // directly without any room or schedule requirements
         
         // Create appointment data for generalist
+        // NOTE: practiceLocation is intentionally omitted - generalists don't require room information
         const appointmentData = {
           appointmentDate: selectedDate,
           appointmentTime: selectedTime,
@@ -211,12 +227,12 @@ export default function SpecialistReviewConfirmScreen() {
           isReferralFollowUp: true,
           originalAppointmentId: originalAppointmentId,
           // Add referring specialist information
+          // NOTE: No referringClinicId/Name lookup needed - we skip all specialist schedule queries
           referringSpecialistId: user.uid,
           referringSpecialistFirstName: referringSpecialistFirstName,
           referringSpecialistLastName: referringSpecialistLastName,
-          ...(referringClinicId && { referringClinicId: referringClinicId }),
-          ...(referringClinicName && { referringClinicName: referringClinicName }),
           referralTimestamp: new Date().toISOString(),
+          // practiceLocation is NOT included - generalist appointments don't require room data
         };
 
         // Save to database as appointment
@@ -227,15 +243,44 @@ export default function SpecialistReviewConfirmScreen() {
         setReferralConfirmed(true);
         
       } else {
-        console.log('🔍 Creating referral for specialist referral');
+        // Double-check: Ensure we're NOT processing a generalist referral here
+        // Use same logic as above to detect generalist referrals
+        const referralTypeLowerCheck = String(referralType || '').toLowerCase();
+        const isTraceBackStrCheck = String(isTraceBack || '').toLowerCase();
+        const isGeneralistReferralCheck = referralTypeLowerCheck.includes('generalist') && 
+                                          (isTraceBackStrCheck === 'true');
+        
+        if (isGeneralistReferralCheck) {
+          console.error(' ERROR: Generalist referral detected in specialist branch! This should not happen.');
+          console.error(' Parameters:', { 
+            referralType, 
+            referralTypeLowerCheck,
+            isTraceBack, 
+            isTraceBackStrCheck,
+            isGeneralistReferralCheck,
+            referralTypeValue: typeof referralType, 
+            isTraceBackValue: typeof isTraceBack 
+          });
+          throw new Error('Invalid referral flow: Generalist referral detected in specialist branch. Room lookup should be skipped for generalists.');
+        }
+        
+        console.log(' Creating referral for specialist referral');
         
         // Get proper clinic and room information (only for specialist referrals)
+        // IMPORTANT: This function will look up rooms - only call for specialist referrals!
+        // Explicitly pass isGeneralistReferral=false to ensure room lookup is performed
         const referralData = await getReferralDataWithClinicAndRoom(
           user.uid, // referring specialist ID
           doctorId, // assigned specialist ID
           selectedDate,
-          selectedTime
+          selectedTime,
+          false // isGeneralistReferral - false for specialist referrals (room lookup required)
         );
+        
+        // Verify room data is present (should always be present for specialist referrals)
+        if (!referralData.roomOrUnit || !referralData.scheduleId) {
+          throw new Error('Room and schedule information is required for specialist referrals');
+        }
         
         // Create referral data for specialist
         const specialistReferralData = {
@@ -248,7 +293,7 @@ export default function SpecialistReviewConfirmScreen() {
           patientId: patientId,
           practiceLocation: {
             clinicId: referralData.assignedClinicId, // Use assigned specialist's clinic
-            roomOrUnit: referralData.roomOrUnit // Use room from schedule
+            roomOrUnit: referralData.roomOrUnit // Use room from schedule (guaranteed to be present)
           },
           referralTimestamp: new Date().toISOString(),
           referringClinicId: referralData.referringClinicId, // Use referring specialist's clinic
@@ -304,16 +349,56 @@ export default function SpecialistReviewConfirmScreen() {
     } catch (error) {
       console.error('Error booking appointment:', error);
       
-      // Provide more specific error messages
+      // Determine if this is a generalist referral (need to recalculate here for error handling)
+      // Use case-insensitive and flexible checking
+      const referralTypeLower = String(referralType || '').toLowerCase();
+      const isTraceBackStr = String(isTraceBack || '').toLowerCase();
+      const isGeneralistReferral = referralTypeLower.includes('generalist') && 
+                                    (isTraceBackStr === 'true');
+      
+      console.log(' Error handling - referral type:', {
+        referralType,
+        isTraceBack,
+        isGeneralistReferral,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error'
+      });
+
+      // Provide more specific error messages based on referral type
       let errorMessage = 'Failed to book appointment. Please try again.';
       if (error instanceof Error) {
-        if (error.message.includes('referring specialist clinic')) {
-          errorMessage = 'Unable to determine your clinic information. Please ensure you have an active schedule.';
-        } else if (error.message.includes('room from specialist schedule') && referralType !== 'generalist') {
-          // Only show room error for specialist referrals, not generalist
-          errorMessage = 'Unable to find available room for the selected date and time. Please select a different time slot.';
+        const errorMsgLower = error.message.toLowerCase();
+        
+        // For generalist referrals, NEVER show room/schedule-related errors
+        if (isGeneralistReferral) {
+          // Generalist-friendly error messages (no room/schedule references)
+          // Check for any room, schedule, or time slot related errors
+          const isRoomRelatedError = 
+            errorMsgLower.includes('room') || 
+            errorMsgLower.includes('schedule') || 
+            errorMsgLower.includes('time slot') ||
+            errorMsgLower.includes('unable to find available') ||
+            errorMsgLower.includes('select a different time') ||
+            errorMsgLower.includes('select a different date') ||
+            errorMsgLower.includes('no available schedule') ||
+            errorMsgLower.includes('room from specialist');
+          
+          if (isRoomRelatedError) {
+            console.log(' Filtering out room/schedule-related error for generalist referral');
+            console.log(' Original error message:', error.message);
+            errorMessage = 'Unable to create the appointment. Please try again.';
+          } else {
+            errorMessage = error.message || 'Failed to create appointment. Please try again.';
+          }
         } else {
-          errorMessage = error.message;
+          // Specialist referral error messages (only show for specialist referrals)
+          if (errorMsgLower.includes('referring specialist clinic')) {
+            errorMessage = 'Unable to determine your clinic information. Please ensure you have an active schedule.';
+          } else if (errorMsgLower.includes('room from specialist schedule') || 
+                     errorMsgLower.includes('unable to find available room')) {
+            errorMessage = 'Unable to find available room for the selected date and time. Please select a different time slot.';
+          } else {
+            errorMessage = error.message;
+          }
         }
       }
       

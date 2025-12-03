@@ -79,11 +79,11 @@ A clinic is considered to have a valid address if **ALL** of the following condi
 
 ## Benefits
 
-✅ **Improved User Experience**: Users only see clinics with complete location information  
-✅ **Better Search Results**: Address search only works with valid addresses  
-✅ **Consistent Display**: All clinic cards show complete address information  
-✅ **Data Quality**: Prevents display of incomplete or invalid clinic data  
-✅ **Future-Proof**: Ensures new clinics must have complete address information  
+ **Improved User Experience**: Users only see clinics with complete location information  
+ **Better Search Results**: Address search only works with valid addresses  
+ **Consistent Display**: All clinic cards show complete address information  
+ **Data Quality**: Prevents display of incomplete or invalid clinic data  
+ **Future-Proof**: Ensures new clinics must have complete address information  
 
 ## Affected Screens
 

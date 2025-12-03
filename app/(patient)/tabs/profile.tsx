@@ -101,7 +101,7 @@ export default function ProfileScreen() {
 
   // Debug logging
   React.useEffect(() => {
-    console.log('🔔 Patient Profile - Notifications state:', {
+    console.log(' Patient Profile - Notifications state:', {
       count: notifications.length,
       loading: notificationsLoading,
       error: notificationsError,

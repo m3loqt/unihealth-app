@@ -87,7 +87,7 @@ export default function SpecialistHomeScreen() {
  
   
   // Debug logging for UI state
-  console.log('🔔 Specialist Home - UI State:', {
+  console.log(' Specialist Home - UI State:', {
     userId: user?.uid,
     userRole: user?.role,
     notificationsCount: notifications.length,
@@ -98,7 +98,7 @@ export default function SpecialistHomeScreen() {
   // Force refresh notifications when component mounts
   React.useEffect(() => {
     if (user?.uid && refreshNotifications) {
-      console.log('🔔 Force refreshing notifications for user:', user.uid);
+      console.log(' Force refreshing notifications for user:', user.uid);
       refreshNotifications();
     }
   }, [user?.uid, refreshNotifications]);
@@ -174,11 +174,11 @@ export default function SpecialistHomeScreen() {
   
   // Notification Modal Actions
   const handleOpenNotifications = () => {
-    console.log('🔔 Specialist - Opening notification modal');
+    console.log(' Specialist - Opening notification modal');
     setShowNotificationModal(true);
   };
   const handleCloseNotificationModal = () => {
-    console.log('🔔 Specialist - Closing notification modal');
+    console.log(' Specialist - Closing notification modal');
     setShowNotificationModal(false);
   };
   
@@ -447,13 +447,13 @@ export default function SpecialistHomeScreen() {
 
   // Function to aggregate ALL appointment data (referrals + regular appointments) by date for chart
   const aggregateAllAppointments = (range: 'weekly' | 'monthly') => {
-    console.log('📊 Aggregating ALL appointment data:', { 
-      range, 
-      referralsCount: referrals?.length || 0,
-      appointmentsCount: allAppointments?.length || 0,
-      referrals: referrals?.slice(0, 2), // Log first 2 referrals for debugging
-      appointments: allAppointments?.slice(0, 2) // Log first 2 appointments for debugging
-    });
+    // console.log(' Aggregating ALL appointment data:', { 
+    //   range, 
+    //   referralsCount: referrals?.length || 0,
+    //   appointmentsCount: allAppointments?.length || 0,
+    //   referrals: referrals?.slice(0, 2), // Log first 2 referrals for debugging
+    //   appointments: allAppointments?.slice(0, 2) // Log first 2 appointments for debugging
+    // });
     
     // Combine referrals and regular appointments, removing duplicates
     const allAppointmentData = [
@@ -466,7 +466,7 @@ export default function SpecialistHomeScreen() {
       index === self.findIndex(a => a.id === appointment.id)
     );
     
-    console.log('📊 Combined appointment data:', {
+    console.log(' Combined appointment data:', {
       totalCombined: allAppointmentData.length,
       uniqueCount: uniqueAppointments.length,
       duplicatesRemoved: allAppointmentData.length - uniqueAppointments.length,
@@ -479,7 +479,7 @@ export default function SpecialistHomeScreen() {
     });
     
     if (!uniqueAppointments || uniqueAppointments.length === 0) {
-      console.log('📊 No unique appointment data (referrals + appointments), returning empty chart data');
+      console.log(' No unique appointment data (referrals + appointments), returning empty chart data');
       // Return empty data if no appointments
       if (range === 'weekly') {
         return { data: Array(7).fill(0).map((_, i) => {
@@ -512,13 +512,13 @@ export default function SpecialistHomeScreen() {
       uniqueAppointments.forEach(appointment => {
         try {
           if (!appointment.appointmentDate) {
-            console.warn('📊 Appointment missing appointmentDate:', appointment);
+            console.warn(' Appointment missing appointmentDate:', appointment);
             return;
           }
           
           const appointmentDate = new Date(appointment.appointmentDate);
           if (isNaN(appointmentDate.getTime())) {
-            console.warn('📊 Invalid appointmentDate:', appointment.appointmentDate);
+            console.warn(' Invalid appointmentDate:', appointment.appointmentDate);
             return;
           }
           
@@ -529,7 +529,7 @@ export default function SpecialistHomeScreen() {
             data[dayIndex].value += 1;
           }
         } catch (error) {
-          console.error('📊 Error processing appointment:', error, appointment);
+          console.error(' Error processing appointment:', error, appointment);
         }
       });
 
@@ -539,7 +539,7 @@ export default function SpecialistHomeScreen() {
         totalCount 
       };
       
-      console.log('📊 Weekly aggregation result:', { totalCount, dataPoints: result.data.length });
+      console.log(' Weekly aggregation result:', { totalCount, dataPoints: result.data.length });
       return result;
     } else {
       // Monthly aggregation
@@ -558,13 +558,13 @@ export default function SpecialistHomeScreen() {
       uniqueAppointments.forEach(appointment => {
         try {
           if (!appointment.appointmentDate) {
-            console.warn('📊 Appointment missing appointmentDate:', appointment);
+            console.warn(' Appointment missing appointmentDate:', appointment);
             return;
           }
           
           const appointmentDate = new Date(appointment.appointmentDate);
           if (isNaN(appointmentDate.getTime())) {
-            console.warn('📊 Invalid appointmentDate:', appointment.appointmentDate);
+            console.warn(' Invalid appointmentDate:', appointment.appointmentDate);
             return;
           }
           
@@ -579,7 +579,7 @@ export default function SpecialistHomeScreen() {
             data[monthIndex].value += 1;
           }
         } catch (error) {
-          console.error('📊 Error processing appointment:', error, appointment);
+          console.error(' Error processing appointment:', error, appointment);
         }
       });
 
@@ -590,7 +590,7 @@ export default function SpecialistHomeScreen() {
         totalCount 
       };
       
-      console.log('📊 Monthly aggregation result:', { totalCount, dataPoints: result.data.length });
+      console.log(' Monthly aggregation result:', { totalCount, dataPoints: result.data.length });
       return result;
     }
   };
@@ -598,7 +598,7 @@ export default function SpecialistHomeScreen() {
   const generateChartData = () => {
     if (!user) return;
     
-    console.log('📊 Generating chart data:', { 
+    console.log(' Generating chart data:', { 
       chartRange, 
       referralsCount: referrals?.length || 0,
       appointmentsCount: allAppointments?.length || 0,
@@ -610,7 +610,7 @@ export default function SpecialistHomeScreen() {
     const newChartData = result.data;
     const totalCount = result.totalCount;
     
-    console.log('📊 Chart data generated:', { 
+    console.log(' Chart data generated:', { 
       dataPoints: newChartData.length, 
       totalCount,
       sampleData: newChartData.slice(0, 3) // Log first 3 data points for debugging
@@ -747,7 +747,7 @@ export default function SpecialistHomeScreen() {
     setConsentError(null);
     
     try {
-      console.log('🔍 QR Code scanned:', { type, data });
+      console.log(' QR Code scanned:', { type, data });
       
       // Parse QR data safely
       const qrData = parseQRData(data);
@@ -759,7 +759,7 @@ export default function SpecialistHomeScreen() {
       
       if (result.action === 'direct_access') {
         // Trusted specialist - load patient data immediately
-        console.log('✅ Direct access granted:', result.reason);
+        console.log(' Direct access granted:', result.reason);
         await loadPatientData(qrData);
         
       } else if (result.action === 'request_consent') {
@@ -779,7 +779,7 @@ export default function SpecialistHomeScreen() {
         
       } else if (result.action === 'error') {
         // Error occurred - show error message
-        console.error('❌ QR scan error:', result.error);
+        console.error(' QR scan error:', result.error);
         setConsentError(result.error || 'Unknown error occurred');
         Alert.alert(
           'Error',
@@ -789,7 +789,7 @@ export default function SpecialistHomeScreen() {
       }
       
     } catch (error) {
-      console.error('❌ QR scan processing failed:', error);
+      console.error(' QR scan processing failed:', error);
       setConsentError(error.message);
       Alert.alert(
         'Error',
@@ -841,7 +841,7 @@ export default function SpecialistHomeScreen() {
       handleCloseQRModal();
       
     } catch (error) {
-      console.error('❌ Error loading patient data:', error);
+      console.error(' Error loading patient data:', error);
       setConsentError('Failed to load patient data');
       Alert.alert(
         'Error',
@@ -868,12 +868,12 @@ export default function SpecialistHomeScreen() {
   const handleConsentApproved = async () => {
     if (consentRequestId) {
       try {
-        console.log('✅ Consent approved for request:', consentRequestId);
+        console.log(' Consent approved for request:', consentRequestId);
         await loadPatientData(manualConsentData?.qrData);
         setShowConsentWaiting(false);
         setConsentRequestId(null);
       } catch (error) {
-        console.error('❌ Error handling consent approval:', error);
+        console.error(' Error handling consent approval:', error);
         setConsentError('Failed to process consent approval');
       }
     }
@@ -882,7 +882,7 @@ export default function SpecialistHomeScreen() {
   const handleConsentDenied = async () => {
     if (consentRequestId) {
       try {
-        console.log('❌ Consent denied for request:', consentRequestId);
+        console.log(' Consent denied for request:', consentRequestId);
         setShowConsentWaiting(false);
         setConsentRequestId(null);
         Alert.alert(
@@ -891,7 +891,7 @@ export default function SpecialistHomeScreen() {
           [{ text: 'OK' }]
         );
       } catch (error) {
-        console.error('❌ Error handling consent denial:', error);
+        console.error(' Error handling consent denial:', error);
         setConsentError('Failed to process consent denial');
       }
     }
@@ -907,7 +907,7 @@ export default function SpecialistHomeScreen() {
           console.log('📋 Consent request status updated:', request.status);
           
           if (request.status === 'approved') {
-            console.log('✅ Patient approved consent');
+            console.log(' Patient approved consent');
             setShowConsentWaiting(false);
             setConsentRequestId(null);
             // Load patient data using stored QR data
@@ -917,7 +917,7 @@ export default function SpecialistHomeScreen() {
               });
             }
           } else if (request.status === 'denied') {
-            console.log('❌ Patient denied consent');
+            console.log(' Patient denied consent');
             setShowConsentWaiting(false);
             setConsentRequestId(null);
             setPendingQRData(null); // Clear stored data
@@ -965,7 +965,7 @@ export default function SpecialistHomeScreen() {
       setManualConsentData(null);
       
     } catch (error) {
-      console.error('❌ Error handling manual consent:', error);
+      console.error(' Error handling manual consent:', error);
       setConsentError('Failed to process manual consent');
     }
   };
@@ -1028,7 +1028,7 @@ export default function SpecialistHomeScreen() {
               {/* Debug Button */}
               {/* <TouchableOpacity 
                 onPress={() => {
-                  console.log('🔔 Specialist debug button pressed!');
+                  console.log(' Specialist debug button pressed!');
                   setShowDebugger(true);
                 }} 
                 style={[styles.toggleIconBtn, { backgroundColor: '#FF6B6B', minWidth: 40, minHeight: 40, justifyContent: 'center', alignItems: 'center' }]}
@@ -2072,7 +2072,7 @@ export default function SpecialistHomeScreen() {
           shadowRadius: 3.84,
         }}
         onPress={() => {
-          console.log('🔔 Specialist floating debug button pressed!');
+          console.log(' Specialist floating debug button pressed!');
           setShowDebugger(true);
         }}
         activeOpacity={0.8}

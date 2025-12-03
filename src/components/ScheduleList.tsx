@@ -185,7 +185,7 @@ export default function ScheduleList({
           
           // Skip rendering if schedule ID is missing
           if (!schedule.id) {
-            console.error('❌ Schedule missing ID:', schedule);
+            console.error(' Schedule missing ID:', schedule);
             return null;
           }
           

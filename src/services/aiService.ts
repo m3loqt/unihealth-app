@@ -30,9 +30,9 @@ class AIService {
       this.model = getGenerativeModel(ai, { model: "gemini-2.5-flash" });
       
       this.isInitialized = true;
-      console.log('✅ AI Service initialized successfully with Gemini API');
+      console.log(' AI Service initialized successfully with Gemini API');
     } catch (error) {
-      console.error('❌ Failed to initialize AI service:', error);
+      console.error(' Failed to initialize AI service:', error);
       this.isInitialized = false;
     }
   }
@@ -74,7 +74,7 @@ class AIService {
         text: cleanedText
       };
     } catch (error) {
-      console.error('❌ Error sending message to AI:', error);
+      console.error(' Error sending message to AI:', error);
       return {
         text: 'I apologize, but I\'m having trouble processing your request right now. Please try again later.',
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -115,7 +115,7 @@ class AIService {
         }
       }
     } catch (error) {
-      console.error('❌ Error sending streaming message to AI:', error);
+      console.error(' Error sending streaming message to AI:', error);
       onChunk('I apologize, but I\'m having trouble processing your request right now. Please try again later.');
     }
   }
@@ -136,7 +136,7 @@ class AIService {
       .replace(/[→➜➤]/g, '->') // Arrows -> text arrows
       .replace(/[✓✔]/g, 'Yes') // Checkmarks -> Yes
       .replace(/[✗✘]/g, 'No') // X marks -> No
-      .replace(/[⚠️⚠]/g, 'Warning:') // Warning symbols
+      .replace(/[⚠]/g, 'Warning:') // Warning symbols
       .replace(/[ℹ️ℹ]/g, 'Info:') // Info symbols
       
       // Clean up spacing and formatting

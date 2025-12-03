@@ -1,6 +1,6 @@
 # Generalist Chat System Implementation Guide
 
-> **⚠️ STATUS: PLANNED FEATURE**  
+> ** STATUS: PLANNED FEATURE**  
 > This is a comprehensive implementation guide for a planned feature. The generalist chat system is not yet implemented in the codebase. This guide serves as a roadmap for future development.
 
 ## Overview
@@ -564,7 +564,7 @@ export default function GeneralistChatsScreen() {
         
         for (const existingThread of existingThreads) {
           if (existingThread.participants[user.uid] && existingThread.participants[contact.uid]) {
-            console.log('✅ Found existing thread for contact:', contact.firstName, contact.lastName);
+            console.log(' Found existing thread for contact:', contact.firstName, contact.lastName);
             thread = existingThread;
             break;
           }
@@ -726,7 +726,7 @@ export default function GeneralistChatsScreen() {
             Object.keys(linked).length > 0 ? linked : undefined
           );
           
-          console.log('✅ Successfully created new thread:', threadId);
+          console.log(' Successfully created new thread:', threadId);
           await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
           console.error('Error creating thread:', error);
@@ -1287,7 +1287,7 @@ Add comprehensive logging to track chat system behavior:
 ```typescript
 console.log('📋 Loaded contacts for generalist:', contacts.length);
 console.log('👥 Processing contact:', contact.firstName, contact.lastName, 'Role:', contact.role);
-console.log('✅ Found existing thread for contact:', contact.firstName);
+console.log(' Found existing thread for contact:', contact.firstName);
 console.log('📝 Creating placeholder for contact:', contact.firstName);
 ```
 
@@ -1363,12 +1363,12 @@ The generalist chat system builds upon the existing patient-specialist chat infr
 
 The generalist chat system leverages all existing features from the main chat system:
 
-- ✅ **Voice Messages**: Full voice recording and playback support
-- ✅ **Typing Indicators**: Real-time typing status updates
-- ✅ **Online Status**: User presence tracking with last seen timestamps
-- ✅ **Real-time Updates**: Live message and thread synchronization
-- ✅ **Security**: Complete Firebase rules for all chat features
-- ✅ **Message Management**: Delete messages and threads functionality
+-  **Voice Messages**: Full voice recording and playback support
+-  **Typing Indicators**: Real-time typing status updates
+-  **Online Status**: User presence tracking with last seen timestamps
+-  **Real-time Updates**: Live message and thread synchronization
+-  **Security**: Complete Firebase rules for all chat features
+-  **Message Management**: Delete messages and threads functionality
 
 ### Next Steps for Implementation
 

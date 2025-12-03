@@ -63,12 +63,12 @@ export default function EPrescriptionScreen() {
         setError(null);
         
         // Try to load as referral first
-        console.log('🔍 E-Prescription: Attempting to load data for ID:', id);
+        console.log(' E-Prescription: Attempting to load data for ID:', id);
         let refData = await databaseService.getReferralById(String(id));
         let isAppointment = false;
         
         if (refData) {
-          console.log('✅ E-Prescription: Found as referral');
+          console.log(' E-Prescription: Found as referral');
         } else {
           console.log('ℹ️ E-Prescription: Not found as referral, trying as appointment');
         }
@@ -97,7 +97,7 @@ export default function EPrescriptionScreen() {
                 type: appointmentData.type,
               } as any;
               isAppointment = true;
-              console.log('✅ Loaded appointment data for e-prescription:', appointmentData.id);
+              console.log(' Loaded appointment data for e-prescription:', appointmentData.id);
             }
           } catch (appointmentError) {
             console.log('Could not load as appointment:', appointmentError);
@@ -162,7 +162,7 @@ export default function EPrescriptionScreen() {
             const { signature, isSignatureSaved } = await databaseService.getDoctorSignature(refData.assignedSpecialistId);
             if (isSignatureSaved && signature) {
               setDoctorSignature(signature);
-              console.log('✅ Loaded doctor signature for e-prescription');
+              console.log(' Loaded doctor signature for e-prescription');
             } else {
               console.log('ℹ️ No saved signature found for doctor');
             }
@@ -176,12 +176,12 @@ export default function EPrescriptionScreen() {
             const isGeneralist = doctorData?.isGeneralist === true;
             
             if (isGeneralist) {
-              console.log('✅ Doctor is a generalist - loading availability and clinics');
+              console.log(' Doctor is a generalist - loading availability and clinics');
               
               // For generalists, get availability and clinic affiliations
               if (doctorData?.availability) {
                 setScheduleData(doctorData.availability);
-                console.log('✅ Loaded generalist availability data');
+                console.log(' Loaded generalist availability data');
               }
               
               // Load clinics from clinicAffiliations
@@ -198,14 +198,14 @@ export default function EPrescriptionScreen() {
                   }
                 }
                 setScheduleClinics(clinicsMap);
-                console.log(`✅ Loaded ${Object.keys(clinicsMap).length} clinics for generalist`);
+                console.log(` Loaded ${Object.keys(clinicsMap).length} clinics for generalist`);
               }
             } else {
               // For specialists, use the existing specialist schedule logic
               const schedules = await databaseService.getSpecialistSchedules(refData.assignedSpecialistId);
               if (schedules) {
                 setScheduleData(schedules);
-                console.log('✅ Loaded specialist schedule data');
+                console.log(' Loaded specialist schedule data');
                 
                 // Load clinic data for each schedule
                 const clinicsMap: any = {};
@@ -225,7 +225,7 @@ export default function EPrescriptionScreen() {
                   }
                 }
                 setScheduleClinics(clinicsMap);
-                console.log('✅ Loaded clinic data for schedules');
+                console.log(' Loaded clinic data for schedules');
               }
             }
           } catch (error) {
@@ -472,7 +472,7 @@ export default function EPrescriptionScreen() {
       
       if (isGeneralist) {
         // Handle generalist availability data
-        console.log('🔍 Rendering generalist schedule');
+        console.log(' Rendering generalist schedule');
         const weeklySchedule = scheduleData?.weeklySchedule || {};
         
         // Collect enabled days with time slots

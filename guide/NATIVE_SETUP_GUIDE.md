@@ -4,13 +4,13 @@
 
 Your project has been successfully prebuilt and is now ready to run with native dependencies! This means you can use `@react-native-voice/voice` and other native libraries directly on your device.
 
-## **✅ What's Been Done**
+## ** What's Been Done**
 
-1. ✅ **Project prebuilt** with `npx expo prebuild`
-2. ✅ **Android native code** generated
-3. ✅ **Native voice library** installed (`@react-native-voice/voice`)
-4. ✅ **Autolinking** configured
-5. ✅ **Scripts updated** for native builds
+1.  **Project prebuilt** with `npx expo prebuild`
+2.  **Android native code** generated
+3.  **Native voice library** installed (`@react-native-voice/voice`)
+4.  **Autolinking** configured
+5.  **Scripts updated** for native builds
 
 ## **🚀 Running Your App**
 
@@ -96,11 +96,11 @@ npm run ios
 ## **🎤 Voice-to-Text Features**
 
 ### **What You Get:**
-- ✅ **Real-time voice recognition** on device
-- ✅ **No API costs** for basic transcription
-- ✅ **Works offline**
-- ✅ **Better performance**
-- ✅ **Privacy** (voice stays on device)
+-  **Real-time voice recognition** on device
+-  **No API costs** for basic transcription
+-  **Works offline**
+-  **Better performance**
+-  **Privacy** (voice stays on device)
 
 ### **How It Works:**
 1. **Click microphone** → Start recording

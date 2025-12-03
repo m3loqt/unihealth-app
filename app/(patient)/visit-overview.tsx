@@ -95,7 +95,7 @@ const HORIZONTAL_MARGIN = 24;
 
 // Helper function to format date (matching referral details implementation)
 const formatDate = (dateString: string) => {
-  console.log('🔍 VISIT OVERVIEW - formatDate called with:', {
+  console.log(' VISIT OVERVIEW - formatDate called with:', {
     input: dateString,
     type: typeof dateString,
     length: dateString?.length
@@ -111,7 +111,7 @@ const formatDate = (dateString: string) => {
         month: 'long',
         day: 'numeric',
       });
-      console.log('🔍 VISIT OVERVIEW - DD/MM/YYYY format result:', result);
+      console.log(' VISIT OVERVIEW - DD/MM/YYYY format result:', result);
       return result;
     }
     
@@ -124,7 +124,7 @@ const formatDate = (dateString: string) => {
           month: 'long',
           day: 'numeric',
         });
-        console.log('🔍 VISIT OVERVIEW - ISO format result:', result);
+        console.log(' VISIT OVERVIEW - ISO format result:', result);
         return result;
       }
     }
@@ -138,7 +138,7 @@ const formatDate = (dateString: string) => {
         month: 'long',
         day: 'numeric',
       });
-      console.log('🔍 VISIT OVERVIEW - YYYY-MM-DD format result:', result);
+      console.log(' VISIT OVERVIEW - YYYY-MM-DD format result:', result);
       return result;
     }
     
@@ -150,14 +150,14 @@ const formatDate = (dateString: string) => {
         month: 'long',
         day: 'numeric',
       });
-      console.log('🔍 VISIT OVERVIEW - Native parsing result:', result);
+      console.log(' VISIT OVERVIEW - Native parsing result:', result);
       return result;
     }
     
-    console.log('🔍 VISIT OVERVIEW - All parsing methods failed, returning Invalid date');
+    console.log(' VISIT OVERVIEW - All parsing methods failed, returning Invalid date');
     return 'Invalid date';
   } catch (error) {
-    console.log('🔍 VISIT OVERVIEW - formatDate error:', error);
+    console.log(' VISIT OVERVIEW - formatDate error:', error);
     return 'Invalid date';
   }
 };
@@ -330,7 +330,7 @@ export default function VisitOverviewScreen() {
           // Load medical history/consultation data if appointment is completed
           let medicalHistory = null;
           if (appointment.status.toLowerCase() === 'completed') {
-            console.log('🔍 VISIT OVERVIEW - Starting PMH fetch for completed appointment:', {
+            console.log(' VISIT OVERVIEW - Starting PMH fetch for completed appointment:', {
               appointmentId: id,
               patientId: appointment.patientId,
               appointmentConsultationId: appointment.appointmentConsultationId,
@@ -340,9 +340,9 @@ export default function VisitOverviewScreen() {
             try {
               // Primary approach: Try direct access using appointmentConsultationId if available
               if (appointment.appointmentConsultationId) {
-                console.log('🔍 VISIT OVERVIEW - Attempting direct PMH access with consultation ID:', appointment.appointmentConsultationId);
+                console.log(' VISIT OVERVIEW - Attempting direct PMH access with consultation ID:', appointment.appointmentConsultationId);
                 medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${appointment.patientId}/entries/${appointment.appointmentConsultationId}`);
-                console.log('🔍 VISIT OVERVIEW - Direct PMH access successful:', {
+                console.log(' VISIT OVERVIEW - Direct PMH access successful:', {
                   found: !!medicalHistory,
                   hasPresentIllnessHistory: !!(medicalHistory as any)?.presentIllnessHistory,
                   hasReviewOfSymptoms: !!(medicalHistory as any)?.reviewOfSymptoms,
@@ -353,15 +353,15 @@ export default function VisitOverviewScreen() {
                   hasClinicalSummary: !!(medicalHistory as any)?.clinicalSummary
                 });
               } else {
-                console.log('🔍 VISIT OVERVIEW - No appointmentConsultationId available, skipping direct access');
+                console.log(' VISIT OVERVIEW - No appointmentConsultationId available, skipping direct access');
               }
             } catch (error) {
-              console.log('🔍 VISIT OVERVIEW - Direct medical history access failed, trying fallback method:', error);
+              console.log(' VISIT OVERVIEW - Direct medical history access failed, trying fallback method:', error);
               try {
                 // Fallback approach: Use the getMedicalHistoryByAppointment method
-                console.log('🔍 VISIT OVERVIEW - Attempting fallback PMH access via getMedicalHistoryByAppointment');
+                console.log(' VISIT OVERVIEW - Attempting fallback PMH access via getMedicalHistoryByAppointment');
                 medicalHistory = await databaseService.getMedicalHistoryByAppointment(id as string, appointment.patientId);
-                console.log('🔍 VISIT OVERVIEW - Fallback PMH access result:', {
+                console.log(' VISIT OVERVIEW - Fallback PMH access result:', {
                   found: !!medicalHistory,
                   hasPresentIllnessHistory: !!(medicalHistory as any)?.presentIllnessHistory,
                   hasReviewOfSymptoms: !!(medicalHistory as any)?.reviewOfSymptoms,
@@ -372,12 +372,12 @@ export default function VisitOverviewScreen() {
                   hasClinicalSummary: !!(medicalHistory as any)?.clinicalSummary
                 });
               } catch (fallbackError) {
-                console.log('🔍 VISIT OVERVIEW - No medical history found for this appointment:', fallbackError);
+                console.log(' VISIT OVERVIEW - No medical history found for this appointment:', fallbackError);
               }
             }
             
             // Final PMH debug summary
-            console.log('🔍 VISIT OVERVIEW - Final PMH fetch summary:', {
+            console.log(' VISIT OVERVIEW - Final PMH fetch summary:', {
               appointmentId: id,
               patientId: appointment.patientId,
               medicalHistoryFound: !!medicalHistory,
@@ -411,14 +411,14 @@ export default function VisitOverviewScreen() {
               certificates: null // Certificates loaded separately after this debug log
             });
           } else {
-            console.log('🔍 VISIT OVERVIEW - Appointment not completed, skipping PMH fetch:', {
+            console.log(' VISIT OVERVIEW - Appointment not completed, skipping PMH fetch:', {
               appointmentId: id,
               status: appointment.status
             });
           }
           
           // Debug logging
-          console.log('🔍 APPOINTMENT DATA:', {
+          console.log(' APPOINTMENT DATA:', {
             id: appointment.id,
             doctorFirstName: appointment.doctorFirstName,
             doctorLastName: appointment.doctorLastName,
@@ -428,9 +428,9 @@ export default function VisitOverviewScreen() {
             appointmentTime: appointment.appointmentTime
           });
           
-          console.log('🔍 CLINIC DATA:', clinicData);
-          console.log('🔍 DOCTOR NAME DATA (users):', doctorNameData);
-          console.log('🔍 DOCTOR SPECIALTY DATA (doctors):', doctorSpecialtyData);
+          console.log(' CLINIC DATA:', clinicData);
+          console.log(' DOCTOR NAME DATA (users):', doctorNameData);
+          console.log(' DOCTOR SPECIALTY DATA (doctors):', doctorSpecialtyData);
           
           // Combine appointment data with consultation data
           const combinedVisitData: VisitData = {
@@ -523,7 +523,7 @@ export default function VisitOverviewScreen() {
               const certAppointmentId = cert.appointmentId;
               return certAppointmentId && certAppointmentId === id; // id is the appointment ID from params
             });
-            console.log('🔍 VISIT OVERVIEW - Certificate filtering:', {
+            console.log(' VISIT OVERVIEW - Certificate filtering:', {
               visitId: id,
               totalCertificates: certificates.length,
               matchingCertificates: mhCertificates.length,
@@ -545,7 +545,7 @@ export default function VisitOverviewScreen() {
           
           visitCertificates = mhCertificates;
           
-          console.log('🔍 VISIT OVERVIEW - Using prescriptions/certificates from medical history:', {
+          console.log(' VISIT OVERVIEW - Using prescriptions/certificates from medical history:', {
             prescriptionsFromMH: visitPrescriptions.length,
             certificatesFromMH: visitCertificates.length,
             processedPrescriptions: visitPrescriptions.map(p => ({ 
@@ -558,7 +558,7 @@ export default function VisitOverviewScreen() {
         
         // If no prescriptions/certificates from medical history, try separate database calls
         if (visitPrescriptions.length === 0 || visitCertificates.length === 0) {
-          console.log('🔍 VISIT OVERVIEW - Fetching prescriptions/certificates from separate database calls');
+          console.log(' VISIT OVERVIEW - Fetching prescriptions/certificates from separate database calls');
           const [dbPrescriptions, dbCertificates] = await Promise.all([
             databaseService.getPrescriptionsByAppointment(id as string),
             databaseService.getCertificatesByAppointment(id as string)
@@ -573,7 +573,7 @@ export default function VisitOverviewScreen() {
           }
         }
         
-        console.log('🔍 VISIT OVERVIEW - Final prescriptions/certificates to display:', {
+        console.log(' VISIT OVERVIEW - Final prescriptions/certificates to display:', {
           prescriptionsCount: visitPrescriptions.length,
           certificatesCount: visitCertificates.length,
           prescriptions: visitPrescriptions.map(p => ({ id: p.id, medication: p.medication, dosage: p.dosage })),
@@ -1400,7 +1400,7 @@ export default function VisitOverviewScreen() {
             const statusStyle = getCertStatusStyles(cert.status, adjustedExpiryDate);
             
             // Debug logging for certificate date
-            console.log('🔍 VISIT OVERVIEW - Certificate date debug:', {
+            console.log(' VISIT OVERVIEW - Certificate date debug:', {
               certificateId: cert.id,
               certificateType: cert.type,
               certDataIssuedDate: certData.issuedDate,

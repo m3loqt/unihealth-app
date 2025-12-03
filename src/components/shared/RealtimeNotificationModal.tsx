@@ -40,11 +40,11 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
   const handleMarkAsRead = async (notificationId: string) => {
     try {
       const platform = typeof window !== 'undefined' ? 'web' : 'mobile';
-      console.log(`🔔 [${platform}] RealtimeModal handleMarkAsRead called for notification:`, notificationId);
+      console.log(` [${platform}] RealtimeModal handleMarkAsRead called for notification:`, notificationId);
       await markAsRead(notificationId);
-      console.log(`🔔 [${platform}] RealtimeModal Successfully marked notification as read:`, notificationId);
+      console.log(` [${platform}] RealtimeModal Successfully marked notification as read:`, notificationId);
     } catch (error) {
-      console.error(`🔔 [${platform}] RealtimeModal Error marking notification as read:`, error);
+      console.error(` [${platform}] RealtimeModal Error marking notification as read:`, error);
       Alert.alert('Error', 'Failed to mark notification as read. Please try again.');
     }
   };
@@ -59,11 +59,11 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
           text: 'Mark All Read', 
           onPress: async () => {
             try {
-              console.log('🔔 Marking all notifications as read');
+              console.log(' Marking all notifications as read');
               await markAllAsRead();
-              console.log('🔔 Successfully marked all notifications as read');
+              console.log(' Successfully marked all notifications as read');
             } catch (error) {
-              console.error('🔔 Error marking all notifications as read:', error);
+              console.error(' Error marking all notifications as read:', error);
               Alert.alert('Error', 'Failed to mark all notifications as read. Please try again.');
             }
           }
@@ -83,11 +83,11 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
           style: 'destructive', 
           onPress: async () => {
             try {
-              console.log('🔔 Deleting notification:', notificationId);
+              console.log(' Deleting notification:', notificationId);
               await deleteNotification(notificationId);
-              console.log('🔔 Successfully deleted notification:', notificationId);
+              console.log(' Successfully deleted notification:', notificationId);
             } catch (error) {
-              console.error('🔔 Error deleting notification:', error);
+              console.error(' Error deleting notification:', error);
               Alert.alert('Error', 'Failed to delete notification. Please try again.');
             }
           }
@@ -98,27 +98,27 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
 
   const handleRefresh = async () => {
     try {
-      console.log('🔔 Refreshing notifications');
+      console.log(' Refreshing notifications');
       await refresh();
-      console.log('🔔 Successfully refreshed notifications');
+      console.log(' Successfully refreshed notifications');
     } catch (error) {
-      console.error('🔔 Error refreshing notifications:', error);
+      console.error(' Error refreshing notifications:', error);
       Alert.alert('Error', 'Failed to refresh notifications. Please try again.');
     }
   };
 
   // Handle notification press - navigate to appropriate route
   const handleNotificationPress = (notification: RealtimeNotification) => {
-    console.log('🔔 Realtime notification pressed:', notification);
-    console.log('🔔 Related ID:', notification.relatedId);
-    console.log('🔔 Notification type:', notification.type);
+    console.log(' Realtime notification pressed:', notification);
+    console.log(' Related ID:', notification.relatedId);
+    console.log(' Notification type:', notification.type);
     
     // Mark as read first
     handleMarkAsRead(notification.id);
     
     // Navigate based on notification type and user role
     if (notification.type === 'appointment') {
-      console.log('🔔 Navigating to visit overview with ID:', notification.relatedId);
+      console.log(' Navigating to visit overview with ID:', notification.relatedId);
       if (userRole === 'patient') {
         router.push({
           pathname: '/(patient)/visit-overview',
@@ -136,7 +136,7 @@ const RealtimeNotificationModal: React.FC<RealtimeNotificationModalProps> = ({
         });
       }
     } else if (notification.type === 'referral') {
-      console.log('🔔 Navigating to referral details with ID:', notification.relatedId);
+      console.log(' Navigating to referral details with ID:', notification.relatedId);
       if (userRole === 'patient') {
         router.push({
           pathname: '/(patient)/referral-details',

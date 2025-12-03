@@ -351,7 +351,7 @@ export default function SpecialistScheduleScreen() {
         );
       }
     } catch (error) {
-      console.error('❌ Schedule screen - Error submitting schedule:', error);
+      console.error(' Schedule screen - Error submitting schedule:', error);
       throw error;
     }
   };

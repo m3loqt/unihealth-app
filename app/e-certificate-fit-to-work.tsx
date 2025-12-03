@@ -96,12 +96,12 @@ export default function FitToWorkCertificateScreen() {
                 const isGeneralist = doctorData?.isGeneralist === true;
                 
                 if (isGeneralist) {
-                  console.log('✅ Doctor is a generalist - loading availability and clinics');
+                  console.log(' Doctor is a generalist - loading availability and clinics');
                   
                   // For generalists, get availability and clinic affiliations
                   if (doctorData?.availability) {
                     setScheduleData(doctorData.availability);
-                    console.log('✅ Loaded generalist availability data');
+                    console.log(' Loaded generalist availability data');
                   }
                   
                   // Load clinics from clinicAffiliations
@@ -118,14 +118,14 @@ export default function FitToWorkCertificateScreen() {
                       }
                     }
                     setScheduleClinics(clinicsMap);
-                    console.log(`✅ Loaded ${Object.keys(clinicsMap).length} clinics for generalist`);
+                    console.log(` Loaded ${Object.keys(clinicsMap).length} clinics for generalist`);
                   }
                 } else {
                   // For specialists, use the existing specialist schedule logic
                   const schedules = await databaseService.getSpecialistSchedules(doctorId);
                   if (schedules) {
                     setScheduleData(schedules);
-                    console.log('✅ Loaded specialist schedule data');
+                    console.log(' Loaded specialist schedule data');
                     
                     // Load clinic data for each schedule
                     const clinicsMap: any = {};
@@ -145,7 +145,7 @@ export default function FitToWorkCertificateScreen() {
                       }
                     }
                     setScheduleClinics(clinicsMap);
-                    console.log('✅ Loaded clinic data for schedules');
+                    console.log(' Loaded clinic data for schedules');
                   }
                 }
               } catch (error) {
@@ -246,12 +246,12 @@ export default function FitToWorkCertificateScreen() {
             const isGeneralist = doctorData?.isGeneralist === true;
             
             if (isGeneralist) {
-              console.log('✅ Doctor is a generalist - loading availability and clinics');
+              console.log(' Doctor is a generalist - loading availability and clinics');
               
               // For generalists, get availability and clinic affiliations
               if (doctorData?.availability) {
                 setScheduleData(doctorData.availability);
-                console.log('✅ Loaded generalist availability data');
+                console.log(' Loaded generalist availability data');
               }
               
               // Load clinics from clinicAffiliations
@@ -268,14 +268,14 @@ export default function FitToWorkCertificateScreen() {
                   }
                 }
                 setScheduleClinics(clinicsMap);
-                console.log(`✅ Loaded ${Object.keys(clinicsMap).length} clinics for generalist`);
+                console.log(` Loaded ${Object.keys(clinicsMap).length} clinics for generalist`);
               }
             } else {
               // For specialists, use the existing specialist schedule logic
               const schedules = await databaseService.getSpecialistSchedules(doctorId);
               if (schedules) {
                 setScheduleData(schedules);
-                console.log('✅ Loaded specialist schedule data');
+                console.log(' Loaded specialist schedule data');
                 
                 // Load clinic data for each schedule
                 const clinicsMap: any = {};
@@ -295,7 +295,7 @@ export default function FitToWorkCertificateScreen() {
                   }
                 }
                 setScheduleClinics(clinicsMap);
-                console.log('✅ Loaded clinic data for schedules');
+                console.log(' Loaded clinic data for schedules');
               }
             }
           } catch (error) {
@@ -550,7 +550,7 @@ export default function FitToWorkCertificateScreen() {
     };
     
     // Debug: Log the actual date values we're receiving
-    console.log('🔍 Certificate date debug:', {
+    console.log(' Certificate date debug:', {
       certificateIssueDate: certificate?.issueDate,
       certificateMetadataIssuedDate: (certificate as any)?.metadata?.issuedDate,
       certificateObject: certificate

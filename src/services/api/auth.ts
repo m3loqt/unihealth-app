@@ -429,7 +429,7 @@ export const authService = {
           const { databaseService } = await import('../database/firebase');
           await databaseService.updateLastLogin(user.uid, completeProfile.role);
         } catch (lastLoginError) {
-          console.warn('⚠️ Failed to update lastLogin timestamp:', lastLoginError);
+          console.warn(' Failed to update lastLogin timestamp:', lastLoginError);
           // Don't fail the login if lastLogin update fails
         }
         
@@ -486,7 +486,7 @@ export const authService = {
           const { databaseService } = await import('../database/firebase');
           await databaseService.updateLastLogin(user.uid, userProfile.role);
         } catch (lastLoginError) {
-          console.warn('⚠️ Failed to update lastLogin timestamp:', lastLoginError);
+          console.warn(' Failed to update lastLogin timestamp:', lastLoginError);
           // Don't fail the login if lastLogin update fails
         }
         
@@ -595,12 +595,12 @@ export const authService = {
         set(ref(database, `patients/${user.uid}`), filteredPatientNodeData)
       ]);
       
-      console.log('✅ User data stored successfully in database');
+      console.log(' User data stored successfully in database');
       
       // Verify the data was stored correctly
       const verifyUserRef = ref(database, `users/${user.uid}`);
       const verifyUserSnapshot = await get(verifyUserRef);
-      console.log('🔍 Verification - User data exists in database:', verifyUserSnapshot.exists());
+      console.log(' Verification - User data exists in database:', verifyUserSnapshot.exists());
       
       if (!verifyUserSnapshot.exists()) {
         throw new Error('Failed to store user data in database');
@@ -636,9 +636,9 @@ export const authService = {
         const userName = `${signUpData.firstName} ${signUpData.lastName}`.trim();
         console.log('📧 Attempting to send welcome email to:', signUpData.email, 'for user:', userName);
         await emailService.sendWelcomeEmail(signUpData.email, userName);
-        console.log('✅ Welcome email sent successfully');
+        console.log(' Welcome email sent successfully');
       } catch (emailError) {
-        console.warn('⚠️ Failed to send welcome email:', emailError);
+        console.warn(' Failed to send welcome email:', emailError);
         // Don't throw error - signup should still succeed even if email fails
       }
 

@@ -29,18 +29,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Initialize online status when user logs in
         try {
           await onlineStatusService.initializeUserStatus(firebaseUser.uid);
-          console.log('✅ Online status initialized for user:', firebaseUser.uid);
+          console.log(' Online status initialized for user:', firebaseUser.uid);
         } catch (error) {
-          console.error('❌ Failed to initialize online status:', error);
+          console.error(' Failed to initialize online status:', error);
         }
       } else {
         // Clean up online status when user logs out
         if (user?.uid) {
           try {
             await onlineStatusService.cleanupUserStatus(user.uid);
-            console.log('✅ Online status cleaned up for user:', user.uid);
+            console.log(' Online status cleaned up for user:', user.uid);
           } catch (error) {
-            console.error('❌ Failed to cleanup online status:', error);
+            console.error(' Failed to cleanup online status:', error);
           }
         }
         
@@ -78,9 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user?.uid) {
       try {
         await onlineStatusService.cleanupUserStatus(user.uid);
-        console.log('✅ Online status cleaned up during sign out for user:', user.uid);
+        console.log(' Online status cleaned up during sign out for user:', user.uid);
       } catch (error) {
-        console.error('❌ Failed to cleanup online status during sign out:', error);
+        console.error(' Failed to cleanup online status during sign out:', error);
       }
     }
     

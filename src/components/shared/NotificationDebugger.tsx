@@ -23,9 +23,9 @@ const NotificationDebugger: React.FC = () => {
     try {
       const userAppointments = await databaseService.getAppointments(user.uid, 'specialist');
       setAppointments(userAppointments);
-      console.log('🔔 Debug - Specialist appointments:', userAppointments);
+      console.log(' Debug - Specialist appointments:', userAppointments);
     } catch (error) {
-      console.error('🔔 Debug - Error loading appointments:', error);
+      console.error(' Debug - Error loading appointments:', error);
     } finally {
       setLoading(false);
     }

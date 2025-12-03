@@ -154,7 +154,7 @@ class ChatService {
    */
   private async findReconstructedThreads(userId: string): Promise<ChatThread[]> {
     try {
-      console.log('🔍 Finding reconstructed threads for user:', userId);
+      console.log(' Finding reconstructed threads for user:', userId);
       const messagesSnapshot = await get(this.messagesRef);
       const reconstructedThreads: ChatThread[] = [];
 
@@ -180,7 +180,7 @@ class ChatService {
         console.log('📨 Found thread IDs with messages for user:', Array.from(threadIds));
         
         if (threadIds.size === 0) {
-          console.log('❌ No thread IDs found with messages for user:', userId);
+          console.log(' No thread IDs found with messages for user:', userId);
           return [];
         }
 
@@ -192,7 +192,7 @@ class ChatService {
           }
         }
       } else {
-        console.log('❌ No messages section found in database at all');
+        console.log(' No messages section found in database at all');
       }
 
       return reconstructedThreads;
@@ -258,7 +258,7 @@ class ChatService {
         throw new Error(`Thread ${threadId} does not exist. Please refresh and try again.`);
       }
       
-      console.log('🔍 Thread validation for sendMessage:', {
+      console.log(' Thread validation for sendMessage:', {
         threadId,
         senderId,
         participants: thread.participants,
@@ -266,7 +266,7 @@ class ChatService {
       });
       
       if (!thread.participants || !thread.participants[senderId]) {
-        console.error('❌ Participant validation failed:', {
+        console.error(' Participant validation failed:', {
           threadId,
           senderId,
           participants: thread.participants,
@@ -501,7 +501,7 @@ class ChatService {
           if (messageData && messageData.seenBy && !messageData.seenBy[userId]) {
             const messageId = childSnapshot.key;
             const seenByPath = `messages/${threadId}/${messageId}/seenBy/${userId}`;
-            console.log(`🔍 Marking message as seen: ${seenByPath}`);
+            console.log(` Marking message as seen: ${seenByPath}`);
             
             const seenByRef = ref(database, seenByPath);
             updatePromises.push(set(seenByRef, true));
@@ -511,7 +511,7 @@ class ChatService {
         if (updatePromises.length > 0) {
           console.log(`📝 Updating ${updatePromises.length} messages as seen by user ${userId}`);
           await Promise.all(updatePromises);
-          console.log(`✅ Successfully marked messages as seen`);
+          console.log(` Successfully marked messages as seen`);
         }
       }
     } catch (error) {
@@ -705,23 +705,23 @@ class ChatService {
    */
   async getThreadById(threadId: string): Promise<ChatThread | null> {
     try {
-      console.log('🔍 Getting thread by ID:', threadId);
+      console.log(' Getting thread by ID:', threadId);
       const threadRef = ref(database, `chatThreads/${threadId}`);
       const snapshot = await get(threadRef);
       
       if (snapshot.exists()) {
         const thread = snapshot.val();
-        console.log('✅ Found existing thread in chatThreads:', threadId, 'lastMessage:', thread.lastMessage?.text || 'No last message');
+        console.log(' Found existing thread in chatThreads:', threadId, 'lastMessage:', thread.lastMessage?.text || 'No last message');
         
         // Fix thread participants if they don't match the thread ID
         const fixedThread = await this.fixThreadParticipants(threadId, thread);
         
         // If thread exists but has no lastMessage, try to reconstruct it
         if (!fixedThread.lastMessage) {
-          console.log('⚠️ Thread exists but has no lastMessage, attempting to reconstruct...');
+          console.log(' Thread exists but has no lastMessage, attempting to reconstruct...');
           const reconstructedThread = await this.reconstructThreadFromMessages(threadId);
           if (reconstructedThread && reconstructedThread.lastMessage) {
-            console.log('✅ Successfully reconstructed lastMessage for existing thread');
+            console.log(' Successfully reconstructed lastMessage for existing thread');
             // Update the existing thread with the reconstructed lastMessage
             const updatedThread = { ...fixedThread, lastMessage: reconstructedThread.lastMessage };
             await this.saveReconstructedThread(updatedThread);
@@ -732,7 +732,7 @@ class ChatService {
         return fixedThread;
       }
       
-      console.log('❌ Thread not found in chatThreads, attempting reconstruction:', threadId);
+      console.log(' Thread not found in chatThreads, attempting reconstruction:', threadId);
       // If thread doesn't exist but messages might exist, try to reconstruct from messages
       return await this.reconstructThreadFromMessages(threadId);
     } catch (error) {
@@ -751,14 +751,14 @@ class ChatService {
       const snapshot = await get(messagesRef);
       
       if (!snapshot.exists()) {
-        console.log('❌ No messages found for thread:', threadId);
+        console.log(' No messages found for thread:', threadId);
         return null;
       }
 
       console.log('📨 Found messages for thread:', threadId, 'message count:', snapshot.size);
       
       if (snapshot.size === 0) {
-        console.log('❌ No messages found in thread:', threadId);
+        console.log(' No messages found in thread:', threadId);
         return null;
       }
       const messages: ChatMessage[] = [];
@@ -777,7 +777,7 @@ class ChatService {
         
         // Messages should already have an id field, but verify it matches the key
         if (message.id !== messageId) {
-          console.log('⚠️ Message ID mismatch:', message.id, 'vs key:', messageId);
+          console.log(' Message ID mismatch:', message.id, 'vs key:', messageId);
           // Fix the id field if it's missing or incorrect
           message.id = messageId;
         }
@@ -851,7 +851,7 @@ class ChatService {
     try {
       const threadRef = ref(database, `chatThreads/${thread.id}`);
       await set(threadRef, thread);
-      console.log('✅ Reconstructed and saved thread:', thread.id);
+      console.log(' Reconstructed and saved thread:', thread.id);
     } catch (error) {
       console.error('Error saving reconstructed thread:', error);
     }
@@ -895,7 +895,7 @@ class ChatService {
         const threadRef = ref(database, `chatThreads/${threadId}`);
         await set(threadRef, fixedThread);
         
-        console.log('✅ Fixed thread participants:', threadId);
+        console.log(' Fixed thread participants:', threadId);
         return fixedThread;
       }
       

@@ -22,7 +22,7 @@ export const RealtimeNotificationProvider: React.FC<RealtimeNotificationProvider
   };
 
   // Debug logging
-  console.log('🔔 RealtimeNotificationContext - Provider State:', {
+  console.log(' RealtimeNotificationContext - Provider State:', {
     notificationsCount: safeNotifications.notifications.length,
     unreadCount: safeNotifications.unreadCount,
     loading: safeNotifications.loading,

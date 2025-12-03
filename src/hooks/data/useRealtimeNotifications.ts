@@ -44,9 +44,9 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
       });
       
       await realtimeNotificationService.markAsRead(user.uid, notificationId);
-      console.log('🔔 Marked notification as read:', notificationId);
+      console.log(' Marked notification as read:', notificationId);
     } catch (err) {
-      console.error('🔔 Error marking notification as read:', err);
+      console.error(' Error marking notification as read:', err);
       setError(err instanceof Error ? err.message : 'Failed to mark notification as read');
     }
   }, [user?.uid, getUserRole]);
@@ -57,9 +57,9 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
     
     try {
       await realtimeNotificationService.markAllAsRead(user.uid);
-      console.log('🔔 Marked all notifications as read');
+      console.log(' Marked all notifications as read');
     } catch (err) {
-      console.error('🔔 Error marking all notifications as read:', err);
+      console.error(' Error marking all notifications as read:', err);
       setError(err instanceof Error ? err.message : 'Failed to mark all notifications as read');
     }
   }, [user?.uid]);
@@ -70,9 +70,9 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
     
     try {
       await realtimeNotificationService.deleteNotification(user.uid, notificationId);
-      console.log('🔔 Deleted notification:', notificationId);
+      console.log(' Deleted notification:', notificationId);
     } catch (err) {
-      console.error('🔔 Error deleting notification:', err);
+      console.error(' Error deleting notification:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete notification');
     }
   }, [user?.uid]);
@@ -83,38 +83,38 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
     
     try {
       const platform = typeof window !== 'undefined' ? 'web' : 'mobile';
-      console.log(`🔔 [${platform}] REFRESH: Starting refresh for user:`, user.uid);
+      console.log(` [${platform}] REFRESH: Starting refresh for user:`, user.uid);
       const userRole = getUserRole();
       
       // Get current notification count before refresh
       const beforeCount = notifications.length;
-      console.log(`🔔 [${platform}] REFRESH: Current notifications before refresh:`, beforeCount);
+      console.log(` [${platform}] REFRESH: Current notifications before refresh:`, beforeCount);
       
       // First check for missed notifications
-      console.log(`🔔 [${platform}] REFRESH: Checking for missed notifications...`);
+      console.log(` [${platform}] REFRESH: Checking for missed notifications...`);
       await realtimeNotificationService.forceCheckMissedNotifications(user.uid, userRole);
       
       // Re-register callback to ensure it's working
-      console.log(`🔔 [${platform}] REFRESH: Re-registering callback...`);
+      console.log(` [${platform}] REFRESH: Re-registering callback...`);
       realtimeNotificationService.setCallback(user.uid, (updatedNotifications) => {
         const safeNotifications = Array.isArray(updatedNotifications) ? updatedNotifications : [];
-        console.log(`🔔 [${platform}] REFRESH: Callback triggered with ${safeNotifications.length} notifications`);
+        console.log(` [${platform}] REFRESH: Callback triggered with ${safeNotifications.length} notifications`);
         setNotifications(safeNotifications);
         setUnreadCount(safeNotifications.filter(n => !n.read).length);
       });
       
       // Then force refresh the UI
-      console.log(`🔔 [${platform}] REFRESH: Force refreshing UI...`);
+      console.log(` [${platform}] REFRESH: Force refreshing UI...`);
       await realtimeNotificationService.forceRefresh(user.uid);
       
       // Wait a bit for state updates
       setTimeout(() => {
-        console.log(`🔔 [${platform}] REFRESH: Notifications after refresh:`, notifications.length);
+        console.log(` [${platform}] REFRESH: Notifications after refresh:`, notifications.length);
       }, 1000);
       
-      console.log(`🔔 [${platform}] REFRESH: Successfully completed refresh`);
+      console.log(` [${platform}] REFRESH: Successfully completed refresh`);
     } catch (err) {
-      console.error('🔔 Error refreshing notifications:', err);
+      console.error(' Error refreshing notifications:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh notifications');
     }
   }, [user?.uid, getUserRole, notifications.length]);
@@ -125,16 +125,16 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
     
     try {
       await realtimeNotificationService.clearNotifications(user.uid);
-      console.log('🔔 Cleared all notifications');
+      console.log(' Cleared all notifications');
     } catch (err) {
-      console.error('🔔 Error clearing notifications:', err);
+      console.error(' Error clearing notifications:', err);
       setError(err instanceof Error ? err.message : 'Failed to clear notifications');
     }
   }, [user?.uid]);
 
   // Set up real-time listener
   useEffect(() => {
-    console.log('🔔 useRealtimeNotifications useEffect triggered:', {
+    console.log(' useRealtimeNotifications useEffect triggered:', {
       hasUser: !!user,
       userId: user?.uid,
       userRole: user?.role,
@@ -143,7 +143,7 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
     });
 
     if (!user?.uid) {
-      console.log('🔔 No user UID, clearing notifications');
+      console.log(' No user UID, clearing notifications');
       setNotifications([]);
       setUnreadCount(0);
       setLoading(false);
@@ -153,8 +153,8 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
     const userRole = getUserRole();
     userRoleRef.current = userRole;
 
-    console.log('🔔 Setting up real-time notification listener for user:', user.uid, 'role:', userRole);
-    console.log('🔔 User object details:', {
+    console.log(' Setting up real-time notification listener for user:', user.uid, 'role:', userRole);
+    console.log(' User object details:', {
       uid: user.uid,
       role: user.role,
       email: user.email,
@@ -166,13 +166,13 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
       setLoading(true);
       setError(null);
 
-      console.log('🔔 Starting real-time listeners for user:', user.uid, 'role:', userRole);
+      console.log(' Starting real-time listeners for user:', user.uid, 'role:', userRole);
       
       // Set up callback for real-time updates BEFORE starting listeners
       realtimeNotificationService.setCallback(user.uid, (notifications) => {
         try {
-          console.log('🔔 Received real-time notification update:', notifications.length, 'for user:', user.uid);
-          console.log('🔔 Hook user details:', { uid: user.uid, role: user.role, email: user.email });
+          console.log(' Received real-time notification update:', notifications.length, 'for user:', user.uid);
+          console.log(' Hook user details:', { uid: user.uid, role: user.role, email: user.email });
           
           // Ensure we have a valid notifications array
           const safeNotifications = Array.isArray(notifications) ? notifications : [];
@@ -181,7 +181,7 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
           setNotifications(prevNotifications => {
             // Only update if the notifications have actually changed
             if (JSON.stringify(prevNotifications) !== JSON.stringify(safeNotifications)) {
-              console.log('🔔 Updating notifications state from', prevNotifications.length, 'to', safeNotifications.length);
+              console.log(' Updating notifications state from', prevNotifications.length, 'to', safeNotifications.length);
               return safeNotifications;
             }
             return prevNotifications;
@@ -191,13 +191,13 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
           const newUnreadCount = safeNotifications.filter(n => !n.read).length;
           setUnreadCount(prevCount => {
             if (prevCount !== newUnreadCount) {
-              console.log('🔔 Updating unread count from', prevCount, 'to', newUnreadCount);
+              console.log(' Updating unread count from', prevCount, 'to', newUnreadCount);
               return newUnreadCount;
             }
             return prevCount;
           });
         } catch (callbackError) {
-          console.error('🔔 Error in notification callback:', callbackError);
+          console.error(' Error in notification callback:', callbackError);
           setError(callbackError instanceof Error ? callbackError.message : 'Error processing notifications');
         }
       });
@@ -206,16 +206,16 @@ export const useRealtimeNotifications = (): UseRealtimeNotificationsReturn => {
       const unsubscribe = realtimeNotificationService.startListening(user.uid, userRole);
       unsubscribeRef.current = unsubscribe;
 
-      console.log('🔔 Real-time listeners started successfully');
+      console.log(' Real-time listeners started successfully');
 
     } catch (err) {
-      console.error('🔔 Error setting up real-time notifications:', err);
+      console.error(' Error setting up real-time notifications:', err);
       setError(err instanceof Error ? err.message : 'Failed to set up real-time notifications');
       setLoading(false);
     }
 
     return () => {
-      console.log('🔔 Cleaning up real-time notification listener for user:', user.uid);
+      console.log(' Cleaning up real-time notification listener for user:', user.uid);
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;

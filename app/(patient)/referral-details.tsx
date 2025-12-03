@@ -17,6 +17,7 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
+  Image,
 } from 'react-native';
 import {
   ChevronLeft,
@@ -230,7 +231,7 @@ export default function PatientReferralDetailsScreen() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
   
-  console.log('🔍 Referral details page loaded with ID:', id);
+  console.log(' Referral details page loaded with ID:', id);
   const [referralData, setReferralData] = useState<ReferralData | null>(null);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [certificates, setCertificates] = useState<any[]>([]);
@@ -276,14 +277,14 @@ export default function PatientReferralDetailsScreen() {
     try {
       setLoading(true);
       
-      console.log('🔍 Fetching referral data for ID:', id);
+      console.log(' Fetching referral data for ID:', id);
       const referral = await databaseService.getReferralById(id as string);
-      console.log('🔍 Retrieved referral data:', referral);
+      console.log(' Retrieved referral data:', referral);
       
       if (referral) {
         // Enrich referral data with specialist information (similar to appointment conversion)
         const enrichedReferral = await databaseService.enrichSpecialistReferralData(referral);
-        console.log('🔍 Enriched referral data:', enrichedReferral);
+        // console.log(' Enriched referral data:', enrichedReferral);
         let clinicData: any = null;
         let referringDoctorData: any = null;
         let specialistClinicData: any = null;
@@ -306,9 +307,9 @@ export default function PatientReferralDetailsScreen() {
         // Fetch specialist clinic from practiceLocation.clinicId
         try {
           if (enrichedReferral.practiceLocation?.clinicId) {
-            console.log('🔍 Fetching specialist clinic from practiceLocation.clinicId:', enrichedReferral.practiceLocation.clinicId);
+            console.log(' Fetching specialist clinic from practiceLocation.clinicId:', enrichedReferral.practiceLocation.clinicId);
             specialistClinicData = await databaseService.getDocument(`clinics/${enrichedReferral.practiceLocation.clinicId}`);
-            console.log('🔍 Specialist clinic data:', specialistClinicData);
+            console.log(' Specialist clinic data:', specialistClinicData);
           } else if (enrichedReferral.assignedSpecialistId && enrichedReferral.specialistScheduleId) {
             // Fallback to specialist schedules for older referrals
             const specialistSchedules = await databaseService.getDocument(`specialistSchedules/${enrichedReferral.assignedSpecialistId}`);
@@ -409,7 +410,7 @@ export default function PatientReferralDetailsScreen() {
         if (referral.referralConsultationId && medicalHistory) {
           const potentialIds = new Set<string>();
           const providerId = (medicalHistory as any)?.provider?.id;
-          console.log('🔍 Provider ID:', providerId); 
+          console.log(' Provider ID:', providerId); 
           if (providerId) potentialIds.add(String(providerId));
           ((medicalHistory as any).prescriptions || []).forEach((pr: any) => {
             if (pr?.specialistId) potentialIds.add(String(pr.specialistId));
@@ -458,7 +459,7 @@ export default function PatientReferralDetailsScreen() {
               const certAppointmentId = cert.appointmentId;
               return certAppointmentId && certAppointmentId === id; // id is the referral ID from params
             });
-            console.log('🔍 PATIENT REFERRAL - Certificate filtering:', {
+            console.log(' PATIENT REFERRAL - Certificate filtering:', {
               referralId: id,
               totalCertificates: certificates.length,
               matchingCertificates: referralCertificates.length,
@@ -544,7 +545,7 @@ export default function PatientReferralDetailsScreen() {
     const clinicId = referralData.practiceLocation?.clinicId;
     const specialistName = `${referralData.assignedSpecialistFirstName || ''} ${referralData.assignedSpecialistLastName || ''}`.trim();
     
-    console.log('🔍 Referral follow-up data:', {
+    console.log(' Referral follow-up data:', {
       specialistId,
       clinicId,
       specialistName,
@@ -568,7 +569,7 @@ export default function PatientReferralDetailsScreen() {
       isReferralFollowUp: 'true', // Flag to indicate this is a referral follow-up
     };
     
-    console.log('🔍 Navigating with params:', params);
+    console.log(' Navigating with params:', params);
     
     router.push({
       pathname: '/(patient)/book-visit/select-datetime',
@@ -1066,33 +1067,109 @@ export default function PatientReferralDetailsScreen() {
         <View style={styles.sectionSpacing}>
           <Text style={styles.sectionTitle}>Prescriptions</Text>
           {referralData.status.toLowerCase() === 'completed' && prescriptions.length ? prescriptions.map((p, idx) => (
-            <View key={p.id || idx} style={[styles.cardBox, styles.cardBoxPrescription]}>
+            <View key={p.id || idx} style={styles.prescriptionCard}>
+              {/* DNA image background */}
+              <View style={styles.dnaImageContainer}>
+                <Image 
+                  source={require('../../assets/images/dna.png')} 
+                  style={styles.dnaBackgroundImage}
+                  resizeMode="contain"
+                />
+              </View>
+              
               <View style={styles.prescriptionHeader}>
-                <View style={[styles.medicationIcon, styles.medicationIconBlue]}>
-                  <Pill size={20} color="#FFFFFF" />
+                <View style={[styles.medicationIcon, { backgroundColor: '#1E3A8A15' }]}> 
+                  <Pill size={20} color="#1E3A8A" />
                 </View>
                 <View style={styles.prescriptionDetails}>
-                  <Text style={styles.medicationName}>{p.medication || 'Unknown Medication'}</Text>
-                  <Text style={styles.medicationDosage}>
-                    {p.dosage || 'N/A'} • {formatFrequency(p.frequency, 'patient')}
-                    {p.route && ` • ${formatRoute(p.route, 'patient')}`}
-                    {p.formula && ` • ${formatFormula(p.formula, 'patient')}`}
+                  {/* Medication name with dosage */}
+                  <View style={styles.medicationNameRow}>
+                    <Text style={styles.medicationName}>
+                      {p.medication || 'Unknown Medication'}
+                    </Text>
+                    {p.dosage && (
+                      <Text style={styles.medicationDosageText}>
+                        {` (${p.dosage})`}
+                      </Text>
+                    )}
+                  </View>
+                  
+                  {/* Structured description */}
+                  <Text style={styles.prescriptionDescription}>
+                    {(() => {
+                      // Build structured description with available data
+                      let description = '';
+                      
+                      // Start with "Take" if we have any dosage info
+                      let hasStarted = false;
+                      
+                      // Handle take amount and formula
+                      if (p.take && p.formula) {
+                        const formulaText = p.formula.toLowerCase().includes('tab') ? 
+                          (p.take === '1' ? 'tablet' : 'tablets') : 
+                          p.formula.split(',')[0].trim(); // Take first part before comma
+                        description += `Take ${p.take} ${formulaText}`;
+                        hasStarted = true;
+                      } else if (p.take) {
+                        description += `Take ${p.take}`;
+                        hasStarted = true;
+                      }
+                      
+                      // Add route
+                      if (p.route) {
+                        const routeText = p.route.toLowerCase().includes('po') ? 'by mouth' : p.route;
+                        description = hasStarted ? `${description} ${routeText}` : routeText;
+                        hasStarted = true;
+                      }
+                      
+                      // Add frequency
+                      if (p.frequency) {
+                        const freqText = p.frequency === 'daily' ? 'daily' : formatFrequency(p.frequency, 'patient');
+                        description = hasStarted ? `${description} ${freqText}` : freqText;
+                        hasStarted = true;
+                      }
+                      
+                      // Add duration
+                      if (p.duration) {
+                        description = hasStarted ? `${description} for ${p.duration}` : `for ${p.duration}`;
+                        hasStarted = true;
+                      }
+                      
+                      // Add period to make it a proper sentence
+                      if (description && hasStarted) {
+                        description += '.';
+                      }
+                      
+                      // Add total quantity if available
+                      if (p.totalQuantity) {
+                        const totalText = ` Total: ${p.totalQuantity}${p.formula && p.formula.toLowerCase().includes('tab') ? (p.totalQuantity === '1' ? ' tablet' : ' tablets') : ''}.`;
+                        description += totalText;
+                      }
+                      
+                      return description || p.description || p.instructions || 'No dosage instructions available.';
+                    })()}
                   </Text>
                 </View>
                 <View style={styles.prescriptionStatus}>
-                  <Text style={styles.remainingDays}>{p.duration}</Text>
-                  <Text style={styles.remainingLabel}>Duration</Text>
+                  <View style={styles.statusBadge}>
+                    <CheckCircle size={16} color="#6B7280" style={styles.statusIcon} />
+                    <Text style={styles.statusText}>Completed</Text>
+                  </View>
                 </View>
               </View>
+              
+              {/* Prescription meta - keep for patient view */}
               <View style={styles.prescriptionMeta}>
                 <View style={styles.metaRow}>
                   <Text style={styles.metaLabel}>Prescribed by:</Text>
                   <Text style={styles.metaValue}>{formatDoctorName(p.prescribedBy)}</Text>
                 </View>
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Description:</Text>
-                  <Text style={styles.metaValue}>{p.description || 'No description provided'}</Text>
-                </View>
+                {p.description && (
+                  <View style={styles.metaRow}>
+                    <Text style={styles.metaLabel}>Description:</Text>
+                    <Text style={styles.metaValue}>{p.description}</Text>
+                  </View>
+                )}
               </View>
             </View>
           )) : referralData.status.toLowerCase() === 'completed' ? (
@@ -1504,7 +1581,7 @@ export default function PatientReferralDetailsScreen() {
           <TouchableOpacity
             style={[styles.primaryActionButton, styles.primaryActionButtonFullWidth]}
             onPress={() => {
-              console.log('🔍 Navigating to consultation screen with referralId:', id);
+              console.log(' Navigating to consultation screen with referralId:', id);
               router.push({
                 pathname: '/patient-consultation',
                 params: {
@@ -1575,12 +1652,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.15,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F9FAFB',
   },
   statusBadgeFixed: {
     position: 'absolute',
@@ -1593,6 +1673,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#D1D5DB',
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#374151',
+    fontFamily: 'Inter-Medium',
+  },
+  statusIcon: {
+    marginRight: 4,
   },
   statusTextNeutral: {
     color: '#374151',
@@ -1882,10 +1970,22 @@ const styles = StyleSheet.create({
   },
 
   // Prescription styles
+  prescriptionCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 4,
+    position: 'relative',
+    overflow: 'hidden',
+  },
   prescriptionHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 8,
+    zIndex: 1,
+    position: 'relative',
   },
   medicationIcon: {
     width: 40,
@@ -1898,12 +1998,25 @@ const styles = StyleSheet.create({
   medicationIconBlue: {
     backgroundColor: '#1E40AF',
   },
-  prescriptionDetails: { flex: 1 },
+  prescriptionDetails: {
+    flex: 1,
+  },
+  medicationNameRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
   medicationName: {
     fontSize: 16,
     color: '#1F2937',
     fontFamily: 'Inter-SemiBold',
-    marginBottom: 2,
+  },
+  medicationDosageText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    fontFamily: 'Inter-Regular',
   },
   medicationDosage: {
     fontSize: 14,
@@ -1911,8 +2024,16 @@ const styles = StyleSheet.create({
     marginBottom: 1,
     fontFamily: 'Inter-Regular',
   },
+  prescriptionDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    lineHeight: 18,
+    marginTop: 2,
+  },
   prescriptionStatus: {
     alignItems: 'flex-end',
+    gap: 8,
   },
   remainingDays: {
     fontSize: 14,
@@ -1925,8 +2046,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
   },
   prescriptionMeta: {
-    marginBottom: 6,
-    paddingTop: 7,
+    gap: 4,
+    marginBottom: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -1944,6 +2066,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#374151',
     fontFamily: 'Inter-Regular',
+  },
+  // DNA image background design
+  dnaImageContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 100,
+    overflow: 'hidden',
+    zIndex: 0,
+    opacity: 0.06,
+  },
+  dnaBackgroundImage: {
+    position: 'absolute',
+    right: -20,
+    top: '50%',
+    width: 120,
+    height: 120,
+    transform: [{ translateY: -60 }],
+    tintColor: '#1E40AF',
   },
 
   // Certificate styles

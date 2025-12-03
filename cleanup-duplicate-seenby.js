@@ -25,14 +25,14 @@ const database = getDatabase(app);
 
 async function cleanupDuplicateSeenBy() {
   try {
-    console.log('🔍 Scanning for duplicate seenBy data...');
+    console.log(' Scanning for duplicate seenBy data...');
     
     // Get the root reference
     const rootRef = ref(database);
     const snapshot = await get(rootRef);
     
     if (!snapshot.exists()) {
-      console.log('❌ No data found in database');
+      console.log(' No data found in database');
       return;
     }
     
@@ -55,17 +55,17 @@ async function cleanupDuplicateSeenBy() {
         const messageExists = await checkIfMessageExistsInMessages(key, data.messages);
         
         if (messageExists) {
-          console.log(`   ✅ Confirmed duplicate - exists in messages/`);
+          console.log(`    Confirmed duplicate - exists in messages/`);
           duplicatesToRemove.push(key);
         } else {
-          console.log(`   ⚠️  Not found in messages/ - might be orphaned data`);
+          console.log(`     Not found in messages/ - might be orphaned data`);
           duplicatesToRemove.push(key);
         }
       }
     }
     
     if (duplicatesToRemove.length === 0) {
-      console.log('✅ No duplicate seenBy data found');
+      console.log(' No duplicate seenBy data found');
       return;
     }
     
@@ -77,15 +77,15 @@ async function cleanupDuplicateSeenBy() {
     for (const key of duplicatesToRemove) {
       const duplicateRef = child(rootRef, key);
       await remove(duplicateRef);
-      console.log(`   ✅ Removed: ${key}`);
+      console.log(`    Removed: ${key}`);
     }
     
     console.log('\n🎉 Cleanup completed successfully!');
-    console.log('✅ All duplicate seenBy data has been removed');
-    console.log('✅ Proper seenBy data under messages/ has been preserved');
+    console.log(' All duplicate seenBy data has been removed');
+    console.log(' Proper seenBy data under messages/ has been preserved');
     
   } catch (error) {
-    console.error('❌ Error during cleanup:', error);
+    console.error(' Error during cleanup:', error);
   }
 }
 

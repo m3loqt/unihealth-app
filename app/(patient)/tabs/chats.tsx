@@ -160,10 +160,10 @@ export default function PatientChatsScreen() {
         
         // First, try to find by checking if both participants exist in any thread
         for (const existingThread of existingThreads) {
-          console.log('🔍 Checking thread:', existingThread.id, 'participants:', Object.keys(existingThread.participants), 'looking for user:', user.uid, 'doctor:', doctor.uid);
+          console.log(' Checking thread:', existingThread.id, 'participants:', Object.keys(existingThread.participants), 'looking for user:', user.uid, 'doctor:', doctor.uid);
           
           if (existingThread.participants[user.uid] && existingThread.participants[doctor.uid]) {
-            console.log('✅ Found existing thread for doctor:', doctor.firstName, doctor.lastName, 'thread ID:', existingThread.id, 'last message:', existingThread.lastMessage?.text || 'No last message');
+            console.log(' Found existing thread for doctor:', doctor.firstName, doctor.lastName, 'thread ID:', existingThread.id, 'last message:', existingThread.lastMessage?.text || 'No last message');
             thread = existingThread;
             break;
           }
@@ -181,7 +181,7 @@ export default function PatientChatsScreen() {
             // No lastMessage - this will show "Start a conversation with your doctor"
           };
         } else {
-          console.log('✅ Found existing thread for doctor:', doctor.firstName, doctor.lastName, 'thread ID:', thread.id, 'with last message:', thread.lastMessage?.text || 'No last message');
+          console.log(' Found existing thread for doctor:', doctor.firstName, doctor.lastName, 'thread ID:', thread.id, 'with last message:', thread.lastMessage?.text || 'No last message');
         }
 
         const lastMessageTime = thread.lastMessage 
@@ -413,7 +413,7 @@ export default function PatientChatsScreen() {
              Object.keys(linked).length > 0 ? linked : undefined
            );
            
-           console.log('✅ Successfully created new thread:', threadId);
+           console.log(' Successfully created new thread:', threadId);
            
            // Add a small delay to ensure the thread is fully created in Firebase
            await new Promise(resolve => setTimeout(resolve, 500));

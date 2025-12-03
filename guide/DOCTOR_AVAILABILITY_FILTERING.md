@@ -95,11 +95,11 @@ A doctor is included in the booking flow if they meet ALL criteria:
 
 ## Testing Scenarios
 
-- ✅ Doctors with valid availability appear in booking flow
-- ✅ Doctors without availability are filtered out
-- ✅ Last updated field is removed from both screens
-- ✅ UI is cleaner and more focused
-- ✅ No errors when trying to book with filtered doctors
+-  Doctors with valid availability appear in booking flow
+-  Doctors without availability are filtered out
+-  Last updated field is removed from both screens
+-  UI is cleaner and more focused
+-  No errors when trying to book with filtered doctors
 
 ## Files Modified
 

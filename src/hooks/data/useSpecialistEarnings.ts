@@ -114,7 +114,7 @@ export function useSpecialistEarnings(): UseSpecialistEarningsReturn {
       const feeHistory = specialistProfile?.feeHistory || [];
       const previousFee = getPreviousFee(feeHistory);
       
-      console.log('🔍 Fee History Debug:', {
+      console.log(' Fee History Debug:', {
         specialistId,
         currentFee,
         previousFee,
@@ -129,7 +129,7 @@ export function useSpecialistEarnings(): UseSpecialistEarningsReturn {
         databaseService.getReferralsBySpecialist(specialistId) // This gets referrals separately
       ]);
 
-      console.log('📊 Earnings Debug - Raw Data:', {
+      console.log(' Earnings Debug - Raw Data:', {
         specialistId,
         totalAppointments: allAppointmentsData.length,
         totalReferrals: referrals.length,
@@ -146,7 +146,7 @@ export function useSpecialistEarnings(): UseSpecialistEarningsReturn {
         a.type === 'Referral' || a.type === 'specialist_referral' || a.type === 'referral'
       );
       
-      console.log('📊 Earnings Debug - Separated Data:', {
+      console.log(' Earnings Debug - Separated Data:', {
         regularAppointments: regularAppointments.length,
         referralAppointments: referralAppointments.length,
         separateReferrals: referrals.length,
@@ -158,7 +158,7 @@ export function useSpecialistEarnings(): UseSpecialistEarningsReturn {
       const completedAppointments = regularAppointments.filter(a => a.status === 'completed');
       const completedReferrals = referrals.filter(r => r.status === 'completed');
       
-      console.log('📊 Earnings Debug - Final Filtered Data:', {
+      console.log(' Earnings Debug - Final Filtered Data:', {
         completedRegularAppointments: completedAppointments.length,
         completedReferrals: completedReferrals.length,
         totalCompleted: completedAppointments.length + completedReferrals.length,
@@ -173,7 +173,7 @@ export function useSpecialistEarnings(): UseSpecialistEarningsReturn {
       
       if (feeHistory && (Array.isArray(feeHistory) ? feeHistory.length > 0 : Object.keys(feeHistory).length > 0)) {
         // Use historical fees for accurate calculation
-        console.log('📊 Using historical fees for calculation');
+        console.log(' Using historical fees for calculation');
         
         // Initialize period tracking
         const currentFeeData = { appointments: 0, referrals: 0, earnings: 0 };
@@ -233,7 +233,7 @@ export function useSpecialistEarnings(): UseSpecialistEarningsReturn {
         }
       } else {
         // Fallback to current fee for all consultations
-        console.log('📊 Using current fee for all consultations (no fee history)');
+        console.log(' Using current fee for all consultations (no fee history)');
         totalEarnings = currentFee * (completedAppointments.length + completedReferrals.length);
         
         currentPeriod = {

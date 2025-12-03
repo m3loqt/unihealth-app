@@ -1,13 +1,13 @@
 # 🎤 Voice-to-Text Setup Instructions
 
-## **✅ API Key Reverted & Fixed**
+## ** API Key Reverted & Fixed**
 Your original AssemblyAI API key has been restored and the code has been fixed! The voice-to-text feature should now work on both web and mobile platforms.
 
 **Fixed Issues:**
-- ✅ Reverted to working API key: `cd0a65c1fcc247f885f379ee354ef1c0`
-- ✅ Removed incorrect API key format validation (keys don't need `sk-` prefix)
-- ✅ Fixed Authorization headers to use `Bearer ` prefix
-- ✅ Updated all API requests to use correct format
+-  Reverted to working API key: `cd0a65c1fcc247f885f379ee354ef1c0`
+-  Removed incorrect API key format validation (keys don't need `sk-` prefix)
+-  Fixed Authorization headers to use `Bearer ` prefix
+-  Updated all API requests to use correct format
 
 ## **🚀 Test the Feature**
 
@@ -30,17 +30,17 @@ Your original AssemblyAI API key has been restored and the code has been fixed! 
 ## **How It Works**
 
 ### **Web Platform (Chrome/Safari)**
-- ✅ Uses Web Speech API (built into browsers)
-- ✅ Real-time transcription as you speak
-- ✅ No API key needed
-- ✅ Unlimited usage
+-  Uses Web Speech API (built into browsers)
+-  Real-time transcription as you speak
+-  No API key needed
+-  Unlimited usage
 
 ### **Mobile Platform (iOS/Android)**
-- ✅ Uses AssemblyAI API for transcription
-- ✅ Records audio using expo-av
-- ✅ Uploads to AssemblyAI for processing
-- ✅ Returns transcribed text to your app
-- ✅ 5 hours free per month
+-  Uses AssemblyAI API for transcription
+-  Records audio using expo-av
+-  Uploads to AssemblyAI for processing
+-  Returns transcribed text to your app
+-  5 hours free per month
 
 ## **Troubleshooting**
 

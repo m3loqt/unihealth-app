@@ -395,7 +395,7 @@ export default function ReferralDetailsScreen() {
       if (referral) {
         // Enrich referral data with specialist information (similar to patient version)
         const enrichedReferral = await databaseService.enrichSpecialistReferralData(referral);
-        console.log('🔍 Enriched referral data:', enrichedReferral);
+        console.log(' Enriched referral data:', enrichedReferral);
         
         // Load clinic and doctor data for complete information
         let clinicData = null;
@@ -420,9 +420,9 @@ export default function ReferralDetailsScreen() {
                  // Fetch specialist clinic from practiceLocation.clinicId first
          try {
            if (enrichedReferral.practiceLocation?.clinicId) {
-             console.log('🔍 Fetching specialist clinic from practiceLocation.clinicId:', enrichedReferral.practiceLocation.clinicId);
+             console.log(' Fetching specialist clinic from practiceLocation.clinicId:', enrichedReferral.practiceLocation.clinicId);
              specialistClinicData = await databaseService.getDocument(`clinics/${enrichedReferral.practiceLocation.clinicId}`);
-             console.log('🔍 Specialist clinic data:', specialistClinicData);
+             console.log(' Specialist clinic data:', specialistClinicData);
            }
          } catch (error) {
            console.log('Could not fetch specialist clinic from practiceLocation:', error);
@@ -431,24 +431,24 @@ export default function ReferralDetailsScreen() {
          // Additional: Fetch specialist's assigned clinic (fallback for older referrals)
          if (!specialistClinicData && user?.uid && user?.role === 'specialist') {
            try {
-             console.log('🔍 Fetching specialist schedules for logged-in user:', user.uid);
+             console.log(' Fetching specialist schedules for logged-in user:', user.uid);
              const specialistSchedules = await databaseService.getDocument(`specialistSchedules/${user.uid}`);
-             console.log('🔍 Specialist schedules data:', specialistSchedules);
+             console.log(' Specialist schedules data:', specialistSchedules);
              
              // Find the schedule that matches the referral's specialistScheduleId
              if (specialistSchedules && enrichedReferral.specialistScheduleId) {
                const matchingSchedule = specialistSchedules[enrichedReferral.specialistScheduleId];
-               console.log('🔍 Matching schedule for ID:', enrichedReferral.specialistScheduleId, matchingSchedule);
+               console.log(' Matching schedule for ID:', enrichedReferral.specialistScheduleId, matchingSchedule);
                
                                if (matchingSchedule) {
                  const practiceLocation = matchingSchedule.practiceLocation;
                  if (practiceLocation && practiceLocation.clinicId) {
-                   console.log('🔍 Fetching specialist clinic for ID:', practiceLocation.clinicId);
+                   console.log(' Fetching specialist clinic for ID:', practiceLocation.clinicId);
                    specialistClinicData = await databaseService.getDocument(`clinics/${practiceLocation.clinicId}`);
-                   console.log('🔍 Specialist clinic data:', specialistClinicData);
+                   console.log(' Specialist clinic data:', specialistClinicData);
                    
                    // Additional debug logging for specialist clinic
-                   console.log('🔍 SPECIALIST CLINIC DEBUG:', {
+                   console.log(' SPECIALIST CLINIC DEBUG:', {
                      loggedInUserId: user.uid,
                      scheduleId: referral.specialistScheduleId,
                      assignedSpecialistId: matchingSchedule.assignedSpecialistId,
@@ -468,11 +468,11 @@ export default function ReferralDetailsScreen() {
         // Additional patient data fetching if the first attempt failed
         if (!patientData && enrichedReferral.patientId) {
           try {
-            console.log('🔍 Retrying patient data fetch for ID:', enrichedReferral.patientId);
+            console.log(' Retrying patient data fetch for ID:', enrichedReferral.patientId);
             patientData = await databaseService.getDocument(`users/${enrichedReferral.patientId}`);
-            console.log('🔍 Retry patient data result:', patientData);
+            console.log(' Retry patient data result:', patientData);
           } catch (retryError) {
-            console.log('🔍 Retry failed for patient data:', retryError);
+            console.log(' Retry failed for patient data:', retryError);
           }
         }
         
@@ -483,17 +483,17 @@ export default function ReferralDetailsScreen() {
              // For follow-up appointments, try to load medical history from the original appointment
              try {
                const appointment = await databaseService.getDocument(`appointments/${id}`);
-               console.log('🔍 Follow-up appointment data:', appointment);
+               console.log(' Follow-up appointment data:', appointment);
                
                if (appointment?.originalAppointmentId) {
                  // Try to get medical history from the original appointment's consultation
                  try {
                    const originalAppointment = await databaseService.getDocument(`appointments/${appointment.originalAppointmentId}`);
-                   console.log('🔍 Original appointment data:', originalAppointment);
+                   console.log(' Original appointment data:', originalAppointment);
                    
                    if (originalAppointment?.appointmentConsultationId) {
                      medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${referral.patientId}/entries/${originalAppointment.appointmentConsultationId}`);
-                     console.log('🔍 Fetched medical history from original appointment consultation:', originalAppointment.appointmentConsultationId, medicalHistory);
+                     console.log(' Fetched medical history from original appointment consultation:', originalAppointment.appointmentConsultationId, medicalHistory);
                    }
                  } catch (error) {
                    console.log('No medical history found for original appointment:', error);
@@ -504,7 +504,7 @@ export default function ReferralDetailsScreen() {
                if (!medicalHistory && appointment?.appointmentConsultationId) {
                  try {
                    medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${referral.patientId}/entries/${appointment.appointmentConsultationId}`);
-                   console.log('🔍 Fetched medical history from follow-up appointment consultation:', appointment.appointmentConsultationId, medicalHistory);
+                   console.log(' Fetched medical history from follow-up appointment consultation:', appointment.appointmentConsultationId, medicalHistory);
                  } catch (error) {
                    console.log('No medical history found for follow-up appointment consultation:', error);
                  }
@@ -514,7 +514,7 @@ export default function ReferralDetailsScreen() {
                if (!medicalHistory) {
                  try {
                    medicalHistory = await databaseService.getMedicalHistoryByAppointment(id as string, referral.patientId);
-                   console.log('🔍 Fallback: Fetched medical history using appointment method for follow-up:', medicalHistory);
+                   console.log(' Fallback: Fetched medical history using appointment method for follow-up:', medicalHistory);
                  } catch (fallbackError) {
                    console.log('Fallback method also failed for follow-up:', fallbackError);
                  }
@@ -527,14 +527,14 @@ export default function ReferralDetailsScreen() {
              try {
                // Fetch medical history from patientMedicalHistory > patientId > entries > referralConsultationId
                medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${enrichedReferral.patientId}/entries/${enrichedReferral.referralConsultationId}`);
-               console.log('🔍 Fetched medical history from referralConsultationId:', enrichedReferral.referralConsultationId, medicalHistory);
+               console.log(' Fetched medical history from referralConsultationId:', enrichedReferral.referralConsultationId, medicalHistory);
              } catch (error) {
                console.log('No medical history found for this referral consultation:', error);
                
                // Fallback: try the old method if referralConsultationId approach fails
                try {
                  medicalHistory = await databaseService.getMedicalHistoryByAppointment(enrichedReferral.clinicAppointmentId, enrichedReferral.patientId);
-                 console.log('🔍 Fallback: Fetched medical history using appointment method:', medicalHistory);
+                 console.log(' Fallback: Fetched medical history using appointment method:', medicalHistory);
                } catch (fallbackError) {
                  console.log('Fallback method also failed:', fallbackError);
                }
@@ -543,7 +543,7 @@ export default function ReferralDetailsScreen() {
          }
         
         // Debug logging
-        console.log('🔍 REFERRAL DATA:', {
+        console.log(' REFERRAL DATA:', {
           id: enrichedReferral.id,
           patientFirstName: enrichedReferral.patientFirstName,
           patientLastName: enrichedReferral.patientLastName,
@@ -553,11 +553,11 @@ export default function ReferralDetailsScreen() {
           appointmentTime: enrichedReferral.appointmentTime
         });
         
-        console.log('🔍 CLINIC DATA:', clinicData);
-        console.log('🔍 REFERRING DOCTOR DATA:', referringDoctorData);
-        console.log('🔍 PATIENT DATA:', patientData);
-        console.log('🔍 PATIENT ID:', enrichedReferral.patientId);
-        console.log('🔍 REFERRAL PATIENT NAMES:', {
+        console.log(' CLINIC DATA:', clinicData);
+        console.log(' REFERRING DOCTOR DATA:', referringDoctorData);
+        console.log(' PATIENT DATA:', patientData);
+        console.log(' PATIENT ID:', enrichedReferral.patientId);
+        console.log(' REFERRAL PATIENT NAMES:', {
           firstName: enrichedReferral.patientFirstName,
           lastName: enrichedReferral.patientLastName
         });
@@ -641,7 +641,7 @@ export default function ReferralDetailsScreen() {
         };
         
         // Debug logging for medications and diagnosis
-        console.log('🔍 MEDICATIONS AND DIAGNOSIS DEBUG:', {
+        console.log(' MEDICATIONS AND DIAGNOSIS DEBUG:', {
           hasMedicalHistory: !!medicalHistory,
           rawMedications: medicalHistory?.medications,
           rawDiagnosis: medicalHistory?.diagnosis,
@@ -653,8 +653,8 @@ export default function ReferralDetailsScreen() {
           allMedicalHistoryKeys: medicalHistory ? Object.keys(medicalHistory) : [],
         });
         
-        console.log('🔍 FINAL PATIENT NAME:', combinedReferralData.patientName);
-        console.log('🔍 FINAL REFERRAL DATA:', combinedReferralData);
+        console.log(' FINAL PATIENT NAME:', combinedReferralData.patientName);
+        console.log(' FINAL REFERRAL DATA:', combinedReferralData);
         
         setReferralData(combinedReferralData);
         
@@ -667,7 +667,7 @@ export default function ReferralDetailsScreen() {
            // Build a set of potential specialist/provider IDs to resolve names dynamically
            const potentialIds = new Set<string>();
            const providerId = (medicalHistory as any)?.provider?.id;
-           console.log('🔍 Provider ID:', providerId); 
+           console.log(' Provider ID:', providerId); 
            if (providerId) potentialIds.add(String(providerId));
            (medicalHistory.prescriptions || []).forEach((pr: any) => {
              if (pr?.specialistId) potentialIds.add(String(pr.specialistId));
@@ -722,7 +722,7 @@ export default function ReferralDetailsScreen() {
                const targetId = isFollowUpAppointment ? String(appointmentId || id) : String(id);
                return certAppointmentId && certAppointmentId === targetId;
              });
-             console.log('🔍 SPECIALIST REFERRAL - Certificate filtering:', {
+             console.log(' SPECIALIST REFERRAL - Certificate filtering:', {
                referralId: id,
                isFollowUp: isFollowUpAppointment,
                targetId: isFollowUpAppointment ? String(appointmentId || id) : String(id),
@@ -734,7 +734,7 @@ export default function ReferralDetailsScreen() {
              console.error('Error loading certificates for referral:', error);
              referralCertificates = [];
            }
-           console.log('🔍 Extracted prescriptions and certificates from medical history:', {
+           console.log(' Extracted prescriptions and certificates from medical history:', {
              prescriptions: referralPrescriptions.length,
              certificates: referralCertificates.length
            });
@@ -749,7 +749,7 @@ export default function ReferralDetailsScreen() {
                  databaseService.getPrescriptionsByAppointment(appointmentId),
                  databaseService.getCertificatesByAppointment(appointmentId)
                ]);
-               console.log('🔍 Fallback: Fetched prescriptions and certificates using appointment method for ID:', appointmentId);
+               console.log(' Fallback: Fetched prescriptions and certificates using appointment method for ID:', appointmentId);
 
                // Enrich prescriptions with specialist names from DB
                const uniqueSpecialistIds = Array.from(new Set((referralPrescriptions || [])
@@ -808,7 +808,7 @@ export default function ReferralDetailsScreen() {
          setCertificates(referralCertificates);
          
          // Debug: Log the processed certificates
-         console.log('🔍 Processed certificates:', referralCertificates.map(cert => ({
+         console.log(' Processed certificates:', referralCertificates.map(cert => ({
            id: cert.id,
            type: cert.type,
            doctor: cert.doctor,
@@ -1309,34 +1309,109 @@ export default function ReferralDetailsScreen() {
         <View style={[styles.sectionSpacing, { marginBottom: 20 }]}>
           <Text style={[styles.sectionTitle, { marginBottom: 16 }]}>Prescriptions</Text>
           {referralData.status.toLowerCase() === 'completed' && prescriptions.length ? prescriptions.map((p, idx) => (
-            <View key={p.id || idx} style={[styles.cardBox, styles.cardBoxPrescription]}>
+            <View key={p.id || idx} style={styles.prescriptionCard}>
+              {/* DNA image background */}
+              <View style={styles.dnaImageContainer}>
+                <Image 
+                  source={require('../../assets/images/dna.png')} 
+                  style={styles.dnaBackgroundImage}
+                  resizeMode="contain"
+                />
+              </View>
+              
               <View style={styles.prescriptionHeader}>
-                <View style={[styles.medicationIcon, styles.medicationIconBlue]}>
-                  <Pill size={20} color="#FFFFFF" />
+                <View style={[styles.medicationIcon, { backgroundColor: '#1E3A8A15' }]}> 
+                  <Pill size={20} color="#1E3A8A" />
                 </View>
                 <View style={styles.prescriptionDetails}>
-                  <Text style={styles.medicationName}>{p.medication || 'Unknown Medication'}</Text>
-                  <Text style={styles.medicationDosage}>
-                    {p.dosage || 'N/A'} • {formatFrequency(p.frequency, 'specialist')}
-                    {p.route && ` • ${formatRoute(p.route, 'specialist')}`}
-                    {p.formula && ` • ${formatFormula(p.formula, 'specialist')}`}
-                    {p.duration && ` • ${p.duration}`}
+                  {/* Medication name with dosage */}
+                  <View style={styles.medicationNameRow}>
+                    <Text style={styles.medicationName}>
+                      {p.medication || 'Unknown Medication'}
+                    </Text>
+                    {p.dosage && (
+                      <Text style={styles.medicationDosageText}>
+                        {` (${p.dosage})`}
+                      </Text>
+                    )}
+                  </View>
+                  
+                  {/* Structured description */}
+                  <Text style={styles.prescriptionDescription}>
+                    {(() => {
+                      // Build structured description with available data
+                      let description = '';
+                      
+                      // Start with "Take" if we have any dosage info
+                      let hasStarted = false;
+                      
+                      // Handle take amount and formula
+                      if (p.take && p.formula) {
+                        const formulaText = p.formula.toLowerCase().includes('tab') ? 
+                          (p.take === '1' ? 'tablet' : 'tablets') : 
+                          p.formula.split(',')[0].trim(); // Take first part before comma
+                        description += `Take ${p.take} ${formulaText}`;
+                        hasStarted = true;
+                      } else if (p.take) {
+                        description += `Take ${p.take}`;
+                        hasStarted = true;
+                      }
+                      
+                      // Add route
+                      if (p.route) {
+                        const routeText = p.route.toLowerCase().includes('po') ? 'by mouth' : p.route;
+                        description = hasStarted ? `${description} ${routeText}` : routeText;
+                        hasStarted = true;
+                      }
+                      
+                      // Add frequency
+                      if (p.frequency) {
+                        const freqText = p.frequency === 'daily' ? 'daily' : formatFrequency(p.frequency, 'specialist');
+                        description = hasStarted ? `${description} ${freqText}` : freqText;
+                        hasStarted = true;
+                      }
+                      
+                      // Add duration
+                      if (p.duration) {
+                        description = hasStarted ? `${description} for ${p.duration}` : `for ${p.duration}`;
+                        hasStarted = true;
+                      }
+                      
+                      // Add period to make it a proper sentence
+                      if (description && hasStarted) {
+                        description += '.';
+                      }
+                      
+                      // Add total quantity if available
+                      if (p.totalQuantity) {
+                        const totalText = ` Total: ${p.totalQuantity}${p.formula && p.formula.toLowerCase().includes('tab') ? (p.totalQuantity === '1' ? ' tablet' : ' tablets') : ''}.`;
+                        description += totalText;
+                      }
+                      
+                      return description || p.description || p.instructions || 'No dosage instructions available.';
+                    })()}
                   </Text>
                 </View>
-                {/* <View style={styles.prescriptionStatus}>
-                  <Text style={styles.remainingDays}>{p.remaining}</Text>
-                  <Text style={styles.remainingLabel}>remaining</Text>
-                </View> */}
+                <View style={styles.prescriptionStatus}>
+                  <View style={styles.statusBadge}>
+                    <CheckCircle size={16} color="#6B7280" style={styles.statusIcon} />
+                    <Text style={styles.statusText}>Completed</Text>
+                  </View>
+                </View>
               </View>
+              
+              {/* Prescription meta - keep for specialist view */}
               <View style={styles.prescriptionMeta}>
                 <View style={styles.metaRow}>
                   <Text style={styles.metaLabel}>Prescribed by:</Text>
                   <Text style={styles.metaValue}>{formatDoctorName(p.prescribedBy)}</Text>
                 </View>
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Description:</Text>
-                  <Text style={styles.metaValue}>{p.description || 'No description provided'}</Text>
-                </View>
+                {p.description && (
+                  <View style={styles.metaRow}>
+                    <Text style={styles.metaLabel}>Description:</Text>
+                    <Text style={styles.metaValue}>{p.description}</Text>
+                  </View>
+                )}
               </View>
             </View>
           )) : referralData.status.toLowerCase() === 'completed' ? (
@@ -1774,12 +1849,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F9FAFB',
   },
   statusBadgeFixed: {
     position: 'absolute',
@@ -1789,8 +1867,12 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   statusText: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
+    fontSize: 12,
+    color: '#374151',
+    fontFamily: 'Inter-Medium',
+  },
+  statusIcon: {
+    marginRight: 4,
   },
   statusBadgeNeutral: {
     backgroundColor: '#F9FAFB',
@@ -2245,10 +2327,22 @@ const styles = StyleSheet.create({
   },
 
   // ---- Prescription styles ----
+  prescriptionCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 4,
+    position: 'relative',
+    overflow: 'hidden',
+  },
   prescriptionHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 8,
+    zIndex: 1,
+    position: 'relative',
   },
   medicationIcon: {
     width: 40,
@@ -2261,12 +2355,25 @@ const styles = StyleSheet.create({
   medicationIconBlue: {
     backgroundColor: '#1E40AF',
   },
-  prescriptionDetails: { flex: 1 },
+  prescriptionDetails: {
+    flex: 1,
+  },
+  medicationNameRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
   medicationName: {
     fontSize: 16,
     color: '#1F2937',
     fontFamily: 'Inter-SemiBold',
-    marginBottom: 2,
+  },
+  medicationDosageText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    fontFamily: 'Inter-Regular',
   },
   medicationDosage: {
     fontSize: 14,
@@ -2275,12 +2382,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
   },
   prescriptionDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
     fontFamily: 'Inter-Regular',
+    lineHeight: 18,
+    marginTop: 2,
   },
   prescriptionStatus: {
     alignItems: 'flex-end',
+    gap: 8,
   },
   remainingDays: {
     fontSize: 14,
@@ -2293,8 +2403,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
   },
   prescriptionMeta: {
-    marginBottom: 6,
-    paddingTop: 7,
+    gap: 4,
+    marginBottom: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -2312,6 +2423,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#374151',
     fontFamily: 'Inter-Regular',
+  },
+  // DNA image background design
+  dnaImageContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 100,
+    overflow: 'hidden',
+    zIndex: 0,
+    opacity: 0.06,
+  },
+  dnaBackgroundImage: {
+    position: 'absolute',
+    right: -20,
+    top: '50%',
+    width: 120,
+    height: 120,
+    transform: [{ translateY: -60 }],
+    tintColor: '#1E40AF',
   },
 
   // ---- Certificate styles ----

@@ -172,7 +172,7 @@ export default function PatientConsultationScreen() {
     if (consultationIdString || referralIdString) {
       // Don't load from Firebase if we're returning from signature page
       if (params.signatureAdded === 'true') {
-        console.log('🔍 Skipping Firebase load - returning from signature page');
+        console.log(' Skipping Firebase load - returning from signature page');
         return;
       }
       
@@ -182,7 +182,7 @@ export default function PatientConsultationScreen() {
                              formData.reviewOfSymptoms.trim() !== '';
       
       if (hasExistingData) {
-        console.log('🔍 Skipping Firebase load - already have consultation data');
+        console.log(' Skipping Firebase load - already have consultation data');
         return;
       }
       
@@ -258,7 +258,7 @@ export default function PatientConsultationScreen() {
       if (patientId && consultationIdString && !referralIdString) {
         try {
           medicalHistory = await databaseService.getMedicalHistoryByAppointment(consultationIdString as string, patientId as string);
-          console.log('🔍 Loaded medical history for appointment:', medicalHistory);
+          console.log(' Loaded medical history for appointment:', medicalHistory);
         } catch (error) {
           console.log('No medical history found for this appointment:', error);
         }
@@ -268,37 +268,37 @@ export default function PatientConsultationScreen() {
       if (patientId && referralIdString && referral?.referralConsultationId) {
         try {
           medicalHistory = await databaseService.getDocument(`patientMedicalHistory/${patientId}/entries/${referral.referralConsultationId}`);
-          console.log('🔍 Loaded medical history for referral:', medicalHistory);
+          console.log(' Loaded medical history for referral:', medicalHistory);
         } catch (error) {
           console.log('No medical history found for this referral:', error);
         }
       }
 
-      console.log('🔍 Loading medical history:', medicalHistory);
-      console.log('🔍 Medical history diagnosis field:', medicalHistory?.diagnoses);
-      console.log('🔍 Number of diagnoses in medical history:', medicalHistory?.diagnoses?.length || 0);
-      console.log('🔍 Medical history certificates:', medicalHistory?.certificates);
-      console.log('🔍 Number of certificates in medical history:', medicalHistory?.certificates?.length || 0);
-      console.log('🔍 Medical history keys:', medicalHistory ? Object.keys(medicalHistory) : 'No medical history');
-      console.log('🔍 Full medical history object:', JSON.stringify(medicalHistory, null, 2));
+      console.log(' Loading medical history:', medicalHistory);
+      console.log(' Medical history diagnosis field:', medicalHistory?.diagnoses);
+      console.log(' Number of diagnoses in medical history:', medicalHistory?.diagnoses?.length || 0);
+      console.log(' Medical history certificates:', medicalHistory?.certificates);
+      console.log(' Number of certificates in medical history:', medicalHistory?.certificates?.length || 0);
+      console.log(' Medical history keys:', medicalHistory ? Object.keys(medicalHistory) : 'No medical history');
+      console.log(' Full medical history object:', JSON.stringify(medicalHistory, null, 2));
       
       // Load certificates from PMC that are associated with this appointment/referral
       let certificatesForConsultation: any[] = [];
       if (patientIdString) {
         try {
           const appointmentOrReferralId = consultationIdString || referralIdString;
-          console.log('🔍 Loading certificates for appointment/referral:', appointmentOrReferralId);
+          console.log(' Loading certificates for appointment/referral:', appointmentOrReferralId);
           
           // Get all certificates for this patient from PMC
           const allPatientCertificates = await databaseService.getCertificatesByPatientNew(patientIdString);
-          console.log('🔍 All patient certificates:', allPatientCertificates.length);
+          console.log(' All patient certificates:', allPatientCertificates.length);
           
           // Filter certificates that belong to this specific appointment/referral
           certificatesForConsultation = allPatientCertificates.filter(cert => {
             // Check if certificate has appointmentId matching our consultation/referral
             const certAppointmentId = (cert as any).appointmentId;
             const matches = certAppointmentId === appointmentOrReferralId;
-            console.log('🔍 Certificate check:', {
+            console.log(' Certificate check:', {
               certId: cert.id,
               certAppointmentId,
               appointmentOrReferralId,
@@ -307,7 +307,7 @@ export default function PatientConsultationScreen() {
             return matches;
           });
           
-          console.log('🔍 Certificates for this consultation:', certificatesForConsultation.length);
+          console.log(' Certificates for this consultation:', certificatesForConsultation.length);
         } catch (error) {
           console.error('Error loading certificates for consultation:', error);
         }
@@ -340,10 +340,10 @@ export default function PatientConsultationScreen() {
         certificates: certificatesForConsultation.length > 0 ? certificatesForConsultation : (prevFormData.certificates || []), // Load certificates from PMC or preserve existing ones
       }));
       
-      console.log('🔍 Form data set with diagnoses:', medicalHistory?.diagnoses || []);
-      console.log('🔍 Number of diagnoses in form data after setting:', (medicalHistory?.diagnoses || []).length);
-      console.log('🔍 Form data certificates loaded:', medicalHistory?.certificates || []);
-      console.log('🔍 Number of certificates in form data after setting:', (medicalHistory?.certificates || []).length);
+      console.log(' Form data set with diagnoses:', medicalHistory?.diagnoses || []);
+      console.log(' Number of diagnoses in form data after setting:', (medicalHistory?.diagnoses || []).length);
+      console.log(' Form data certificates loaded:', medicalHistory?.certificates || []);
+      console.log(' Number of certificates in form data after setting:', (medicalHistory?.certificates || []).length);
     } catch (error) {
       console.error('Error loading consultation data:', error);
       Alert.alert('Error', 'Failed to load consultation data. Please try again.');
@@ -485,7 +485,7 @@ export default function PatientConsultationScreen() {
             const storedData = await AsyncStorage.getItem(consultationDataKey);
             if (storedData) {
               const restoredFormData = JSON.parse(storedData);
-              console.log('🔍 Restored consultation data from AsyncStorage:', {
+              console.log(' Restored consultation data from AsyncStorage:', {
                 diagnosesCount: restoredFormData.diagnoses?.length || 0,
                 hasPresentIllnessHistory: !!restoredFormData.presentIllnessHistory,
                 hasReviewOfSymptoms: !!restoredFormData.reviewOfSymptoms,
@@ -500,7 +500,7 @@ export default function PatientConsultationScreen() {
               
               // Save the certificate with signature to database immediately
               try {
-                console.log('🔍 Saving certificate with signature to database immediately');
+                console.log(' Saving certificate with signature to database immediately');
                 const appointmentOrReferralId = consultationIdString || referralIdString;
                 const certificateId = await databaseService.createCertificateInNewStructure(
                   certificateData,
@@ -508,7 +508,7 @@ export default function PatientConsultationScreen() {
                   user?.uid || '',
                   appointmentOrReferralId  // Pass appointmentId (from appointment) or referralId (from referral)
                 );
-                console.log('🔍 Certificate saved to database with ID and appointmentId:', certificateId);
+                console.log(' Certificate saved to database with ID and appointmentId:', certificateId);
                 
                 // Update the certificate data with the database ID and appointmentId
                 setFormData(prev => ({
@@ -526,9 +526,9 @@ export default function PatientConsultationScreen() {
               
               // Clean up the stored data
               await AsyncStorage.removeItem(consultationDataKey);
-              console.log('🔍 Cleaned up AsyncStorage data');
+              console.log(' Cleaned up AsyncStorage data');
             } else {
-              console.log('🔍 No stored consultation data found, adding certificate to current formData');
+              console.log(' No stored consultation data found, adding certificate to current formData');
               // Fallback: add certificate to current formData
               setFormData(prev => ({
                 ...prev,
@@ -537,7 +537,7 @@ export default function PatientConsultationScreen() {
               
               // Save the certificate with signature to database immediately
               try {
-                console.log('🔍 Saving certificate with signature to database immediately (fallback)');
+                console.log(' Saving certificate with signature to database immediately (fallback)');
                 const appointmentOrReferralId = consultationIdString || referralIdString;
                 const certificateId = await databaseService.createCertificateInNewStructure(
                   certificateData,
@@ -545,7 +545,7 @@ export default function PatientConsultationScreen() {
                   user?.uid || '',
                   appointmentOrReferralId  // Pass appointmentId (from appointment) or referralId (from referral)
                 );
-                console.log('🔍 Certificate saved to database with ID and appointmentId:', certificateId);
+                console.log(' Certificate saved to database with ID and appointmentId:', certificateId);
                 
                 // Update the certificate data with the database ID and appointmentId
                 setFormData(prev => ({
@@ -634,7 +634,7 @@ export default function PatientConsultationScreen() {
             const storedData = await AsyncStorage.getItem(consultationDataKey);
             if (storedData) {
               const restoredFormData = JSON.parse(storedData);
-              console.log('🔍 Restored consultation data from AsyncStorage for prescription:', {
+              console.log(' Restored consultation data from AsyncStorage for prescription:', {
                 diagnosesCount: restoredFormData.diagnoses?.length || 0,
                 hasPresentIllnessHistory: !!restoredFormData.presentIllnessHistory,
                 hasReviewOfSymptoms: !!restoredFormData.reviewOfSymptoms,
@@ -649,9 +649,9 @@ export default function PatientConsultationScreen() {
               
               // Clean up the stored data
               await AsyncStorage.removeItem(consultationDataKey);
-              console.log('🔍 Cleaned up AsyncStorage data for prescription');
+              console.log(' Cleaned up AsyncStorage data for prescription');
             } else {
-              console.log('🔍 No stored consultation data found, adding prescription to current formData');
+              console.log(' No stored consultation data found, adding prescription to current formData');
               // Fallback: add prescription to current formData
               setFormData(prev => ({
                 ...prev,
@@ -731,12 +731,12 @@ export default function PatientConsultationScreen() {
 
   // Monitor formData changes for debugging
   useEffect(() => {
-    console.log('🔍 FormData diagnoses changed:', formData.diagnoses);
-    console.log('🔍 Number of diagnoses in formData:', formData.diagnoses.length);
-    console.log('🔍 FormData presentIllnessHistory:', formData.presentIllnessHistory);
-    console.log('🔍 FormData reviewOfSymptoms:', formData.reviewOfSymptoms);
-    console.log('🔍 FormData certificates:', formData.certificates.length);
-    console.log('🔍 Full formData:', JSON.stringify(formData, null, 2));
+    console.log(' FormData diagnoses changed:', formData.diagnoses);
+    console.log(' Number of diagnoses in formData:', formData.diagnoses.length);
+    console.log(' FormData presentIllnessHistory:', formData.presentIllnessHistory);
+    console.log(' FormData reviewOfSymptoms:', formData.reviewOfSymptoms);
+    console.log(' FormData certificates:', formData.certificates.length);
+    console.log(' Full formData:', JSON.stringify(formData, null, 2));
   }, [formData]);
 
   // Animation for pulsing mic
@@ -1204,7 +1204,7 @@ export default function PatientConsultationScreen() {
         
         if (isSignatureSaved && savedSignature) {
           // Auto-use saved signature, skip signature page
-          console.log('✅ Using saved signature for prescription, skipping signature page');
+          console.log(' Using saved signature for prescription, skipping signature page');
           
           const signedPrescription = {
             ...prescriptionData,
@@ -1236,7 +1236,7 @@ export default function PatientConsultationScreen() {
           setShowAddPrescription(false);
           setHasChanges(true);
           
-          console.log('✅ Prescription added with saved signature');
+          console.log(' Prescription added with saved signature');
           return;
         }
       }
@@ -1247,7 +1247,7 @@ export default function PatientConsultationScreen() {
         try {
           const consultationDataKey = `consultation_data_${consultationIdString || referralIdString || 'temp'}`;
           await AsyncStorage.setItem(consultationDataKey, JSON.stringify(formData));
-          console.log('🔍 Stored consultation data in AsyncStorage:', consultationDataKey);
+          console.log(' Stored consultation data in AsyncStorage:', consultationDataKey);
         } catch (error) {
           console.error('Error storing consultation data:', error);
         }
@@ -1266,7 +1266,7 @@ export default function PatientConsultationScreen() {
       });
       
     } catch (error) {
-      console.error('❌ Error checking saved signature for prescription:', error);
+      console.error(' Error checking saved signature for prescription:', error);
       // Fallback: navigate to signature page
       router.push({
         pathname: '/(patient)/signature-page',
@@ -1324,7 +1324,7 @@ export default function PatientConsultationScreen() {
         
         if (isSignatureSaved && savedSignature) {
           // Auto-use saved signature, skip signature page
-          console.log('✅ Using saved signature for certificate, skipping signature page');
+          console.log(' Using saved signature for certificate, skipping signature page');
           
           const signedCertificate = {
             ...certificateData,
@@ -1362,7 +1362,7 @@ export default function PatientConsultationScreen() {
           setShowAddCertificate(false);
           setHasChanges(true);
           
-          console.log('✅ Certificate added with saved signature');
+          console.log(' Certificate added with saved signature');
           return;
         }
       }
@@ -1373,7 +1373,7 @@ export default function PatientConsultationScreen() {
         try {
           const consultationDataKey = `consultation_data_${consultationIdString || referralIdString || 'temp'}`;
           await AsyncStorage.setItem(consultationDataKey, JSON.stringify(formData));
-          console.log('🔍 Stored consultation data in AsyncStorage:', consultationDataKey);
+          console.log(' Stored consultation data in AsyncStorage:', consultationDataKey);
         } catch (error) {
           console.error('Error storing consultation data:', error);
         }
@@ -1392,7 +1392,7 @@ export default function PatientConsultationScreen() {
       });
       
     } catch (error) {
-      console.error('❌ Error checking saved signature for certificate:', error);
+      console.error(' Error checking saved signature for certificate:', error);
       // Fallback: navigate to signature page
       router.push({
         pathname: '/(patient)/signature-page',
@@ -1427,7 +1427,7 @@ export default function PatientConsultationScreen() {
               // Check if this is a database ID (starts with MC-) or a temporary ID (number)
               if (typeof id === 'string' && id.startsWith('MC-')) {
                 await databaseService.deleteCertificate(id);
-                console.log('✅ Certificate deleted from database:', id);
+                console.log(' Certificate deleted from database:', id);
               } else {
                 console.log('ℹ️ Certificate was not yet saved to database, only removed from local state. ID:', id, 'Type:', typeof id);
               }
@@ -1534,7 +1534,7 @@ export default function PatientConsultationScreen() {
       const { certificates, ...consultationDataWithoutCertificates } = formData;
       
       // Debug: Check if certificates are properly excluded
-      console.log('🔍 Destructuring check (handleSaveChanges):', {
+      console.log(' Destructuring check (handleSaveChanges):', {
         originalFormDataHasCertificates: !!formData.certificates,
         originalCertificatesCount: formData.certificates?.length || 0,
         consultationDataWithoutCertificatesHasCertificates: !!(consultationDataWithoutCertificates as any).certificates,
@@ -1568,7 +1568,7 @@ export default function PatientConsultationScreen() {
       };
       
       // Debug: Verify certificates are excluded from consultation data
-      console.log('🔍 Consultation data verification (handleSaveChanges):', {
+      console.log(' Consultation data verification (handleSaveChanges):', {
         hasCertificates: !!(consultationData as any).certificates,
         certificatesCount: (consultationData as any).certificates ? (consultationData as any).certificates.length : 0,
         consultationDataKeys: Object.keys(consultationData),
@@ -1579,8 +1579,8 @@ export default function PatientConsultationScreen() {
 
       // Save certificates to new structure if they exist (same as complete consultation)
       if (formData.certificates && formData.certificates.length > 0) {
-        console.log('🔍 About to save certificates to new structure (handleSaveChanges):', formData.certificates.length);
-        console.log('🔍 Certificate data (handleSaveChanges):', formData.certificates.map(cert => ({
+        console.log(' About to save certificates to new structure (handleSaveChanges):', formData.certificates.length);
+        console.log(' Certificate data (handleSaveChanges):', formData.certificates.map(cert => ({
           id: cert.id,
           type: cert.type,
           hasDigitalSignature: !!cert.digitalSignature,
@@ -1620,12 +1620,12 @@ export default function PatientConsultationScreen() {
                 )
               )
             );
-            console.log('✅ New certificates saved to new structure successfully in handleSaveChanges with appointmentId:', appointmentOrReferralId);
+            console.log(' New certificates saved to new structure successfully in handleSaveChanges with appointmentId:', appointmentOrReferralId);
           } else {
             console.log('ℹ️ All certificates already saved to database, skipping certificate creation in handleSaveChanges');
           }
         } catch (error) {
-          console.error('❌ Error saving certificates to new structure in handleSaveChanges:', error);
+          console.error(' Error saving certificates to new structure in handleSaveChanges:', error);
           Alert.alert('Error', `Failed to save certificates: ${error.message || 'Unknown error'}. Consultation cannot be saved.`);
           return;
         }
@@ -1979,7 +1979,7 @@ export default function PatientConsultationScreen() {
       const { certificates, ...consultationDataWithoutCertificates } = formData;
       
       // Debug: Check if certificates are properly excluded
-      console.log('🔍 Destructuring check:', {
+      console.log(' Destructuring check:', {
         originalFormDataHasCertificates: !!formData.certificates,
         originalCertificatesCount: formData.certificates?.length || 0,
         consultationDataWithoutCertificatesHasCertificates: !!(consultationDataWithoutCertificates as any).certificates,
@@ -2013,7 +2013,7 @@ export default function PatientConsultationScreen() {
       };
       
       // Debug: Verify certificates are excluded from consultation data
-      console.log('🔍 Consultation data verification:', {
+      console.log(' Consultation data verification:', {
         hasCertificates: !!(consultationData as any).certificates,
         certificatesCount: (consultationData as any).certificates ? (consultationData as any).certificates.length : 0,
         consultationDataKeys: Object.keys(consultationData),
@@ -2024,8 +2024,8 @@ export default function PatientConsultationScreen() {
 
       // Save certificates to new structure if they exist
       if (formData.certificates && formData.certificates.length > 0) {
-        console.log('🔍 About to save certificates to new structure:', formData.certificates.length);
-        console.log('🔍 Certificate data:', formData.certificates.map(cert => ({
+        console.log(' About to save certificates to new structure:', formData.certificates.length);
+        console.log(' Certificate data:', formData.certificates.map(cert => ({
           id: cert.id,
           type: cert.type,
           hasDigitalSignature: !!cert.digitalSignature,
@@ -2083,12 +2083,12 @@ export default function PatientConsultationScreen() {
                 )
               )
             );
-            console.log('✅ New certificates saved to new structure successfully with appointmentId:', appointmentOrReferralId);
+            console.log(' New certificates saved to new structure successfully with appointmentId:', appointmentOrReferralId);
           } else {
             console.log('ℹ️ All certificates already saved to database, skipping certificate creation in completion');
           }
         } catch (error) {
-          console.error('❌ Error saving certificates to new structure:', error);
+          console.error(' Error saving certificates to new structure:', error);
           Alert.alert('Error', `Failed to save certificates: ${error.message || 'Unknown error'}. Consultation cannot be completed.`);
           setIsCompleting(false);
           setIsLoading(false);
@@ -2827,7 +2827,7 @@ export default function PatientConsultationScreen() {
                           color: '#FF8C00', 
                           fontWeight: 'bold' 
                         }}>
-                          ⚠️ UNSAVED
+                           UNSAVED
                         </Text>
                       </View>
                     )}
@@ -3104,7 +3104,7 @@ export default function PatientConsultationScreen() {
                           color: '#FF8C00', 
                           fontWeight: 'bold' 
                         }}>
-                          ⚠️ UNSAVED
+                           UNSAVED
                         </Text>
                       </View>
                     )}
@@ -3804,7 +3804,7 @@ export default function PatientConsultationScreen() {
                 {/* {unsavedFormsStatus.hasUnsavedCertificate && (
                   <View style={unsavedFormsModalStyles.certificateWarning}>
                     <Text style={unsavedFormsModalStyles.certificateWarningText}>
-                      ⚠️ Certificate forms will be lost if you choose "Save & Complete" because certificates require digital signatures.
+                       Certificate forms will be lost if you choose "Save & Complete" because certificates require digital signatures.
                     </Text>
                   </View>
                 )} */}

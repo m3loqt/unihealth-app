@@ -97,7 +97,7 @@ export default function CertificatesScreen() {
       // Validate certificates data
       const validCertificates = dataValidation.validateArray(certificates, dataValidation.isValidCertificate);
       
-      console.log('✅ Valid certificates:', validCertificates.length);
+      console.log(' Valid certificates:', validCertificates.length);
       setUserCertificates(validCertificates);
       
     } catch (error) {

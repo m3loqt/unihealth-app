@@ -6,28 +6,28 @@ This implementation adds persistent signature management specifically for **spec
 
 ## Key Features
 
-### ✅ **For Specialists Only**
+###  **For Specialists Only**
 - Only specialist accounts get the signature save prompt
 - Patient signatures remain temporary (session-based via AsyncStorage)
 
-### ✅ **Save Prompt After Signing**
+###  **Save Prompt After Signing**
 When a specialist signs a certificate, they see:
 ```
 "Would you like to save this signature for future certificates and prescriptions?"
 [Not Now]  [Save]
 ```
 
-### ✅ **Persistent Storage in Firebase**
+###  **Persistent Storage in Firebase**
 Saved signatures are stored in:
 - `doctors/{doctorId}/signature` - Base64 signature data
 - `doctors/{doctorId}/isSignatureSaved` - Boolean flag (true/false)
 
-### ✅ **Automatic Signature Application**
+###  **Automatic Signature Application**
 - If `isSignatureSaved === true`, skip signature page entirely
 - Automatically apply saved signature to new certificates
 - Specialists never need to sign again once saved
 
-### ✅ **Signature Always Inserted**
+###  **Signature Always Inserted**
 - Whether saved or not, signature is ALWAYS inserted into the document
 - "Save" choice only affects future automatic use
 

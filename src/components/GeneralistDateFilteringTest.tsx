@@ -24,25 +24,25 @@ export const GeneralistDateFilteringTest: React.FC<GeneralistDateFilteringTestPr
       // Get doctor data
       const doctor = await databaseService.getDoctorById(doctorId);
       if (!doctor) {
-        addResult('❌ Doctor not found');
+        addResult(' Doctor not found');
         return;
       }
       
-      addResult(`✅ Doctor found: ${doctor.fullName}`);
+      addResult(` Doctor found: ${doctor.fullName}`);
       addResult(`Is Specialist: ${doctor.isSpecialist}`);
       
       if (doctor.isSpecialist) {
-        addResult('⚠️ This is a specialist, not a generalist');
+        addResult(' This is a specialist, not a generalist');
         return;
       }
       
       // Check availability structure
       if (!doctor.availability?.weeklySchedule) {
-        addResult('❌ No availability data found');
+        addResult(' No availability data found');
         return;
       }
       
-      addResult('✅ Availability data found');
+      addResult(' Availability data found');
       
       // Simulate the loadGeneralistAvailableDays logic
       const allAvailableDays = new Set<number>();
@@ -59,17 +59,17 @@ export const GeneralistDateFilteringTest: React.FC<GeneralistDateFilteringTestPr
           
           if (hasValidTimeSlots) {
             allAvailableDays.add(index);
-            addResult(`✅ ${dayName} (${index}): Available`);
+            addResult(` ${dayName} (${index}): Available`);
           } else {
-            addResult(`⚠️ ${dayName} (${index}): Enabled but no valid time slots`);
+            addResult(` ${dayName} (${index}): Enabled but no valid time slots`);
           }
         } else {
-          addResult(`❌ ${dayName} (${index}): Not available`);
+          addResult(` ${dayName} (${index}): Not available`);
         }
       });
       
       const availableDaysArray = Array.from(allAvailableDays).sort();
-      addResult(`\n📊 Available days: [${availableDaysArray.join(', ')}]`);
+      addResult(`\n Available days: [${availableDaysArray.join(', ')}]`);
       
       // Test date filtering simulation
       addResult('\n🧪 Testing date filtering simulation:');
@@ -88,11 +88,11 @@ export const GeneralistDateFilteringTest: React.FC<GeneralistDateFilteringTestPr
       );
       
       addResult(`📅 Test dates: ${testDates.map(d => `${d.date}(${d.dayOfWeek})`).join(', ')}`);
-      addResult(`✅ Filtered dates: ${filteredDates.map(d => `${d.date}(${d.dayOfWeek})`).join(', ')}`);
-      addResult(`📊 Result: ${filteredDates.length} out of ${testDates.length} dates shown`);
+      addResult(` Filtered dates: ${filteredDates.map(d => `${d.date}(${d.dayOfWeek})`).join(', ')}`);
+      addResult(` Result: ${filteredDates.length} out of ${testDates.length} dates shown`);
       
     } catch (error) {
-      addResult(`❌ Error: ${error}`);
+      addResult(` Error: ${error}`);
     } finally {
       setLoading(false);
     }

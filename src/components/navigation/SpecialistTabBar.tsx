@@ -110,7 +110,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
 
   // Debug logging
   useEffect(() => {
-    console.log('🔔 Specialist TabBar - Unread count:', unreadCount);
+    console.log(' Specialist TabBar - Unread count:', unreadCount);
   }, [unreadCount]);
 
   // QR Code permission effect
@@ -147,7 +147,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
     setConsentError(null);
     
     try {
-      console.log('🔍 QR Code scanned:', { type, data });
+      console.log(' QR Code scanned:', { type, data });
       
       // Parse QR data safely
       const qrData = parseQRData(data);
@@ -159,7 +159,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
       
       if (result.action === 'direct_access') {
         // Trusted specialist - load patient data immediately
-        console.log('✅ Direct access granted:', result.reason);
+        console.log(' Direct access granted:', result.reason);
         await loadPatientData(qrData);
         
       } else if (result.action === 'request_consent') {
@@ -179,7 +179,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
         
       } else if (result.action === 'error') {
         // Error occurred - show error message
-        console.error('❌ QR scan error:', result.error);
+        console.error(' QR scan error:', result.error);
         setConsentError(result.error || 'Unknown error occurred');
         Alert.alert(
           'Error',
@@ -189,7 +189,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
       }
       
     } catch (error) {
-      console.error('❌ QR scan processing failed:', error);
+      console.error(' QR scan processing failed:', error);
       setConsentError(error.message);
       Alert.alert(
         'Error',
@@ -241,7 +241,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
       handleCloseQRModal();
       
     } catch (error) {
-      console.error('❌ Error loading patient data:', error);
+      console.error(' Error loading patient data:', error);
       setConsentError('Failed to load patient data');
       Alert.alert(
         'Error',
@@ -255,12 +255,12 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
   const handleConsentApproved = async () => {
     if (consentRequestId) {
       try {
-        console.log('✅ Consent approved for request:', consentRequestId);
+        console.log(' Consent approved for request:', consentRequestId);
         await loadPatientData(manualConsentData?.qrData);
         setShowConsentWaiting(false);
         setConsentRequestId(null);
       } catch (error) {
-        console.error('❌ Error handling consent approval:', error);
+        console.error(' Error handling consent approval:', error);
         setConsentError('Failed to process consent approval');
       }
     }
@@ -269,7 +269,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
   const handleConsentDenied = async () => {
     if (consentRequestId) {
       try {
-        console.log('❌ Consent denied for request:', consentRequestId);
+        console.log(' Consent denied for request:', consentRequestId);
         setShowConsentWaiting(false);
         setConsentRequestId(null);
         Alert.alert(
@@ -278,7 +278,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
           [{ text: 'OK' }]
         );
       } catch (error) {
-        console.error('❌ Error handling consent denial:', error);
+        console.error(' Error handling consent denial:', error);
         setConsentError('Failed to process consent denial');
       }
     }
@@ -302,7 +302,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
       setManualConsentData(null);
       
     } catch (error) {
-      console.error('❌ Error handling manual consent:', error);
+      console.error(' Error handling manual consent:', error);
       setConsentError('Failed to process manual consent');
     }
   };
@@ -328,7 +328,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
           console.log('📋 Consent request status updated:', request.status);
           
           if (request.status === 'approved') {
-            console.log('✅ Patient approved consent');
+            console.log(' Patient approved consent');
             setShowConsentWaiting(false);
             setConsentRequestId(null);
             // Load patient data using stored QR data
@@ -337,7 +337,7 @@ export default function SpecialistTabBar({ activeTab }: SpecialistTabBarProps) {
               setPendingQRData(null); // Clear stored data
             }
           } else if (request.status === 'denied') {
-            console.log('❌ Patient denied consent');
+            console.log(' Patient denied consent');
             setShowConsentWaiting(false);
             setConsentRequestId(null);
             setPendingQRData(null); // Clear stored data

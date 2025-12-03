@@ -27,20 +27,20 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
       const testData = { test: true, timestamp: Date.now() };
       
       await AsyncStorage.setItem(testKey, JSON.stringify(testData));
-      addLog('✅ AsyncStorage.setItem successful');
+      addLog(' AsyncStorage.setItem successful');
       
       const retrieved = await AsyncStorage.getItem(testKey);
       if (retrieved) {
         const parsed = JSON.parse(retrieved);
-        addLog(`✅ AsyncStorage.getItem successful: ${JSON.stringify(parsed)}`);
+        addLog(` AsyncStorage.getItem successful: ${JSON.stringify(parsed)}`);
       } else {
-        addLog('❌ AsyncStorage.getItem returned null');
+        addLog(' AsyncStorage.getItem returned null');
       }
       
       await AsyncStorage.removeItem(testKey);
-      addLog('✅ AsyncStorage.removeItem successful');
+      addLog(' AsyncStorage.removeItem successful');
     } catch (error) {
-      addLog(`❌ AsyncStorage error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addLog(` AsyncStorage error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -48,27 +48,27 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
     try {
       addLog('Testing Firebase connection...');
       if (!user?.uid) {
-        addLog('❌ No user UID available');
+        addLog(' No user UID available');
         return;
       }
       
       // Test getting user's appointments
       const appointments = await databaseService.getAppointments(user.uid, user.role || 'patient');
-      addLog(`✅ Firebase connection successful - found ${appointments.length} appointments`);
+      addLog(` Firebase connection successful - found ${appointments.length} appointments`);
       
       // Test getting user's referrals based on role
       let referrals = [];
       if (user.role === 'specialist') {
         referrals = await databaseService.getReferralsBySpecialist(user.uid);
-        addLog(`✅ Firebase referrals successful - found ${referrals.length} referrals for specialist`);
+        addLog(` Firebase referrals successful - found ${referrals.length} referrals for specialist`);
       } else {
         referrals = await databaseService.getReferralsByPatient(user.uid);
-        addLog(`✅ Firebase referrals successful - found ${referrals.length} referrals for patient`);
+        addLog(` Firebase referrals successful - found ${referrals.length} referrals for patient`);
       }
       
       // Debug referral details
       if (referrals.length > 0) {
-        addLog(`🔍 Referral details for ${user.role} ${user.uid}:`);
+        addLog(` Referral details for ${user.role} ${user.uid}:`);
         referrals.forEach((referral, index) => {
           addLog(`  ${index + 1}. ID: ${referral.id}`);
           addLog(`     Status: ${referral.status}`);
@@ -82,7 +82,7 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
       }
       
     } catch (error) {
-      addLog(`❌ Firebase error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addLog(` Firebase error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -90,25 +90,25 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
     try {
       addLog('Testing notification service...');
       if (!user?.uid) {
-        addLog('❌ No user UID available');
+        addLog(' No user UID available');
         return;
       }
       
       // Test getting notifications
       const notifications = await realtimeNotificationService.getNotifications(user.uid);
-      addLog(`✅ Notification service - found ${notifications.length} notifications`);
+      addLog(` Notification service - found ${notifications.length} notifications`);
       
       // Test unread count
       const unreadCount = await realtimeNotificationService.getUnreadCount(user.uid);
-      addLog(`✅ Unread count: ${unreadCount}`);
+      addLog(` Unread count: ${unreadCount}`);
       
     } catch (error) {
-      addLog(`❌ Notification service error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addLog(` Notification service error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   const runAllTests = async () => {
-    console.log('🔔 runAllTests function called');
+    console.log(' runAllTests function called');
     setLogs([]);
     addLog('Starting comprehensive notification debugging...');
     addLog(`Platform: ${typeof window !== 'undefined' ? 'web' : 'mobile'}`);
@@ -127,9 +127,9 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
       if (!user?.uid) return;
       
       await realtimeNotificationService.clearNotifications(user.uid);
-      addLog('✅ Cleared notification cache');
+      addLog(' Cleared notification cache');
     } catch (error) {
-      addLog(`❌ Error clearing cache: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addLog(` Error clearing cache: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -138,9 +138,9 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
       if (!user?.uid) return;
       
       await realtimeNotificationService.forceCheckMissedNotifications(user.uid, user.role || 'patient');
-      addLog('✅ Forced missed notification check');
+      addLog(' Forced missed notification check');
     } catch (error) {
-      addLog(`❌ Error checking missed notifications: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addLog(` Error checking missed notifications: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -173,9 +173,9 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
       // Force refresh
       await realtimeNotificationService.forceRefresh(user.uid);
       
-      addLog('✅ Test notification created and saved');
+      addLog(' Test notification created and saved');
     } catch (error) {
-      addLog(`❌ Error creating test notification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addLog(` Error creating test notification: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -200,7 +200,7 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
         {/* Check Missed Button - Most Important */}
         <TouchableOpacity 
           onPress={() => {
-            console.log('🔔 Check Missed button pressed');
+            console.log(' Check Missed button pressed');
             forceCheckMissedNotifications();
           }} 
           style={[styles.button, { backgroundColor: '#DC3545' }]}
@@ -212,7 +212,7 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
         {/* Create Test Button */}
         <TouchableOpacity 
           onPress={() => {
-            console.log('🔔 Create Test Notification button pressed');
+            console.log(' Create Test Notification button pressed');
             createTestNotification();
           }} 
           style={[styles.button, { backgroundColor: '#FF6B35' }]}
@@ -224,8 +224,8 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
         {/* Simple Test Button */}
         <TouchableOpacity 
           onPress={() => {
-            console.log('🔔 SIMPLE TEST BUTTON PRESSED!');
-            addLog('✅ Simple test button works!');
+            console.log(' SIMPLE TEST BUTTON PRESSED!');
+            addLog(' Simple test button works!');
           }} 
           style={[styles.button, { backgroundColor: '#28A745' }]}
           activeOpacity={0.7}
@@ -235,7 +235,7 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
 
         <TouchableOpacity 
           onPress={() => {
-            console.log('🔔 Run All Tests button pressed');
+            console.log(' Run All Tests button pressed');
             runAllTests();
           }} 
           style={styles.button}
@@ -246,7 +246,7 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
         
         <TouchableOpacity 
           onPress={() => {
-            console.log('🔔 Test AsyncStorage button pressed');
+            console.log(' Test AsyncStorage button pressed');
             testAsyncStorage();
           }} 
           style={styles.button}
@@ -257,7 +257,7 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
         
         <TouchableOpacity 
           onPress={() => {
-            console.log('🔔 Test Firebase button pressed');
+            console.log(' Test Firebase button pressed');
             testFirebaseConnection();
           }} 
           style={styles.button}
@@ -268,7 +268,7 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
         
         <TouchableOpacity 
           onPress={() => {
-            console.log('🔔 Test Notifications button pressed');
+            console.log(' Test Notifications button pressed');
             testNotificationService();
           }} 
           style={styles.button}
@@ -279,7 +279,7 @@ const NotificationDebugger: React.FC<NotificationDebuggerProps> = ({ visible, on
         
         <TouchableOpacity 
           onPress={() => {
-            console.log('🔔 Clear Cache button pressed');
+            console.log(' Clear Cache button pressed');
             clearNotificationCache();
           }} 
           style={styles.button}

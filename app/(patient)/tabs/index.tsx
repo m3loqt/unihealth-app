@@ -254,7 +254,7 @@ export default function HomeScreen() {
   const realtimeUnreadCount = getSafeUnreadCount(realtimeNotificationData.unreadCount);
   
   // Debug logging for UI state
-  console.log('🔔 Patient Home - UI State:', {
+  console.log(' Patient Home - UI State:', {
     notificationsCount: realtimeNotifications.length,
     unreadCount: realtimeUnreadCount,
     notifications: realtimeNotifications.map(n => ({ id: n.id, title: n.title, read: n.read }))
@@ -332,18 +332,18 @@ export default function HomeScreen() {
       // Get the consent request details
       const request = await consentService.getConsentRequest(requestId);
       if (!request) {
-        console.error('❌ Consent request not found:', requestId);
+        console.error(' Consent request not found:', requestId);
         return;
       }
       
       // Check if request is still pending and not expired
       if (request.status !== 'pending') {
-        console.log('⚠️ Consent request already processed:', request.status);
+        console.log(' Consent request already processed:', request.status);
         return;
       }
       
       if (consentService.isConsentRequestExpired(request)) {
-        console.log('⚠️ Consent request expired');
+        console.log(' Consent request expired');
         Alert.alert(
           'Request Expired',
           'This consent request has expired. Please ask the specialist to scan your QR code again.',
@@ -363,7 +363,7 @@ export default function HomeScreen() {
       setShowConsentModal(true);
       
     } catch (error) {
-      console.error('❌ Error handling consent request:', error);
+      console.error(' Error handling consent request:', error);
     } finally {
       setConsentLoading(false);
     }
@@ -393,7 +393,7 @@ export default function HomeScreen() {
       );
       
     } catch (error) {
-      console.error('❌ Error handling consent response:', error);
+      console.error(' Error handling consent response:', error);
       Alert.alert(
         'Error',
         'Failed to process your response. Please try again.',
@@ -446,7 +446,7 @@ export default function HomeScreen() {
       
       // Listen for consent requests in real-time
       const listenForConsentRequests = () => {
-        console.log('🔍 Setting up consent request listener for patient:', user.uid);
+        console.log(' Setting up consent request listener for patient:', user.uid);
         
         // Set up Firebase real-time listener for consent requests
         const unsubscribe = databaseService.listenToConsentRequests(user.uid, (requests) => {
@@ -460,7 +460,7 @@ export default function HomeScreen() {
           );
           
           if (pendingRequests.length > 0) {
-            console.log('🔔 New consent request found:', pendingRequests[0].id);
+            console.log(' New consent request found:', pendingRequests[0].id);
             // Handle the first pending request
             handleConsentRequest(pendingRequests[0].id);
           }
@@ -958,7 +958,7 @@ export default function HomeScreen() {
              {/* <TouchableOpacity 
                style={[styles.iconButton, { backgroundColor: '#FF6B6B', marginLeft: 8, minWidth: 48, minHeight: 48, justifyContent: 'center', alignItems: 'center' }]}
                onPress={() => {
-                 console.log('🔔 Debug button pressed!');
+                 console.log(' Debug button pressed!');
                  setShowDebugger(true);
                }}
                activeOpacity={0.7}
@@ -1097,11 +1097,11 @@ export default function HomeScreen() {
                   onPress={() => {
                     if (appt.type === 'specialist_referral') {
                       // For specialist referrals, navigate to referral details
-                      console.log('🔍 Navigating to referral details for specialist referral:', appt.id);
+                      console.log(' Navigating to referral details for specialist referral:', appt.id);
                       router.push(`/(patient)/referral-details?id=${appt.id}`);
                     } else {
                       // For regular appointments, navigate to visit overview
-                      console.log('🔍 Navigating to visit overview for regular appointment:', appt.id);
+                      console.log(' Navigating to visit overview for regular appointment:', appt.id);
                       router.push(`/visit-overview?id=${appt.id}`);
                     }
                   }}
@@ -1782,7 +1782,7 @@ export default function HomeScreen() {
           shadowRadius: 3.84,
         }}
         onPress={() => {
-          console.log('🔔 Floating debug button pressed!');
+          console.log(' Floating debug button pressed!');
           setShowDebugger(true);
         }}
         activeOpacity={0.8}

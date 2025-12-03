@@ -125,7 +125,7 @@ export default function SignInScreen() {
               const result = await authService.sendEmailVerification(currentUser);
               console.log('📧 Email verification result:', result.message);
             } catch (error) {
-              console.warn('⚠️ Failed to send email verification:', error);
+              console.warn(' Failed to send email verification:', error);
             }
             
             // Redirect to email verification screen

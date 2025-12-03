@@ -4,11 +4,11 @@
 
 Resend is a modern email API that's much simpler to set up than SendGrid:
 
-- ✅ **Free Tier**: 3,000 emails/month free
-- ✅ **Simple Setup**: Just one API key
-- ✅ **No Domain Verification**: Works immediately
-- ✅ **Great Documentation**: Easy to understand
-- ✅ **Modern API**: Clean and simple
+-  **Free Tier**: 3,000 emails/month free
+-  **Simple Setup**: Just one API key
+-  **No Domain Verification**: Works immediately
+-  **Great Documentation**: Easy to understand
+-  **Modern API**: Clean and simple
 
 ## 🚀 Quick Setup (5 minutes)
 
@@ -65,9 +65,9 @@ const testEmail = async () => {
       code: '123456',
       userName: 'Test User'
     });
-    console.log('✅ Email sent successfully');
+    console.log(' Email sent successfully');
   } catch (error) {
-    console.error('❌ Email failed:', error);
+    console.error(' Email failed:', error);
   }
 };
 ```
@@ -94,7 +94,7 @@ private generatePasswordResetEmailHTML(code: string, userName?: string): string 
 }
 ```
 
-## 📊 Resend Dashboard
+##  Resend Dashboard
 
 Monitor your emails at [resend.com/dashboard](https://resend.com/dashboard):
 

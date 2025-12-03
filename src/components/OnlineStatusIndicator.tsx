@@ -18,7 +18,7 @@ export const OnlineStatusIndicator: React.FC<OnlineStatusIndicatorProps> = ({
   const { isOnline, status, formattedLastSeen, loading } = useUserOnlineStatus(userId);
   
   // Debug logging
-  console.log('🔍 OnlineStatusIndicator Debug:', {
+  console.log(' OnlineStatusIndicator Debug:', {
     userId,
     isOnline,
     status,

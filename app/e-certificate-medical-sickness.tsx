@@ -458,7 +458,7 @@ export default function MedicalSicknessCertificateScreen() {
     };
     
     // Debug: Log the actual date values we're receiving
-    console.log('🔍 Certificate date debug:', {
+    console.log(' Certificate date debug:', {
       certificateIssueDate: certificate?.issueDate,
       certificateMetadataIssuedDate: (certificate as any)?.metadata?.issuedDate,
       certificateObject: certificate

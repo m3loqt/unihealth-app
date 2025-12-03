@@ -73,12 +73,12 @@ initializeFreeSpeechToText(ASSEMBLYAI_API_KEY);
 
 ## **Features**
 
-✅ **Real-time transcription** on web  
-✅ **High-quality transcription** on mobile  
-✅ **5 hours free per month** (AssemblyAI)  
-✅ **No credit card required** for free tier  
-✅ **Works on both iOS and Android**  
-✅ **Automatic punctuation and formatting**  
+ **Real-time transcription** on web  
+ **High-quality transcription** on mobile  
+ **5 hours free per month** (AssemblyAI)  
+ **No credit card required** for free tier  
+ **Works on both iOS and Android**  
+ **Automatic punctuation and formatting**  
 
 ## **Usage Limits**
 

@@ -154,10 +154,10 @@ You can also verify the data directly in Firebase:
 ## Success Criteria
 
 The booking functionality is working correctly if:
-- ✅ Time slots can be booked successfully
-- ✅ Double booking is prevented
-- ✅ Booked slots are visually distinct
-- ✅ Real-time updates work
-- ✅ Multiple bookings on same date work
-- ✅ Different doctors can have same time slots
-- ✅ All automated tests pass
+-  Time slots can be booked successfully
+-  Double booking is prevented
+-  Booked slots are visually distinct
+-  Real-time updates work
+-  Multiple bookings on same date work
+-  Different doctors can have same time slots
+-  All automated tests pass

@@ -40,9 +40,9 @@ export const useSpecialistSchedules = (specialistId: string) => {
   }, [specialistId]);
 
   const addSchedule = useCallback(async (formData: ScheduleFormData) => {
-    console.log('🔍 addSchedule called in hook');
-    console.log('🔍 specialistId:', specialistId);
-    console.log('🔍 formData:', formData);
+    console.log(' addSchedule called in hook');
+    console.log(' specialistId:', specialistId);
+    console.log(' formData:', formData);
     
     try {
       setError(null);
@@ -90,15 +90,15 @@ export const useSpecialistSchedules = (specialistId: string) => {
 
       console.log('Schedule data to save:', scheduleData);
       const scheduleId = await databaseService.addSpecialistSchedule(specialistId, scheduleData);
-      console.log('✅ Schedule saved with ID:', scheduleId);
+      console.log(' Schedule saved with ID:', scheduleId);
       
       // Reload schedules to get the updated list
       await loadSchedules();
-      console.log('✅ Schedules reloaded');
+      console.log(' Schedules reloaded');
       
       return scheduleId;
     } catch (error) {
-      console.error('❌ Error adding schedule:', error);
+      console.error(' Error adding schedule:', error);
       setError('Failed to add schedule');
       throw error;
     }
@@ -114,12 +114,12 @@ export const useSpecialistSchedules = (specialistId: string) => {
       if (!SKIP_VALIDATION) {
         // Check if schedule can be updated (no confirmed appointments that match this schedule's pattern)
         const canUpdate = await canScheduleBeModified(scheduleId, formData.validFrom);
-        console.log('🔍 updateSchedule: Can update?', canUpdate);
+        console.log(' updateSchedule: Can update?', canUpdate);
         if (!canUpdate) {
           throw new Error('Cannot modify schedule: there are confirmed appointments that match this schedule\'s pattern');
         }
       } else {
-        console.log('🔍 updateSchedule: SKIPPING VALIDATION FOR DEBUG');
+        console.log(' updateSchedule: SKIPPING VALIDATION FOR DEBUG');
       }
 
       // Generate time slots based on start time, end time, and duration
@@ -177,7 +177,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
       await loadSchedules();
       console.log('🗑️ Schedules reloaded after deletion');
     } catch (error) {
-      console.error('❌ Error deleting schedule:', error);
+      console.error(' Error deleting schedule:', error);
       setError('Failed to delete schedule');
       throw error;
     }
@@ -186,7 +186,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
   const canScheduleBeDeleted = useCallback(async (scheduleId: string) => {
     const schedule = schedules.find(s => s.id === scheduleId);
     if (!schedule) {
-      console.log('🔍 canScheduleBeDeleted: Schedule not found', scheduleId);
+      console.log(' canScheduleBeDeleted: Schedule not found', scheduleId);
       return false;
     }
 
@@ -194,7 +194,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    console.log('🔍 canScheduleBeDeleted: Checking schedule for deletion', {
+    console.log(' canScheduleBeDeleted: Checking schedule for deletion', {
       scheduleId,
       validFromDate: validFromDate.toISOString(),
       dayOfWeek: schedule.recurrence.dayOfWeek,
@@ -207,7 +207,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
     // For deletion, block if there are confirmed appointments from TODAY onwards
     // that match this schedule's pattern. Past appointments don't block deletion.
     const hasFutureConfirmedReferrals = referrals.some(referral => {
-      console.log('🔍 canScheduleBeDeleted: Checking referral', {
+      console.log(' canScheduleBeDeleted: Checking referral', {
         referralId: referral.id,
         status: referral.status,
         appointmentDate: referral.appointmentDate,
@@ -215,7 +215,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
       });
       
       if (referral.status !== 'confirmed' && referral.status !== 'completed') {
-        console.log('🔍 canScheduleBeDeleted: Referral status not confirmed/completed, skipping');
+        console.log(' canScheduleBeDeleted: Referral status not confirmed/completed, skipping');
         return false;
       }
       
@@ -223,7 +223,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
       const [year, month, day] = referral.appointmentDate.split('-').map(Number);
       const appointmentDate = new Date(year, month - 1, day); // month is 0-indexed
       
-      console.log('🔍 canScheduleBeDeleted: Date comparison', {
+      console.log(' canScheduleBeDeleted: Date comparison', {
         appointmentDate: appointmentDate.toISOString(),
         today: today.toISOString(),
         isFuture: appointmentDate >= today
@@ -231,37 +231,37 @@ export const useSpecialistSchedules = (specialistId: string) => {
       
       // Block if appointment is today or in the future
       if (appointmentDate < today) {
-        console.log('🔍 canScheduleBeDeleted: Referral is in the past, skipping');
+        console.log(' canScheduleBeDeleted: Referral is in the past, skipping');
         return false;
       }
       
       // Check if the appointment day of week matches the schedule's recurrence pattern
       const appointmentDayOfWeek = appointmentDate.getDay(); // 0-6 (Sunday-Saturday)
-      console.log('🔍 canScheduleBeDeleted: Day of week check', {
+      console.log(' canScheduleBeDeleted: Day of week check', {
         appointmentDayOfWeek,
         scheduleDaysOfWeek: schedule.recurrence.dayOfWeek,
         matches: schedule.recurrence.dayOfWeek.includes(appointmentDayOfWeek)
       });
       
       if (!schedule.recurrence.dayOfWeek.includes(appointmentDayOfWeek)) {
-        console.log('🔍 canScheduleBeDeleted: Day of week does not match, skipping');
+        console.log(' canScheduleBeDeleted: Day of week does not match, skipping');
         return false;
       }
       
       // Check if the appointment time matches one of the schedule's time slots
       const scheduleTimeSlots = Object.keys(schedule.slotTemplate);
-      console.log('🔍 canScheduleBeDeleted: Time check', {
+      console.log(' canScheduleBeDeleted: Time check', {
         appointmentTime: referral.appointmentTime,
         scheduleTimeSlots,
         matches: scheduleTimeSlots.includes(referral.appointmentTime)
       });
       
       if (!scheduleTimeSlots.includes(referral.appointmentTime)) {
-        console.log('🔍 canScheduleBeDeleted: Time does not match, skipping');
+        console.log(' canScheduleBeDeleted: Time does not match, skipping');
         return false;
       }
       
-      console.log('🔍 canScheduleBeDeleted: Found future confirmed referral', {
+      console.log(' canScheduleBeDeleted: Found future confirmed referral', {
         referralId: referral.id,
         appointmentDate: referral.appointmentDate,
         appointmentTime: referral.appointmentTime,
@@ -275,7 +275,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
     let hasFutureConfirmedAppointments = false;
     try {
       const appointments = await databaseService.getAppointments(specialistId, 'specialist');
-      console.log('🔍 canScheduleBeDeleted: Checking appointments for deletion', {
+      console.log(' canScheduleBeDeleted: Checking appointments for deletion', {
         totalAppointments: appointments.length
       });
       
@@ -298,7 +298,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
         const scheduleTimeSlots = Object.keys(schedule.slotTemplate);
         if (!scheduleTimeSlots.includes(appointment.appointmentTime)) return false;
         
-        console.log('🔍 canScheduleBeDeleted: Found future confirmed appointment', {
+        console.log(' canScheduleBeDeleted: Found future confirmed appointment', {
           appointmentId: appointment.id,
           appointmentDate: appointment.appointmentDate,
           appointmentTime: appointment.appointmentTime,
@@ -312,7 +312,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
       // If we can't load appointments, err on the side of caution and allow deletion
     }
 
-    console.log('🔍 canScheduleBeDeleted: Final result', {
+    console.log(' canScheduleBeDeleted: Final result', {
       hasFutureConfirmedReferrals,
       hasFutureConfirmedAppointments,
       canDelete: !hasFutureConfirmedReferrals && !hasFutureConfirmedAppointments
@@ -324,7 +324,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
   const canScheduleBeModified = useCallback(async (scheduleId: string, newValidFrom?: string) => {
     const schedule = schedules.find(s => s.id === scheduleId);
     if (!schedule) {
-      console.log('🔍 canScheduleBeModified: Schedule not found', scheduleId);
+      console.log(' canScheduleBeModified: Schedule not found', scheduleId);
       return false;
     }
 
@@ -332,7 +332,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    console.log('🔍 canScheduleBeModified: Checking schedule', {
+    console.log(' canScheduleBeModified: Checking schedule', {
       scheduleId,
       validFromDate: validFromDate.toISOString(),
       dayOfWeek: schedule.recurrence.dayOfWeek,
@@ -348,7 +348,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
     // 2. The schedule's time slots
     // 3. The appointment date is on or after the schedule's validFrom date
     const hasConfirmedReferrals = referrals.some(referral => {
-      console.log('🔍 canScheduleBeModified: Checking referral', {
+      console.log(' canScheduleBeModified: Checking referral', {
         referralId: referral.id,
         status: referral.status,
         appointmentDate: referral.appointmentDate,
@@ -356,7 +356,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
       });
       
       if (referral.status !== 'pending' && referral.status !== 'confirmed' && referral.status !== 'completed') {
-        console.log('🔍 canScheduleBeModified: Referral status not pending/confirmed/completed, skipping');
+        console.log(' canScheduleBeModified: Referral status not pending/confirmed/completed, skipping');
         return false;
       }
       
@@ -364,7 +364,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
       const [year, month, day] = referral.appointmentDate.split('-').map(Number);
       const appointmentDate = new Date(year, month - 1, day); // month is 0-indexed
       
-      console.log('🔍 canScheduleBeModified: Date comparison', {
+      console.log(' canScheduleBeModified: Date comparison', {
         appointmentDate: appointmentDate.toISOString(),
         validFromDate: validFromDate.toISOString(),
         isAfterValidFrom: appointmentDate >= validFromDate
@@ -372,37 +372,37 @@ export const useSpecialistSchedules = (specialistId: string) => {
       
       // Check if appointment date is on or after the schedule's validFrom date
       if (appointmentDate < validFromDate) {
-        console.log('🔍 canScheduleBeModified: Referral is before validFrom date, skipping');
+        console.log(' canScheduleBeModified: Referral is before validFrom date, skipping');
         return false;
       }
       
       // Check if the appointment day of week matches the schedule's recurrence pattern
       const appointmentDayOfWeek = appointmentDate.getDay(); // 0-6 (Sunday-Saturday)
-      console.log('🔍 canScheduleBeModified: Day of week check', {
+      console.log(' canScheduleBeModified: Day of week check', {
         appointmentDayOfWeek,
         scheduleDaysOfWeek: schedule.recurrence.dayOfWeek,
         matches: schedule.recurrence.dayOfWeek.includes(appointmentDayOfWeek)
       });
       
       if (!schedule.recurrence.dayOfWeek.includes(appointmentDayOfWeek)) {
-        console.log('🔍 canScheduleBeModified: Day of week does not match, skipping');
+        console.log(' canScheduleBeModified: Day of week does not match, skipping');
         return false;
       }
       
       // Check if the appointment time matches one of the schedule's time slots
       const scheduleTimeSlots = Object.keys(schedule.slotTemplate);
-      console.log('🔍 canScheduleBeModified: Time check', {
+      console.log(' canScheduleBeModified: Time check', {
         appointmentTime: referral.appointmentTime,
         scheduleTimeSlots,
         matches: scheduleTimeSlots.includes(referral.appointmentTime)
       });
       
       if (!scheduleTimeSlots.includes(referral.appointmentTime)) {
-        console.log('🔍 canScheduleBeModified: Time does not match, skipping');
+        console.log(' canScheduleBeModified: Time does not match, skipping');
         return false;
       }
       
-      console.log('🔍 canScheduleBeModified: Found matching referral', {
+      console.log(' canScheduleBeModified: Found matching referral', {
         referralId: referral.id,
         appointmentDate: referral.appointmentDate,
         appointmentTime: referral.appointmentTime,
@@ -417,7 +417,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
     let hasConfirmedAppointments = false;
     try {
       const appointments = await databaseService.getAppointments(specialistId, 'specialist');
-      console.log('🔍 canScheduleBeModified: Checking appointments', {
+      console.log(' canScheduleBeModified: Checking appointments', {
         totalAppointments: appointments.length,
         appointments: appointments.map(apt => ({
           id: apt.id,
@@ -446,7 +446,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
         const scheduleTimeSlots = Object.keys(schedule.slotTemplate);
         if (!scheduleTimeSlots.includes(appointment.appointmentTime)) return false;
         
-        console.log('🔍 canScheduleBeModified: Found matching appointment', {
+        console.log(' canScheduleBeModified: Found matching appointment', {
           appointmentId: appointment.id,
           appointmentDate: appointment.appointmentDate,
           appointmentTime: appointment.appointmentTime,
@@ -461,7 +461,7 @@ export const useSpecialistSchedules = (specialistId: string) => {
       // This prevents blocking schedule changes due to database errors
     }
 
-    console.log('🔍 canScheduleBeModified: Final result', {
+    console.log(' canScheduleBeModified: Final result', {
       hasConfirmedReferrals,
       hasConfirmedAppointments,
       canModify: !hasConfirmedReferrals && !hasConfirmedAppointments

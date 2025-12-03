@@ -71,10 +71,10 @@ const doctorWithDefaults = {
 4. **Better User Experience**: Users can still view and interact with doctors even if their availability data is incomplete.
 
 ## Testing
-- ✅ Clinic selection works without errors
-- ✅ Doctor list displays properly with availability information
-- ✅ "Not available" is shown for doctors without lastUpdated data
-- ✅ No more TypeError crashes
+-  Clinic selection works without errors
+-  Doctor list displays properly with availability information
+-  "Not available" is shown for doctors without lastUpdated data
+-  No more TypeError crashes
 
 ## Files Modified
 1. `app/(patient)/book-visit/select-doctor.tsx` - Added null checks for availability.lastUpdated

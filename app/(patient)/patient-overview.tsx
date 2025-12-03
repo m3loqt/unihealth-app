@@ -112,7 +112,7 @@ export default function PatientOverviewScreen() {
   const loadPatientData = async () => {
     if (!id) return;
     
-    console.log('🔍 PATIENT OVERVIEW - Loading data for patient ID:', id);
+    console.log(' PATIENT OVERVIEW - Loading data for patient ID:', id);
     
     try {
       setLoading(true);
@@ -132,7 +132,7 @@ export default function PatientOverviewScreen() {
         let usersNodeData = null;
         try {
           usersNodeData = await databaseService.getDocument(`users/${id}`);
-          console.log('🔍 USERS NODE DATA:', usersNodeData);
+          console.log(' USERS NODE DATA:', usersNodeData);
         } catch (error) {
           console.log('Could not fetch users node data:', error);
         }
@@ -142,7 +142,7 @@ export default function PatientOverviewScreen() {
         if (!usersNodeData && (patient as any)?.userId) {
           try {
             usersNodeDataByPatientId = await databaseService.getDocument(`users/${(patient as any).userId}`);
-            console.log('🔍 FALLBACK - USERS NODE DATA BY USERID FIELD:', usersNodeDataByPatientId);
+            console.log(' FALLBACK - USERS NODE DATA BY USERID FIELD:', usersNodeDataByPatientId);
           } catch (error) {
             console.log('Fallback failed - could not fetch users node data by userId field:', error);
           }
@@ -323,7 +323,7 @@ export default function PatientOverviewScreen() {
         setPrescriptions(validPrescriptions);
 
         // Debug logging for enhanced patient data retrieval
-        console.log('🔍 PATIENT DATA RETRIEVAL DEBUG:', {
+        console.log(' PATIENT DATA RETRIEVAL DEBUG:', {
           patientId: id,
           patientNodeData: patient,
           usersNodeData: usersNodeData,
@@ -345,7 +345,7 @@ export default function PatientOverviewScreen() {
         });
 
         // Debug logging for medical history
-        console.log('🔍 MEDICAL HISTORY FILTERING DEBUG:', {
+        console.log(' MEDICAL HISTORY FILTERING DEBUG:', {
           originalCount: patientMedicalHistory?.length || 0,
           filteredCount: filteredMedicalHistory.length,
           filteredOutCount: (patientMedicalHistory?.length || 0) - filteredMedicalHistory.length,
@@ -367,7 +367,7 @@ export default function PatientOverviewScreen() {
         });
 
         // Debug logging for appointments
-        console.log('🔍 APPOINTMENTS DEBUG:', {
+        console.log(' APPOINTMENTS DEBUG:', {
           count: validAppointments?.length || 0,
           items: validAppointments?.map(item => ({
             id: item.id,
@@ -379,7 +379,7 @@ export default function PatientOverviewScreen() {
         });
 
         // Debug logging for prescriptions filtering
-        console.log('🔍 PRESCRIPTIONS FILTERING DEBUG:', {
+        console.log(' PRESCRIPTIONS FILTERING DEBUG:', {
           totalPrescriptions: validPrescriptions?.length || 0,
           activePrescriptions: validPrescriptions?.filter(p => p.status === 'active').length || 0,
           hiddenHistoryEntries: filteredMedicalHistory.filter(item => (item as any)?.isHidden === true).length,
@@ -387,7 +387,7 @@ export default function PatientOverviewScreen() {
         });
 
         // Debug logging for user role
-        console.log('🔍 USER ROLE DEBUG:', {
+        console.log(' USER ROLE DEBUG:', {
           userId: user?.uid,
           userRole: user?.role,
           userEmail: user?.email,
@@ -533,7 +533,7 @@ export default function PatientOverviewScreen() {
           const allReferrals = await databaseService.getDocument('referrals');
           const refs: any[] = [];
           if (allReferrals) {
-            console.log('🔍 ALL REFERRALS DEBUG:', {
+            console.log(' ALL REFERRALS DEBUG:', {
               totalReferrals: Object.keys(allReferrals).length,
               patientId: id,
               referralsForPatient: Object.entries(allReferrals as Record<string, any>)
@@ -562,15 +562,15 @@ export default function PatientOverviewScreen() {
                   reason: r?.initialReasonForReferral || r?.reason || '',
                   source: 'referral',
                 };
-                console.log('🔍 ADDING CONFIRMED REFERRAL:', referralData);
+                console.log(' ADDING CONFIRMED REFERRAL:', referralData);
                 refs.push(referralData);
               }
             });
           }
-          console.log('🔍 FINAL CONFIRMED REFERRALS:', refs);
+          console.log(' FINAL CONFIRMED REFERRALS:', refs);
           setConfirmedReferrals(refs);
         } catch (error) {
-          console.error('🔍 ERROR LOADING REFERRALS:', error);
+          console.error(' ERROR LOADING REFERRALS:', error);
         }
       }
     } catch (error) {
@@ -604,7 +604,7 @@ export default function PatientOverviewScreen() {
   const handleActiveConsultationPress = () => {
     if (activeConsultations.length === 0) return;
     const item: any = activeConsultations[0];
-    console.log('🔍 ACTIVE CONSULTATION PRESS DEBUG:', {
+    console.log(' ACTIVE CONSULTATION PRESS DEBUG:', {
       item,
       source: item.source,
       id: item.id,
@@ -621,7 +621,7 @@ export default function PatientOverviewScreen() {
 
   const handleMedicalHistoryPress = async (historyItem: MedicalHistory) => {
     try {
-      console.log('🔍 MEDICAL HISTORY PRESS DEBUG:', {
+      console.log(' MEDICAL HISTORY PRESS DEBUG:', {
         historyItemId: historyItem.id,
         historyItemType: historyItem.type,
         userRole: user?.role
@@ -630,7 +630,7 @@ export default function PatientOverviewScreen() {
       // First, check if this medical history item has a related referral ID
       if ((historyItem as any)?.relatedReferral?.id) {
         // If it has a related referral, route to referral details
-        console.log('🔍 Routing to referral details with referral ID:', (historyItem as any).relatedReferral.id);
+        console.log(' Routing to referral details with referral ID:', (historyItem as any).relatedReferral.id);
         router.push(`/(specialist)/referral-details?id=${(historyItem as any).relatedReferral.id}`);
         return;
       }
@@ -638,13 +638,13 @@ export default function PatientOverviewScreen() {
       // Instead of using relatedAppointment.id, find the appointment by checking appointmentConsultationId
       // Get all appointments for this patient and find the one with matching appointmentConsultationId
       const patientIdStr = String(id);
-      console.log('🔍 Finding appointment for medical history entry ID:', historyItem.id);
-      console.log('🔍 Patient ID:', patientIdStr);
+      console.log(' Finding appointment for medical history entry ID:', historyItem.id);
+      console.log(' Patient ID:', patientIdStr);
       
       try {
         // Get all appointments for this patient
         const patientAppointments = await databaseService.getAppointmentsByPatient(patientIdStr);
-        console.log('🔍 Retrieved patient appointments:', patientAppointments);
+        console.log(' Retrieved patient appointments:', patientAppointments);
         
         // Find the appointment that has appointmentConsultationId matching this medical history entry ID
         const matchingAppointment = patientAppointments.find(appointment => 
@@ -652,17 +652,17 @@ export default function PatientOverviewScreen() {
         );
         
         if (matchingAppointment) {
-          console.log('🔍 Found matching appointment:', matchingAppointment);
-          console.log('🔍 Routing to visit overview with appointment ID:', matchingAppointment.id);
+          console.log(' Found matching appointment:', matchingAppointment);
+          console.log(' Routing to visit overview with appointment ID:', matchingAppointment.id);
           router.push(`/visit-overview?id=${matchingAppointment.id}`);
           return;
         } else {
-          console.log('🔍 No matching appointment found for medical history entry ID:', historyItem.id);
+          console.log(' No matching appointment found for medical history entry ID:', historyItem.id);
           Alert.alert('No Medical History', 'Medical history is only available for completed consultations.');
           return;
         }
       } catch (error) {
-        console.error('🔍 Error fetching appointments:', error);
+        console.error(' Error fetching appointments:', error);
         Alert.alert('Error', 'Failed to load appointment details. Please try again.');
         return;
       }
@@ -689,7 +689,7 @@ export default function PatientOverviewScreen() {
 
       if (matchedReferralId) {
         // Route to referral details for both patients and specialists
-        console.log('🔍 Routing to referral details with referral ID:', matchedReferralId);
+        console.log(' Routing to referral details with referral ID:', matchedReferralId);
         router.push(`/(specialist)/referral-details?id=${matchedReferralId}`);
       } else {
         // If no referral found and no appointment, show an alert
@@ -760,7 +760,7 @@ export default function PatientOverviewScreen() {
       return true;
     });
     
-    console.log('🔍 ACTIVE CONSULTATIONS DEBUG:', {
+    console.log(' ACTIVE CONSULTATIONS DEBUG:', {
       activeAppointments: activeAppointments.length,
       specialistAppointments: specialistAppointments.length,
       confirmedReferrals: confirmedReferrals.length,
@@ -1148,7 +1148,7 @@ export default function PatientOverviewScreen() {
                       key={consultation.id || index} 
                       style={styles.consultationCard} 
                       onPress={() => {
-                        console.log('🔍 CONSULTATION CLICKED:', consultation);
+                        console.log(' CONSULTATION CLICKED:', consultation);
                         if (consultation.source === 'referral' || consultation.type === 'specialist_referral' || consultation.relatedReferralId) {
                           router.push(`/referral-details?id=${consultation.id}`);
                         } else {

@@ -135,7 +135,7 @@ export default function AppointmentsScreen() {
   // Debug appointments data
   useEffect(() => {
     if (appointments.length > 0) {
-      console.log('🔍 Patient appointments data:', appointments.map(apt => ({
+      console.log(' Patient appointments data:', appointments.map(apt => ({
         id: apt.id,
         type: apt.type,
         doctorFirstName: apt.doctorFirstName,
@@ -148,9 +148,9 @@ export default function AppointmentsScreen() {
       
       // Check if specialist referrals are being included
       const specialistReferrals = appointments.filter(apt => apt.type === 'specialist_referral');
-      console.log('🔍 Specialist referrals in appointments:', specialistReferrals.length);
+      console.log(' Specialist referrals in appointments:', specialistReferrals.length);
       specialistReferrals.forEach(ref => {
-        console.log('🔍 Specialist referral details:', {
+        console.log(' Specialist referral details:', {
           id: ref.id,
           doctorName: `${ref.doctorFirstName} ${ref.doctorLastName}`,
           // referringDoctor: `${ref.referringSpecialistFirstName} ${ref.referringSpecialistLastName}`
@@ -658,7 +658,7 @@ export default function AppointmentsScreen() {
         
         // Debug logging for "Rene Catan" search
         if (query === 'rene catan' || query === 'rene' || query === 'catan') {
-          console.log('🔍 DEBUG SEARCH for "Rene Catan":', {
+          console.log(' DEBUG SEARCH for "Rene Catan":', {
             query,
             searchWords,
             doctorName,
@@ -761,8 +761,8 @@ export default function AppointmentsScreen() {
       }))
       .filter(item => item.referral && matchesFilter(item.referral.status));
 
-    console.log('🔍 Referral cards being displayed:', referralItems.length);
-    console.log('🔍 Specialist referrals excluded from referral cards:', appointments.filter(apt => apt.type === 'specialist_referral').length);
+    console.log(' Referral cards being displayed:', referralItems.length);
+    console.log(' Specialist referrals excluded from referral cards:', appointments.filter(apt => apt.type === 'specialist_referral').length);
 
     // Apply search filter to referrals
     if (searchQuery.trim()) {
@@ -1128,11 +1128,11 @@ export default function AppointmentsScreen() {
         onPress={() => {
           if (appointment.type === 'specialist_referral') {
             // For specialist referrals, navigate to referral details
-            console.log('🔍 Navigating to referral details for specialist referral:', appointment.id);
+            console.log(' Navigating to referral details for specialist referral:', appointment.id);
             router.push(`/(patient)/referral-details?id=${appointment.id}`);
           } else {
             // For regular appointments, navigate to visit overview
-            console.log('🔍 Navigating to visit overview for regular appointment:', appointment.id);
+            console.log(' Navigating to visit overview for regular appointment:', appointment.id);
             router.push(`/(patient)/visit-overview?id=${appointment.id}`);
           }
         }}

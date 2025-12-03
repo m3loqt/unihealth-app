@@ -136,7 +136,7 @@ const TestBookingFunctionality: React.FC = () => {
       console.log('🎉 All tests completed!');
 
     } catch (error) {
-      console.error('❌ Test failed:', error);
+      console.error(' Test failed:', error);
       addTestResult('Test Suite', 'fail', `Test suite failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsRunning(false);
@@ -198,7 +198,7 @@ const TestBookingFunctionality: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('❌ Quick test failed:', error);
+      console.error(' Quick test failed:', error);
       addTestResult('Quick Test', 'fail', `Quick test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsRunning(false);
@@ -238,8 +238,8 @@ const TestBookingFunctionality: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'pass': return '✅ PASS';
-      case 'fail': return '❌ FAIL';
+      case 'pass': return ' PASS';
+      case 'fail': return ' FAIL';
       case 'pending': return '⏳ PENDING';
       default: return '❓ UNKNOWN';
     }

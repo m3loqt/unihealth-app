@@ -4,7 +4,7 @@
     "slug": "unihealth",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/log.png",
+    "icon": "./assets/images/UniHealthIcon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/images/HEALTH Logo.png",

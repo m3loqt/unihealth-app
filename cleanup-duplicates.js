@@ -18,13 +18,13 @@ const database = getDatabase(app);
 
 async function cleanupDuplicates() {
   try {
-    console.log('🔍 Scanning for duplicate seenBy data at root level...');
+    console.log(' Scanning for duplicate seenBy data at root level...');
     
     const rootRef = ref(database);
     const snapshot = await get(rootRef);
     
     if (!snapshot.exists()) {
-      console.log('❌ No data found');
+      console.log(' No data found');
       return;
     }
     
@@ -47,7 +47,7 @@ async function cleanupDuplicates() {
     }
     
     if (duplicatesToRemove.length === 0) {
-      console.log('✅ No duplicates found');
+      console.log(' No duplicates found');
       return;
     }
     
@@ -56,13 +56,13 @@ async function cleanupDuplicates() {
     for (const key of duplicatesToRemove) {
       const duplicateRef = ref(database, key);
       await remove(duplicateRef);
-      console.log(`   ✅ Removed: ${key}`);
+      console.log(`    Removed: ${key}`);
     }
     
     console.log('\n🎉 Cleanup completed!');
     
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error(' Error:', error);
   }
 }
 

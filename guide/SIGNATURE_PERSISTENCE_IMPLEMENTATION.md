@@ -46,33 +46,33 @@ This implementation provides persistent signature management across the entire a
 const { hasSignature, signature } = useCertificateSignature(certificateData);
 
 // Signature status is shown in real-time:
-- ✅ "Signed" - Valid signature present
-- ⚠️ "Needs Signature" - No valid signature
+-  "Signed" - Valid signature present
+-  "Needs Signature" - No valid signature
 ```
 
 ## Benefits
 
-### ✅ **Persistent Across Navigation**
+###  **Persistent Across Navigation**
 - Signatures persist when switching tabs
 - Signatures persist when navigating between screens
 - Signatures persist when app is restarted
 
-### ✅ **Real-time Updates**
+###  **Real-time Updates**
 - All certificate views update immediately when signature is added
 - No need to refresh or reload data
 - Consistent signature status across the app
 
-### ✅ **Automatic Validation**
+###  **Automatic Validation**
 - Signatures are validated before saving
 - Invalid signatures are rejected with user feedback
 - Consistent validation logic across all components
 
-### ✅ **Error Handling**
+###  **Error Handling**
 - Graceful fallbacks if AsyncStorage fails
 - User-friendly error messages
 - Automatic retry mechanisms
 
-### ✅ **Performance Optimized**
+###  **Performance Optimized**
 - Signatures cached in memory for fast access
 - AsyncStorage operations are non-blocking
 - Minimal re-renders with optimized state updates

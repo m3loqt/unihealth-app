@@ -105,14 +105,14 @@ export default function PatientChatScreen() {
         );
         
         if (otherParticipantId) {
-          console.log('🔍 Loading participant from database:', otherParticipantId);
+          console.log(' Loading participant from database:', otherParticipantId);
           // Get participant info from the database
           const participantInfo = await chatService.getParticipantInfo(otherParticipantId);
           if (participantInfo) {
-            console.log('🔍 Participant loaded from database:', participantInfo);
+            console.log(' Participant loaded from database:', participantInfo);
             setParticipant(participantInfo);
           } else {
-            console.log('🔍 No participant info found in database for:', otherParticipantId);
+            console.log(' No participant info found in database for:', otherParticipantId);
           }
         }
       } else {
@@ -128,10 +128,10 @@ export default function PatientChatScreen() {
             specialty: doctorSpecialty || 'General Medicine',
             avatar: '',
           };
-          console.log('🔍 Using fallback participant data:', fallbackParticipant);
+          console.log(' Using fallback participant data:', fallbackParticipant);
           setParticipant(fallbackParticipant);
         } else {
-          console.log('🔍 Thread not found and no fallback data available');
+          console.log(' Thread not found and no fallback data available');
         }
       }
     } catch (error) {

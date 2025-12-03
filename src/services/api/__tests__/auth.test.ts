@@ -205,5 +205,5 @@ console.log('Testing specialist status validation...');
 // Note: These examples would require actual Firebase setup to run
 // In a real test environment, you would set up Firebase test database
 
-console.log('✅ Specialist status validation tests completed');
-console.log('✅ Sign in with status validation tests completed');
+console.log(' Specialist status validation tests completed');
+console.log(' Sign in with status validation tests completed');

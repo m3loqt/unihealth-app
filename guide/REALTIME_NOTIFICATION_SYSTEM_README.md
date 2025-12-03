@@ -6,25 +6,25 @@ This implementation provides a comprehensive real-time notification system that 
 
 ## Features
 
-### ✅ **Real-time Listening**
+###  **Real-time Listening**
 - Listens to Firebase Realtime Database changes for appointments and referrals
 - Automatically detects status changes (pending, confirmed, completed, cancelled)
 - Creates notifications in real-time without database storage
 - Supports both patient and specialist user roles
 
-### ✅ **Smart Notification Logic**
+###  **Smart Notification Logic**
 - **For Patients**: Notifications for appointment/referral status changes
 - **For Specialists**: Notifications for new appointments/referrals and status updates
 - **Status-based**: Different messages for pending, confirmed, completed, and cancelled states
 - **Priority System**: High, medium, and low priority notifications
 
-### ✅ **In-Memory Storage**
+###  **In-Memory Storage**
 - Notifications stored in memory (not persisted to database)
 - Automatic cleanup of old notifications (30+ days)
 - Efficient memory management with notification limits
 - Real-time updates without database writes
 
-### ✅ **User Interface**
+###  **User Interface**
 - Toggle between real-time and database notifications
 - Real-time notification modal with full functionality
 - Mark as read/unread functionality
@@ -312,7 +312,7 @@ const getUserRole = (): 'patient' | 'specialist' => {
 Enable debug logging by checking console output:
 
 ```typescript
-console.log('🔔 Real-time notification:', notification.title, 'for user:', userId);
+console.log(' Real-time notification:', notification.title, 'for user:', userId);
 ```
 
 ## Future Enhancements

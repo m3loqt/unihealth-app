@@ -89,7 +89,7 @@ export function SignatureProvider({ children }: SignatureProviderProps) {
       // Add to history
       await addToHistory(signature);
       
-      console.log('✅ Signature saved successfully');
+      console.log(' Signature saved successfully');
     } catch (error) {
       console.error('Error saving signature:', error);
       throw error;
@@ -100,7 +100,7 @@ export function SignatureProvider({ children }: SignatureProviderProps) {
     try {
       setCurrentSignature(null);
       await AsyncStorage.removeItem(SIGNATURE_STORAGE_KEYS.CURRENT);
-      console.log('✅ Signature cleared successfully');
+      console.log(' Signature cleared successfully');
     } catch (error) {
       console.error('Error clearing signature:', error);
       throw error;

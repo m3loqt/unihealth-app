@@ -48,9 +48,9 @@ class OnlineStatusService {
       this.startHeartbeat(userId);
       console.log('🟢 Heartbeat started for user:', userId);
       
-      console.log('✅ Online status initialized for user:', userId);
+      console.log(' Online status initialized for user:', userId);
     } catch (error) {
-      console.error('❌ Error initializing online status:', error);
+      console.error(' Error initializing online status:', error);
       throw error;
     }
   }
@@ -114,7 +114,7 @@ class OnlineStatusService {
       
       console.log('🟢 User set as online:', userId);
     } catch (error) {
-      console.error('❌ Error setting user online:', error);
+      console.error(' Error setting user online:', error);
     }
   }
 
@@ -139,7 +139,7 @@ class OnlineStatusService {
       
       console.log('🔴 User set as offline:', userId);
     } catch (error) {
-      console.error('❌ Error setting user offline:', error);
+      console.error(' Error setting user offline:', error);
     }
   }
 
@@ -163,9 +163,9 @@ class OnlineStatusService {
         set(presenceRef, statusData)
       ]);
       
-      console.log(`📊 User status set to ${status}:`, userId);
+      console.log(` User status set to ${status}:`, userId);
     } catch (error) {
-      console.error('❌ Error setting user status:', error);
+      console.error(' Error setting user status:', error);
     }
   }
 
@@ -180,7 +180,7 @@ class OnlineStatusService {
       try {
         await this.updateLastSeen(userId);
       } catch (error) {
-        console.error('❌ Heartbeat error:', error);
+        console.error(' Heartbeat error:', error);
       }
     }, this.HEARTBEAT_INTERVAL);
     
@@ -219,7 +219,7 @@ class OnlineStatusService {
         set(presenceRef, updateData)
       ]);
     } catch (error) {
-      console.error('❌ Error updating last seen:', error);
+      console.error(' Error updating last seen:', error);
     }
   }
 
@@ -253,7 +253,7 @@ class OnlineStatusService {
         callback(null);
       }
     }, (error) => {
-      console.error('❌ Error listening to user status:', error);
+      console.error(' Error listening to user status:', error);
       callback(null);
     });
     
@@ -291,13 +291,13 @@ class OnlineStatusService {
    */
   async getUserStatus(userId: string): Promise<UserOnlineStatus | null> {
     try {
-      console.log('🔍 Getting status for user:', userId);
+      console.log(' Getting status for user:', userId);
       const statusRef = ref(database, `status/${userId}`);
       const snapshot = await get(statusRef);
       
       if (snapshot.exists()) {
         const data = snapshot.val();
-        console.log('🔍 Status data found:', data);
+        console.log(' Status data found:', data);
         
         // Handle Firebase server timestamp
         let lastSeen = data.lastSeen || 0;
@@ -314,10 +314,10 @@ class OnlineStatusService {
         };
       }
       
-      console.log('🔍 No status data found for user:', userId);
+      console.log(' No status data found for user:', userId);
       return null;
     } catch (error) {
-      console.error('❌ Error getting user status:', error);
+      console.error(' Error getting user status:', error);
       return null;
     }
   }
@@ -390,9 +390,9 @@ class OnlineStatusService {
       this.statusRefs.delete(userId);
       this.presenceRefs.delete(userId);
       
-      console.log('✅ Online status cleaned up for user:', userId);
+      console.log(' Online status cleaned up for user:', userId);
     } catch (error) {
-      console.error('❌ Error cleaning up user status:', error);
+      console.error(' Error cleaning up user status:', error);
     }
   }
 
@@ -419,9 +419,9 @@ class OnlineStatusService {
       this.statusRefs.clear();
       this.presenceRefs.clear();
       
-      console.log('✅ All online status cleaned up');
+      console.log(' All online status cleaned up');
     } catch (error) {
-      console.error('❌ Error cleaning up all status:', error);
+      console.error(' Error cleaning up all status:', error);
     }
   }
 }

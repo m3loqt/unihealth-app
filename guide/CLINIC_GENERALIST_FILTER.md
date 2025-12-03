@@ -89,12 +89,12 @@ A clinic is included in the booking flow if it meets ALL criteria:
 
 ## Testing Scenarios
 
-- ✅ Clinics with generalist doctors appear in booking flow
-- ✅ Clinics without generalist doctors are excluded
-- ✅ Clinic cards show only address and phone number
-- ✅ Email field is removed from display
-- ✅ Address validation still works
-- ✅ Generalist doctor filtering works correctly
+-  Clinics with generalist doctors appear in booking flow
+-  Clinics without generalist doctors are excluded
+-  Clinic cards show only address and phone number
+-  Email field is removed from display
+-  Address validation still works
+-  Generalist doctor filtering works correctly
 
 ## Files Modified
 

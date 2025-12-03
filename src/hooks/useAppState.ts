@@ -30,7 +30,7 @@ export const useAppState = () => {
           await onlineStatusService.setUserStatus(user.uid, 'away');
         }
       } catch (error) {
-        console.error('❌ Error handling app state change:', error);
+        console.error(' Error handling app state change:', error);
       }
 
       appState.current = nextAppState;

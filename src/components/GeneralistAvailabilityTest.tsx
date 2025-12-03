@@ -24,25 +24,25 @@ export const GeneralistAvailabilityTest: React.FC<GeneralistAvailabilityTestProp
       // Get doctor data
       const doctor = await databaseService.getDoctorById(doctorId);
       if (!doctor) {
-        addResult('❌ Doctor not found');
+        addResult(' Doctor not found');
         return;
       }
       
-      addResult(`✅ Doctor found: ${doctor.fullName}`);
+      addResult(` Doctor found: ${doctor.fullName}`);
       addResult(`Is Specialist: ${doctor.isSpecialist}`);
       
       if (doctor.isSpecialist) {
-        addResult('⚠️ This is a specialist, not a generalist');
+        addResult(' This is a specialist, not a generalist');
         return;
       }
       
       // Check availability structure
       if (!doctor.availability?.weeklySchedule) {
-        addResult('❌ No availability data found');
+        addResult(' No availability data found');
         return;
       }
       
-      addResult('✅ Availability data found');
+      addResult(' Availability data found');
       
       // Test each day
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -59,20 +59,20 @@ export const GeneralistAvailabilityTest: React.FC<GeneralistAvailabilityTestProp
           
           if (hasValidTimeSlots) {
             availableDays.push(index);
-            addResult(`✅ ${dayName}: Available (${daySchedule.timeSlots.length} slots)`);
+            addResult(` ${dayName}: Available (${daySchedule.timeSlots.length} slots)`);
           } else {
-            addResult(`⚠️ ${dayName}: Enabled but no valid time slots`);
+            addResult(` ${dayName}: Enabled but no valid time slots`);
           }
         } else {
-          addResult(`❌ ${dayName}: Not available`);
+          addResult(` ${dayName}: Not available`);
         }
       });
       
-      addResult(`\n📊 Summary: ${availableDays.length} days available out of 7`);
+      addResult(`\n Summary: ${availableDays.length} days available out of 7`);
       addResult(`Available days: ${availableDays.map(i => dayNames[i]).join(', ')}`);
       
     } catch (error) {
-      addResult(`❌ Error: ${error}`);
+      addResult(` Error: ${error}`);
     } finally {
       setLoading(false);
     }

@@ -89,12 +89,12 @@ generateTimeSlots(startTime: string, endTime: string): string[] {
 
 ## Testing Scenarios
 
-- ✅ Single time range generates correct 1-hour intervals
-- ✅ Multiple time ranges are combined correctly
-- ✅ Partial hours are handled properly
-- ✅ Booked slots are still filtered out
-- ✅ Both weekly and specific date schedules work
-- ✅ Time format consistency maintained
+-  Single time range generates correct 1-hour intervals
+-  Multiple time ranges are combined correctly
+-  Partial hours are handled properly
+-  Booked slots are still filtered out
+-  Both weekly and specific date schedules work
+-  Time format consistency maintained
 
 ## Files Modified
 

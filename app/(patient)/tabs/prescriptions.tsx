@@ -178,7 +178,7 @@ export default function PrescriptionsScreen() {
       try {
         setDirectLoading(true);
         const directData = await databaseService.getPrescriptions(user.uid);
-        console.log('🔍 Direct prescriptions data:', directData.map(p => ({
+        console.log(' Direct prescriptions data:', directData.map(p => ({
           id: p.id,
           medication: p.medication,
           dosage: p.dosage,

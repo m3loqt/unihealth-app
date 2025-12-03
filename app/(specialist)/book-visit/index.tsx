@@ -83,7 +83,7 @@ export default function SpecialistBookVisitScreen() {
   const referralType = params.referralType as string; // New parameter for referral type (specialist/generalist)
 
   // Debug: Log all referral parameters
-  console.log('🔍 Specialist book-visit index parameters:', {
+  console.log(' Specialist book-visit index parameters:', {
     originalAppointmentId,
     sourceType,
     isReferral,
@@ -175,9 +175,9 @@ export default function SpecialistBookVisitScreen() {
 
   const handleClinicSelect = (clinic: ClinicWithSpecialists) => {
     setSelectedClinic(clinic);
-    console.log('🔍 Navigating to select-doctor with clinic:', clinic.name);
-    console.log('🔍 Passing originalAppointmentId:', originalAppointmentId);
-    console.log('🔍 Passing sourceType:', sourceType);
+    console.log(' Navigating to select-doctor with clinic:', clinic.name);
+    console.log(' Passing originalAppointmentId:', originalAppointmentId);
+    console.log(' Passing sourceType:', sourceType);
     
     router.push({
       pathname: '/(specialist)/book-visit/select-doctor',

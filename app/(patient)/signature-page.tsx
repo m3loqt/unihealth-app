@@ -82,10 +82,10 @@ export default function SignaturePage() {
       setCurrentSessionSignature(signature);
       setHasDrawnSignature(true);
       handleSignatureCapture(signature);
-      console.log('✅ Signature stored in currentSessionSignature');
+      console.log(' Signature stored in currentSessionSignature');
     } else {
       // Canvas is empty or signature is too small
-      console.log('⚠️ Signature data is empty or too small, clearing state');
+      console.log(' Signature data is empty or too small, clearing state');
       setCurrentSessionSignature(null);
       // Don't set hasDrawnSignature to false here, as user may have started drawing
     }
@@ -104,7 +104,7 @@ export default function SignaturePage() {
   };
 
   const handleEmpty = () => {
-    console.log('⚠️ handleEmpty called - canvas is empty');
+    console.log(' handleEmpty called - canvas is empty');
     // Signature cleared
     setCurrentSessionSignature(null);
     setHasDrawnSignature(false);
@@ -163,7 +163,7 @@ export default function SignaturePage() {
       // If specialist chose to save, store in Firebase doctors node
       if (saveToFirebase && user?.uid) {
         await databaseService.saveDoctorSignature(user.uid, currentSignature);
-        console.log('✅ Signature saved to Firebase doctors node');
+        console.log(' Signature saved to Firebase doctors node');
       }
 
       // Always save signature using the context for immediate use
@@ -276,7 +276,7 @@ export default function SignaturePage() {
           // Check again if signature was captured
           if (currentSessionSignature) {
             signatureToUse = currentSessionSignature;
-            console.log('✅ Signature read from canvas successfully');
+            console.log(' Signature read from canvas successfully');
           }
         }
       } catch (error) {
@@ -418,7 +418,7 @@ export default function SignaturePage() {
             if (data) {
               handleSignature(data);
             } else {
-              console.log('⚠️ onGetData received empty data');
+              console.log(' onGetData received empty data');
             }
           }}
         />

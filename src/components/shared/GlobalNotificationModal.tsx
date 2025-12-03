@@ -42,17 +42,17 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
   // Handle notification press
   const handleNotificationPress = (notification: any, onClose: () => void) => {
     const platform = typeof window !== 'undefined' ? 'web' : 'mobile';
-    console.log(`🔔 [${platform}] Notification pressed:`, notification);
-    console.log(`🔔 [${platform}] Related ID:`, notification.relatedId);
-    console.log(`🔔 [${platform}] Notification type:`, notification.type);
+    console.log(` [${platform}] Notification pressed:`, notification);
+    console.log(` [${platform}] Related ID:`, notification.relatedId);
+    console.log(` [${platform}] Notification type:`, notification.type);
     
     // Mark as read first
-    console.log(`🔔 [${platform}] About to call handleMarkAsRead for:`, notification.id);
+    console.log(` [${platform}] About to call handleMarkAsRead for:`, notification.id);
     handleMarkAsRead(notification.id);
     
     // Navigate based on notification type and user role
     if (notification.type === 'appointment') {
-      console.log('🔔 Navigating to visit overview with ID:', notification.relatedId);
+      console.log(' Navigating to visit overview with ID:', notification.relatedId);
       if (userRole === 'patient') {
         router.push({
           pathname: '/(patient)/visit-overview',
@@ -70,7 +70,7 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
         });
       }
     } else if (notification.type === 'referral') {
-      console.log('🔔 Navigating to referral details with ID:', notification.relatedId);
+      console.log(' Navigating to referral details with ID:', notification.relatedId);
       if (userRole === 'patient') {
         router.push({
           pathname: '/(patient)/referral-details',
@@ -95,11 +95,11 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
   const handleMarkAsRead = async (notificationId: string) => {
     try {
       const platform = typeof window !== 'undefined' ? 'web' : 'mobile';
-      console.log(`🔔 [${platform}] UI handleMarkAsRead called for notification:`, notificationId);
+      console.log(` [${platform}] UI handleMarkAsRead called for notification:`, notificationId);
       await markRealtimeAsRead(notificationId);
-      console.log(`🔔 [${platform}] UI Successfully marked notification as read:`, notificationId);
+      console.log(` [${platform}] UI Successfully marked notification as read:`, notificationId);
     } catch (error) {
-      console.error(`🔔 [${platform}] UI Error marking notification as read:`, error);
+      console.error(` [${platform}] UI Error marking notification as read:`, error);
       Alert.alert('Error', 'Failed to mark notification as read. Please try again.');
     }
   };
@@ -107,11 +107,11 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
   // Handle deleting notification
   const handleDeleteNotification = async (notificationId: string) => {
     try {
-      console.log('🔔 Deleting notification:', notificationId);
+      console.log(' Deleting notification:', notificationId);
       await deleteRealtimeNotification(notificationId);
-      console.log('🔔 Successfully deleted notification:', notificationId);
+      console.log(' Successfully deleted notification:', notificationId);
     } catch (error) {
-      console.error('🔔 Error deleting notification:', error);
+      console.error(' Error deleting notification:', error);
       Alert.alert('Error', 'Failed to delete notification. Please try again.');
     }
   };
@@ -119,11 +119,11 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
   // Handle mark all as read
   const handleMarkAllAsRead = async () => {
     try {
-      console.log('🔔 Marking all notifications as read');
+      console.log(' Marking all notifications as read');
       await markAllRealtimeAsRead();
-      console.log('🔔 Successfully marked all notifications as read');
+      console.log(' Successfully marked all notifications as read');
     } catch (error) {
-      console.error('🔔 Error marking all notifications as read:', error);
+      console.error(' Error marking all notifications as read:', error);
       Alert.alert('Error', 'Failed to mark all notifications as read. Please try again.');
     }
   };
@@ -131,11 +131,11 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
   // Handle refresh
   const handleRefresh = async () => {
     try {
-      console.log('🔔 Refreshing notifications');
+      console.log(' Refreshing notifications');
       await refreshRealtimeNotifications();
-      console.log('🔔 Successfully refreshed notifications');
+      console.log(' Successfully refreshed notifications');
     } catch (error) {
-      console.error('🔔 Error refreshing notifications:', error);
+      console.error(' Error refreshing notifications:', error);
       Alert.alert('Error', 'Failed to refresh notifications. Please try again.');
     }
   };
@@ -236,14 +236,14 @@ const GlobalNotificationModal: React.FC<GlobalNotificationModalProps> = ({
   // Handle clear all notifications
   const handleClearAll = async () => {
     try {
-      console.log('🔔 Clearing all notifications');
+      console.log(' Clearing all notifications');
       // Delete all notifications
       for (const notification of realtimeNotifications) {
         await deleteRealtimeNotification(notification.id);
       }
-      console.log('🔔 Successfully cleared all notifications');
+      console.log(' Successfully cleared all notifications');
     } catch (error) {
-      console.error('🔔 Error clearing all notifications:', error);
+      console.error(' Error clearing all notifications:', error);
       Alert.alert('Error', 'Failed to clear all notifications. Please try again.');
     }
   };

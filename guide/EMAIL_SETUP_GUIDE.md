@@ -1,6 +1,6 @@
 # 📧 Email Service Setup Guide
 
-## ⚠️ This guide has been updated!
+##  This guide has been updated!
 
 We've switched to **Resend** for a much simpler email setup experience.
 
@@ -10,11 +10,11 @@ We've switched to **Resend** for a much simpler email setup experience.
 
 ## Why the change?
 
-- ✅ **5-minute setup** instead of 30+ minutes
-- ✅ **No domain verification** required
-- ✅ **3,000 emails/month free** instead of 100/day
-- ✅ **Simpler API** with better documentation
-- ✅ **Works immediately** without complex configuration
+-  **5-minute setup** instead of 30+ minutes
+-  **No domain verification** required
+-  **3,000 emails/month free** instead of 100/day
+-  **Simpler API** with better documentation
+-  **Works immediately** without complex configuration
 
 ## Quick Migration
 

@@ -60,7 +60,7 @@ class EmailService {
     );
     
     if (!this.isConfigured) {
-      console.warn('⚠️ Email service is not fully configured. Set EXPO_PUBLIC_EMAILJS_* env vars.');
+      console.warn(' Email service is not fully configured. Set EXPO_PUBLIC_EMAILJS_* env vars.');
     }
   }
 
@@ -167,7 +167,7 @@ class EmailService {
       throw new Error(`Failed to send welcome email: ${res.status} - ${body}`);
     }
     
-    console.log('✅ Welcome email sent successfully via EmailJS');
+    console.log(' Welcome email sent successfully via EmailJS');
     return;
   }
 
@@ -254,7 +254,7 @@ class EmailService {
       throw new Error(`Failed to send appointment confirmation email: ${res.status} - ${body}`);
     }
     
-    console.log('✅ Appointment confirmation email sent successfully via EmailJS');
+    console.log(' Appointment confirmation email sent successfully via EmailJS');
     return;
   }
 
@@ -299,9 +299,9 @@ class EmailService {
       }
       */
       
-      console.log(`✅ Password reset email sent to ${email}`);
+      console.log(` Password reset email sent to ${email}`);
     } catch (error: any) {
-      console.error('❌ Failed to send password reset email:', error);
+      console.error(' Failed to send password reset email:', error);
       throw new Error('Failed to send verification code email. Please try again.');
     }
   }
@@ -411,7 +411,7 @@ class EmailService {
           </div>
           
           <div class="warning">
-            <strong>⚠️ Important:</strong> This verification code will expire in 5 minutes for security reasons.
+            <strong> Important:</strong> This verification code will expire in 5 minutes for security reasons.
           </div>
           
           <p>If you did not request this password reset, please ignore this email. Your account security is important to us.</p>

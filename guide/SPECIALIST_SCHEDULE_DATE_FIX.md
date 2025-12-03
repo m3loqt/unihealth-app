@@ -60,7 +60,7 @@ scheduleValidFrom <= selectedDateObj
 Added comprehensive logging to help identify schedule matching issues:
 
 ```typescript
-console.log('❌ No active schedule found for date:', {
+console.log(' No active schedule found for date:', {
   selectedDate,
   dayOfWeek,
   availableSchedulesCount: availableSchedules.length,

@@ -34,7 +34,7 @@ class ConsentService {
    */
   async calculateSpecialistTrust(specialistId: string, patientId: string): Promise<TrustScore> {
     try {
-      console.log('🔍 Calculating trust for specialist:', specialistId, 'patient:', patientId);
+      console.log(' Calculating trust for specialist:', specialistId, 'patient:', patientId);
       
       // Get all appointments for this patient
       const appointments = await databaseService.getAppointmentsByPatient(patientId);
@@ -77,11 +77,11 @@ class ConsentService {
           `New specialist (${consultationCount} consultations, ${successfulVisits} successful, ${recentVisits} recent)`
       };
       
-      console.log('✅ Trust calculation result:', trustScore);
+      console.log(' Trust calculation result:', trustScore);
       return trustScore;
       
     } catch (error) {
-      console.error('❌ Error calculating specialist trust:', error);
+      console.error(' Error calculating specialist trust:', error);
       throw new Error(`Failed to calculate specialist trust: ${error.message}`);
     }
   }
@@ -109,11 +109,11 @@ class ConsentService {
       // Store in database for compliance
       await databaseService.setDocument(`permissionRequests/${requestId}`, consentRequest);
       
-      console.log('✅ Consent request created:', requestId);
+      console.log(' Consent request created:', requestId);
       return consentRequest;
       
     } catch (error) {
-      console.error('❌ Error creating consent request:', error);
+      console.error(' Error creating consent request:', error);
       throw new Error(`Failed to create consent request: ${error.message}`);
     }
   }
@@ -143,10 +143,10 @@ class ConsentService {
       
       await databaseService.updateDocument(`permissionRequests/${requestId}`, updatedRequest);
       
-      console.log('✅ Consent response handled:', response, 'for request:', requestId);
+      console.log(' Consent response handled:', response, 'for request:', requestId);
       
     } catch (error) {
-      console.error('❌ Error handling consent response:', error);
+      console.error(' Error handling consent response:', error);
       throw new Error(`Failed to handle consent response: ${error.message}`);
     }
   }
@@ -171,10 +171,10 @@ class ConsentService {
       
       await databaseService.setDocument(`permissionRequests/${requestId}`, manualConsentLog);
       
-      console.log('✅ Manual consent logged:', response, 'for patient:', patientId);
+      console.log(' Manual consent logged:', response, 'for patient:', patientId);
       
     } catch (error) {
-      console.error('❌ Error logging manual consent:', error);
+      console.error(' Error logging manual consent:', error);
       throw new Error(`Failed to log manual consent: ${error.message}`);
     }
   }
@@ -198,7 +198,7 @@ class ConsentService {
       };
       
     } catch (error) {
-      console.error('❌ Error getting specialist data:', error);
+      console.error(' Error getting specialist data:', error);
       throw new Error(`Failed to get specialist data: ${error.message}`);
     }
   }
@@ -227,7 +227,7 @@ class ConsentService {
       };
       
     } catch (error) {
-      console.error('❌ Error getting specialist details from consent request:', error);
+      console.error(' Error getting specialist details from consent request:', error);
       return {
         id: consentRequest.specialistId,
         name: 'Unknown Specialist',
@@ -271,11 +271,11 @@ class ConsentService {
       }
       
       if (expiredRequests.length > 0) {
-        console.log(`✅ Auto-expired ${expiredRequests.length} consent requests`);
+        console.log(` Auto-expired ${expiredRequests.length} consent requests`);
       }
       
     } catch (error) {
-      console.error('❌ Error auto-expiring requests:', error);
+      console.error(' Error auto-expiring requests:', error);
     }
   }
 
@@ -287,7 +287,7 @@ class ConsentService {
       const request = await databaseService.getDocument(`permissionRequests/${requestId}`);
       return request || null;
     } catch (error) {
-      console.error('❌ Error getting consent request:', error);
+      console.error(' Error getting consent request:', error);
       return null;
     }
   }
@@ -301,7 +301,7 @@ class ConsentService {
       // Implementation depends on your database structure
       console.log('🧹 Cleaning up expired consent requests...');
     } catch (error) {
-      console.error('❌ Error cleaning up expired requests:', error);
+      console.error(' Error cleaning up expired requests:', error);
     }
   }
 }

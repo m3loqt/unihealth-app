@@ -42,7 +42,7 @@ async function testSeenByPath() {
     };
     
     await set(newMessageRef, testMessage);
-    console.log(`✅ Test message created: ${messageId}`);
+    console.log(` Test message created: ${messageId}`);
     
     // Now test the markThreadAsRead function logic
     console.log('👀 Testing markThreadAsRead logic...');
@@ -63,12 +63,12 @@ async function testSeenByPath() {
       
       if (updatePromises.length > 0) {
         await Promise.all(updatePromises);
-        console.log('✅ seenBy data updated using new logic');
+        console.log(' seenBy data updated using new logic');
       }
     }
     
     // Check where the seenBy data ended up
-    console.log('🔍 Checking database structure...');
+    console.log(' Checking database structure...');
     
     // Check root level
     const rootRef = ref(database);
@@ -78,14 +78,14 @@ async function testSeenByPath() {
     let foundAtRoot = false;
     for (const [key, value] of Object.entries(rootData)) {
       if (key === messageId && value && value.seenBy) {
-        console.log('❌ ERROR: seenBy data found at root level!');
+        console.log(' ERROR: seenBy data found at root level!');
         console.log(`   Path: /${key}/seenBy/`);
         foundAtRoot = true;
       }
     }
     
     if (!foundAtRoot) {
-      console.log('✅ No seenBy data found at root level');
+      console.log(' No seenBy data found at root level');
     }
     
     // Check correct path
@@ -93,20 +93,20 @@ async function testSeenByPath() {
     const correctPathSnapshot = await get(correctPathRef);
     
     if (correctPathSnapshot.exists()) {
-      console.log('✅ seenBy data found at correct path!');
+      console.log(' seenBy data found at correct path!');
       console.log(`   Path: /messages/${testThreadId}/${messageId}/seenBy/`);
       console.log('   Data:', correctPathSnapshot.val());
     } else {
-      console.log('❌ ERROR: seenBy data not found at correct path!');
+      console.log(' ERROR: seenBy data not found at correct path!');
     }
     
     // Cleanup
     console.log('🧹 Cleaning up test data...');
     await set(ref(database, `messages/${testThreadId}`), null);
-    console.log('✅ Test data cleaned up');
+    console.log(' Test data cleaned up');
     
   } catch (error) {
-    console.error('❌ Test failed:', error);
+    console.error(' Test failed:', error);
   }
 }
 

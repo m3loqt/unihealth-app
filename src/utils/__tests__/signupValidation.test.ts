@@ -229,9 +229,9 @@ console.log('Validating sample form...');
 const validationErrors = validateSignupForm(sampleForm);
 
 if (validationErrors.length === 0) {
-  console.log('✅ Form is valid!');
+  console.log(' Form is valid!');
 } else {
-  console.log('❌ Form has validation errors:');
+  console.log(' Form has validation errors:');
   validationErrors.forEach((error, index) => {
     console.log(`${index + 1}. ${error.field}: ${error.message}`);
     console.log(`   💡 ${error.suggestion}`);

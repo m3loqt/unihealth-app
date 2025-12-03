@@ -90,12 +90,12 @@ async getAvailableDates(doctorId: string, startDate: string, endDate: string): P
 
 ## Testing Scenarios
 
-- ✅ Only available dates are shown
-- ✅ Loading state appears while checking availability
-- ✅ Empty state shows when no dates are available
-- ✅ Time slots load correctly for available dates
-- ✅ Handles both weekly and specific date schedules
-- ✅ Filters out fully booked dates
+-  Only available dates are shown
+-  Loading state appears while checking availability
+-  Empty state shows when no dates are available
+-  Time slots load correctly for available dates
+-  Handles both weekly and specific date schedules
+-  Filters out fully booked dates
 
 ## Files Modified
 

@@ -127,13 +127,13 @@ export default function SpecialistHeader({
           <TouchableOpacity 
             style={styles.iconButton}
             onPress={() => {
-              console.log('🔔 SpecialistHeader - Notification button pressed');
-              console.log('🔔 SpecialistHeader - onNotificationPress function:', typeof onNotificationPress);
+              console.log(' SpecialistHeader - Notification button pressed');
+              console.log(' SpecialistHeader - onNotificationPress function:', typeof onNotificationPress);
               if (onNotificationPress) {
-                console.log('🔔 SpecialistHeader - Calling onNotificationPress');
+                console.log(' SpecialistHeader - Calling onNotificationPress');
                 onNotificationPress();
               } else {
-                console.log('🔔 SpecialistHeader - onNotificationPress is undefined');
+                console.log(' SpecialistHeader - onNotificationPress is undefined');
               }
             }}
             activeOpacity={0.7}

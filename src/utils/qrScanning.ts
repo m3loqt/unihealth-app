@@ -15,7 +15,7 @@ export interface QRScanResult {
  */
 export const handleQRScan = async (qrData: any, specialistId: string): Promise<QRScanResult> => {
   try {
-    console.log('🔍 Processing QR scan for specialist:', specialistId, 'patient:', qrData.id);
+    console.log(' Processing QR scan for specialist:', specialistId, 'patient:', qrData.id);
     
     // Validate QR data
     if (!qrData || qrData.type !== 'patient' || !qrData.id) {
@@ -29,14 +29,14 @@ export const handleQRScan = async (qrData: any, specialistId: string): Promise<Q
     const trustScore = await consentService.calculateSpecialistTrust(specialistId, qrData.id);
     
     if (trustScore.isTrusted) {
-      console.log('✅ Specialist is trusted, granting direct access');
+      console.log(' Specialist is trusted, granting direct access');
       return {
         action: 'direct_access',
         data: qrData,
         reason: 'trusted_specialist'
       };
     } else {
-      console.log('⚠️ New specialist, requesting consent');
+      console.log(' New specialist, requesting consent');
       
       // Get specialist data for consent request
       const specialistData = await consentService.getSpecialistData(specialistId);
@@ -53,7 +53,7 @@ export const handleQRScan = async (qrData: any, specialistId: string): Promise<Q
     }
     
   } catch (error) {
-    console.error('❌ QR scan processing failed:', error);
+    console.error(' QR scan processing failed:', error);
     
     // Return error result - no fallback to direct access
     return {
@@ -81,7 +81,7 @@ export const handleManualConsent = async (qrData: any, specialistId: string): Pr
     };
     
   } catch (error) {
-    console.error('❌ Manual consent processing failed:', error);
+    console.error(' Manual consent processing failed:', error);
     return {
       action: 'error',
       error: error.message,
@@ -114,7 +114,7 @@ export const handleConsentResponse = async (requestId: string, response: 'approv
     }
     
   } catch (error) {
-    console.error('❌ Consent response processing failed:', error);
+    console.error(' Consent response processing failed:', error);
     return {
       action: 'error',
       error: error.message,
@@ -136,7 +136,7 @@ export const validateQRData = (data: any): boolean => {
            typeof qrData.id === 'string' &&
            qrData.id.length > 0;
   } catch (error) {
-    console.error('❌ QR data validation failed:', error);
+    console.error(' QR data validation failed:', error);
     return false;
   }
 };
@@ -154,7 +154,7 @@ export const parseQRData = (data: string): any => {
     
     return qrData;
   } catch (error) {
-    console.error('❌ QR data parsing failed:', error);
+    console.error(' QR data parsing failed:', error);
     throw new Error(`Invalid QR code: ${error.message}`);
   }
 };
@@ -167,7 +167,7 @@ export const getConsentRequestStatus = async (requestId: string): Promise<string
     const request = await consentService.getConsentRequest(requestId);
     return request ? request.status : null;
   } catch (error) {
-    console.error('❌ Error getting consent request status:', error);
+    console.error(' Error getting consent request status:', error);
     return null;
   }
 };
@@ -180,7 +180,7 @@ export const isConsentRequestPending = async (requestId: string): Promise<boolea
     const status = await getConsentRequestStatus(requestId);
     return status === 'pending';
   } catch (error) {
-    console.error('❌ Error checking consent request status:', error);
+    console.error(' Error checking consent request status:', error);
     return false;
   }
 };
