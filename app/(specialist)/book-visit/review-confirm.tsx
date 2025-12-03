@@ -28,7 +28,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { useAuth } from '../../../src/hooks/auth/useAuth';
 import { databaseService } from '../../../src/services/database/firebase';
-import { getReferralDataWithClinicAndRoom } from '../../../src/utils/referralUtils';
+import { getReferralDataWithClinicAndRoom, getReferringSpecialistClinic } from '../../../src/utils/referralUtils';
 import { emailService } from '../../../src/services/email/emailService';
 import { formatClinicAddress } from '../../../src/utils/formatting';
 
@@ -144,14 +144,6 @@ export default function SpecialistReviewConfirmScreen() {
 
     setIsBooking(true);
     try {
-      // Get proper clinic and room information
-      const referralData = await getReferralDataWithClinicAndRoom(
-        user.uid, // referring specialist ID
-        doctorId, // assigned specialist ID
-        selectedDate,
-        selectedTime
-      );
-
       // Get referring specialist name from users node
       const referringSpecialistData = await databaseService.getUserById(user.uid);
       const referringSpecialistFirstName = referringSpecialistData?.firstName || referringSpecialistData?.first_name || '';
@@ -174,15 +166,32 @@ export default function SpecialistReviewConfirmScreen() {
         console.log('⚠️ This may indicate a direct specialist referral without a source appointment/referral');
       }
 
+      // Track the created ID for email sending (state updates are async, so we need a local variable)
+      let createdId: string | null = null;
+
       // Check if this is a generalist referral (trace-back)
       if (referralType === 'generalist' && isTraceBack === 'true') {
         console.log('🔍 Creating appointment for generalist referral (trace-back)');
+        
+        // For generalist referrals, try to get referring specialist's clinic (optional, no room lookup needed)
+        // If it fails, we can still proceed without it
+        let referringClinicId = '';
+        let referringClinicName = '';
+        try {
+          const referringClinic = await getReferringSpecialistClinic(user.uid);
+          if (referringClinic) {
+            referringClinicId = referringClinic.clinicId;
+            referringClinicName = referringClinic.clinicName;
+          }
+        } catch (clinicError) {
+          console.warn('⚠️ Could not determine referring specialist clinic, proceeding without it:', clinicError);
+        }
         
         // Create appointment data for generalist
         const appointmentData = {
           appointmentDate: selectedDate,
           appointmentTime: selectedTime,
-          clinicId: referralData.assignedClinicId,
+          clinicId: clinicId, // Use the generalist's clinic ID from params
           clinicName: clinicName,
           createdAt: new Date().toISOString(),
           doctorId: doctorId,
@@ -205,19 +214,28 @@ export default function SpecialistReviewConfirmScreen() {
           referringSpecialistId: user.uid,
           referringSpecialistFirstName: referringSpecialistFirstName,
           referringSpecialistLastName: referringSpecialistLastName,
-          referringClinicId: referralData.referringClinicId,
-          referringClinicName: referralData.referringClinicName,
+          ...(referringClinicId && { referringClinicId: referringClinicId }),
+          ...(referringClinicName && { referringClinicName: referringClinicName }),
           referralTimestamp: new Date().toISOString(),
         };
 
         // Save to database as appointment
         const appointmentId = await databaseService.createAppointment(appointmentData);
         console.log('Generalist appointment created successfully with ID:', appointmentId);
+        createdId = appointmentId;
         setCreatedAppointmentId(appointmentId);
         setReferralConfirmed(true);
         
       } else {
         console.log('🔍 Creating referral for specialist referral');
+        
+        // Get proper clinic and room information (only for specialist referrals)
+        const referralData = await getReferralDataWithClinicAndRoom(
+          user.uid, // referring specialist ID
+          doctorId, // assigned specialist ID
+          selectedDate,
+          selectedTime
+        );
         
         // Create referral data for specialist
         const specialistReferralData = {
@@ -249,6 +267,7 @@ export default function SpecialistReviewConfirmScreen() {
         // Save to database as referral
         const referralId = await databaseService.createReferral(specialistReferralData);
         console.log('Specialist referral created successfully with ID:', referralId);
+        createdId = referralId;
         setCreatedAppointmentId(referralId);
         setReferralConfirmed(true);
       }
@@ -272,7 +291,7 @@ export default function SpecialistReviewConfirmScreen() {
             doctorName: doctorNameStr,
             clinicAddress: clinicAddressStr,
             additionalNotes: `Patient: ${patientNameForEmail}`,
-            appointmentId: String(referralId || ''),
+            appointmentId: String(createdId || ''),
           });
         } else {
           console.warn('Email service not ready; skipping referral confirmation email');
@@ -290,7 +309,8 @@ export default function SpecialistReviewConfirmScreen() {
       if (error instanceof Error) {
         if (error.message.includes('referring specialist clinic')) {
           errorMessage = 'Unable to determine your clinic information. Please ensure you have an active schedule.';
-        } else if (error.message.includes('room from specialist schedule')) {
+        } else if (error.message.includes('room from specialist schedule') && referralType !== 'generalist') {
+          // Only show room error for specialist referrals, not generalist
           errorMessage = 'Unable to find available room for the selected date and time. Please select a different time slot.';
         } else {
           errorMessage = error.message;

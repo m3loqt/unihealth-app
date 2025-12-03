@@ -381,10 +381,10 @@ export default function ReferralDetailsScreen() {
             referralTimestamp: appointment.createdAt,
             lastUpdated: appointment.lastUpdated,
             sourceSystem: appointment.sourceSystem || 'UniHealth_Patient_App',
-            practiceLocation: {
-              clinicId: appointment.clinicId,
-              roomOrUnit: ''
-            }
+            // practiceLocation: {
+            //   clinicId: appointment.clinicId,
+            //   roomOrUnit: ''
+            // }
           };
         }
       } else {
