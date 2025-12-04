@@ -96,23 +96,36 @@ const HORIZONTAL_MARGIN = 24;
 
 // Helper function to format date
 // Formatting helpers (aligned with specialist screen)
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: string | null | undefined) => {
   try {
+    // Validate input
+    if (!dateString || typeof dateString !== 'string' || dateString.trim() === '') {
+      return 'Invalid date';
+    }
+
     // Handle DD/MM/YYYY format
     if (dateString.includes('/')) {
-      const [day, month, year] = dateString.split('/').map(Number);
-      const date = new Date(year, month - 1, day);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
+      const parts = dateString.split('/').map(Number);
+      if (parts.length === 3 && parts.every(p => !isNaN(p) && p > 0)) {
+        const [day, month, year] = parts;
+        // Validate date values
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31 && year > 0) {
+          const date = new Date(year, month - 1, day);
+          if (!isNaN(date.getTime()) && date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) {
+            return date.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            });
+          }
+        }
+      }
     }
     
     // Handle ISO format (with 'T' for time) - must check before YYYY-MM-DD
     if (dateString.includes('T') || dateString.includes('Z')) {
       const date = new Date(dateString);
-      if (!isNaN(date.getTime())) {
+      if (!isNaN(date.getTime()) && date instanceof Date) {
         return date.toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'long',
@@ -123,18 +136,26 @@ const formatDate = (dateString: string) => {
     
     // Handle YYYY-MM-DD format (without time)
     if (dateString.includes('-')) {
-      const [year, month, day] = dateString.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
+      const parts = dateString.split('-').map(Number);
+      if (parts.length === 3 && parts.every(p => !isNaN(p) && p > 0)) {
+        const [year, month, day] = parts;
+        // Validate date values
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31 && year > 0) {
+          const date = new Date(year, month - 1, day);
+          if (!isNaN(date.getTime()) && date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) {
+            return date.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            });
+          }
+        }
+      }
     }
     
     // Fallback to native Date parsing
     const date = new Date(dateString);
-    if (!isNaN(date.getTime())) {
+    if (!isNaN(date.getTime()) && date instanceof Date) {
       return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -144,20 +165,42 @@ const formatDate = (dateString: string) => {
     
     return 'Invalid date';
   } catch (error) {
+    console.error('Error formatting date:', error, dateString);
     return 'Invalid date';
   }
 };
 
 // Helper function to format time
-const formatTime = (timeString: string) => {
-  if (timeString.includes('AM') || timeString.includes('PM')) {
-    return timeString;
+const formatTime = (timeString: string | null | undefined) => {
+  try {
+    if (!timeString || typeof timeString !== 'string' || timeString.trim() === '') {
+      return 'Not specified';
+    }
+    
+    if (timeString.includes('AM') || timeString.includes('PM')) {
+      return timeString;
+    }
+    
+    const parts = timeString.split(':');
+    if (parts.length < 2) {
+      return timeString; // Return as-is if can't parse
+    }
+    
+    const hours = parts[0];
+    const minutes = parts[1] || '00';
+    const hour = parseInt(hours, 10);
+    
+    if (isNaN(hour) || hour < 0 || hour > 23) {
+      return timeString; // Return as-is if invalid
+    }
+    
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  } catch (error) {
+    console.error('Error formatting time:', error, timeString);
+    return timeString || 'Not specified';
   }
-  const [hours, minutes] = timeString.split(':');
-  const hour = parseInt(hours);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour % 12 || 12;
-  return `${displayHour}:${minutes} ${ampm}`;
 };
 
 // Helper function to get status color
@@ -329,7 +372,7 @@ export default function ReferralDetailsScreen() {
     if (!(completed && assignedToMe) && showMoreMenu) {
       setShowMoreMenu(false);
     }
-  }, [referralData?.status, referralData?.assignedSpecialistId, user?.uid, showMoreMenu]);
+  }, [referralData?.status, referralData?.assignedSpecialistId, user?.uid]);
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
     patientHistory: true,
     findings: true,
@@ -623,7 +666,10 @@ export default function ReferralDetailsScreen() {
             const diagnosisField = medicalHistory?.diagnosis || medicalHistory?.diagnoses;
             if (diagnosisField) {
               if (Array.isArray(diagnosisField)) {
-                return diagnosisField.map(d => d.description).join(', ');
+                return diagnosisField
+                  .filter(d => d && typeof d === 'object' && d.description)
+                  .map(d => d.description)
+                  .join(', ');
               }
               return diagnosisField;
             }
@@ -1349,7 +1395,7 @@ export default function ReferralDetailsScreen() {
                       if (p.take && p.formula) {
                         const formulaText = p.formula.toLowerCase().includes('tab') ? 
                           (p.take === '1' ? 'tablet' : 'tablets') : 
-                          p.formula.split(',')[0].trim(); // Take first part before comma
+                          (p.formula.includes(',') ? p.formula.split(',')[0].trim() : p.formula.trim()); // Take first part before comma
                         description += `Take ${p.take} ${formulaText}`;
                         hasStarted = true;
                       } else if (p.take) {
@@ -1441,16 +1487,30 @@ export default function ReferralDetailsScreen() {
             
             // Add 1 year to the issued date for display
             const displayDate = cert.issuedDate ? (() => {
-              const date = new Date(cert.issuedDate);
-              date.setFullYear(date.getFullYear() + 1);
-              return date.toISOString();
+              try {
+                const date = new Date(cert.issuedDate);
+                if (!isNaN(date.getTime()) && date instanceof Date) {
+                  date.setFullYear(date.getFullYear() + 1);
+                  return date.toISOString();
+                }
+              } catch (error) {
+                console.error('Error processing issued date:', error, cert.issuedDate);
+              }
+              return null;
             })() : null;
             
             // Calculate adjusted expiry (add 1 year to expiry date as well)
             const adjustedExpiryDate = cert.expiryDate ? (() => {
-              const date = new Date(cert.expiryDate);
-              date.setFullYear(date.getFullYear() + 1);
-              return date.toISOString();
+              try {
+                const date = new Date(cert.expiryDate);
+                if (!isNaN(date.getTime()) && date instanceof Date) {
+                  date.setFullYear(date.getFullYear() + 1);
+                  return date.toISOString();
+                }
+              } catch (error) {
+                console.error('Error processing expiry date:', error, cert.expiryDate);
+              }
+              return null;
             })() : null;
             
             // Determine status based on adjusted expiry date
@@ -2552,9 +2612,16 @@ function getCertStatusStyles(status: string, adjustedExpiryDate?: string | null)
   
   // If we have an adjusted expiry date, check if it's still valid
   if (adjustedExpiryDate) {
-    const expiryDate = new Date(adjustedExpiryDate);
-    const now = new Date();
-    isValid = expiryDate > now;
+    try {
+      const expiryDate = new Date(adjustedExpiryDate);
+      if (!isNaN(expiryDate.getTime()) && expiryDate instanceof Date) {
+        const now = new Date();
+        isValid = expiryDate > now;
+      }
+    } catch (error) {
+      console.error('Error checking expiry date:', error, adjustedExpiryDate);
+      // Keep the default isValid value based on status
+    }
   }
   
   if (isValid) {

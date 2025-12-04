@@ -1,4 +1,4 @@
-# 📱 Native Setup Guide - Running with Native Dependencies
+#  Native Setup Guide - Running with Native Dependencies
 
 ## **🎯 Overview**
 
@@ -40,7 +40,7 @@ npm run android-native
 npm run ios-native
 ```
 
-## **📱 Device Setup**
+## ** Device Setup**
 
 ### **Android Setup:**
 
@@ -226,4 +226,4 @@ npm run android  # or npm run ios
 # 3. Test voice-to-text in patient consultation screen
 ```
 
-**You now have native voice recognition working directly on your device!** 🎤📱✨ 
+**You now have native voice recognition working directly on your device!** 🎤✨ 

@@ -1543,27 +1543,20 @@ export const databaseService = {
   generateTimeSlots(startTime: string, endTime: string): string[] {
     const slots: string[] = [];
     
-    console.log(`Generating 20-minute time slots from ${startTime} to ${endTime}`);
-    
     // Parse start and end times (assuming format "HH:MM" or "HH:MM:SS")
     const start = new Date(`2000-01-01T${startTime}`);
     const end = new Date(`2000-01-01T${endTime}`);
-    
-    console.log('Parsed start time:', start);
-    console.log('Parsed end time:', end);
     
     // Generate 20-minute slots
     let current = new Date(start);
     while (current < end) {
       const timeString = current.toTimeString().slice(0, 5); // Format as "HH:MM"
       slots.push(timeString);
-      console.log(`Added slot: ${timeString}`);
       
       // Add 20 minutes
       current.setMinutes(current.getMinutes() + 20);
     }
     
-    console.log('Generated slots:', slots);
     return slots;
   },
 
@@ -1618,40 +1611,27 @@ export const databaseService = {
       const weeklySchedule = doctor.availability?.weeklySchedule?.[dayOfWeek];
       const specificDate = doctor.availability?.specificDates?.[date];
 
-      console.log('Checking availability for date:', date);
-      console.log('Day of week:', dayOfWeek);
-      console.log('Weekly schedule:', weeklySchedule);
-      console.log('Specific date:', specificDate);
-
       let availableSlots: string[] = [];
 
       // Check specific date first (overrides weekly schedule)
       if (specificDate?.timeSlots) {
-        console.log('Using specific date time slots:', specificDate.timeSlots);
         // Generate 20-minute slots for each time slot range
         specificDate.timeSlots.forEach(slot => {
           const slots = this.generateTimeSlots(slot.startTime, slot.endTime);
-          console.log(`Generated slots for ${slot.startTime}-${slot.endTime}:`, slots);
           availableSlots.push(...slots);
         });
       } else if (weeklySchedule?.enabled && weeklySchedule?.timeSlots) {
-        console.log('Using weekly schedule time slots:', weeklySchedule.timeSlots);
         // Generate 20-minute slots for each time slot range
         weeklySchedule.timeSlots.forEach(slot => {
           const slots = this.generateTimeSlots(slot.startTime, slot.endTime);
-          console.log(`Generated slots for ${slot.startTime}-${slot.endTime}:`, slots);
           availableSlots.push(...slots);
         });
       }
 
-      console.log('All available slots before filtering:', availableSlots);
-
       // Filter out already booked slots
       const bookedSlots = await this.getBookedTimeSlots(doctorId, date);
-      console.log('Booked slots:', bookedSlots);
       
       const finalSlots = availableSlots.filter(slot => !bookedSlots.includes(slot));
-      console.log('Final available slots:', finalSlots);
       
       return finalSlots;
     } catch (error) {
@@ -1662,38 +1642,25 @@ export const databaseService = {
 
       async getBookedTimeSlots(doctorId: string, date: string): Promise<string[]> {
       try {
-        console.log(' getBookedTimeSlots: Searching for', { doctorId, date });
         const appointmentsRef = ref(database, 'appointments');
         const snapshot = await get(appointmentsRef);
       
       if (snapshot.exists()) {
         const bookedSlots: string[] = [];
-        console.log(' Found appointments, checking each one...');
         
         snapshot.forEach((childSnapshot) => {
           const appointmentData = childSnapshot.val();
-          console.log(' Checking appointment:', {
-            id: childSnapshot.key,
-            doctorId: appointmentData.doctorId,
-            doctor: appointmentData.doctor,
-            appointmentDate: appointmentData.appointmentDate,
-            appointmentTime: appointmentData.appointmentTime,
-            searchingFor: { doctorId, date }
-          });
           
           // Check if appointment is for the same doctor and date
           // Handle both doctorId and doctor field names for compatibility
           const appointmentDoctorId = appointmentData.doctorId || appointmentData.doctor;
           if (appointmentDoctorId === doctorId && appointmentData.appointmentDate === date) {
-            console.log('  Found matching appointment:', appointmentData.appointmentTime);
             bookedSlots.push(appointmentData.appointmentTime);
           }
         });
         
-        console.log(' Final booked slots:', bookedSlots);
         return bookedSlots;
       } else {
-        console.log(' No appointments found in database');
         return [];
       }
     } catch (error) {
@@ -1769,35 +1736,21 @@ export const databaseService = {
     allSlots: string[];
   }> {
     try {
-      console.log(' getDoctorScheduleWithBookings: Starting for', { doctorId, date });
-      
       // Get all available slots for the doctor on this date
       const availableSlots = await this.getAvailableTimeSlots(doctorId, date);
-      console.log(' Available slots:', availableSlots);
       
       // Get booked slots for the doctor on this date
       const bookedSlots = await this.getBookedTimeSlots(doctorId, date);
-      console.log(' Booked slots:', bookedSlots);
       
       // Get doctor's schedule to determine all possible slots
       const doctor = await this.getDoctorById(doctorId);
       if (!doctor) {
-        console.log(' Doctor not found');
         return { availableSlots: [], bookedSlots: [], allSlots: [] };
       }
 
       const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
       const weeklySchedule = doctor.availability?.weeklySchedule?.[dayOfWeek];
       const specificDate = doctor.availability?.specificDates?.[date];
-
-      console.log(' Doctor schedule info:', {
-        dayOfWeek,
-        hasWeeklySchedule: !!weeklySchedule,
-        hasSpecificDate: !!specificDate,
-        weeklyScheduleEnabled: weeklySchedule?.enabled,
-        weeklyTimeSlots: weeklySchedule?.timeSlots,
-        specificTimeSlots: specificDate?.timeSlots
-      });
 
       let allSlots: string[] = [];
 
@@ -1814,15 +1767,12 @@ export const databaseService = {
         });
       }
 
-      console.log(' All possible slots:', allSlots);
-
       const result = {
         availableSlots,
         bookedSlots,
         allSlots
       };
       
-      console.log(' Final result:', result);
       return result;
     } catch (error) {
       console.error(' Get doctor schedule with bookings error:', error);
@@ -2022,7 +1972,7 @@ export const databaseService = {
       
       // Get unique patient IDs from appointments and referrals
       const uniquePatientIds = await this.getUniquePatientIdsForSpecialist(specialistId);
-      console.log(`📋 Found ${uniquePatientIds.length} unique patients for specialist:`, uniquePatientIds);
+      console.log(` Found ${uniquePatientIds.length} unique patients for specialist:`, uniquePatientIds);
       
       // Fetch patient data using standardized method
       const patientPromises = uniquePatientIds.map(async (patientId) => {
@@ -2201,7 +2151,7 @@ export const databaseService = {
           const referral = referralSnapshot.val();
           const referralConsultationId = referral.referralConsultationId;
           
-          console.log(`📋 Found referral ${referralId}, referralConsultationId:`, referralConsultationId);
+          console.log(` Found referral ${referralId}, referralConsultationId:`, referralConsultationId);
           
           if (referralConsultationId) {
             // Step 2: Go to patientMedicalHistory > patientId > entries > referralConsultationId > consultationDate
@@ -2393,7 +2343,6 @@ export const databaseService = {
   // New certificate retrieval functions for patientMedicalCertificates structure
   async getCertificatesByPatientNew(patientId: string): Promise<Certificate[]> {
     try {
-      console.log(' Loading certificates for patient:', patientId);
       const certificatesRef = ref(database, `patientMedicalCertificates/${patientId}`);
       const snapshot = await get(certificatesRef);
       
@@ -2401,12 +2350,6 @@ export const databaseService = {
         const certificates: Certificate[] = [];
         snapshot.forEach((childSnapshot) => {
           const certData = childSnapshot.val();
-          console.log('📋 Raw certificate data:', {
-            key: childSnapshot.key,
-            certData: certData,
-            hasCertificateId: !!certData.certificateId,
-            hasId: !!certData.id
-          });
           
           // Pass the certificate key as consultation ID if not explicitly stored
           const consultationId = certData.metadata?.consultationId || childSnapshot.key;
@@ -2418,13 +2361,10 @@ export const databaseService = {
             id: certData.id || childSnapshot.key
           };
           const transformedCert = this.transformNewCertificateToLegacy(enrichedCertData, patientId);
-          console.log(' Transformed certificate:', transformedCert);
           certificates.push(transformedCert);
         });
-        console.log('📋 Total certificates found:', certificates.length);
         return certificates;
       }
-      console.log(' No certificates found for patient:', patientId);
       return [];
     } catch (error) {
       console.error('Get certificates by patient (new structure) error:', error);
@@ -2471,18 +2411,6 @@ export const databaseService = {
     const safeGet = (obj: any, path: string, fallback: any = '') => {
       return path.split('.').reduce((current, key) => current?.[key], obj) || fallback;
     };
-    
-    // DEBUG: Log the certificate data structure
-    console.log(' transformNewCertificateToLegacy - Raw certData:', {
-      certificateId: certData.certificateId,
-      id: certData.id,
-      key: certData.key,
-      hasCertificateId: !!certData.certificateId,
-      hasId: !!certData.id,
-      certDataKeys: Object.keys(certData),
-      metadata: certData.metadata,
-      digitalSignature: certData.metadata?.digitalSignature ? 'Present' : 'Missing'
-    });
     
     const transformedCert = {
       id: certData.certificateId || certData.id || '',
@@ -2545,16 +2473,6 @@ export const databaseService = {
         restDays: safeGet(certData, 'medicalDetails.restDays', 0)
       }
     };
-    
-    console.log(' transformNewCertificateToLegacy - Transformed cert:', {
-      id: transformedCert.id,
-      type: transformedCert.type,
-      doctor: transformedCert.doctor,
-      digitalSignature: transformedCert.digitalSignature ? 'Present' : 'Missing',
-      documentUrl: transformedCert.documentUrl ? 'Present' : 'Missing',
-      doctorDetails: transformedCert.doctorDetails,
-      certificateNumber: transformedCert.certificateNumber
-    });
     
     return transformedCert;
   },
@@ -3177,7 +3095,7 @@ export const databaseService = {
         snapshot.forEach((patientSnapshot) => {
           patientSnapshot.forEach((certSnapshot) => {
             const certData = certSnapshot.val();
-            console.log('📋 Checking certificate:', {
+            console.log(' Checking certificate:', {
               certId: certData.certificateId,
               certDataId: certData.id,
               snapshotKey: certSnapshot.key,
@@ -3226,7 +3144,7 @@ export const databaseService = {
       }
 
       const appointment = snapshot.val();
-      console.log('📋 Appointment data:', appointment);
+      console.log(' Appointment data:', appointment);
       
       const updates: any = {
         status,
@@ -3935,7 +3853,7 @@ export const databaseService = {
       }
 
       const referral = snapshot.val();
-      console.log('📋 Referral data:', referral);
+      console.log(' Referral data:', referral);
       
       const updates: any = { 
         status, 
@@ -3999,7 +3917,7 @@ export const databaseService = {
       }
 
       const currentReferral = snapshot.val();
-      console.log('📋 Current referral data:', currentReferral);
+      console.log(' Current referral data:', currentReferral);
       
       const updatedData = {
         ...updates,
@@ -5188,10 +5106,10 @@ export const databaseService = {
           // Filter requests for this patient
           const patientRequests = requests.filter(req => req.patientId === patientId);
           
-          console.log('📋 Real-time consent requests update:', patientRequests.length, 'requests for patient');
+          console.log(' Real-time consent requests update:', patientRequests.length, 'requests for patient');
           callback(patientRequests);
         } else {
-          console.log('📋 No consent requests found');
+          console.log(' No consent requests found');
           callback([]);
         }
       }, (error) => {
@@ -5221,10 +5139,10 @@ export const databaseService = {
             ...requestData
           };
           
-          console.log('📋 Real-time consent request status update:', request.status);
+          console.log(' Real-time consent request status update:', request.status);
           callback(request);
         } else {
-          console.log('📋 Consent request not found');
+          console.log(' Consent request not found');
           callback(null);
         }
       }, (error) => {

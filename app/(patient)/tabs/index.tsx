@@ -326,7 +326,7 @@ export default function HomeScreen() {
   // Consent handling functions
   const handleConsentRequest = async (requestId: string) => {
     try {
-      console.log('📋 Processing consent request:', requestId);
+      console.log(' Processing consent request:', requestId);
       setConsentLoading(true);
       
       // Get the consent request details
@@ -450,7 +450,7 @@ export default function HomeScreen() {
         
         // Set up Firebase real-time listener for consent requests
         const unsubscribe = databaseService.listenToConsentRequests(user.uid, (requests) => {
-          console.log('📋 Received consent requests:', requests.length);
+          console.log(' Received consent requests:', requests.length);
           
           // Find pending requests for this patient
           const pendingRequests = requests.filter(req => 

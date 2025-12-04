@@ -12,7 +12,7 @@ export const useAppState = () => {
 
   useEffect(() => {
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
-      console.log('📱 App state changed from', appState.current, 'to', nextAppState);
+      console.log(' App state changed from', appState.current, 'to', nextAppState);
       
       if (!user?.uid) {
         appState.current = nextAppState;
@@ -26,7 +26,7 @@ export const useAppState = () => {
           await onlineStatusService.setUserOnline(user.uid);
         } else if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
           // App went to background
-          console.log('🟡 App went to background - setting user away');
+          console.log(' App went to background - setting user away');
           await onlineStatusService.setUserStatus(user.uid, 'away');
         }
       } catch (error) {

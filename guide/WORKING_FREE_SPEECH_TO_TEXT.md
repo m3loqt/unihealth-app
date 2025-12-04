@@ -153,7 +153,7 @@ Your app now has:
 -  **UI integration** (working)
 -  **API integration** (needs working service)
 
-## **📱 Test Current Implementation**
+## ** Test Current Implementation**
 
 Right now, when you click the microphone:
 1. **Real recording starts** 

@@ -755,7 +755,7 @@ export default function SpecialistHomeScreen() {
       // Process QR scan with consent logic
       const result = await handleQRScan(qrData, user?.uid);
       
-      console.log('📋 QR scan result:', result);
+      console.log(' QR scan result:', result);
       
       if (result.action === 'direct_access') {
         // Trusted specialist - load patient data immediately
@@ -806,7 +806,7 @@ export default function SpecialistHomeScreen() {
   // Load patient data for trusted specialists
   const loadPatientData = async (qrData: any) => {
     try {
-      console.log('📋 Loading patient data for:', qrData.id);
+      console.log(' Loading patient data for:', qrData.id);
       
       // Fetch additional patient information from database
       let patientDetails = null;
@@ -904,7 +904,7 @@ export default function SpecialistHomeScreen() {
       
       const unsubscribe = databaseService.listenToConsentRequestStatus(consentRequestId, (request) => {
         if (request) {
-          console.log('📋 Consent request status updated:', request.status);
+          console.log(' Consent request status updated:', request.status);
           
           if (request.status === 'approved') {
             console.log(' Patient approved consent');

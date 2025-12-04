@@ -86,7 +86,7 @@
 - ⏳ Create storage service layer
 - ⏳ Create service utilities
 
-## 📋 Next Steps
+##  Next Steps
 
 ### Phase 1: Complete Import Updates
 1. Update all remaining app files with new import paths

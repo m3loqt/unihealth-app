@@ -112,7 +112,7 @@ const unsubscribe = databaseService.onAppointmentsChange(
 return () => unsubscribe();
 ```
 
-## 📱 Usage Examples
+##  Usage Examples
 
 ### Basic Usage in a Component
 

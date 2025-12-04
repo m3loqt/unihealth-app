@@ -17,7 +17,7 @@
 - `useCertificates()` - Real-time certificate updates
 - `useNotifications()` - Real-time notification delivery
 
-## 📱 Usage Example
+##  Usage Example
 
 ```typescript
 import { useAppointments, useNotifications } from '../hooks/data';

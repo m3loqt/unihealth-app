@@ -231,7 +231,7 @@ The system includes comprehensive logging:
 
 ```typescript
 console.log('🟢 User set as online:', userId);
-console.log('🟡 App went to background - setting user away');
+console.log(' App went to background - setting user away');
 console.log('💓 Heartbeat started for user:', userId);
 console.log('🧹 Cleaning up online status for user:', userId);
 ```

@@ -354,7 +354,7 @@ export const useGeneralistChatContacts = (): UseGeneralistChatContactsReturn => 
 
       // Load patients from appointments
       const appointments = await databaseService.getAppointmentsByGeneralist(user.uid);
-      console.log('📋 Loaded appointments for generalist:', appointments.length);
+      console.log(' Loaded appointments for generalist:', appointments.length);
 
       for (const appointment of appointments) {
         if (appointment.patientId && appointment.patientId !== user.uid) {
@@ -391,7 +391,7 @@ export const useGeneralistChatContacts = (): UseGeneralistChatContactsReturn => 
 
       // Load specialists from referrals
       const referrals = await databaseService.getReferralsByGeneralist(user.uid);
-      console.log('📋 Loaded referrals for generalist:', referrals.length);
+      console.log(' Loaded referrals for generalist:', referrals.length);
 
       for (const referral of referrals) {
         if (referral.assignedSpecialistId && referral.assignedSpecialistId !== user.uid) {
@@ -433,7 +433,7 @@ export const useGeneralistChatContacts = (): UseGeneralistChatContactsReturn => 
         return timeB - timeA; // Most recent first
       });
 
-      console.log('📋 Final contacts for generalist:', contactsArray.length);
+      console.log(' Final contacts for generalist:', contactsArray.length);
       setContacts(contactsArray);
     } catch (error) {
       console.error('Error loading generalist contacts:', error);
@@ -549,7 +549,7 @@ export default function GeneralistChatsScreen() {
       let existingThreads: any[] = [];
       try {
         existingThreads = await chatService.getUserThreads(user.uid);
-        console.log('📋 Loaded existing threads:', existingThreads.length);
+        console.log(' Loaded existing threads:', existingThreads.length);
       } catch (threadError) {
         console.error('Error loading existing threads:', threadError);
       }
@@ -614,7 +614,7 @@ export default function GeneralistChatsScreen() {
         return timeB - timeA;
       });
 
-      console.log('📋 Final chat list:', chatList.length, 'items');
+      console.log(' Final chat list:', chatList.length, 'items');
       setChats(chatList);
     } catch (error) {
       console.error('Error loading chats:', error);
@@ -1285,7 +1285,7 @@ if (!user || user.role !== 'generalist') {
 Add comprehensive logging to track chat system behavior:
 
 ```typescript
-console.log('📋 Loaded contacts for generalist:', contacts.length);
+console.log(' Loaded contacts for generalist:', contacts.length);
 console.log('👥 Processing contact:', contact.firstName, contact.lastName, 'Role:', contact.role);
 console.log(' Found existing thread for contact:', contact.firstName);
 console.log('📝 Creating placeholder for contact:', contact.firstName);

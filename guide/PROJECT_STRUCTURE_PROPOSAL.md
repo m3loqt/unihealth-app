@@ -11,7 +11,7 @@
 
 ```
 healthcare-app/
-├── 📱 app/                          # Expo Router Pages (UI Layer)
+├──  app/                          # Expo Router Pages (UI Layer)
 │   ├── _layout.tsx                  # Root layout
 │   ├── index.tsx                    # Sign-in screen
 │   ├── (auth)/                      # Authentication flows

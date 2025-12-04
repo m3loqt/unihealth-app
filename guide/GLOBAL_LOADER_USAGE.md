@@ -8,7 +8,7 @@ The GlobalLoader is a beautiful, animated hourglass loading component that can b
 -  **Progress Bar**: Optional progress tracking (0-100%)
 - 🎨 **Brand Consistent**: Uses UniHealth colors and typography
 - 🔄 **Message Updates**: Dynamic loading messages
-- 📱 **Responsive**: Works on all screen sizes
+-  **Responsive**: Works on all screen sizes
 
 ## Basic Usage
 

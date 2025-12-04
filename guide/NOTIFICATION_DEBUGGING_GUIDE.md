@@ -11,7 +11,7 @@ First, check your browser/device console for these specific log messages:
 ### **Expected Console Output:**
 ```
  Starting updateAppointmentStatus for appointment: [ID] with status: [STATUS]
-📋 Appointment data: { ... }
+ Appointment data: { ... }
  Appointment status updated successfully
  Attempting to import notification service...
  Notification service imported successfully
@@ -176,7 +176,7 @@ const notifications = await databaseService.getNotifications(userId);
 console.log('All notifications:', notifications);
 ```
 
-## 📱 **Step 7: UI Verification**
+##  **Step 7: UI Verification**
 
 ### **Check Notification Badge:**
 - Look for red badge on profile tab

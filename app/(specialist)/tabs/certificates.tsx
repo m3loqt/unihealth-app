@@ -347,7 +347,7 @@ export default function SpecialistCertificatesScreen() {
       
       console.log(' Loading certificates for specialist:', user.uid);
       const specialistCertificates = await databaseService.getCertificatesBySpecialist(user.uid);
-      console.log('📋 Raw certificates from database:', specialistCertificates);
+      console.log(' Raw certificates from database:', specialistCertificates);
       
       // Convert status for display (patient details are already included in the new structure)
       const enrichedCertificates = specialistCertificates.map((cert) => ({

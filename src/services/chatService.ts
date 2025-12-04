@@ -104,18 +104,18 @@ class ChatService {
   async getUserThreads(userId: string): Promise<ChatThread[]> {
     // Use client-side filtering to avoid Firebase indexing issues
     try {
-      console.log('📋 Getting user threads for:', userId);
+      console.log(' Getting user threads for:', userId);
       const snapshot = await get(this.threadsRef);
       const threads: ChatThread[] = [];
 
       if (snapshot.exists()) {
-        console.log('📋 Found chatThreads in database, processing...');
+        console.log(' Found chatThreads in database, processing...');
         snapshot.forEach((childSnapshot) => {
           const threadData = childSnapshot.val();
           const threadId = childSnapshot.key;
           
           if (threadData && threadId && threadData.participants && typeof threadData.participants === 'object' && threadData.participants[userId] === true) {
-            console.log('📋 Found thread for user:', threadId, 'lastMessage:', threadData.lastMessage?.text || 'No last message');
+            console.log(' Found thread for user:', threadId, 'lastMessage:', threadData.lastMessage?.text || 'No last message');
             threads.push({
               id: threadId,
               ...threadData,
@@ -123,13 +123,13 @@ class ChatService {
           }
         });
       } else {
-        console.log('📋 No chatThreads found in database');
+        console.log(' No chatThreads found in database');
       }
       
       // Also check for threads that might exist only as messages
-      console.log('📋 Checking for reconstructed threads...');
+      console.log(' Checking for reconstructed threads...');
       const reconstructedThreads = await this.findReconstructedThreads(userId);
-      console.log('📋 Found reconstructed threads:', reconstructedThreads.length);
+      console.log(' Found reconstructed threads:', reconstructedThreads.length);
       threads.push(...reconstructedThreads);
       
       // Remove duplicates (in case a thread exists in both places)

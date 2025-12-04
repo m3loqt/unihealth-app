@@ -165,7 +165,7 @@ npx expo start
 - TypeScript
 - Expo Router
 
-## 📱 Architecture
+##  Architecture
 
 ### Component Structure
 - **UI Components**: Reusable base components (Button, Input, Card, Modal)
@@ -201,7 +201,7 @@ FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 FIREBASE_APP_ID=your_app_id
 ```
 
-## 📋 Database Schema
+##  Database Schema
 
 ### Users
 ```typescript

@@ -34,7 +34,7 @@ export function useSpecialistChatGeneralists() {
 
       // Fetch referrals where this specialist is assigned
       const referrals = await databaseService.getReferralsBySpecialist(specialistId);
-      console.log('📋 Loaded referrals for specialist:', referrals.length);
+      console.log(' Loaded referrals for specialist:', referrals.length);
 
       for (const referral of referrals) {
         if (referral.referringGeneralistId && referral.referringGeneralistId !== specialistId) {
@@ -78,7 +78,7 @@ export function useSpecialistChatGeneralists() {
         return timeB - timeA; // Most recent first
       });
 
-      console.log('📋 Final generalists for specialist:', generalistsArray.length);
+      console.log(' Final generalists for specialist:', generalistsArray.length);
       setGeneralists(generalistsArray);
     } catch (error) {
       console.error('Error loading specialist generalists:', error);

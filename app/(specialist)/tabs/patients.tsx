@@ -112,7 +112,7 @@ export default function SpecialistPatientsScreen() {
       console.log('🔄 Loading patients for specialist:', user.uid);
       const specialistPatients = await databaseService.getPatientsBySpecialist(user.uid);
       
-      console.log('📋 Raw patients from database:', specialistPatients);
+      console.log(' Raw patients from database:', specialistPatients);
       
       // Debug: Log the structure of returned patients to understand the data
       if (specialistPatients.length > 0) {

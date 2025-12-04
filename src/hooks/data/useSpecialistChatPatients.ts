@@ -34,7 +34,7 @@ export function useSpecialistChatPatients() {
 
       // Fetch appointments where this specialist is the doctor
       const appointments = await databaseService.getAppointmentsBySpecialist(specialistId);
-      console.log('📋 Loaded appointments for specialist:', appointments.length);
+      console.log(' Loaded appointments for specialist:', appointments.length);
 
       for (const appointment of appointments) {
         if (appointment.patientId && appointment.patientId !== specialistId) {
@@ -73,7 +73,7 @@ export function useSpecialistChatPatients() {
 
       // Fetch referrals where this specialist is assigned
       const referrals = await databaseService.getReferralsBySpecialist(specialistId);
-      console.log('📋 Loaded referrals for specialist:', referrals.length);
+      console.log(' Loaded referrals for specialist:', referrals.length);
 
       for (const referral of referrals) {
         if (referral.patientId && referral.patientId !== specialistId) {
@@ -117,7 +117,7 @@ export function useSpecialistChatPatients() {
         return timeB - timeA; // Most recent first
       });
 
-      console.log('📋 Final patients for specialist:', patientsArray.length);
+      console.log(' Final patients for specialist:', patientsArray.length);
       setPatients(patientsArray);
     } catch (error) {
       console.error('Error loading specialist patients:', error);

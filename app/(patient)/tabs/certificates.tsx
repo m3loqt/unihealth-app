@@ -92,7 +92,7 @@ export default function CertificatesScreen() {
       // Use the new certificate structure
       const certificates = await databaseService.getCertificatesByPatientNew(user.uid);
       
-      console.log('📋 Loaded certificates:', certificates);
+      console.log(' Loaded certificates:', certificates);
       
       // Validate certificates data
       const validCertificates = dataValidation.validateArray(certificates, dataValidation.isValidCertificate);

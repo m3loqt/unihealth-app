@@ -122,9 +122,9 @@ export default function PatientChatsScreen() {
       let existingThreads: ChatThread[] = [];
       try {
         existingThreads = await chatService.getUserThreads(user.uid);
-        console.log('📋 Loaded existing threads:', existingThreads.length);
+        console.log(' Loaded existing threads:', existingThreads.length);
         existingThreads.forEach(thread => {
-          console.log('📋 Thread:', thread.id, 'participants:', Object.keys(thread.participants), 'lastMessage:', thread.lastMessage?.text);
+          console.log(' Thread:', thread.id, 'participants:', Object.keys(thread.participants), 'lastMessage:', thread.lastMessage?.text);
         });
       } catch (threadError) {
         console.error('Error loading existing threads:', threadError);
@@ -216,9 +216,9 @@ export default function PatientChatsScreen() {
         return timeB - timeA;
       });
 
-      console.log('📋 Final chat list:', chatList.length, 'items');
+      console.log(' Final chat list:', chatList.length, 'items');
       chatList.forEach(chat => {
-        console.log('📋 Chat item:', chat.doctor.firstName, chat.doctor.lastName, 'has lastMessage:', !!chat.thread.lastMessage, 'text:', chat.thread.lastMessage?.text || 'N/A');
+        console.log(' Chat item:', chat.doctor.firstName, chat.doctor.lastName, 'has lastMessage:', !!chat.thread.lastMessage, 'text:', chat.thread.lastMessage?.text || 'N/A');
       });
       setChats(chatList);
       setFilteredChats(chatList);

@@ -63,7 +63,7 @@ Implementing proper error handling and loading states for all patient and specia
 - ⏳ Needs data validation
 - ⏳ Needs performance optimization
 
-## 📋 **REMAINING TASKS**
+##  **REMAINING TASKS**
 
 ### **Patient Files to Update:**
 1. **Patient Overview** (`app/(patient)/patient-overview.tsx`)
