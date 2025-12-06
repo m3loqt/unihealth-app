@@ -2372,6 +2372,29 @@ export const databaseService = {
     }
   },
 
+  async getDoctorSignatureFromCertificates(patientId: string, doctorId: string): Promise<string | null> {
+    try {
+      if (!patientId || !doctorId) return null;
+      const certificates = await this.getCertificatesByPatientNew(patientId);
+      if (!certificates || certificates.length === 0) {
+        return null;
+      }
+
+      const matchingCertificates = certificates
+        .filter(cert => cert.doctorDetails?.id === doctorId && cert.digitalSignature)
+        .sort((a, b) => {
+          const aDate = new Date(a.issuedDate || (a as any)?.metadata?.issuedDate || 0).getTime();
+          const bDate = new Date(b.issuedDate || (b as any)?.metadata?.issuedDate || 0).getTime();
+          return bDate - aDate;
+        });
+
+      return matchingCertificates.length > 0 ? matchingCertificates[0].digitalSignature || null : null;
+    } catch (error) {
+      console.error('getDoctorSignatureFromCertificates error:', error);
+      return null;
+    }
+  },
+
   async getCertificatesBySpecialistNew(specialistId: string): Promise<Certificate[]> {
     try {
       const certificatesRef = ref(database, 'patientMedicalCertificates');

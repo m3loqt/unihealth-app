@@ -23,6 +23,7 @@ import { COLORS } from '../src/constants/colors';
 import { databaseService } from '../src/services/database/firebase';
 import { formatRoute, formatFrequency } from '../src/utils/formatting';
 import { useAuth } from '../src/hooks/auth/useAuth';
+import { useCertificateSignature } from '../src/hooks/ui/useSignatureManager';
 
 type PrescriptionItem = {
   medication?: string;
@@ -54,6 +55,10 @@ export default function EPrescriptionScreen() {
   const [downloadSavedPath, setDownloadSavedPath] = useState<string | null>(null);
   const [scheduleData, setScheduleData] = useState<any>(null);
   const [scheduleClinics, setScheduleClinics] = useState<any>({});
+
+  const { signature: contextSignature } = useCertificateSignature(
+    doctorSignature ? { digitalSignature: doctorSignature } : null
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -164,7 +169,15 @@ export default function EPrescriptionScreen() {
               setDoctorSignature(signature);
               console.log(' Loaded doctor signature for e-prescription');
             } else {
-              console.log('ℹ️ No saved signature found for doctor');
+              const fallbackSignature = refData.patientId
+                ? await databaseService.getDoctorSignatureFromCertificates(refData.patientId, refData.assignedSpecialistId)
+                : null;
+              if (fallbackSignature) {
+                setDoctorSignature(fallbackSignature);
+                console.log(' Loaded doctor signature from certificates fallback');
+              } else {
+                console.log('ℹ️ No saved signature found for doctor');
+              }
             }
           } catch (error) {
             console.log('Could not load doctor signature:', error);
@@ -381,6 +394,7 @@ export default function EPrescriptionScreen() {
     const subtle = '#6B7280';
     const border = '#E5E7EB';
     const text = '#111827';
+    const signatureImage = contextSignature || doctorSignature || null;
 
     const clinicName = safe(clinic?.name || referral?.referringClinicName || 'Clinic');
     const addressParts = [
@@ -1087,9 +1101,9 @@ export default function EPrescriptionScreen() {
       <!-- Signature Section -->
       <div class="signature-section">
             <div class="signature-wrap">
-                ${doctorSignature ? `
+          ${signatureImage ? `
             <div class="signature-image-container">
-              <img src="${doctorSignature}" alt="Doctor Signature" />
+              <img src="${signatureImage}" alt="Doctor Signature" />
               </div>
           ` : '<div style="height: 60px;"></div>'}
           <div class="signature-line"></div>
@@ -1111,7 +1125,7 @@ export default function EPrescriptionScreen() {
   </div>
 </body>
 </html>`;
-  }, [clinic, patient, provider, referral, prescriptions, logoDataUri, user?.role, doctorSignature, scheduleData, scheduleClinics]);
+  }, [clinic, patient, provider, referral, prescriptions, logoDataUri, user?.role, doctorSignature, contextSignature, scheduleData, scheduleClinics]);
 
   const handleGeneratePdf = async () => {
     try {
